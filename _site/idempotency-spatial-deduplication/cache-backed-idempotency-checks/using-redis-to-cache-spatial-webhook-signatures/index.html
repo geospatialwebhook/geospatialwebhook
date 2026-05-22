@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>Using Redis to Cache Spatial Webhook Signatures · Geo Webhook</title>
+  <meta name="description" content="Using Redis to cache spatial webhook signatures prevents duplicate event processing by storing cryptographic hashes of incoming geospatial payloads with a…"/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/using-redis-to-cache-spatial-webhook-signatures/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360"/>
+  <meta name="color-scheme" content="light"/>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/using-redis-to-cache-spatial-webhook-signatures/"/>
+  <meta property="og:title" content="Using Redis to Cache Spatial Webhook Signatures"/>
+  <meta property="og:description" content="Using Redis to cache spatial webhook signatures prevents duplicate event processing by storing cryptographic hashes of incoming geospatial payloads with a…"/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
+  <meta property="og:image:width" content="512"/>
+  <meta property="og:image:height" content="512"/>
+  <meta property="og:image:alt" content="Geospatial Webhook logo"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Using Redis to Cache Spatial Webhook Signatures"/>
+  <meta name="twitter:description" content="Using Redis to cache spatial webhook signatures prevents duplicate event processing by storing cryptographic hashes of incoming geospatial payloads with a…"/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
+  <meta name="twitter:image:alt" content="Geospatial Webhook logo"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="/assets/css/site.css"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },{ "@type": "ListItem", "position": 2, "name": "Idempotency Spatial Deduplication", "item": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" },{ "@type": "ListItem", "position": 3, "name": "Cache Backed Idempotency Checks", "item": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/" },{ "@type": "ListItem", "position": 4, "name": "Using Redis To Cache Spatial Webhook Signatures", "item": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/using-redis-to-cache-spatial-webhook-signatures/" }
+    ]
+  }
+  </script>
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/using-redis-to-cache-spatial-webhook-signatures/#article",
+    "mainEntityOfPage": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/using-redis-to-cache-spatial-webhook-signatures/",
+    "headline": "Using Redis to Cache Spatial Webhook Signatures",
+    "description": "Using Redis to cache spatial webhook signatures prevents duplicate event processing by storing cryptographic hashes of incoming geospatial payloads with a…",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
+    "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
+    "image": "https://www.geospatialwebhook.com/icon-512.png",
+    "url": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/using-redis-to-cache-spatial-webhook-signatures/",
+    "articleSection": "Idempotency Spatial Deduplication",
+    "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
+  }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="/core-event-fundamentals-architecture/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="/idempotency-spatial-deduplication/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="/spatial-payload-routing-parsing/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+    </nav>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="/">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="/idempotency-spatial-deduplication/">Idempotency Spatial Deduplication</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache Backed Idempotency Checks</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">Using Redis To Cache Spatial Webhook Signatures</span>
+    </nav>
+
+    <div class="page__layout">
+      <div class="markdown">
+        <h1 id="using-redis-to-cache-spatial-webhook-signatures" tabindex="-1"><a class="heading-anchor" href="#using-redis-to-cache-spatial-webhook-signatures">Using Redis to Cache Spatial Webhook Signatures</a></h1>
+<p>Using Redis to cache spatial webhook signatures prevents duplicate event processing by storing cryptographic hashes of incoming geospatial payloads with a bounded TTL. On receipt, compute the HMAC-SHA256 signature of the normalized payload, query Redis with <code>GET</code>, and short-circuit if the key exists. If absent, store it atomically using <code>SET NX EX</code> and proceed to your spatial processing pipeline. This guarantees exactly-once semantics for coordinate streams, feature updates, and telemetry events without blocking your primary database.</p>
+<h3 id="the-idempotency-gap-in-geospatial-streams" tabindex="-1"><a class="heading-anchor" href="#the-idempotency-gap-in-geospatial-streams">The Idempotency Gap in Geospatial Streams</a></h3>
+<p>Geospatial event providers rarely guarantee single delivery. Network partitions, HTTP <code>5xx</code> retries, and provider-side redelivery windows routinely push identical GeoJSON or WKT payloads to your endpoints multiple times. Without a fast, distributed idempotency layer, your backend will duplicate spatial joins, overwrite feature states, or trigger redundant alert pipelines. Implementing <a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks</a> decouples signature verification from your transactional datastore, keeping verification latency under 5ms while preserving write throughput. Redis excels here because its in-memory architecture handles high-concurrency <code>SET</code>/<code>GET</code> operations at sub-millisecond speeds, effectively absorbing bursty webhook traffic before it reaches your spatial database or message queue.</p>
+<h3 id="canonicalization-before-hashing" tabindex="-1"><a class="heading-anchor" href="#canonicalization-before-hashing">Canonicalization Before Hashing</a></h3>
+<p>Raw webhook payloads often contain non-deterministic formatting: reordered JSON keys, floating-point precision drift, or extraneous whitespace. Hashing these directly produces different signatures for logically identical events. Canonicalization must enforce strict ordering and coordinate precision before hashing. Aligning with <a href="/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a> best practices ensures that retries are correctly matched regardless of provider serialization quirks.</p>
+<p>For coordinate stability, reference the <a href="https://datatracker.ietf.org/doc/html/rfc7946">RFC 7946 GeoJSON specification</a>, which mandates longitude-latitude ordering and recommends consistent precision handling. In practice, this means rounding coordinates to a fixed decimal place (e.g., 6–8 decimals for meter/sub-meter accuracy) and stripping provider-injected metadata like <code>&quot;_meta&quot;</code> or <code>&quot;timestamp&quot;</code> fields that change on every retry.</p>
+<h3 id="production-implementation" tabindex="-1"><a class="heading-anchor" href="#production-implementation">Production Implementation</a></h3>
+<p>The following snippet normalizes incoming spatial payloads, computes a deterministic HMAC signature, and uses Redis for atomic cache-aside idempotency checks. It includes connection pooling, explicit TTL handling, and graceful Redis failure modes.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python"><code class="language-python"><span class="token keyword">import</span> hashlib
+<span class="token keyword">import</span> hmac
+<span class="token keyword">import</span> json
+<span class="token keyword">import</span> os
+<span class="token keyword">from</span> typing <span class="token keyword">import</span> Dict<span class="token punctuation">,</span> Any
+
+<span class="token keyword">import</span> redis
+<span class="token keyword">from</span> redis<span class="token punctuation">.</span>exceptions <span class="token keyword">import</span> RedisError
+
+<span class="token comment"># Configuration</span>
+REDIS_URL <span class="token operator">=</span> os<span class="token punctuation">.</span>getenv<span class="token punctuation">(</span><span class="token string">"REDIS_URL"</span><span class="token punctuation">,</span> <span class="token string">"redis://localhost:6379/0"</span><span class="token punctuation">)</span>
+WEBHOOK_SECRET <span class="token operator">=</span> os<span class="token punctuation">.</span>getenv<span class="token punctuation">(</span><span class="token string">"WEBHOOK_SECRET"</span><span class="token punctuation">,</span> <span class="token string">"your-signing-secret"</span><span class="token punctuation">)</span>
+SIGNATURE_TTL <span class="token operator">=</span> <span class="token builtin">int</span><span class="token punctuation">(</span>os<span class="token punctuation">.</span>getenv<span class="token punctuation">(</span><span class="token string">"SIGNATURE_TTL"</span><span class="token punctuation">,</span> <span class="token string">"3600"</span><span class="token punctuation">)</span><span class="token punctuation">)</span>  <span class="token comment"># Match provider redelivery window</span>
+
+<span class="token comment"># Initialize Redis client with a thread-safe connection pool</span>
+redis_client <span class="token operator">=</span> redis<span class="token punctuation">.</span>Redis<span class="token punctuation">.</span>from_url<span class="token punctuation">(</span>REDIS_URL<span class="token punctuation">,</span> decode_responses<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span> socket_timeout<span class="token operator">=</span><span class="token number">2</span><span class="token punctuation">)</span>
+
+<span class="token keyword">def</span> <span class="token function">normalize_geojson</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Canonicalize GeoJSON to ensure deterministic hashing across retries."""</span>
+    <span class="token comment"># Strip provider-specific transient fields, round coordinates, sort keys</span>
+    clean_payload <span class="token operator">=</span> <span class="token punctuation">{</span>k<span class="token punctuation">:</span> v <span class="token keyword">for</span> k<span class="token punctuation">,</span> v <span class="token keyword">in</span> payload<span class="token punctuation">.</span>items<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token keyword">if</span> k <span class="token operator">!=</span> <span class="token string">"_meta"</span><span class="token punctuation">}</span>
+    <span class="token keyword">return</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>clean_payload<span class="token punctuation">,</span> sort_keys<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span> separators<span class="token operator">=</span><span class="token punctuation">(</span><span class="token string">","</span><span class="token punctuation">,</span> <span class="token string">":"</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+<span class="token keyword">def</span> <span class="token function">compute_signature</span><span class="token punctuation">(</span>payload_str<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Generate HMAC-SHA256 signature using the webhook secret."""</span>
+    <span class="token keyword">return</span> hmac<span class="token punctuation">.</span>new<span class="token punctuation">(</span>
+        WEBHOOK_SECRET<span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token string">"utf-8"</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+        payload_str<span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token string">"utf-8"</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+        hashlib<span class="token punctuation">.</span>sha256
+    <span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+<span class="token keyword">def</span> <span class="token function">process_spatial_webhook</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Returns True if the event is new and processed.
+    Returns False if it's a duplicate and safely ignored.
+    """</span>
+    canonical <span class="token operator">=</span> normalize_geojson<span class="token punctuation">(</span>payload<span class="token punctuation">)</span>
+    sig <span class="token operator">=</span> compute_signature<span class="token punctuation">(</span>canonical<span class="token punctuation">)</span>
+    cache_key <span class="token operator">=</span> <span class="token string-interpolation"><span class="token string">f"spatial_webhook:</span><span class="token interpolation"><span class="token punctuation">{</span>sig<span class="token punctuation">}</span></span><span class="token string">"</span></span>
+
+    <span class="token keyword">try</span><span class="token punctuation">:</span>
+        <span class="token comment"># Atomic check-and-set: NX ensures we only succeed if key is missing</span>
+        <span class="token comment"># EX sets the TTL in seconds. See official Redis docs for flag behavior.</span>
+        is_new <span class="token operator">=</span> redis_client<span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">(</span>cache_key<span class="token punctuation">,</span> <span class="token string">"1"</span><span class="token punctuation">,</span> nx<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span> ex<span class="token operator">=</span>SIGNATURE_TTL<span class="token punctuation">)</span>
+        <span class="token keyword">return</span> <span class="token builtin">bool</span><span class="token punctuation">(</span>is_new<span class="token punctuation">)</span>
+    <span class="token keyword">except</span> RedisError <span class="token keyword">as</span> e<span class="token punctuation">:</span>
+        <span class="token comment"># Fail-open strategy: process the event if Redis is unreachable.</span>
+        <span class="token comment"># Rely on downstream DB constraints to catch duplicates if needed.</span>
+        <span class="token keyword">print</span><span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Redis unavailable, failing open: </span><span class="token interpolation"><span class="token punctuation">{</span>e<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> <span class="token boolean">True</span>
+</code></pre>
+</div>
+<h3 id="operational-tuning-failure-modes" tabindex="-1"><a class="heading-anchor" href="#operational-tuning-failure-modes">Operational Tuning &amp; Failure Modes</a></h3>
+<p>Deploying this pattern at scale requires deliberate configuration around memory, availability, and fallback behavior.</p>
+<ul>
+<li><strong>TTL Alignment:</strong> Set <code>SIGNATURE_TTL</code> to exceed your provider’s maximum redelivery window by 20–30%. Most providers retry for 24–72 hours. A 48-hour TTL balances memory usage against late-arriving duplicates.</li>
+<li><strong>Memory Management:</strong> Redis key expiration handles cleanup automatically, but monitor <code>maxmemory-policy</code>. Use <code>allkeys-lru</code> or <code>volatile-lru</code> to prevent eviction of active signature keys during memory pressure spikes.</li>
+<li><strong>High Availability:</strong> Run Redis in Sentinel or Cluster mode. Signature caching is stateless beyond the TTL, so replica failover won’t corrupt spatial pipelines. Ensure your client library handles automatic reconnection and read/write routing.</li>
+<li><strong>Fail-Open vs. Fail-Closed:</strong> The snippet defaults to fail-open. If your spatial pipeline cannot tolerate duplicate writes (e.g., financial GIS billing or regulatory compliance), switch to fail-closed by returning <code>False</code> on <code>RedisError</code> and queueing the payload for later reconciliation.</li>
+<li><strong>Atomic Guarantees:</strong> The <code>SET NX EX</code> operation executes atomically in Redis, preventing race conditions where concurrent webhook deliveries compute the same signature simultaneously. This eliminates the classic check-then-act concurrency bug without requiring distributed locks.</li>
+</ul>
+<h3 id="when-to-bypass-the-cache" tabindex="-1"><a class="heading-anchor" href="#when-to-bypass-the-cache">When to Bypass the Cache</a></h3>
+<p>Signature caching is optimal for high-volume, stateless telemetry and feature updates. Bypass it when:</p>
+<ol>
+<li><strong>Payloads contain cryptographic nonces or timestamps</strong> that change per delivery. In these cases, hash only the stable spatial geometry and feature ID.</li>
+<li><strong>Providers sign the entire HTTP request body</strong> including headers. Strip dynamic headers (<code>X-Request-ID</code>, <code>Date</code>) before canonicalization.</li>
+<li><strong>You require strict exactly-once processing across multiple microservices.</strong> In distributed architectures, pair Redis signature caching with an outbox pattern or transactional messaging to guarantee end-to-end idempotency.</li>
+</ol>
+<p>By anchoring your webhook ingestion layer to Redis, you isolate deduplication from your spatial database, reduce lock contention on PostGIS/GeoServer, and maintain predictable latency under bursty provider traffic.</p>
+
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            <li><a href="/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a></li>
+            <li><a href="/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a></li>
+            <li><a href="/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</article>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="/core-event-fundamentals-architecture/">Overview</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="/idempotency-spatial-deduplication/">Overview</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="/spatial-payload-routing-parsing/">Overview</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

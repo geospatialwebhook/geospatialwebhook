@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  {%- set pageTitle = title or site.title %}
+  {%- set pageDesc = description or site.description %}
+  {%- set absUrl = site.url + page.url %}
+  {%- set socialImage = site.url + "/icon-512.png" %}
+
+  <title>{% if title and title != site.title %}{{ title }} · {{ site.short }}{% else %}{{ site.title }}{% endif %}</title>
+  <meta name="description" content="{{ pageDesc }}"/>
+  <link rel="canonical" href="{{ absUrl }}"/>
+
+  {%- if noindex %}
+  <meta name="robots" content="noindex, nofollow"/>
+  {%- else %}
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+  {%- endif %}
+
+  {# Icons #}
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="{{ site.themeColor }}"/>
+  <meta name="color-scheme" content="light"/>
+
+  {# Apple iOS PWA meta tags #}
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="{{ site.short }}"/>
+  <meta name="application-name" content="{{ site.short }}"/>
+
+  {# Open Graph #}
+  <meta property="og:type" content="{% if section %}article{% else %}website{% endif %}"/>
+  <meta property="og:site_name" content="{{ site.short }}"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="{{ absUrl }}"/>
+  <meta property="og:title" content="{{ pageTitle }}"/>
+  <meta property="og:description" content="{{ pageDesc }}"/>
+  <meta property="og:image" content="{{ socialImage }}"/>
+  <meta property="og:image:width" content="512"/>
+  <meta property="og:image:height" content="512"/>
+  <meta property="og:image:alt" content="Geospatial Webhook logo"/>
+
+  {# Twitter Card #}
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="{{ pageTitle }}"/>
+  <meta name="twitter:description" content="{{ pageDesc }}"/>
+  <meta name="twitter:image" content="{{ socialImage }}"/>
+  <meta name="twitter:image:alt" content="Geospatial Webhook logo"/>
+
+  {# Resource hints #}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="/assets/css/site.css"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  {# Structured data — site-wide WebSite + Organization #}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "{{ site.url }}/#website",
+        "url": "{{ site.url }}/",
+        "name": "{{ site.title }}",
+        "description": "{{ site.description }}",
+        "inLanguage": "en",
+        "publisher": { "@id": "{{ site.url }}/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "{{ site.url }}/#org",
+        "name": "{{ site.short }}",
+        "url": "{{ site.url }}/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "{{ site.url }}/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+
+  {%- if page.url != "/" %}
+  {%- set crumbs = page.url | breadcrumbs %}
+  {%- if crumbs | length > 0 %}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "{{ site.url }}/" }
+      {%- for c in crumbs -%}
+      ,{ "@type": "ListItem", "position": {{ loop.index + 1 }}, "name": "{{ c.label | humanize }}", "item": "{{ site.url }}{{ c.url }}" }
+      {%- endfor %}
+    ]
+  }
+  </script>
+  {%- endif %}
+  {%- endif %}
+
+  {%- if section and depth and depth >= 1 %}
+  {# Per-article structured data (TechArticle is the closest match for hands-on engineering docs) #}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "{{ absUrl }}#article",
+    "mainEntityOfPage": "{{ absUrl }}",
+    "headline": "{{ pageTitle }}",
+    "description": "{{ pageDesc }}",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "{{ site.url }}/#website" },
+    "publisher": { "@id": "{{ site.url }}/#org" },
+    "image": "{{ socialImage }}",
+    "url": "{{ absUrl }}",
+    "articleSection": "{{ section | humanize }}",
+    "keywords": "{{ site.focus }}"
+  }
+  </script>
+  {%- elif page.url == "/" %}
+  {# Homepage acts as the main entry — no extra article entity needed #}
+  {%- endif %}
+</head>
+<body>
+  <div class="layout">
+    {% include "partials/header.njk" %}
+    <main class="layout__main" id="main">
+      {{ content | safe }}
+    </main>
+    {% include "partials/footer.njk" %}
+  </div>
+  <script src="/assets/js/site.js" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

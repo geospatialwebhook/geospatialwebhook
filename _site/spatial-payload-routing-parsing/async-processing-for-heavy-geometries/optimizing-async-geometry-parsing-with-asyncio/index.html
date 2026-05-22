@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>Optimizing async geometry parsing with asyncio · Geo Webhook</title>
+  <meta name="description" content="Optimizing async geometry parsing with asyncio requires decoupling CPU-intensive coordinate validation from the event loop using loop.runinexecutor().…"/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/optimizing-async-geometry-parsing-with-asyncio/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360"/>
+  <meta name="color-scheme" content="light"/>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/optimizing-async-geometry-parsing-with-asyncio/"/>
+  <meta property="og:title" content="Optimizing async geometry parsing with asyncio"/>
+  <meta property="og:description" content="Optimizing async geometry parsing with asyncio requires decoupling CPU-intensive coordinate validation from the event loop using loop.runinexecutor().…"/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
+  <meta property="og:image:width" content="512"/>
+  <meta property="og:image:height" content="512"/>
+  <meta property="og:image:alt" content="Geospatial Webhook logo"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Optimizing async geometry parsing with asyncio"/>
+  <meta name="twitter:description" content="Optimizing async geometry parsing with asyncio requires decoupling CPU-intensive coordinate validation from the event loop using loop.runinexecutor().…"/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
+  <meta name="twitter:image:alt" content="Geospatial Webhook logo"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="/assets/css/site.css"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },{ "@type": "ListItem", "position": 2, "name": "Spatial Payload Routing Parsing", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" },{ "@type": "ListItem", "position": 3, "name": "Async Processing For Heavy Geometries", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/" },{ "@type": "ListItem", "position": 4, "name": "Optimizing Async Geometry Parsing With Asyncio", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/optimizing-async-geometry-parsing-with-asyncio/" }
+    ]
+  }
+  </script>
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/optimizing-async-geometry-parsing-with-asyncio/#article",
+    "mainEntityOfPage": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/optimizing-async-geometry-parsing-with-asyncio/",
+    "headline": "Optimizing async geometry parsing with asyncio",
+    "description": "Optimizing async geometry parsing with asyncio requires decoupling CPU-intensive coordinate validation from the event loop using loop.runinexecutor().…",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
+    "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
+    "image": "https://www.geospatialwebhook.com/icon-512.png",
+    "url": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/optimizing-async-geometry-parsing-with-asyncio/",
+    "articleSection": "Spatial Payload Routing Parsing",
+    "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
+  }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="/core-event-fundamentals-architecture/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="/idempotency-spatial-deduplication/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="/spatial-payload-routing-parsing/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+    </nav>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="/">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="/spatial-payload-routing-parsing/">Spatial Payload Routing Parsing</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing For Heavy Geometries</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">Optimizing Async Geometry Parsing With Asyncio</span>
+    </nav>
+
+    <div class="page__layout">
+      <div class="markdown">
+        <h1 id="optimizing-async-geometry-parsing-with-asyncio" tabindex="-1"><a class="heading-anchor" href="#optimizing-async-geometry-parsing-with-asyncio">Optimizing async geometry parsing with asyncio</a></h1>
+<p>Optimizing async geometry parsing with asyncio requires decoupling CPU-intensive coordinate validation from the event loop using <code>loop.run_in_executor()</code>. Python’s Global Interpreter Lock (GIL) prevents true parallelism in the main thread, so heavy GeoJSON, WKB, or WKT payloads must be offloaded to a <code>ProcessPoolExecutor</code>. This hybrid architecture keeps webhook ingestion, routing, and database writes strictly asynchronous while isolating spatial computations. The result is high concurrency for I/O-bound delivery without event loop starvation during topology checks.</p>
+<h2 id="why-asyncio-alone-blocks-on-heavy-geometries" tabindex="-1"><a class="heading-anchor" href="#why-asyncio-alone-blocks-on-heavy-geometries">Why <code>asyncio</code> Alone Blocks on Heavy Geometries</a></h2>
+<p><code>asyncio</code> is an I/O multiplexing framework, not a parallel execution engine. When a webhook handler receives a spatial payload containing thousands of vertices, nested multipolygons, or complex feature collections, parsing becomes fundamentally CPU-bound. Libraries like <code>shapely</code>, <code>pyproj</code>, or <code>geojson</code> invoke C extensions or perform heavy linear algebra to validate ring orientation, detect self-intersections, and compute bounding boxes. If executed directly on the event loop, these operations block the thread, causing webhook acknowledgments to timeout, connection pools to exhaust, and downstream routing queues to back up.</p>
+<p>The correct architectural approach treats geometry parsing as a synchronous worker task bridged into the async context. This is the core principle behind <a href="/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a>, where payload acceptance remains non-blocking while validation runs in isolated processes. By isolating CPU work, you preserve the event loop’s ability to handle thousands of concurrent HTTP connections, WebSocket streams, or message broker subscriptions without sacrificing spatial accuracy.</p>
+<h2 id="executor-backed-architecture-for-spatial-workloads" tabindex="-1"><a class="heading-anchor" href="#executor-backed-architecture-for-spatial-workloads">Executor-Backed Architecture for Spatial Workloads</a></h2>
+<p>In an event-driven webhook pipeline, the optimal flow separates ingestion from computation:</p>
+<ol>
+<li><strong>Acknowledge immediately</strong>: Return <code>HTTP 202 Accepted</code> to the sender.</li>
+<li><strong>Queue raw payload</strong>: Push the unmodified JSON to an async-compatible queue (e.g., <code>asyncio.Queue</code>, Redis Streams, or RabbitMQ).</li>
+<li><strong>Dispatch to executor</strong>: Pull payloads from the queue and submit them to a process pool.</li>
+<li><strong>Route validated output</strong>: Once parsing completes, route the normalized geometry to spatial databases, tile generators, or downstream microservices.</li>
+</ol>
+<p>This separation ensures that <a href="/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a> remains responsive under burst traffic. The event loop never waits on GEOS calculations; it only awaits the future returned by <code>run_in_executor()</code>. For authoritative guidance on bridging sync and async contexts, consult the official <a href="https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.run_in_executor">Python asyncio event loop documentation</a>.</p>
+<h2 id="production-ready-implementation" tabindex="-1"><a class="heading-anchor" href="#production-ready-implementation">Production-Ready Implementation</a></h2>
+<p>The following pattern safely bridges async webhook handlers with synchronous geometry validation. It uses <code>ProcessPoolExecutor</code> to bypass the GIL, validates topology, and returns structured results without blocking the main thread.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">import</span> logging
+<span class="token keyword">from</span> concurrent<span class="token punctuation">.</span>futures <span class="token keyword">import</span> ProcessPoolExecutor
+<span class="token keyword">from</span> typing <span class="token keyword">import</span> Dict<span class="token punctuation">,</span> Any
+
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>validation <span class="token keyword">import</span> make_valid
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>errors <span class="token keyword">import</span> ShapelyError
+
+<span class="token comment"># 1. CPU-bound worker (runs in isolated process)</span>
+<span class="token keyword">def</span> <span class="token function">validate_geometry</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">:</span>
+    <span class="token keyword">try</span><span class="token punctuation">:</span>
+        geom <span class="token operator">=</span> shape<span class="token punctuation">(</span>payload<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+        <span class="token keyword">if</span> <span class="token keyword">not</span> geom<span class="token punctuation">.</span>is_valid<span class="token punctuation">:</span>
+            geom <span class="token operator">=</span> make_valid<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>
+        <span class="token keyword">return</span> <span class="token punctuation">{</span>
+            <span class="token string">"id"</span><span class="token punctuation">:</span> payload<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"id"</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+            <span class="token string">"geometry"</span><span class="token punctuation">:</span> geom<span class="token punctuation">.</span>__geo_interface__<span class="token punctuation">,</span>
+            <span class="token string">"valid"</span><span class="token punctuation">:</span> <span class="token boolean">True</span><span class="token punctuation">,</span>
+            <span class="token string">"bbox"</span><span class="token punctuation">:</span> geom<span class="token punctuation">.</span>bounds
+        <span class="token punctuation">}</span>
+    <span class="token keyword">except</span> <span class="token punctuation">(</span>ShapelyError<span class="token punctuation">,</span> KeyError<span class="token punctuation">,</span> TypeError<span class="token punctuation">)</span> <span class="token keyword">as</span> e<span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"id"</span><span class="token punctuation">:</span> payload<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"id"</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token string">"error"</span><span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">(</span>e<span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token string">"valid"</span><span class="token punctuation">:</span> <span class="token boolean">False</span><span class="token punctuation">}</span>
+
+<span class="token comment"># 2. Async consumer loop</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">process_geometry_queue</span><span class="token punctuation">(</span>
+    queue<span class="token punctuation">:</span> asyncio<span class="token punctuation">.</span>Queue<span class="token punctuation">,</span>
+    executor<span class="token punctuation">:</span> ProcessPoolExecutor<span class="token punctuation">,</span>
+    batch_size<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">50</span><span class="token punctuation">,</span>
+    timeout<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> <span class="token number">10.0</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    loop <span class="token operator">=</span> asyncio<span class="token punctuation">.</span>get_running_loop<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    
+    <span class="token keyword">while</span> <span class="token boolean">True</span><span class="token punctuation">:</span>
+        payload <span class="token operator">=</span> <span class="token keyword">await</span> queue<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token punctuation">)</span>
+        <span class="token keyword">try</span><span class="token punctuation">:</span>
+            <span class="token comment"># Offload to process pool; event loop remains unblocked</span>
+            result <span class="token operator">=</span> <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>wait_for<span class="token punctuation">(</span>
+                loop<span class="token punctuation">.</span>run_in_executor<span class="token punctuation">(</span>executor<span class="token punctuation">,</span> validate_geometry<span class="token punctuation">,</span> payload<span class="token punctuation">)</span><span class="token punctuation">,</span>
+                timeout<span class="token operator">=</span>timeout
+            <span class="token punctuation">)</span>
+            <span class="token comment"># TODO: Route `result` to PostGIS, S3, or downstream service</span>
+            logging<span class="token punctuation">.</span>info<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Processed geometry </span><span class="token interpolation"><span class="token punctuation">{</span>result<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">'id'</span><span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+        <span class="token keyword">except</span> asyncio<span class="token punctuation">.</span>TimeoutError<span class="token punctuation">:</span>
+            logging<span class="token punctuation">.</span>warning<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Timeout validating geometry </span><span class="token interpolation"><span class="token punctuation">{</span>payload<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">'id'</span><span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+        <span class="token keyword">except</span> Exception <span class="token keyword">as</span> e<span class="token punctuation">:</span>
+            logging<span class="token punctuation">.</span>error<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Queue processing failed: </span><span class="token interpolation"><span class="token punctuation">{</span>e<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+        <span class="token keyword">finally</span><span class="token punctuation">:</span>
+            queue<span class="token punctuation">.</span>task_done<span class="token punctuation">(</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>Key implementation details:</p>
+<ul>
+<li><strong>GIL bypass</strong>: <code>ProcessPoolExecutor</code> spawns separate Python interpreters, allowing true parallelism for GEOS-backed operations. See <a href="https://shapely.readthedocs.io/en/stable/manual.html">Shapely’s official manual</a> for geometry construction best practices.</li>
+<li><strong>Timeout enforcement</strong>: <code>asyncio.wait_for()</code> prevents slow or malformed payloads from starving the consumer loop.</li>
+<li><strong>Serialization safety</strong>: GeoJSON dictionaries are natively JSON-serializable, making them safe to pass across process boundaries. Avoid passing unpicklable objects like database connections or file handles.</li>
+</ul>
+<h2 id="tuning-executors-for-spatial-throughput" tabindex="-1"><a class="heading-anchor" href="#tuning-executors-for-spatial-throughput">Tuning Executors for Spatial Throughput</a></h2>
+<p>Process pools introduce memory and context-switch overhead. Optimize throughput by aligning pool size with your deployment constraints:</p>
+<ul>
+<li><strong>CPU-bound sizing</strong>: Set <code>max_workers</code> to <code>os.cpu_count()</code> or slightly lower. Oversubscribing processes increases memory pressure and degrades GEOS performance.</li>
+<li><strong>Payload chunking</strong>: For FeatureCollections with &gt;10,000 geometries, split payloads before queuing. Process pools perform best on uniform, bounded tasks.</li>
+<li><strong>Backpressure handling</strong>: Monitor <code>queue.qsize()</code>. If the queue consistently hits capacity, scale consumers horizontally or implement circuit breakers to reject payloads gracefully.</li>
+<li><strong>Memory limits</strong>: GEOS operations can temporarily allocate 3–5× the raw payload size. Use container memory limits and <code>ulimit</code> to prevent OOM kills during topology repairs.</li>
+</ul>
+<h2 id="common-pitfalls-mitigations" tabindex="-1"><a class="heading-anchor" href="#common-pitfalls-mitigations">Common Pitfalls &amp; Mitigations</a></h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Pitfall</th>
+<th>Symptom</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Blocking the loop</strong></td>
+<td>Webhook latency spikes under load</td>
+<td>Never call <code>shapely</code> or <code>pyproj</code> directly in <code>async def</code> handlers</td>
+</tr>
+<tr>
+<td><strong>Unpicklable errors</strong></td>
+<td><code>TypeError: cannot pickle '...' object</code></td>
+<td>Keep worker functions stateless; pass only dicts/strings</td>
+</tr>
+<tr>
+<td><strong>Executor leak</strong></td>
+<td>Memory grows indefinitely</td>
+<td>Use <code>executor.shutdown(wait=True)</code> on app shutdown or SIGTERM</td>
+</tr>
+<tr>
+<td><strong>Silent topology failures</strong></td>
+<td>Invalid geometries reach PostGIS</td>
+<td>Wrap workers in <code>try/except ShapelyError</code>; log and quarantine bad payloads</td>
+</tr>
+<tr>
+<td><strong>Queue starvation</strong></td>
+<td>Workers idle while queue backs up</td>
+<td>Use <code>asyncio.gather()</code> to run multiple consumers concurrently</td>
+</tr>
+</tbody>
+</table>
+</div><h2 id="when-to-use-threadpoolexecutor-instead" tabindex="-1"><a class="heading-anchor" href="#when-to-use-threadpoolexecutor-instead">When to Use <code>ThreadPoolExecutor</code> Instead</a></h2>
+<p><code>ThreadPoolExecutor</code> is appropriate only when your geometry pipeline relies on I/O-bound steps: fetching remote WFS tiles, querying external elevation APIs, or writing to network-attached storage. For coordinate math, ring validation, or projection transforms, threads share the GIL and will serialize execution. Stick to process pools for CPU-heavy spatial workloads.</p>
+<h2 id="summary" tabindex="-1"><a class="heading-anchor" href="#summary">Summary</a></h2>
+<p>Optimizing async geometry parsing with asyncio hinges on strict separation of concerns: keep the event loop lightweight, queue raw payloads immediately, and delegate topology validation to isolated worker processes. By combining <code>asyncio.Queue</code>, <code>ProcessPoolExecutor</code>, and explicit timeout boundaries, you achieve webhook-scale concurrency without sacrificing spatial accuracy or risking event loop starvation.</p>
+
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            <li><a href="/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a></li>
+            <li><a href="/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a></li>
+            <li><a href="/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</article>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="/core-event-fundamentals-architecture/">Overview</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="/idempotency-spatial-deduplication/">Overview</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="/spatial-payload-routing-parsing/">Overview</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>Conflict Resolution Strategies for Event-Driven Geospatial Systems · Geo Webhook</title>
+  <meta name="description" content="In real-time spatial architectures, webhook payloads rarely arrive in perfect sequence. Network partitions, provider retries, and concurrent field edits…"/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360"/>
+  <meta name="color-scheme" content="light"/>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/"/>
+  <meta property="og:title" content="Conflict Resolution Strategies for Event-Driven Geospatial Systems"/>
+  <meta property="og:description" content="In real-time spatial architectures, webhook payloads rarely arrive in perfect sequence. Network partitions, provider retries, and concurrent field edits…"/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
+  <meta property="og:image:width" content="512"/>
+  <meta property="og:image:height" content="512"/>
+  <meta property="og:image:alt" content="Geospatial Webhook logo"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Conflict Resolution Strategies for Event-Driven Geospatial Systems"/>
+  <meta name="twitter:description" content="In real-time spatial architectures, webhook payloads rarely arrive in perfect sequence. Network partitions, provider retries, and concurrent field edits…"/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
+  <meta name="twitter:image:alt" content="Geospatial Webhook logo"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="/assets/css/site.css"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },{ "@type": "ListItem", "position": 2, "name": "Idempotency Spatial Deduplication", "item": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" },{ "@type": "ListItem", "position": 3, "name": "Conflict Resolution Strategies", "item": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/" }
+    ]
+  }
+  </script>
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/#article",
+    "mainEntityOfPage": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/",
+    "headline": "Conflict Resolution Strategies for Event-Driven Geospatial Systems",
+    "description": "In real-time spatial architectures, webhook payloads rarely arrive in perfect sequence. Network partitions, provider retries, and concurrent field edits…",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
+    "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
+    "image": "https://www.geospatialwebhook.com/icon-512.png",
+    "url": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/",
+    "articleSection": "Idempotency Spatial Deduplication",
+    "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
+  }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="/core-event-fundamentals-architecture/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="/idempotency-spatial-deduplication/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="/spatial-payload-routing-parsing/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+    </nav>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="/">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="/idempotency-spatial-deduplication/">Idempotency Spatial Deduplication</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">Conflict Resolution Strategies</span>
+    </nav>
+
+    <div class="page__layout">
+      <div class="markdown">
+        <h1 id="conflict-resolution-strategies-for-event-driven-geospatial-systems" tabindex="-1"><a class="heading-anchor" href="#conflict-resolution-strategies-for-event-driven-geospatial-systems">Conflict Resolution Strategies for Event-Driven Geospatial Systems</a></h1>
+<p>In real-time spatial architectures, webhook payloads rarely arrive in perfect sequence. Network partitions, provider retries, and concurrent field edits generate overlapping geometry updates that, if processed naively, corrupt topology, duplicate features, and break downstream analytics. Implementing deterministic <strong>Conflict Resolution Strategies</strong> is a foundational requirement for platform engineers, GIS backend developers, and SaaS founders building event-driven mapping platforms.</p>
+<p>This guide extends the principles of <a href="/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a> by detailing how to detect state collisions, evaluate competing spatial payloads, and commit resolved geometries without sacrificing consistency or throughput.</p>
+<h2 id="prerequisites-system-readiness" tabindex="-1"><a class="heading-anchor" href="#prerequisites-system-readiness">Prerequisites &amp; System Readiness</a></h2>
+<p>Before implementing conflict resolution at the webhook ingestion layer, your architecture must satisfy several baseline conditions:</p>
+<ul>
+<li><strong>Python 3.10+ runtime</strong> with <code>asyncio</code>, <code>FastAPI</code> (or equivalent), and <code>shapely&gt;=2.0</code> installed</li>
+<li><strong>Distributed state store</strong> (Redis or Valkey) for cross-node coordination, lock management, and idempotency tracking</li>
+<li><strong>Spatial validation pipeline</strong> capable of normalizing coordinate reference systems and repairing invalid geometries</li>
+<li><strong>Established event fingerprinting</strong> using <a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a> to create deterministic identifiers from payload metadata and geometry hashes</li>
+<li><strong>Pre-filtering layer</strong> leveraging <a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks</a> to drop exact duplicates before conflict evaluation begins</li>
+</ul>
+<p>Without these components, conflict resolution becomes a reactive patch rather than a systematic guarantee. The workflow below assumes idempotency keys are already validated and that only genuinely divergent state updates reach the resolution engine.</p>
+<h2 id="step-by-step-conflict-resolution-workflow" tabindex="-1"><a class="heading-anchor" href="#step-by-step-conflict-resolution-workflow">Step-by-Step Conflict Resolution Workflow</a></h2>
+<p>The following sequence transforms raw webhook deliveries into consistent spatial state:</p>
+<h3 id="1-payload-normalization-crs-enforcement" tabindex="-1"><a class="heading-anchor" href="#1-payload-normalization-crs-enforcement">1. Payload Normalization &amp; CRS Enforcement</a></h3>
+<p>Parse incoming GeoJSON and strictly enforce <a href="https://datatracker.ietf.org/doc/html/rfc7946">RFC 7946</a> compliance. Strip provider-specific metadata, standardize all coordinates to a single CRS (typically EPSG:4326 or EPSG:3857), and extract the core geometry envelope. Normalization prevents false-positive collisions caused by floating-point drift or differing projection representations.</p>
+<h3 id="2-idempotency-gate-pre-filtering" tabindex="-1"><a class="heading-anchor" href="#2-idempotency-gate-pre-filtering">2. Idempotency Gate &amp; Pre-Filtering</a></h3>
+<p>Query the distributed cache using the precomputed event key. If the key exists, acknowledge the webhook with a <code>200 OK</code> and exit immediately. If absent, register the key with a short TTL (e.g., 5–15 minutes) to prevent duplicate processing during transient network retries. This gate ensures the resolution engine only evaluates genuinely new state transitions.</p>
+<h3 id="3-state-retrieval-spatial-overlap-analysis" tabindex="-1"><a class="heading-anchor" href="#3-state-retrieval-spatial-overlap-analysis">3. State Retrieval &amp; Spatial Overlap Analysis</a></h3>
+<p>Fetch the current persisted geometry for the target feature ID from your primary datastore. Compute spatial intersection using Shapely. If <code>current_geom.disjoint(incoming_geom)</code> evaluates to <code>True</code>, the update affects non-overlapping space; apply the change immediately. If overlap exists, trigger resolution logic. Refer to the <a href="https://shapely.readthedocs.io/en/stable/manual.html#spatial-analysis-methods">Shapely spatial operations documentation</a> for optimized intersection and topology validation patterns that avoid expensive full-geometry comparisons when bounding boxes suffice.</p>
+<h3 id="4-conflict-evaluation-resolution-logic" tabindex="-1"><a class="heading-anchor" href="#4-conflict-evaluation-resolution-logic">4. Conflict Evaluation &amp; Resolution Logic</a></h3>
+<p>Compare temporal metadata (<code>updated_at</code>, <code>version</code>, or <code>sequence_id</code>) alongside spatial topology. When timestamps collide or version vectors diverge, your system must decide whether to overwrite, merge, or queue the update for manual review. For detailed topology-aware branching logic, see Resolving concurrent spatial feature edits.</p>
+<p>In most high-throughput pipelines, teams default to a strict ordering policy. However, spatial data often requires semantic merging (e.g., unioning parcel boundaries or clipping overlapping sensor footprints). Evaluate your domain requirements against Implementing last-write-wins vs merge strategies for GIS before hardcoding resolution behavior.</p>
+<h3 id="5-atomic-commit-distributed-locking" tabindex="-1"><a class="heading-anchor" href="#5-atomic-commit-distributed-locking">5. Atomic Commit &amp; Distributed Locking</a></h3>
+<p>Once the resolution engine selects a winner or computes a merged geometry, acquire a feature-level distributed lock before writing to the primary database. This prevents race conditions when multiple webhook handlers process updates for the same feature concurrently. After the transaction commits, release the lock, update the idempotency cache, and emit an audit event. Lock acquisition should use exponential backoff with jitter to avoid thundering herd scenarios.</p>
+<h2 id="implementation-patterns-code-reliability" tabindex="-1"><a class="heading-anchor" href="#implementation-patterns-code-reliability">Implementation Patterns &amp; Code Reliability</a></h2>
+<p>Production-grade conflict resolution requires explicit error boundaries, type safety, and non-blocking I/O. The following pattern demonstrates a reliable FastAPI + Redis + Shapely 2.0 implementation:</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">import</span> hashlib
+<span class="token keyword">import</span> json
+<span class="token keyword">from</span> typing <span class="token keyword">import</span> Dict<span class="token punctuation">,</span> Any
+<span class="token keyword">from</span> fastapi <span class="token keyword">import</span> FastAPI<span class="token punctuation">,</span> HTTPException<span class="token punctuation">,</span> BackgroundTasks
+<span class="token keyword">from</span> redis<span class="token punctuation">.</span>asyncio <span class="token keyword">import</span> Redis
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape<span class="token punctuation">,</span> GeometryCollection
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>validation <span class="token keyword">import</span> make_valid
+
+app <span class="token operator">=</span> FastAPI<span class="token punctuation">(</span><span class="token punctuation">)</span>
+redis<span class="token punctuation">:</span> Redis <span class="token operator">=</span> Redis<span class="token punctuation">.</span>from_url<span class="token punctuation">(</span><span class="token string">"redis://localhost:6379/0"</span><span class="token punctuation">)</span>
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">acquire_feature_lock</span><span class="token punctuation">(</span>feature_id<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> ttl<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">10</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+    lock_key <span class="token operator">=</span> <span class="token string-interpolation"><span class="token string">f"lock:feature:</span><span class="token interpolation"><span class="token punctuation">{</span>feature_id<span class="token punctuation">}</span></span><span class="token string">"</span></span>
+    <span class="token comment"># SET NX EX for atomic lock acquisition</span>
+    acquired <span class="token operator">=</span> <span class="token keyword">await</span> redis<span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">(</span>lock_key<span class="token punctuation">,</span> <span class="token string">"1"</span><span class="token punctuation">,</span> nx<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span> ex<span class="token operator">=</span>ttl<span class="token punctuation">)</span>
+    <span class="token keyword">return</span> <span class="token builtin">bool</span><span class="token punctuation">(</span>acquired<span class="token punctuation">)</span>
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">resolve_spatial_conflict</span><span class="token punctuation">(</span>
+    feature_id<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span>
+    incoming_geom<span class="token punctuation">:</span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">,</span>
+    current_geom<span class="token punctuation">:</span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">,</span>
+    incoming_ts<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">,</span>
+    current_ts<span class="token punctuation">:</span> <span class="token builtin">float</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">:</span>
+    geom_a <span class="token operator">=</span> make_valid<span class="token punctuation">(</span>shape<span class="token punctuation">(</span>current_geom<span class="token punctuation">)</span><span class="token punctuation">)</span>
+    geom_b <span class="token operator">=</span> make_valid<span class="token punctuation">(</span>shape<span class="token punctuation">(</span>incoming_geom<span class="token punctuation">)</span><span class="token punctuation">)</span>
+    
+    <span class="token comment"># Fast bounding-box check before expensive intersection</span>
+    <span class="token keyword">if</span> <span class="token keyword">not</span> geom_a<span class="token punctuation">.</span>intersects<span class="token punctuation">(</span>geom_b<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> incoming_geom  <span class="token comment"># No spatial conflict</span>
+        
+    <span class="token comment"># Temporal tie-breaker (LWW fallback)</span>
+    <span class="token keyword">if</span> incoming_ts <span class="token operator">>=</span> current_ts<span class="token punctuation">:</span>
+        <span class="token keyword">return</span> incoming_geom
+    <span class="token keyword">return</span> current_geom
+
+<span class="token decorator annotation punctuation">@app<span class="token punctuation">.</span>post</span><span class="token punctuation">(</span><span class="token string">"/webhooks/spatial-update"</span><span class="token punctuation">)</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">handle_spatial_webhook</span><span class="token punctuation">(</span>
+    payload<span class="token punctuation">:</span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">,</span>
+    background_tasks<span class="token punctuation">:</span> BackgroundTasks
+<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    feature_id <span class="token operator">=</span> payload<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"feature_id"</span><span class="token punctuation">)</span>
+    event_key <span class="token operator">=</span> hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">(</span>json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>payload<span class="token punctuation">,</span> sort_keys<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    
+    <span class="token comment"># Idempotency gate</span>
+    <span class="token keyword">if</span> <span class="token keyword">await</span> redis<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"idem:</span><span class="token interpolation"><span class="token punctuation">{</span>event_key<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"duplicate_acknowledged"</span><span class="token punctuation">}</span>
+    
+    <span class="token keyword">await</span> redis<span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"idem:</span><span class="token interpolation"><span class="token punctuation">{</span>event_key<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">,</span> <span class="token string">"1"</span><span class="token punctuation">,</span> ex<span class="token operator">=</span><span class="token number">300</span><span class="token punctuation">)</span>
+    
+    <span class="token comment"># Acquire lock to serialize writes per feature</span>
+    <span class="token keyword">if</span> <span class="token keyword">not</span> <span class="token keyword">await</span> acquire_feature_lock<span class="token punctuation">(</span>feature_id<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> HTTPException<span class="token punctuation">(</span>status_code<span class="token operator">=</span><span class="token number">429</span><span class="token punctuation">,</span> detail<span class="token operator">=</span><span class="token string">"Feature locked, retry later"</span><span class="token punctuation">)</span>
+    
+    <span class="token keyword">try</span><span class="token punctuation">:</span>
+        <span class="token comment"># Fetch current state (pseudo-code for DB fetch)</span>
+        current_state <span class="token operator">=</span> <span class="token keyword">await</span> fetch_from_db<span class="token punctuation">(</span>feature_id<span class="token punctuation">)</span>
+        resolved <span class="token operator">=</span> <span class="token keyword">await</span> resolve_spatial_conflict<span class="token punctuation">(</span>
+            feature_id<span class="token punctuation">,</span>
+            payload<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+            current_state<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+            payload<span class="token punctuation">[</span><span class="token string">"updated_at"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+            current_state<span class="token punctuation">[</span><span class="token string">"updated_at"</span><span class="token punctuation">]</span>
+        <span class="token punctuation">)</span>
+        <span class="token keyword">await</span> commit_to_db<span class="token punctuation">(</span>feature_id<span class="token punctuation">,</span> resolved<span class="token punctuation">)</span>
+    <span class="token keyword">finally</span><span class="token punctuation">:</span>
+        <span class="token keyword">await</span> redis<span class="token punctuation">.</span>delete<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"lock:feature:</span><span class="token interpolation"><span class="token punctuation">{</span>feature_id<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+        
+    <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"resolved_and_committed"</span><span class="token punctuation">}</span>
+</code></pre>
+</div>
+<p>Key reliability considerations in this pattern:</p>
+<ul>
+<li><strong>Atomic Locking:</strong> <code>SET NX EX</code> guarantees only one worker processes a feature at a time. Always wrap lock release in a <code>finally</code> block to prevent deadlocks on unhandled exceptions.</li>
+<li><strong>Geometry Validation:</strong> <code>make_valid()</code> repairs self-intersections and ring orientation issues before topology checks, preventing <code>TopologyException</code> crashes.</li>
+<li><strong>TTL Management:</strong> Idempotency keys and locks must expire. Set TTLs slightly longer than your maximum expected webhook processing latency.</li>
+<li><strong>Graceful Degradation:</strong> If the Redis cluster is unreachable, fail open with a warning metric rather than dropping webhooks, or implement a local in-memory fallback for single-node deployments.</li>
+</ul>
+<h2 id="operational-considerations-scaling" tabindex="-1"><a class="heading-anchor" href="#operational-considerations-scaling">Operational Considerations &amp; Scaling</a></h2>
+<p>As webhook volume scales, conflict resolution engines must balance strict consistency with ingestion throughput. Consider these operational patterns:</p>
+<ul>
+<li><strong>Partitioned Locking:</strong> Instead of global locks, shard locks by geographic bounding box or tenant ID. This reduces contention while maintaining per-feature serialization.</li>
+<li><strong>Dead-Letter Queues (DLQ):</strong> When resolution logic encounters irreconcilable state (e.g., conflicting attribute schemas or corrupted geometry), route the payload to a DLQ. Implement automated alerting and manual reconciliation dashboards.</li>
+<li><strong>Observability &amp; Metrics:</strong> Track <code>conflict_rate</code>, <code>lock_wait_time_ms</code>, <code>resolution_strategy_distribution</code>, and <code>geometry_repair_count</code>. These metrics directly correlate with data quality and system health.</li>
+<li><strong>Backpressure Handling:</strong> If the resolution layer falls behind, apply circuit breakers at the webhook receiver. Return <code>503 Service Unavailable</code> with a <code>Retry-After</code> header rather than queuing indefinitely, which masks underlying bottlenecks.</li>
+<li><strong>Audit Trail Integration:</strong> Every resolved conflict should emit an immutable event containing the incoming payload, current state, chosen strategy, and resulting geometry. This enables deterministic replay and compliance auditing.</li>
+</ul>
+<h2 id="conclusion" tabindex="-1"><a class="heading-anchor" href="#conclusion">Conclusion</a></h2>
+<p>Deterministic conflict resolution transforms chaotic webhook streams into reliable spatial state. By combining strict idempotency gates, topology-aware overlap detection, distributed locking, and explicit resolution policies, platform teams can guarantee data consistency without sacrificing real-time throughput. As your event-driven architecture matures, continuously refine your resolution policies based on domain semantics and monitor conflict patterns to optimize ingestion pipelines.</p>
+<p>For deeper dives into spatial deduplication mechanics, explore <a href="/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a> and integrate audit logging early to maintain full lineage across all webhook lifecycles.</p>
+
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        <div class="aside-card">
+          <h3>Related in this section</h3>
+          <ul>
+            <li><a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+            <li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+            <li><a href="/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication in Event-Driven Geospatial Systems</a></li>
+          </ul>
+        </div>
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            <li><a href="/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a></li>
+            <li><a href="/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a></li>
+            <li><a href="/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</article>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="/core-event-fundamentals-architecture/">Overview</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="/idempotency-spatial-deduplication/">Overview</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="/spatial-payload-routing-parsing/">Overview</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

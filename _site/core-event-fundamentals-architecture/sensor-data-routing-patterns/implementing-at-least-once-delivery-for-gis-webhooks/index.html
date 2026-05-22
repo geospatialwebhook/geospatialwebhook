@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>Implementing at-least-once delivery for GIS webhooks · Geo Webhook</title>
+  <meta name="description" content="Implementing at-least-once delivery for GIS webhooks requires a persistent ingestion layer, deterministic idempotency tracking, and exponential backoff…"/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360"/>
+  <meta name="color-scheme" content="light"/>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/"/>
+  <meta property="og:title" content="Implementing at-least-once delivery for GIS webhooks"/>
+  <meta property="og:description" content="Implementing at-least-once delivery for GIS webhooks requires a persistent ingestion layer, deterministic idempotency tracking, and exponential backoff…"/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
+  <meta property="og:image:width" content="512"/>
+  <meta property="og:image:height" content="512"/>
+  <meta property="og:image:alt" content="Geospatial Webhook logo"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Implementing at-least-once delivery for GIS webhooks"/>
+  <meta name="twitter:description" content="Implementing at-least-once delivery for GIS webhooks requires a persistent ingestion layer, deterministic idempotency tracking, and exponential backoff…"/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
+  <meta name="twitter:image:alt" content="Geospatial Webhook logo"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="/assets/css/site.css"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },{ "@type": "ListItem", "position": 2, "name": "Core Event Fundamentals Architecture", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" },{ "@type": "ListItem", "position": 3, "name": "Sensor Data Routing Patterns", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/" },{ "@type": "ListItem", "position": 4, "name": "Implementing At Least Once Delivery For Gis Webhooks", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/" }
+    ]
+  }
+  </script>
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/#article",
+    "mainEntityOfPage": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/",
+    "headline": "Implementing at-least-once delivery for GIS webhooks",
+    "description": "Implementing at-least-once delivery for GIS webhooks requires a persistent ingestion layer, deterministic idempotency tracking, and exponential backoff…",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
+    "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
+    "image": "https://www.geospatialwebhook.com/icon-512.png",
+    "url": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/",
+    "articleSection": "Core Event Fundamentals Architecture",
+    "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
+  }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="/core-event-fundamentals-architecture/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="/idempotency-spatial-deduplication/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="/spatial-payload-routing-parsing/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+    </nav>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="/">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="/core-event-fundamentals-architecture/">Core Event Fundamentals Architecture</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">Implementing At Least Once Delivery For Gis Webhooks</span>
+    </nav>
+
+    <div class="page__layout">
+      <div class="markdown">
+        <h1 id="implementing-at-least-once-delivery-for-gis-webhooks" tabindex="-1"><a class="heading-anchor" href="#implementing-at-least-once-delivery-for-gis-webhooks">Implementing at-least-once delivery for GIS webhooks</a></h1>
+<p>Implementing at-least-once delivery for GIS webhooks requires a persistent ingestion layer, deterministic idempotency tracking, and exponential backoff retry logic. In production, this means immediately acknowledging the webhook with a <code>200 OK</code>, persisting the raw spatial payload alongside a unique event key, and delegating processing to a background worker that retries on <code>5xx</code> responses or network timeouts. Because at-least-once semantics guarantee duplicates, your spatial pipeline must enforce strict idempotency using sender-provided <code>event_id</code> headers or cryptographic payload hashes, backed by a low-latency state store. Decouple the receiver from the geospatial execution engine, apply bounded retry budgets, and route exhausted events to a dead-letter queue for manual reconciliation.</p>
+<h2 id="decouple-ingestion-from-spatial-execution" tabindex="-1"><a class="heading-anchor" href="#decouple-ingestion-from-spatial-execution">Decouple Ingestion from Spatial Execution</a></h2>
+<p>At-least-once delivery solves network partitioning and transient upstream failures, but it shifts the burden of consistency to your backend. For real-time spatial applications—whether ingesting IoT sensor coordinates, syncing drone telemetry, or routing feature updates from ArcGIS or Mapbox—duplicate processing corrupts spatial indexes, inflates metric counters, and triggers cascading routing errors.</p>
+<p>Your architecture must separate ingestion from execution. The HTTP endpoint validates the payload schema, logs the event signature, and pushes it to a durable queue. The consumer layer applies coordinate transformations, writes to PostGIS or GeoPackage, and updates routing caches. This decoupling aligns with established <a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns</a> where spatial payloads require deterministic ordering, strict schema validation, and fault-tolerant handoffs. Without this separation, synchronous webhook handlers will block on heavy geometry operations, causing upstream timeouts and triggering unnecessary retries.</p>
+<h2 id="enforce-deterministic-idempotency" tabindex="-1"><a class="heading-anchor" href="#enforce-deterministic-idempotency">Enforce Deterministic Idempotency</a></h2>
+<p>Underpinning this workflow are the <a href="/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a> principles: explicit acknowledgment windows, bounded retry budgets, and state reconciliation. Without persistent tracking, GIS webhooks will silently drop during database connection spikes or overwhelm downstream spatial services with redundant geometry updates.</p>
+<p>Idempotency must be enforced before any spatial computation begins:</p>
+<ol>
+<li><strong>Extract or derive a unique key:</strong> Prefer the <code>X-Event-ID</code> or <code>Idempotency-Key</code> header. If absent, generate a SHA-256 hash of the normalized payload (sorted keys, trimmed whitespace, consistent float precision).</li>
+<li><strong>Check-and-set in a low-latency store:</strong> Redis, PostgreSQL, or DynamoDB should track processed keys. Use <code>SETNX</code> (or equivalent) with a 24–72 hour TTL to bound storage growth.</li>
+<li><strong>Fail fast on duplicates:</strong> If the key exists, return <code>200 OK</code> immediately. Do not reprocess coordinates or update spatial indexes.</li>
+</ol>
+<p>Always validate incoming payloads against a strict GeoJSON or OGC-compliant schema before queuing. Malformed coordinates or invalid CRS declarations will poison spatial indexes and cause silent topology errors downstream.</p>
+<h2 id="bounded-retries-dead-letter-routing" tabindex="-1"><a class="heading-anchor" href="#bounded-retries-dead-letter-routing">Bounded Retries &amp; Dead-Letter Routing</a></h2>
+<p>Transient failures are inevitable. Your retry strategy must be predictable and resource-aware:</p>
+<ul>
+<li><strong>Exponential backoff with jitter:</strong> Prevents thundering herd problems when upstream services recover.</li>
+<li><strong>Bounded retry budgets:</strong> Cap attempts at 5–7 retries. Beyond that, the event is likely malformed or the downstream service is degraded.</li>
+<li><strong>Dead-letter queue (DLQ):</strong> Route exhausted events to a separate queue with full payload context for manual reconciliation or automated alerting.</li>
+</ul>
+<p>For authoritative guidance on retry strategies and backoff algorithms, consult the <a href="https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/">AWS Well-Architected Reliability Pillar</a> or standard distributed systems literature.</p>
+<h2 id="production-ready-python-implementation" tabindex="-1"><a class="heading-anchor" href="#production-ready-python-implementation">Production-Ready Python Implementation</a></h2>
+<p>The following FastAPI receiver demonstrates production-ready at-least-once handling with async Redis-backed idempotency, exponential backoff with jitter, and explicit background processing.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">import</span> hashlib
+<span class="token keyword">import</span> logging
+<span class="token keyword">import</span> random
+<span class="token keyword">from</span> typing <span class="token keyword">import</span> Dict<span class="token punctuation">,</span> Any
+<span class="token keyword">from</span> fastapi <span class="token keyword">import</span> FastAPI<span class="token punctuation">,</span> Request<span class="token punctuation">,</span> HTTPException<span class="token punctuation">,</span> BackgroundTasks
+<span class="token keyword">import</span> redis<span class="token punctuation">.</span>asyncio <span class="token keyword">as</span> redis
+
+app <span class="token operator">=</span> FastAPI<span class="token punctuation">(</span><span class="token punctuation">)</span>
+redis_client <span class="token operator">=</span> redis<span class="token punctuation">.</span>Redis<span class="token punctuation">(</span>host<span class="token operator">=</span><span class="token string">"localhost"</span><span class="token punctuation">,</span> port<span class="token operator">=</span><span class="token number">6379</span><span class="token punctuation">,</span> db<span class="token operator">=</span><span class="token number">0</span><span class="token punctuation">,</span> decode_responses<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span>
+logger <span class="token operator">=</span> logging<span class="token punctuation">.</span>getLogger<span class="token punctuation">(</span><span class="token string">"gis_webhook"</span><span class="token punctuation">)</span>
+
+IDEMPOTENCY_TTL <span class="token operator">=</span> <span class="token number">86400</span>  <span class="token comment"># 24 hours</span>
+MAX_RETRIES <span class="token operator">=</span> <span class="token number">5</span>
+BASE_DELAY <span class="token operator">=</span> <span class="token number">2.0</span>
+
+<span class="token keyword">def</span> <span class="token function">derive_idempotency_key</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">,</span> event_id<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Generate a deterministic idempotency key from header or payload hash."""</span>
+    <span class="token keyword">if</span> event_id<span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token string-interpolation"><span class="token string">f"idemp:</span><span class="token interpolation"><span class="token punctuation">{</span>event_id<span class="token punctuation">}</span></span><span class="token string">"</span></span>
+    normalized <span class="token operator">=</span> <span class="token builtin">str</span><span class="token punctuation">(</span><span class="token builtin">sorted</span><span class="token punctuation">(</span>payload<span class="token punctuation">.</span>items<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token string">"utf-8"</span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> <span class="token string-interpolation"><span class="token string">f"idemp:</span><span class="token interpolation"><span class="token punctuation">{</span>hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">(</span>normalized<span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">"</span></span>
+
+<span class="token keyword">def</span> <span class="token function">calculate_backoff</span><span class="token punctuation">(</span>attempt<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">float</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Exponential backoff with full jitter to prevent thundering herds."""</span>
+    delay <span class="token operator">=</span> BASE_DELAY <span class="token operator">*</span> <span class="token punctuation">(</span><span class="token number">2</span> <span class="token operator">**</span> attempt<span class="token punctuation">)</span>
+    jitter <span class="token operator">=</span> random<span class="token punctuation">.</span>uniform<span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> delay<span class="token punctuation">)</span>
+    <span class="token keyword">return</span> <span class="token builtin">min</span><span class="token punctuation">(</span>delay <span class="token operator">+</span> jitter<span class="token punctuation">,</span> <span class="token number">60.0</span><span class="token punctuation">)</span>  <span class="token comment"># Cap at 60s</span>
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">process_spatial_event</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">,</span> event_id<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Background worker with bounded retries and idempotency enforcement."""</span>
+    key <span class="token operator">=</span> derive_idempotency_key<span class="token punctuation">(</span>payload<span class="token punctuation">,</span> event_id<span class="token punctuation">)</span>
+    
+    <span class="token comment"># Check if already processed</span>
+    <span class="token keyword">if</span> <span class="token keyword">await</span> redis_client<span class="token punctuation">.</span>exists<span class="token punctuation">(</span>key<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        logger<span class="token punctuation">.</span>info<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Duplicate event skipped: </span><span class="token interpolation"><span class="token punctuation">{</span>key<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span>
+
+    <span class="token keyword">for</span> attempt <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span>MAX_RETRIES<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">try</span><span class="token punctuation">:</span>
+            <span class="token comment"># TODO: Replace with actual GIS processing (e.g., PostGIS write, topology validation)</span>
+            <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span><span class="token number">0.1</span><span class="token punctuation">)</span>  <span class="token comment"># Simulate spatial computation</span>
+            
+            <span class="token comment"># Mark as processed</span>
+            <span class="token keyword">await</span> redis_client<span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">(</span>key<span class="token punctuation">,</span> <span class="token string">"processed"</span><span class="token punctuation">,</span> ex<span class="token operator">=</span>IDEMPOTENCY_TTL<span class="token punctuation">)</span>
+            logger<span class="token punctuation">.</span>info<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Successfully processed event: </span><span class="token interpolation"><span class="token punctuation">{</span>key<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+            <span class="token keyword">return</span>
+        <span class="token keyword">except</span> Exception <span class="token keyword">as</span> e<span class="token punctuation">:</span>
+            wait <span class="token operator">=</span> calculate_backoff<span class="token punctuation">(</span>attempt<span class="token punctuation">)</span>
+            logger<span class="token punctuation">.</span>warning<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Attempt </span><span class="token interpolation"><span class="token punctuation">{</span>attempt <span class="token operator">+</span> <span class="token number">1</span><span class="token punctuation">}</span></span><span class="token string">/</span><span class="token interpolation"><span class="token punctuation">{</span>MAX_RETRIES<span class="token punctuation">}</span></span><span class="token string"> failed for </span><span class="token interpolation"><span class="token punctuation">{</span>key<span class="token punctuation">}</span></span><span class="token string">. Retrying in </span><span class="token interpolation"><span class="token punctuation">{</span>wait<span class="token punctuation">:</span><span class="token format-spec">.2f</span><span class="token punctuation">}</span></span><span class="token string">s. Error: </span><span class="token interpolation"><span class="token punctuation">{</span>e<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+            <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span>wait<span class="token punctuation">)</span>
+    
+    <span class="token comment"># Exhausted retries -> route to DLQ</span>
+    logger<span class="token punctuation">.</span>error<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Event </span><span class="token interpolation"><span class="token punctuation">{</span>key<span class="token punctuation">}</span></span><span class="token string"> exhausted retries. Routing to DLQ."</span></span><span class="token punctuation">)</span>
+    <span class="token keyword">await</span> redis_client<span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"dlq:</span><span class="token interpolation"><span class="token punctuation">{</span>key<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">,</span> <span class="token builtin">str</span><span class="token punctuation">(</span>payload<span class="token punctuation">)</span><span class="token punctuation">,</span> ex<span class="token operator">=</span><span class="token number">604800</span><span class="token punctuation">)</span>  <span class="token comment"># 7-day retention</span>
+
+<span class="token decorator annotation punctuation">@app<span class="token punctuation">.</span>post</span><span class="token punctuation">(</span><span class="token string">"/webhooks/gis"</span><span class="token punctuation">)</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">receive_gis_webhook</span><span class="token punctuation">(</span>request<span class="token punctuation">:</span> Request<span class="token punctuation">,</span> background_tasks<span class="token punctuation">:</span> BackgroundTasks<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">try</span><span class="token punctuation">:</span>
+        payload <span class="token operator">=</span> <span class="token keyword">await</span> request<span class="token punctuation">.</span>json<span class="token punctuation">(</span><span class="token punctuation">)</span>
+        event_id <span class="token operator">=</span> request<span class="token punctuation">.</span>headers<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"X-Event-ID"</span><span class="token punctuation">)</span> <span class="token keyword">or</span> request<span class="token punctuation">.</span>headers<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"Idempotency-Key"</span><span class="token punctuation">)</span>
+    <span class="token keyword">except</span> Exception<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> HTTPException<span class="token punctuation">(</span>status_code<span class="token operator">=</span><span class="token number">400</span><span class="token punctuation">,</span> detail<span class="token operator">=</span><span class="token string">"Invalid JSON payload"</span><span class="token punctuation">)</span>
+
+    <span class="token comment"># Immediate 200 OK acknowledgment</span>
+    background_tasks<span class="token punctuation">.</span>add_task<span class="token punctuation">(</span>process_spatial_event<span class="token punctuation">,</span> payload<span class="token punctuation">,</span> event_id<span class="token punctuation">)</span>
+    <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"accepted"</span><span class="token punctuation">}</span>
+</code></pre>
+</div>
+<h2 id="gis-specific-validation-index-safety" tabindex="-1"><a class="heading-anchor" href="#gis-specific-validation-index-safety">GIS-Specific Validation &amp; Index Safety</a></h2>
+<p>Spatial data introduces unique failure modes that standard webhook handlers ignore:</p>
+<ul>
+<li><strong>Coordinate precision drift:</strong> Floating-point inconsistencies across retries can cause duplicate geometries to fail equality checks. Normalize coordinates to 6–8 decimal places before hashing or storing.</li>
+<li><strong>CRS mismatches:</strong> Ensure all payloads declare a consistent coordinate reference system (e.g., EPSG:4326). Reject or transform payloads with ambiguous projections before they hit your spatial index.</li>
+<li><strong>Topology validation:</strong> Use libraries like <code>shapely</code> or <code>geojson</code> to validate geometry validity before insertion. Invalid polygons will break PostGIS spatial indexes and cause query timeouts.</li>
+</ul>
+<p>For the official specification governing GeoJSON structure and coordinate ordering, reference the <a href="https://datatracker.ietf.org/doc/html/rfc7946">IETF RFC 7946 standard</a>. Pair this with strict Pydantic models in your FastAPI layer to catch malformed geometries at the edge.</p>
+<p>By combining immediate HTTP acknowledgment, deterministic idempotency tracking, bounded exponential retries, and strict spatial validation, you can safely ingest high-volume GIS webhooks without corrupting downstream indexes or losing critical telemetry data.</p>
+
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            <li><a href="/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a></li>
+            <li><a href="/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a></li>
+            <li><a href="/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</article>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="/core-event-fundamentals-architecture/">Overview</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="/idempotency-spatial-deduplication/">Overview</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="/spatial-payload-routing-parsing/">Overview</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,113 @@
+---
+layout: base
+---
+{% from "partials/icons.njk" import icon %}
+<section class="hero">
+  <div class="container container--wide">
+    <div class="hero__inner">
+      <div>
+        <span class="hero__eyebrow">Python · Event-Driven Geospatial</span>
+        <h1 class="hero__title">
+          Build <em>resilient spatial pipelines</em> with Python webhooks.
+        </h1>
+        <p class="hero__lead">
+          Design, deploy, and scale event-driven geospatial systems that route real-time
+          feature changes, tile updates, and sensor payloads without breaking under load.
+          Practical patterns for idempotency, retries, queues, and production monitoring.
+        </p>
+        <p class="hero__lead">
+          This site is a working playbook for platform engineers, GIS backend developers,
+          and SaaS founders who need event pipelines that don't lose data, don't double-write
+          features, and stay observable at scale.
+        </p>
+        <div class="hero__ctas">
+          <a class="cta-button" href="/core-event-fundamentals-architecture/">
+            <span class="cta-button__icon">{{ icon("compass") }}</span>
+            <span>Architecture fundamentals</span>
+          </a>
+          <a class="cta-button cta-button--mint" href="/idempotency-spatial-deduplication/">
+            <span class="cta-button__icon">{{ icon("shield") }}</span>
+            <span>Idempotency &amp; dedup</span>
+          </a>
+          <a class="cta-button cta-button--earth" href="/spatial-payload-routing-parsing/">
+            <span class="cta-button__icon">{{ icon("route") }}</span>
+            <span>Routing &amp; parsing</span>
+          </a>
+        </div>
+      </div>
+      <div class="hero__visual" aria-hidden="true">
+        <img src="/assets/img/logo.svg" alt=""/>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container container--wide">
+    <div class="section__head">
+      <h2 class="section__title">Three pillars of a production spatial webhook stack</h2>
+      <p class="section__sub">
+        Each section is a deep dive: architectural patterns first, then concrete Python
+        implementations, then the operational hardening that separates a prototype from a
+        platform.
+      </p>
+    </div>
+    <div class="card-grid">
+      {%- set toneClass = { "peach": "", "mint": "card--mint", "earth": "card--earth", "rose": "card--rose" } -%}
+      {%- for s in site.sections %}
+      <a class="card {{ toneClass[s.tone] }}" href="/{{ s.slug }}/">
+        <span class="card__icon">{{ icon(s.icon) }}</span>
+        <h3 class="card__title">{{ s.title }}</h3>
+        <p class="card__text">{{ s.summary }}</p>
+        <span class="card__more">Read the guide {{ icon("arrow-right") }}</span>
+      </a>
+      {%- endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container container--wide">
+    <div class="section__head">
+      <h2 class="section__title">What you'll learn</h2>
+      <p class="section__sub">
+        Spatial data is messier than typical event payloads. CRS drift, topological
+        equivalence, partition skew, and floating-point variance all conspire to break
+        naive pipelines. The content here walks through the patterns that hold up under
+        real production load.
+      </p>
+    </div>
+    <div class="card-grid">
+      <div class="card card--mint">
+        <span class="card__icon">{{ icon("bolt") }}</span>
+        <h3 class="card__title">Feature change triggers</h3>
+        <p class="card__text">Propagate cadastral edits, infrastructure updates, and field-collector mutations through async pipelines without race conditions.</p>
+      </div>
+      <div class="card card--earth">
+        <span class="card__icon">{{ icon("layers") }}</span>
+        <h3 class="card__title">Tile update pipelines</h3>
+        <p class="card__text">Incremental cache invalidation and targeted tile regeneration that keeps interactive maps fresh without reprocessing entire datasets.</p>
+      </div>
+      <div class="card card--rose">
+        <span class="card__icon">{{ icon("pin") }}</span>
+        <h3 class="card__title">Sensor &amp; IoT routing</h3>
+        <p class="card__text">Spatial partitioning by H3, S2, or watershed boundary so downstream analytics receive coherent streams instead of a global firehose.</p>
+      </div>
+      <div class="card">
+        <span class="card__icon">{{ icon("shield") }}</span>
+        <h3 class="card__title">Idempotent delivery</h3>
+        <p class="card__text">Composite keys, Redis-backed cache checks, tolerance-based topology matching, and explicit conflict resolution.</p>
+      </div>
+      <div class="card card--mint">
+        <span class="card__icon">{{ icon("route") }}</span>
+        <h3 class="card__title">Retries with backoff</h3>
+        <p class="card__text">Exponential backoff with jitter, circuit breakers, and dead-letter routing patterns that avoid thundering herds.</p>
+      </div>
+      <div class="card card--earth">
+        <span class="card__icon">{{ icon("sparkle") }}</span>
+        <h3 class="card__title">Production monitoring</h3>
+        <p class="card__text">Per-shard consumer lag, geometry validation failure rates, partition skew alerts, and DLQ replay strategies.</p>
+      </div>
+    </div>
+  </div>
+</section>
