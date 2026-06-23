@@ -1,3 +1,5 @@
+const path = require("path");
+const crypto = require("crypto");
 const markdownIt = require("markdown-it");
 const markdownItAnchor = require("markdown-it-anchor");
 const markdownItAttrs = require("markdown-it-attrs");
@@ -162,6 +164,24 @@ module.exports = function (eleventyConfig) {
       return stat.mtime.toISOString().slice(0, 10);
     } catch (e) {
       return new Date().toISOString().slice(0, 10);
+    }
+  });
+
+  // Content-hash cache-buster for immutable assets.
+  // URL /assets/... maps to source src/assets/... via the passthrough copy config.
+  eleventyConfig.addFilter("assetHash", (url) => {
+    try {
+      const relative = url.replace(/^\//, "").split("?")[0];
+      const srcRelative = relative.replace(/^assets\//, "src/assets/");
+      const filePath = path.join(__dirname, srcRelative);
+      const hash = crypto
+        .createHash("md5")
+        .update(fs.readFileSync(filePath))
+        .digest("hex")
+        .slice(0, 8);
+      return `${url}?v=${hash}`;
+    } catch {
+      return url;
     }
   });
 
