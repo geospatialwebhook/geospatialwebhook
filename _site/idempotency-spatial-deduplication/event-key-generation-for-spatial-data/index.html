@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 
   <title>Event Key Generation for Spatial Data · Geo Webhook</title>
-  <meta name="description" content="Real-time geospatial webhooks and event streams introduce a fundamental architectural challenge: distinguishing legitimate duplicate deliveries from…"/>
+  <meta name="description" content="Generate deterministic idempotency keys from geospatial webhook payloads in Python: normalization, canonical serialization, hashing, and production failure modes."/>
   <link rel="canonical" href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/"/>
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
 
@@ -33,24 +33,24 @@
   <meta property="og:locale" content="en_US"/>
   <meta property="og:url" content="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/"/>
   <meta property="og:title" content="Event Key Generation for Spatial Data"/>
-  <meta property="og:description" content="Real-time geospatial webhooks and event streams introduce a fundamental architectural challenge: distinguishing legitimate duplicate deliveries from…"/>
-  <meta property="og:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
-  <meta property="og:image:width" content="512"/>
-  <meta property="og:image:height" content="512"/>
-  <meta property="og:image:alt" content="Geospatial Webhook logo"/>
+  <meta property="og:description" content="Generate deterministic idempotency keys from geospatial webhook payloads in Python: normalization, canonical serialization, hashing, and production failure modes."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
 
   
   <meta name="twitter:card" content="summary_large_image"/>
   <meta name="twitter:title" content="Event Key Generation for Spatial Data"/>
-  <meta name="twitter:description" content="Real-time geospatial webhooks and event streams introduce a fundamental architectural challenge: distinguishing legitimate duplicate deliveries from…"/>
-  <meta name="twitter:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
-  <meta name="twitter:image:alt" content="Geospatial Webhook logo"/>
+  <meta name="twitter:description" content="Generate deterministic idempotency keys from geospatial webhook payloads in Python: normalization, canonical serialization, hashing, and production failure modes."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
 
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/assets/css/site.css"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=8ef3d820"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -99,11 +99,11 @@
     "@id": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/#article",
     "mainEntityOfPage": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/",
     "headline": "Event Key Generation for Spatial Data",
-    "description": "Real-time geospatial webhooks and event streams introduce a fundamental architectural challenge: distinguishing legitimate duplicate deliveries from…",
+    "description": "Generate deterministic idempotency keys from geospatial webhook payloads in Python: normalization, canonical serialization, hashing, and production failure modes.",
     "inLanguage": "en",
     "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
     "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
-    "image": "https://www.geospatialwebhook.com/icon-512.png",
+    "image": "https://www.geospatialwebhook.com/og-image.png",
     "url": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/",
     "articleSection": "Idempotency Spatial Deduplication",
     "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
@@ -156,36 +156,137 @@
           <span aria-current="page">Event Key Generation For Spatial Data</span>
     </nav>
 
+    <h1 class="page__title">Event Key Generation for Spatial Data</h1>
+
     <div class="page__layout">
       <div class="markdown">
-        <h1 id="event-key-generation-for-spatial-data" tabindex="-1"><a class="heading-anchor" href="#event-key-generation-for-spatial-data">Event Key Generation for Spatial Data</a></h1>
-<p>Real-time geospatial webhooks and event streams introduce a fundamental architectural challenge: distinguishing legitimate duplicate deliveries from genuinely distinct spatial updates. When a mapping platform, IoT sensor network, or logistics SaaS ingests thousands of coordinate-based payloads per second, non-deterministic event identification quickly leads to duplicated writes, inconsistent state, and expensive reconciliation jobs. <strong>Event Key Generation for Spatial Data</strong> solves this by transforming variable-length, floating-point-heavy geometry payloads into fixed-length, collision-resistant identifiers that survive network retries, broker redeliveries, and out-of-order processing.</p>
-<p>This workflow sits at the foundation of any robust <a href="/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a> strategy. Below is a production-tested approach to generating deterministic spatial event keys in Python, complete with prerequisites, step-by-step implementation, and common failure modes.</p>
-<h2 id="prerequisites-system-requirements" tabindex="-1"><a class="heading-anchor" href="#prerequisites-system-requirements">Prerequisites &amp; System Requirements</a></h2>
-<p>Before implementing spatial idempotency keys, your ingestion pipeline must satisfy several baseline constraints. Without a strict normalization contract, identical spatial events will produce divergent keys due to floating-point drift, unordered JSON properties, or implicit coordinate reference system assumptions.</p>
-<ul>
-<li><strong>Python 3.9+</strong> with standard libraries (<code>hashlib</code>, <code>json</code>, <code>decimal</code>)</li>
-<li><strong>Geospatial parsing</strong>: <code>shapely&gt;=2.0</code> for geometry normalization, <code>pydantic</code> or <code>jsonschema</code> for payload validation</li>
-<li><strong>Message broker/webhook infrastructure</strong>: Kafka, RabbitMQ, AWS SNS/SQS, or HTTP endpoints configured with at-least-once delivery semantics</li>
-<li><strong>Coordinate precision policy</strong>: A documented standard for decimal places (typically 6–8 for GPS-grade tracking, 3–4 for municipal boundaries or zoning polygons)</li>
-<li><strong>CRS awareness</strong>: Explicit handling of EPSG:4326 (WGS84) or explicit transformation pipelines before key generation</li>
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Event Key Generation for Spatial Data",
+      "description": "A step-by-step guide to generating deterministic, collision-resistant idempotency keys from geospatial webhook payloads in Python — covering normalization, canonical serialization, hashing, and production failure modes.",
+      "datePublished": "2024-11-01",
+      "dateModified": "2026-06-24",
+      "author": { "@type": "Organization", "name": "geospatialwebhook.com" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatialwebhook.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Idempotency & Spatial Deduplication", "item": "https://geospatialwebhook.com/idempotency-spatial-deduplication/" },
+        { "@type": "ListItem", "position": 3, "name": "Event Key Generation for Spatial Data", "item": "https://geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/" }
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Generate Deterministic Idempotency Keys for Spatial Webhook Payloads",
+      "step": [
+        { "@type": "HowToStep", "position": 1, "name": "Validate and ingest the GeoJSON payload", "text": "Parse and reject malformed geometry, missing type fields, or invalid coordinate arrays before any key logic runs." },
+        { "@type": "HowToStep", "position": 2, "name": "Strip non-deterministic metadata", "text": "Remove timestamps, request IDs, and delivery headers. Whitelist only the fields that represent spatial state." },
+        { "@type": "HowToStep", "position": 3, "name": "Normalize geometry and control precision", "text": "Round coordinates to a fixed decimal policy, close rings, sort multi-geometry members, and validate topology with Shapely." },
+        { "@type": "HowToStep", "position": 4, "name": "Serialize canonically", "text": "Produce a byte-identical JSON string with sort_keys=True, consistent separators, and UTF-8 encoding." },
+        { "@type": "HowToStep", "position": 5, "name": "Hash and store the key", "text": "Apply SHA-256, truncate to 128 bits, encode as a 32-character hex string, then check against Redis before processing." }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How many decimal places should I use for GPS coordinates in idempotency keys?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Six to seven decimal places covers sub-meter GPS accuracy. Use fewer (3–4) only for administrative boundaries or zone polygons where centimeter precision is meaningless. Document the policy and enforce it at ingestion time." }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use MD5 instead of SHA-256 for performance?",
+          "acceptedAnswer": { "@type": "Answer", "text": "MD5 is faster but has known collision weaknesses and should not be used for security-sensitive key derivation. For pure deduplication where security is not a concern, truncated SHA-256 (128 bits) provides a better collision probability than MD5 at negligible extra cost — about 1 µs per key on modern hardware." }
+        },
+        {
+          "@type": "Question",
+          "name": "What happens when two geometries are topologically equivalent but have different vertex orderings?",
+          "acceptedAnswer": { "@type": "Answer", "text": "They will hash to different keys. If topological equivalence matters — not just coordinate equality — compute a canonical representation such as a convex hull or simplified geometry before hashing, or layer spatial overlap deduplication on top of exact key matching." }
+        },
+        {
+          "@type": "Question",
+          "name": "How long should idempotency keys be kept in Redis?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Align the TTL with the maximum retry window of your upstream broker, then add a safety margin. For most webhook platforms that retry for 24–72 hours, a 96-hour TTL covers redeliveries. For Kafka consumers with large retention, persist keys to a database table partitioned by day and use Redis only for the hot-path window." }
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>Deterministic event keys for spatial data are produced by normalizing geometry, serializing it canonically, and hashing the result — giving every logically identical coordinate payload the same fixed-length identifier regardless of how many times it is delivered.</strong> This page is part of <a href="/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a>.</p>
+<p>Real-time geospatial webhooks and event streams present a core architectural problem: distinguishing legitimate duplicate deliveries from genuinely distinct spatial updates. When a mapping platform, IoT sensor network, or logistics SaaS ingests thousands of coordinate-based payloads per second, non-deterministic event identification quickly leads to duplicated writes, inconsistent spatial state, and expensive reconciliation jobs. The pipeline below solves this by transforming variable-length, floating-point-heavy geometry payloads into fixed-length, collision-resistant identifiers that survive network retries, broker redeliveries, and out-of-order processing.</p>
+<hr>
+<h2 id="architecture-four-layers-from-mutation-to-key-store" tabindex="-1"><a class="heading-anchor" href="#architecture-four-layers-from-mutation-to-key-store">Architecture: Four Layers from Mutation to Key Store</a></h2>
+<p>The key generation pipeline sits between your webhook receiver and your processing layer. Understanding each layer before writing code prevents the most common failure modes — particularly floating-point drift and CRS confusion.</p>
+<svg viewBox="0 0 720 320" role="img" aria-label="Four-layer pipeline: webhook receiver, normalizer, hasher, Redis key store" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;">
+  <title>Event Key Generation Pipeline</title>
+  <desc>Four connected boxes showing the data path: (1) Webhook Receiver validates schema; (2) Normalizer strips metadata, rounds coords, closes rings; (3) Hasher serializes canonically and applies SHA-256; (4) Redis Key Store performs atomic SET NX EX check before allowing processing.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
+    </marker>
+  </defs>
+  <!-- Layer boxes -->
+  <rect x="20" y="110" width="140" height="100" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
+  <text x="90" y="148" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Webhook</text>
+  <text x="90" y="164" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Receiver</text>
+  <text x="90" y="184" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">Schema validation</text>
+  <text x="90" y="198" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">400 on bad geom</text>
+  <rect x="195" y="110" width="150" height="100" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
+  <text x="270" y="148" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Normalizer</text>
+  <text x="270" y="168" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">Strip metadata</text>
+  <text x="270" y="182" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">Round coords</text>
+  <text x="270" y="196" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">Close rings · CRS→4326</text>
+  <rect x="375" y="110" width="150" height="100" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
+  <text x="450" y="148" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Hasher</text>
+  <text x="450" y="168" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">sort_keys=True</text>
+  <text x="450" y="182" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">UTF-8 canonical</text>
+  <text x="450" y="196" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">SHA-256 → 32-char hex</text>
+  <rect x="555" y="110" width="145" height="100" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
+  <text x="627" y="148" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Redis Key Store</text>
+  <text x="627" y="168" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">SET NX EX (atomic)</text>
+  <text x="627" y="182" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">Hit → discard event</text>
+  <text x="627" y="196" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">Miss → process + store</text>
+  <!-- Arrows -->
+  <line x1="160" y1="160" x2="192" y2="160" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arrow)"/>
+  <line x1="345" y1="160" x2="372" y2="160" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arrow)"/>
+  <line x1="525" y1="160" x2="552" y2="160" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arrow)"/>
+  <!-- Layer labels at bottom -->
+<p><text x="90" y="228" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.5">Layer 1</text>
+<text x="270" y="228" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.5">Layer 2</text>
+<text x="450" y="228" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.5">Layer 3</text>
+<text x="627" y="228" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.5">Layer 4</text></p>
+  <!-- Payload label at top -->
+<p><text x="20" y="95" font-size="10" fill="currentColor" opacity="0.6">Incoming GeoJSON payload</text>
+<text x="580" y="95" font-size="10" fill="currentColor" opacity="0.6">Idempotent processing</text>
+</svg></p>
+<p><strong>Layer 1 — Webhook Receiver:</strong> validates the incoming GeoJSON payload against a strict schema and returns <code>400 Bad Request</code> for malformed geometry before any key logic runs.</p>
+<p><strong>Layer 2 — Normalizer:</strong> strips all non-deterministic metadata (timestamps, delivery headers, request IDs), rounds coordinates to your documented precision policy, enforces CRS alignment to EPSG:4326 (WGS84), closes polygon rings, and repairs topology using Shapely.</p>
+<p><strong>Layer 3 — Hasher:</strong> serializes the normalized payload to a byte-identical canonical string and applies SHA-256. The first 16 bytes encode as a 32-character hex key.</p>
+<p><strong>Layer 4 — Redis Key Store:</strong> performs an atomic <code>SET NX EX</code> against the generated key. A cache hit means the event was already processed; discard it. A cache miss means it is genuinely new; process and store simultaneously. For the caching architecture in detail, see <a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks</a>.</p>
+<hr>
+<h2 id="prerequisites" tabindex="-1"><a class="heading-anchor" href="#prerequisites">Prerequisites</a></h2>
+<p>Before implementing spatial idempotency keys, your ingestion pipeline must satisfy several baseline constraints. Without a strict normalization contract, identical spatial events will produce divergent keys from floating-point drift, unordered JSON properties, or implicit CRS assumptions.</p>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Python 3.9+</strong> with standard libraries (<code>hashlib</code>, <code>json</code>, <code>decimal</code>)</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Geospatial parsing:</strong> <code>shapely&gt;=2.0</code> for geometry normalization and topology repair; <code>pyproj&gt;=3.4</code> for CRS transformations</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Payload validation:</strong> <code>pydantic&gt;=2.0</code> or <code>jsonschema&gt;=4.0</code> for schema enforcement at the receiver</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Redis client:</strong> <code>redis-py&gt;=4.5</code> with connection pooling for atomic key checks (<code>SET NX EX</code>)</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Message broker / webhook infrastructure:</strong> Kafka, RabbitMQ, AWS SNS/SQS, or HTTP endpoints configured for at-least-once delivery semantics</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Coordinate precision policy:</strong> a documented standard for decimal places — typically 6–7 for GPS-grade asset tracking, 3–4 for municipal boundaries or zoning polygons</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>CRS contract:</strong> explicit handling of EPSG:4326 (WGS84) or a declared transformation pipeline before key generation; mixed CRS payloads must be caught at Layer 1, following the approach in <a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a></label></li>
 </ul>
-<p>Adhering to the <a href="https://datatracker.ietf.org/doc/html/rfc7946">RFC 7946 GeoJSON specification</a> is non-negotiable. The standard explicitly warns against relying on coordinate precision beyond what your application requires, and mandates consistent axis ordering. Violating these conventions guarantees key divergence across retries.</p>
-<h2 id="core-workflow-for-deterministic-spatial-keys" tabindex="-1"><a class="heading-anchor" href="#core-workflow-for-deterministic-spatial-keys">Core Workflow for Deterministic Spatial Keys</a></h2>
-<p>Generating reliable event keys for spatial data requires a deterministic pipeline that strips non-essential metadata, canonicalizes geometry, and applies cryptographic hashing. Each step must be stateless and reproducible.</p>
-<h3 id="1-payload-ingestion-schema-validation" tabindex="-1"><a class="heading-anchor" href="#1-payload-ingestion-schema-validation">1. Payload Ingestion &amp; Schema Validation</a></h3>
-<p>Parse the incoming webhook payload against a strict GeoJSON schema. Reject malformed coordinates, missing <code>type</code> fields, or invalid geometry arrays early in the pipeline. Validation failures should return a <code>400 Bad Request</code> before any key generation logic executes. This prevents garbage-in-garbage-out scenarios where invalid geometries silently produce inconsistent hashes.</p>
-<h3 id="2-stripping-non-deterministic-metadata" tabindex="-1"><a class="heading-anchor" href="#2-stripping-non-deterministic-metadata">2. Stripping Non-Deterministic Metadata</a></h3>
-<p>Remove timestamps, request IDs, delivery metadata, and ephemeral HTTP headers. These fields change across retries but do not represent spatial state changes. Retain only the core geometry object and business-critical identifiers (e.g., <code>asset_id</code>, <code>zone_code</code>). If your payload includes nested properties that influence downstream processing, explicitly whitelist them; otherwise, discard them to maintain key stability.</p>
-<h3 id="3-geometry-normalization-precision-control" tabindex="-1"><a class="heading-anchor" href="#3-geometry-normalization-precision-control">3. Geometry Normalization &amp; Precision Control</a></h3>
-<p>Round coordinates to your predefined precision threshold, enforce consistent vertex ordering, and collapse duplicate points. Use a library like Shapely to guarantee topological consistency. For polygons, ensure the first and last coordinates are identical (closed rings). For multi-geometries, sort constituent geometries by bounding box centroid or lexicographic coordinate order. This step eliminates floating-point noise introduced by client-side GPS drift or intermediate serialization layers.</p>
-<h3 id="4-canonical-json-serialization" tabindex="-1"><a class="heading-anchor" href="#4-canonical-json-serialization">4. Canonical JSON Serialization</a></h3>
-<p>Serialize the cleaned payload using <code>sort_keys=True</code>, consistent separators, and UTF-8 encoding. This eliminates whitespace, newline variations, and property-order differences across different JSON libraries. The canonical string must be byte-identical for logically equivalent spatial events, regardless of the originating client or SDK.</p>
-<h3 id="5-cryptographic-hashing-key-encoding" tabindex="-1"><a class="heading-anchor" href="#5-cryptographic-hashing-key-encoding">5. Cryptographic Hashing &amp; Key Encoding</a></h3>
-<p>Apply SHA-256 to the canonical string. Truncate or encode to Base64/Hex for storage efficiency. SHA-256 provides a 256-bit collision-resistant digest that fits comfortably within standard database index limits. For high-throughput systems, consider truncating to 16 bytes (128 bits) and encoding as a 22-character Base64 string to reduce index bloat while maintaining negligible collision probability.</p>
-<p>For a deeper dive into payload structuring and GeoJSON-specific canonicalization patterns, see our guide on <a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/">Generating deterministic idempotency keys for GeoJSON events</a>.</p>
-<h2 id="production-implementation-in-python" tabindex="-1"><a class="heading-anchor" href="#production-implementation-in-python">Production Implementation in Python</a></h2>
-<p>The following implementation demonstrates a production-ready key generator. It prioritizes determinism, handles precision explicitly using Python’s <code>decimal</code> module to avoid IEEE-754 rounding artifacts, and integrates cleanly with modern async ingestion pipelines.</p>
+<p>Adhering to the <a href="https://datatracker.ietf.org/doc/html/rfc7946">RFC 7946 GeoJSON specification</a> is non-negotiable. The standard mandates consistent axis ordering (longitude first, then latitude) and warns against relying on coordinate precision beyond what your application requires. Violating either constraint guarantees key divergence across retries.</p>
+<hr>
+<h2 id="step-by-step-implementation" tabindex="-1"><a class="heading-anchor" href="#step-by-step-implementation">Step-by-Step Implementation</a></h2>
+<h3 id="step-1-validate-and-ingest-the-payload" tabindex="-1"><a class="heading-anchor" href="#step-1-validate-and-ingest-the-payload">Step 1 — Validate and Ingest the Payload</a></h3>
+<p>Parse the incoming webhook payload against a strict GeoJSON schema using Pydantic. Return <code>400 Bad Request</code> for malformed coordinates, missing <code>type</code> fields, or invalid geometry arrays. This prevents garbage-in-garbage-out scenarios where invalid geometries silently produce inconsistent hashes.</p>
 <div class="code-block" data-lang="python">
   <div class="code-block__header">
     <span class="code-block__lang">python</span>
@@ -193,101 +294,386 @@
       <span class="code-block__copy-label">Copy</span>
     </button>
   </div>
-  <pre class="language-python"><code class="language-python"><span class="token keyword">import</span> hashlib
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> pydantic <span class="token keyword">import</span> BaseModel<span class="token punctuation">,</span> field_validator
+<span class="token keyword">from</span> typing <span class="token keyword">import</span> Any<span class="token punctuation">,</span> Dict<span class="token punctuation">,</span> Literal<span class="token punctuation">,</span> List<span class="token punctuation">,</span> Union
 <span class="token keyword">import</span> json
-<span class="token keyword">import</span> decimal
-<span class="token keyword">from</span> typing <span class="token keyword">import</span> Any<span class="token punctuation">,</span> Dict<span class="token punctuation">,</span> List<span class="token punctuation">,</span> Union
+
+<span class="token keyword">class</span> <span class="token class-name">GeoJSONGeometry</span><span class="token punctuation">(</span>BaseModel<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token builtin">type</span><span class="token punctuation">:</span> Literal<span class="token punctuation">[</span>
+        <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"LineString"</span><span class="token punctuation">,</span> <span class="token string">"Polygon"</span><span class="token punctuation">,</span>
+        <span class="token string">"MultiPoint"</span><span class="token punctuation">,</span> <span class="token string">"MultiLineString"</span><span class="token punctuation">,</span> <span class="token string">"MultiPolygon"</span>
+    <span class="token punctuation">]</span>
+    coordinates<span class="token punctuation">:</span> Union<span class="token punctuation">[</span>List<span class="token punctuation">,</span> List<span class="token punctuation">[</span>List<span class="token punctuation">]</span><span class="token punctuation">,</span> List<span class="token punctuation">[</span>List<span class="token punctuation">[</span>List<span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">]</span>
+
+    <span class="token decorator annotation punctuation">@field_validator</span><span class="token punctuation">(</span><span class="token string">"coordinates"</span><span class="token punctuation">)</span>
+    <span class="token decorator annotation punctuation">@classmethod</span>
+    <span class="token keyword">def</span> <span class="token function">coordinates_not_empty</span><span class="token punctuation">(</span>cls<span class="token punctuation">,</span> v<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">if</span> <span class="token keyword">not</span> v<span class="token punctuation">:</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"coordinates must not be empty"</span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> v
+
+<span class="token keyword">class</span> <span class="token class-name">SpatialEventPayload</span><span class="token punctuation">(</span>BaseModel<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    geometry<span class="token punctuation">:</span> GeoJSONGeometry
+    asset_id<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span>
+    zone_code<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span>
+    <span class="token comment"># Do NOT include timestamps or request_ids here — they are non-deterministic</span>
+
+<span class="token keyword">def</span> <span class="token function">parse_and_validate</span><span class="token punctuation">(</span>raw_body<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> SpatialEventPayload<span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Parse and validate a raw webhook body. Raises ValidationError on failure."""</span>
+    data <span class="token operator">=</span> json<span class="token punctuation">.</span>loads<span class="token punctuation">(</span>raw_body<span class="token punctuation">)</span>
+    <span class="token keyword">return</span> SpatialEventPayload<span class="token punctuation">(</span><span class="token operator">**</span>data<span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>A FastAPI or aiohttp endpoint should call <code>parse_and_validate</code> before any downstream logic and convert <code>ValidationError</code> to a <code>422</code> or <code>400</code> response.</p>
+<h3 id="step-2-strip-non-deterministic-metadata" tabindex="-1"><a class="heading-anchor" href="#step-2-strip-non-deterministic-metadata">Step 2 — Strip Non-Deterministic Metadata</a></h3>
+<p>Remove timestamps, request IDs, delivery metadata, and ephemeral HTTP headers. These fields change across retries but represent no change in spatial state. Explicitly whitelist the fields that influence downstream processing; discard everything else. This step is the primary guard against key instability.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python">WHITELISTED_PROPERTIES <span class="token operator">=</span> <span class="token builtin">frozenset</span><span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token string">"asset_id"</span><span class="token punctuation">,</span> <span class="token string">"zone_code"</span><span class="token punctuation">}</span><span class="token punctuation">)</span>
+
+<span class="token keyword">def</span> <span class="token function">extract_canonical_fields</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> SpatialEventPayload<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Return only the fields that define spatial state."""</span>
+    result<span class="token punctuation">:</span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"geometry"</span><span class="token punctuation">:</span> payload<span class="token punctuation">.</span>geometry<span class="token punctuation">.</span>model_dump<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">}</span>
+    <span class="token keyword">for</span> field <span class="token keyword">in</span> <span class="token builtin">sorted</span><span class="token punctuation">(</span>WHITELISTED_PROPERTIES<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        value <span class="token operator">=</span> <span class="token builtin">getattr</span><span class="token punctuation">(</span>payload<span class="token punctuation">,</span> field<span class="token punctuation">,</span> <span class="token boolean">None</span><span class="token punctuation">)</span>
+        <span class="token keyword">if</span> value <span class="token keyword">is</span> <span class="token keyword">not</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+            result<span class="token punctuation">[</span>field<span class="token punctuation">]</span> <span class="token operator">=</span> value
+    <span class="token keyword">return</span> result
+</code></pre>
+</div>
+<p>The <code>sorted()</code> call on whitelist fields ensures property order is deterministic regardless of insertion order in the incoming JSON object.</p>
+<h3 id="step-3-normalize-geometry-and-control-precision" tabindex="-1"><a class="heading-anchor" href="#step-3-normalize-geometry-and-control-precision">Step 3 — Normalize Geometry and Control Precision</a></h3>
+<p>Round all coordinates to your policy threshold, close polygon rings, and validate topology with Shapely. This step eliminates floating-point noise from GPS drift, client-side rounding differences, and intermediate serialization layers.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> decimal
+<span class="token keyword">from</span> typing <span class="token keyword">import</span> Any
 <span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape<span class="token punctuation">,</span> mapping
 <span class="token keyword">from</span> shapely<span class="token punctuation">.</span>validation <span class="token keyword">import</span> make_valid
 
-<span class="token comment"># Configure decimal precision to avoid floating-point drift</span>
-decimal<span class="token punctuation">.</span>getcontext<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span>prec <span class="token operator">=</span> <span class="token number">12</span>
+decimal<span class="token punctuation">.</span>getcontext<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span>prec <span class="token operator">=</span> <span class="token number">12</span>  <span class="token comment"># Avoid IEEE-754 accumulation errors</span>
 
-<span class="token keyword">def</span> <span class="token function">round_coordinate</span><span class="token punctuation">(</span>coord<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">,</span> precision<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">7</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">float</span><span class="token punctuation">:</span>
-    <span class="token triple-quoted-string string">"""Round a coordinate to fixed decimal places using Decimal for accuracy."""</span>
-    d <span class="token operator">=</span> decimal<span class="token punctuation">.</span>Decimal<span class="token punctuation">(</span><span class="token builtin">str</span><span class="token punctuation">(</span>coord<span class="token punctuation">)</span><span class="token punctuation">)</span>
-    <span class="token keyword">return</span> <span class="token builtin">float</span><span class="token punctuation">(</span>d<span class="token punctuation">.</span>quantize<span class="token punctuation">(</span>decimal<span class="token punctuation">.</span>Decimal<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f'1e-</span><span class="token interpolation"><span class="token punctuation">{</span>precision<span class="token punctuation">}</span></span><span class="token string">'</span></span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+<span class="token keyword">def</span> <span class="token function">round_coord</span><span class="token punctuation">(</span>value<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">,</span> precision<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">float</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Round using Python Decimal to avoid IEEE-754 representation artifacts."""</span>
+    d <span class="token operator">=</span> decimal<span class="token punctuation">.</span>Decimal<span class="token punctuation">(</span><span class="token builtin">str</span><span class="token punctuation">(</span>value<span class="token punctuation">)</span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> <span class="token builtin">float</span><span class="token punctuation">(</span>d<span class="token punctuation">.</span>quantize<span class="token punctuation">(</span>decimal<span class="token punctuation">.</span>Decimal<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"1e-</span><span class="token interpolation"><span class="token punctuation">{</span>precision<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
 
-<span class="token keyword">def</span> <span class="token function">normalize_geometry</span><span class="token punctuation">(</span>geojson_obj<span class="token punctuation">:</span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">,</span> precision<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">7</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">:</span>
-    <span class="token triple-quoted-string string">"""Normalize geometry: validate, round, close rings, and canonicalize."""</span>
+<span class="token keyword">def</span> <span class="token function">normalize_geometry</span><span class="token punctuation">(</span>geojson_geom<span class="token punctuation">:</span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">,</span> precision<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">7</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Normalize a GeoJSON geometry object:
+    - Repair topology (self-intersections, unclosed rings)
+    - Round all coordinates to `precision` decimal places
+    - Return a clean dict ready for canonical serialization
+    """</span>
     <span class="token keyword">try</span><span class="token punctuation">:</span>
-        geom <span class="token operator">=</span> shape<span class="token punctuation">(</span>geojson_obj<span class="token punctuation">)</span>
-        geom <span class="token operator">=</span> make_valid<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>
-        <span class="token comment"># Apply precision rounding to all coordinates recursively</span>
-        coords <span class="token operator">=</span> mapping<span class="token punctuation">(</span>geom<span class="token punctuation">)</span><span class="token punctuation">[</span><span class="token string">'coordinates'</span><span class="token punctuation">]</span>
-        
-        <span class="token keyword">def</span> <span class="token function">_round_coords</span><span class="token punctuation">(</span>c<span class="token punctuation">)</span><span class="token punctuation">:</span>
-            <span class="token keyword">if</span> <span class="token builtin">isinstance</span><span class="token punctuation">(</span>c<span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token builtin">int</span><span class="token punctuation">,</span> <span class="token builtin">float</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
-                <span class="token keyword">return</span> round_coordinate<span class="token punctuation">(</span>c<span class="token punctuation">,</span> precision<span class="token punctuation">)</span>
-            <span class="token keyword">return</span> <span class="token punctuation">[</span>_round_coords<span class="token punctuation">(</span>x<span class="token punctuation">)</span> <span class="token keyword">for</span> x <span class="token keyword">in</span> c<span class="token punctuation">]</span>
-            
-        rounded_coords <span class="token operator">=</span> _round_coords<span class="token punctuation">(</span>coords<span class="token punctuation">)</span>
-        <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> geom<span class="token punctuation">.</span>geom_type<span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> rounded_coords<span class="token punctuation">}</span>
-    <span class="token keyword">except</span> Exception <span class="token keyword">as</span> e<span class="token punctuation">:</span>
-        <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Invalid geometry: </span><span class="token interpolation"><span class="token punctuation">{</span>e<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+        geom <span class="token operator">=</span> shape<span class="token punctuation">(</span>geojson_geom<span class="token punctuation">)</span>
+        geom <span class="token operator">=</span> make_valid<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>  <span class="token comment"># Repair self-intersections and unclosed rings</span>
+    <span class="token keyword">except</span> Exception <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Geometry normalization failed: </span><span class="token interpolation"><span class="token punctuation">{</span>exc<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span> <span class="token keyword">from</span> exc
 
-<span class="token keyword">def</span> <span class="token function">generate_spatial_event_key</span><span class="token punctuation">(</span>
-    payload<span class="token punctuation">:</span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">,</span>
-    precision<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">7</span><span class="token punctuation">,</span>
-    whitelist_props<span class="token punctuation">:</span> List<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span>
-<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
-    <span class="token triple-quoted-string string">"""Generate a deterministic SHA-256 key for a spatial event payload."""</span>
-    <span class="token comment"># 1. Extract and normalize geometry</span>
-    geometry <span class="token operator">=</span> payload<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"geometry"</span><span class="token punctuation">)</span>
-    <span class="token keyword">if</span> <span class="token keyword">not</span> geometry<span class="token punctuation">:</span>
-        <span class="token keyword">raise</span> KeyError<span class="token punctuation">(</span><span class="token string">"Missing 'geometry' in payload"</span><span class="token punctuation">)</span>
-    
-    normalized_geom <span class="token operator">=</span> normalize_geometry<span class="token punctuation">(</span>geometry<span class="token punctuation">,</span> precision<span class="token punctuation">)</span>
-    
-    <span class="token comment"># 2. Build canonical payload</span>
-    canonical <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"geometry"</span><span class="token punctuation">:</span> normalized_geom<span class="token punctuation">}</span>
-    <span class="token keyword">if</span> whitelist_props<span class="token punctuation">:</span>
-        <span class="token keyword">for</span> prop <span class="token keyword">in</span> <span class="token builtin">sorted</span><span class="token punctuation">(</span>whitelist_props<span class="token punctuation">)</span><span class="token punctuation">:</span>
-            <span class="token keyword">if</span> prop <span class="token keyword">in</span> payload<span class="token punctuation">:</span>
-                canonical<span class="token punctuation">[</span>prop<span class="token punctuation">]</span> <span class="token operator">=</span> payload<span class="token punctuation">[</span>prop<span class="token punctuation">]</span>
-                
-    <span class="token comment"># 3. Serialize deterministically</span>
-    canonical_bytes <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>
-        canonical<span class="token punctuation">,</span>
-        sort_keys<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span>
-        separators<span class="token operator">=</span><span class="token punctuation">(</span><span class="token string">','</span><span class="token punctuation">,</span> <span class="token string">':'</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
-        ensure_ascii<span class="token operator">=</span><span class="token boolean">True</span>
-    <span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token string">'utf-8'</span><span class="token punctuation">)</span>
-    
-    <span class="token comment"># 4. Hash and encode</span>
-    digest <span class="token operator">=</span> hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">(</span>canonical_bytes<span class="token punctuation">)</span><span class="token punctuation">.</span>digest<span class="token punctuation">(</span><span class="token punctuation">)</span>
-    <span class="token keyword">return</span> digest<span class="token punctuation">[</span><span class="token punctuation">:</span><span class="token number">16</span><span class="token punctuation">]</span><span class="token punctuation">.</span><span class="token builtin">hex</span><span class="token punctuation">(</span><span class="token punctuation">)</span>  <span class="token comment"># 32-char hex key (128 bits)</span>
+    raw_mapping <span class="token operator">=</span> mapping<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>
+
+    <span class="token keyword">def</span> <span class="token function">_round_recursive</span><span class="token punctuation">(</span>coords<span class="token punctuation">:</span> Any<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> Any<span class="token punctuation">:</span>
+        <span class="token keyword">if</span> <span class="token builtin">isinstance</span><span class="token punctuation">(</span>coords<span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token builtin">int</span><span class="token punctuation">,</span> <span class="token builtin">float</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+            <span class="token keyword">return</span> round_coord<span class="token punctuation">(</span>coords<span class="token punctuation">,</span> precision<span class="token punctuation">)</span>
+        <span class="token keyword">return</span> <span class="token punctuation">[</span>_round_recursive<span class="token punctuation">(</span>c<span class="token punctuation">)</span> <span class="token keyword">for</span> c <span class="token keyword">in</span> coords<span class="token punctuation">]</span>
+
+    <span class="token keyword">return</span> <span class="token punctuation">{</span>
+        <span class="token string">"type"</span><span class="token punctuation">:</span> raw_mapping<span class="token punctuation">[</span><span class="token string">"type"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+        <span class="token string">"coordinates"</span><span class="token punctuation">:</span> _round_recursive<span class="token punctuation">(</span>raw_mapping<span class="token punctuation">[</span><span class="token string">"coordinates"</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+    <span class="token punctuation">}</span>
 </code></pre>
 </div>
-<h3 id="why-this-code-is-reliable" tabindex="-1"><a class="heading-anchor" href="#why-this-code-is-reliable">Why This Code Is Reliable</a></h3>
-<ul>
-<li><strong>Decimal-based rounding</strong> prevents IEEE-754 representation errors that cause identical coordinates to hash differently.</li>
-<li><strong><code>make_valid()</code></strong> repairs self-intersecting polygons or unclosed rings before serialization, ensuring topological equivalence.</li>
-<li><strong>Explicit property whitelisting</strong> guarantees that non-spatial metadata never leaks into the key space.</li>
-<li><strong>128-bit truncation</strong> balances collision resistance with index performance. At 10 billion daily events, the birthday paradox collision probability remains below <code>1e-12</code>.</li>
-</ul>
-<h2 id="handling-edge-cases-failure-modes" tabindex="-1"><a class="heading-anchor" href="#handling-edge-cases-failure-modes">Handling Edge Cases &amp; Failure Modes</a></h2>
-<p>Even with a deterministic pipeline, spatial data introduces unique failure modes that require defensive engineering.</p>
+<p><code>make_valid()</code> from Shapely 2.x repairs self-intersecting polygons and unclosed rings before serialization, ensuring topological equivalence. Without it, two payloads describing the same physical boundary may normalize differently depending on how the sending client closed the ring.</p>
+<h3 id="step-4-serialize-canonically" tabindex="-1"><a class="heading-anchor" href="#step-4-serialize-canonically">Step 4 — Serialize Canonically</a></h3>
+<p>Produce a byte-identical JSON string with <code>sort_keys=True</code>, consistent separators, and UTF-8 encoding. This eliminates whitespace, newline variations, and property-order differences across JSON libraries and language runtimes.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">def</span> <span class="token function">canonical_bytes</span><span class="token punctuation">(</span>fields<span class="token punctuation">:</span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bytes</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Produce a deterministic UTF-8 byte string from a whitelist-filtered payload."""</span>
+    <span class="token keyword">return</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>
+        fields<span class="token punctuation">,</span>
+        sort_keys<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span>
+        separators<span class="token operator">=</span><span class="token punctuation">(</span><span class="token string">","</span><span class="token punctuation">,</span> <span class="token string">":"</span><span class="token punctuation">)</span><span class="token punctuation">,</span>  <span class="token comment"># No spaces — byte-identical across platforms</span>
+        ensure_ascii<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span>      <span class="token comment"># Prevent Unicode normalization ambiguity</span>
+    <span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token string">"utf-8"</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p><code>ensure_ascii=True</code> encodes all non-ASCII characters as <code>\uXXXX</code> escape sequences. This matters when geometry feature names or zone codes contain accented characters — different Unicode normalization forms (NFC vs NFD) would otherwise produce different byte sequences for the same logical string.</p>
+<h3 id="step-5-hash-and-store-the-key" tabindex="-1"><a class="heading-anchor" href="#step-5-hash-and-store-the-key">Step 5 — Hash and Store the Key</a></h3>
+<p>Apply SHA-256 to the canonical bytes. Truncate to 16 bytes (128 bits) and encode as a 32-character hex string, then check against Redis atomically before processing.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> hashlib
+<span class="token keyword">import</span> redis
+
+<span class="token keyword">def</span> <span class="token function">generate_spatial_event_key</span><span class="token punctuation">(</span>
+    raw_body<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">,</span>
+    precision<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">7</span><span class="token punctuation">,</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Full pipeline: validate → normalize → serialize → hash → 32-char hex key."""</span>
+    payload <span class="token operator">=</span> parse_and_validate<span class="token punctuation">(</span>raw_body<span class="token punctuation">)</span>
+    fields <span class="token operator">=</span> extract_canonical_fields<span class="token punctuation">(</span>payload<span class="token punctuation">)</span>
+    fields<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span> <span class="token operator">=</span> normalize_geometry<span class="token punctuation">(</span>fields<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span><span class="token punctuation">,</span> precision<span class="token punctuation">)</span>
+    blob <span class="token operator">=</span> canonical_bytes<span class="token punctuation">(</span>fields<span class="token punctuation">)</span>
+    digest <span class="token operator">=</span> hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">(</span>blob<span class="token punctuation">)</span><span class="token punctuation">.</span>digest<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> digest<span class="token punctuation">[</span><span class="token punctuation">:</span><span class="token number">16</span><span class="token punctuation">]</span><span class="token punctuation">.</span><span class="token builtin">hex</span><span class="token punctuation">(</span><span class="token punctuation">)</span>  <span class="token comment"># 128-bit truncation: ~1e-12 collision prob at 10B events/day</span>
+
+<span class="token keyword">def</span> <span class="token function">process_if_new</span><span class="token punctuation">(</span>
+    raw_body<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">,</span>
+    redis_client<span class="token punctuation">:</span> redis<span class="token punctuation">.</span>Redis<span class="token punctuation">,</span>
+    ttl_seconds<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">345_600</span><span class="token punctuation">,</span>  <span class="token comment"># 96 hours</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Return True if this event is new and was processed.
+    Return False if it was already seen (duplicate delivery).
+    """</span>
+    key <span class="token operator">=</span> generate_spatial_event_key<span class="token punctuation">(</span>raw_body<span class="token punctuation">)</span>
+    redis_key <span class="token operator">=</span> <span class="token string-interpolation"><span class="token string">f"spatial_event:</span><span class="token interpolation"><span class="token punctuation">{</span>key<span class="token punctuation">}</span></span><span class="token string">"</span></span>
+
+    <span class="token comment"># Atomic SET NX EX — avoids GET-then-SET race window</span>
+    stored <span class="token operator">=</span> redis_client<span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">(</span>redis_key<span class="token punctuation">,</span> <span class="token string">"1"</span><span class="token punctuation">,</span> nx<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span> ex<span class="token operator">=</span>ttl_seconds<span class="token punctuation">)</span>
+    <span class="token keyword">if</span> stored<span class="token punctuation">:</span>
+        <span class="token comment"># First delivery: process the event here</span>
+        <span class="token keyword">return</span> <span class="token boolean">True</span>
+    <span class="token comment"># Duplicate delivery: discard silently</span>
+    <span class="token keyword">return</span> <span class="token boolean">False</span>
+</code></pre>
+</div>
+<p>The <code>SET NX EX</code> pattern is atomic — it eliminates the race window that exists in a separate <code>GET</code> then <code>SET</code> flow, where two concurrent deliveries of the same event could both read a cache miss and both proceed to process.</p>
+<hr>
+<h2 id="spatial-validation-and-error-handling" tabindex="-1"><a class="heading-anchor" href="#spatial-validation-and-error-handling">Spatial Validation and Error Handling</a></h2>
+<p>Beyond schema validation at Layer 1, two additional checks protect key correctness:</p>
+<p><strong>CRS alignment before normalization.</strong> If your system ingests data in EPSG:3857 (Web Mercator) but normalizes assuming EPSG:4326, keys will diverge across CRS boundaries. Use <code>pyproj</code> to transform all incoming geometries to WGS84 before the normalization step. For handling mixed-CRS event streams in production, the <a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a> guide covers batch transformation patterns.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> pyproj <span class="token keyword">import</span> Transformer
+
+_transformer_3857_to_4326 <span class="token operator">=</span> Transformer<span class="token punctuation">.</span>from_crs<span class="token punctuation">(</span><span class="token string">"EPSG:3857"</span><span class="token punctuation">,</span> <span class="token string">"EPSG:4326"</span><span class="token punctuation">,</span> always_xy<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span>
+
+<span class="token keyword">def</span> <span class="token function">reproject_to_wgs84</span><span class="token punctuation">(</span>lon<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">,</span> lat<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">tuple</span><span class="token punctuation">[</span><span class="token builtin">float</span><span class="token punctuation">,</span> <span class="token builtin">float</span><span class="token punctuation">]</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Transform a Web Mercator coordinate to WGS84 (lon, lat)."""</span>
+    <span class="token keyword">return</span> _transformer_3857_to_4326<span class="token punctuation">.</span>transform<span class="token punctuation">(</span>lon<span class="token punctuation">,</span> lat<span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p><strong>Geometry validation after <code>make_valid</code>.</strong> In rare cases, <code>make_valid()</code> returns an empty geometry (a degenerate polygon collapses to a point or line). Check for this explicitly:</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry<span class="token punctuation">.</span>base <span class="token keyword">import</span> BaseGeometry
+
+<span class="token keyword">def</span> <span class="token function">assert_geometry_non_empty</span><span class="token punctuation">(</span>geom<span class="token punctuation">:</span> BaseGeometry<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token keyword">if</span> geom<span class="token punctuation">.</span>is_empty<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"Geometry collapsed to empty after validation — cannot generate key"</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>Both checks should raise exceptions that your ingestion layer converts to <code>422 Unprocessable Entity</code>, not <code>500 Internal Server Error</code>. They represent bad input, not system failures.</p>
+<hr>
+<h2 id="retry-backoff-and-delivery-guarantees" tabindex="-1"><a class="heading-anchor" href="#retry-backoff-and-delivery-guarantees">Retry, Backoff, and Delivery Guarantees</a></h2>
+<p>Event key generation is a stateless, synchronous operation — it does not need retry logic itself. The retry surface is the downstream atomic key check in Redis. When Redis is unavailable, your ingestion endpoint has two safe options:</p>
+<ol>
+<li><strong>Fail closed:</strong> return <code>503 Service Unavailable</code> to the webhook sender, triggering their retry cycle. The key generation step is idempotent, so redelivering the same payload is safe.</li>
+<li><strong>Fail open with logging:</strong> process the event and log a warning. This risks duplicate writes but preserves availability. Only use this if downstream consumers are themselves idempotent.</li>
+</ol>
+<p>For webhook senders that implement exponential backoff with jitter, a <code>503</code> response with a <code>Retry-After: 30</code> header gives Redis time to recover without overwhelming the endpoint. The <a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/">at-least-once delivery pattern for GIS webhooks</a> covers the full retry contract from the sender’s side.</p>
+<p>At-least-once vs. exactly-once semantics matter here: the key-check pipeline converts at-least-once broker delivery into exactly-once processing without requiring distributed transactions. The tradeoff is that key TTLs define a finite deduplication window — events arriving after the TTL expires will be reprocessed. Size your TTL to exceed the maximum broker retry window by at least 2x.</p>
+<hr>
+<h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
+<p>The following pytest suite confirms the pipeline behaves deterministically across the failure modes that most commonly cause key divergence in production:</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> pytest
+<span class="token keyword">import</span> json
+<span class="token keyword">from</span> your_module <span class="token keyword">import</span> generate_spatial_event_key
+
+BASE_PAYLOAD <span class="token operator">=</span> <span class="token punctuation">{</span>
+    <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span>
+        <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span>
+        <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">73.9857</span><span class="token punctuation">,</span> <span class="token number">40.7484</span><span class="token punctuation">]</span>
+    <span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token string">"asset_id"</span><span class="token punctuation">:</span> <span class="token string">"vehicle-42"</span>
+<span class="token punctuation">}</span>
+
+<span class="token keyword">def</span> <span class="token function">make_body</span><span class="token punctuation">(</span>overrides<span class="token punctuation">:</span> <span class="token builtin">dict</span> <span class="token operator">=</span> <span class="token boolean">None</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bytes</span><span class="token punctuation">:</span>
+    payload <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token operator">**</span>BASE_PAYLOAD<span class="token punctuation">,</span> <span class="token operator">**</span><span class="token punctuation">(</span>overrides <span class="token keyword">or</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">}</span>
+    <span class="token keyword">return</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>payload<span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token string">"utf-8"</span><span class="token punctuation">)</span>
+
+<span class="token keyword">def</span> <span class="token function">test_identical_payloads_produce_same_key</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Core determinism: same input → same output."""</span>
+    <span class="token keyword">assert</span> generate_spatial_event_key<span class="token punctuation">(</span>make_body<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token operator">==</span> generate_spatial_event_key<span class="token punctuation">(</span>make_body<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+<span class="token keyword">def</span> <span class="token function">test_floating_point_drift_is_normalized</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Coordinates that differ only in floating-point noise hash identically."""</span>
+    body_a <span class="token operator">=</span> make_body<span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">73.9857</span><span class="token punctuation">,</span> <span class="token number">40.7484</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">}</span><span class="token punctuation">)</span>
+    body_b <span class="token operator">=</span> make_body<span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">73.98570000000001</span><span class="token punctuation">,</span> <span class="token number">40.748400000000005</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">}</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> generate_spatial_event_key<span class="token punctuation">(</span>body_a<span class="token punctuation">)</span> <span class="token operator">==</span> generate_spatial_event_key<span class="token punctuation">(</span>body_b<span class="token punctuation">)</span>
+
+<span class="token keyword">def</span> <span class="token function">test_different_coordinates_produce_different_keys</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Genuinely distinct locations hash differently."""</span>
+    body_a <span class="token operator">=</span> make_body<span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">73.9857</span><span class="token punctuation">,</span> <span class="token number">40.7484</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">}</span><span class="token punctuation">)</span>
+    body_b <span class="token operator">=</span> make_body<span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">74.0060</span><span class="token punctuation">,</span> <span class="token number">40.7128</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">}</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> generate_spatial_event_key<span class="token punctuation">(</span>body_a<span class="token punctuation">)</span> <span class="token operator">!=</span> generate_spatial_event_key<span class="token punctuation">(</span>body_b<span class="token punctuation">)</span>
+
+<span class="token keyword">def</span> <span class="token function">test_non_whitelisted_fields_are_excluded</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Timestamps and request IDs do not affect the key."""</span>
+    body_clean <span class="token operator">=</span> make_body<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    body_with_meta <span class="token operator">=</span> make_body<span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token string">"timestamp"</span><span class="token punctuation">:</span> <span class="token string">"2026-06-24T12:00:00Z"</span><span class="token punctuation">,</span> <span class="token string">"request_id"</span><span class="token punctuation">:</span> <span class="token string">"abc-123"</span><span class="token punctuation">}</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> generate_spatial_event_key<span class="token punctuation">(</span>body_clean<span class="token punctuation">)</span> <span class="token operator">==</span> generate_spatial_event_key<span class="token punctuation">(</span>body_with_meta<span class="token punctuation">)</span>
+
+<span class="token keyword">def</span> <span class="token function">test_invalid_geometry_raises</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Malformed geometry raises ValueError before hashing."""</span>
+    bad_body <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token string">"asset_id"</span><span class="token punctuation">:</span> <span class="token string">"x"</span><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">with</span> pytest<span class="token punctuation">.</span>raises<span class="token punctuation">(</span><span class="token punctuation">(</span>ValueError<span class="token punctuation">,</span> Exception<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        generate_spatial_event_key<span class="token punctuation">(</span>bad_body<span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>Run with <code>pytest -v</code> after setting up a test virtualenv with <code>shapely</code>, <code>pydantic</code>, and <code>pyproj</code> installed.</p>
+<hr>
+<h2 id="handling-edge-cases" tabindex="-1"><a class="heading-anchor" href="#handling-edge-cases">Handling Edge Cases</a></h2>
 <h3 id="floating-point-drift-across-sdks" tabindex="-1"><a class="heading-anchor" href="#floating-point-drift-across-sdks">Floating-Point Drift Across SDKs</a></h3>
-<p>Different clients serialize coordinates with varying precision. A GPS tracker might emit <code>[-73.9857, 40.7484]</code>, while a web SDK sends <code>[-73.98570000000001, 40.748400000000005]</code>. The normalization step must aggressively round to your policy threshold. Never rely on raw string equality for coordinates.</p>
-<h3 id="coordinate-reference-system-crs-mismatches" tabindex="-1"><a class="heading-anchor" href="#coordinate-reference-system-crs-mismatches">Coordinate Reference System (CRS) Mismatches</a></h3>
-<p>If your system ingests data in EPSG:3857 (Web Mercator) but normalizes assuming EPSG:4326 (WGS84), keys will diverge. Always transform geometries to a canonical CRS before hashing. Use <code>pyproj</code> for batch transformations and validate the <code>crs</code> property in incoming payloads.</p>
+<p>Different clients serialize coordinates with varying precision. A GPS tracker might emit <code>[-73.9857, 40.7484]</code>, while a web SDK sends <code>[-73.98570000000001, 40.748400000000005]</code>. The Decimal-based rounding in Step 3 handles this, but only if your precision policy is consistently enforced. Never use raw string equality or Python’s <code>round()</code> built-in — <code>round()</code> uses banker’s rounding and can produce different results from <code>Decimal.quantize()</code> for specific values.</p>
 <h3 id="topology-vs-coordinate-equality" tabindex="-1"><a class="heading-anchor" href="#topology-vs-coordinate-equality">Topology vs. Coordinate Equality</a></h3>
-<p>Two polygons may represent the same physical boundary but differ in vertex density. If your application cares about geometric equivalence rather than exact coordinate matching, consider computing a spatial fingerprint using a bounding box hash or a simplified geometry representation. For strict coordinate-level deduplication, the pipeline above is sufficient. When dealing with overlapping zones or proximity-based triggers, you will need to layer <a href="/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication</a> on top of exact key matching.</p>
-<h3 id="out-of-order-delivery-state-drift" tabindex="-1"><a class="heading-anchor" href="#out-of-order-delivery-state-drift">Out-of-Order Delivery &amp; State Drift</a></h3>
-<p>Message brokers guarantee at-least-once delivery, but not ordering. If Event B updates a boundary and Event A (an older snapshot) arrives later, exact key matching will treat them as duplicates. Implement versioning or timestamp windows alongside your spatial key to enforce monotonic state progression.</p>
-<h2 id="integration-with-idempotency-infrastructure" tabindex="-1"><a class="heading-anchor" href="#integration-with-idempotency-infrastructure">Integration with Idempotency Infrastructure</a></h2>
-<p>Event keys are only half of the idempotency equation. Once generated, they must be checked against a fast, highly available storage layer before processing. A typical architecture routes the key through an in-memory cache first, falling back to a persistent store for auditability.</p>
-<p>The lookup pattern should follow a strict <code>GET -&gt; PROCESS -&gt; SET</code> flow. Use Redis or Memcached with short TTLs (e.g., 24–72 hours) for hot-path checks. For long-term compliance and reconciliation, persist keys in a time-partitioned database table. This architecture is detailed in our <a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks</a> guide, which covers cache stampede prevention, fallback strategies, and TTL alignment with webhook retry windows.</p>
-<p>When deploying at scale, monitor key collision rates, normalization failure counts, and cache hit ratios. A sudden spike in normalization failures usually indicates a client SDK regression or a new geometry type entering your ingestion pipeline. Alert on these metrics early to prevent silent data duplication.</p>
-<h2 id="conclusion" tabindex="-1"><a class="heading-anchor" href="#conclusion">Conclusion</a></h2>
-<p>Event Key Generation for Spatial Data transforms the inherent chaos of real-time geospatial streams into a predictable, idempotent workflow. By enforcing strict normalization, canonical serialization, and cryptographic hashing, platform engineers can eliminate duplicate writes, reduce reconciliation overhead, and guarantee consistent spatial state across distributed systems. Pair this pipeline with robust caching, explicit precision policies, and comprehensive validation, and your ingestion layer will scale reliably to millions of coordinate-based events per day.</p>
+<p>Two polygons may represent the same physical boundary but differ in vertex density due to upstream simplification. If your application cares about geometric equivalence rather than exact coordinate matching, compute a spatial fingerprint using a bounding box hash or a simplified geometry representation (e.g., <code>geom.simplify(0.0001, preserve_topology=True)</code>) before hashing. For proximity-based triggers where geometries overlap but do not match exactly, layer <a href="/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication</a> on top of exact key matching.</p>
+<h3 id="multi-geometry-member-ordering" tabindex="-1"><a class="heading-anchor" href="#multi-geometry-member-ordering">Multi-Geometry Member Ordering</a></h3>
+<p>A <code>MultiPolygon</code> or <code>MultiLineString</code> where constituent geometries appear in different orders across deliveries will hash differently even after coordinate normalization. Sort multi-geometry members by their bounding box centroid before serialization:</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape<span class="token punctuation">,</span> mapping<span class="token punctuation">,</span> MultiPolygon
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>ops <span class="token keyword">import</span> unary_union
+
+<span class="token keyword">def</span> <span class="token function">sort_multi_geometry</span><span class="token punctuation">(</span>geom<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Sort sub-geometries of a multi-type by centroid (lon, lat) for deterministic ordering."""</span>
+    <span class="token keyword">if</span> <span class="token builtin">hasattr</span><span class="token punctuation">(</span>geom<span class="token punctuation">,</span> <span class="token string">"geoms"</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        sorted_geoms <span class="token operator">=</span> <span class="token builtin">sorted</span><span class="token punctuation">(</span>geom<span class="token punctuation">.</span>geoms<span class="token punctuation">,</span> key<span class="token operator">=</span><span class="token keyword">lambda</span> g<span class="token punctuation">:</span> <span class="token punctuation">(</span>g<span class="token punctuation">.</span>centroid<span class="token punctuation">.</span>x<span class="token punctuation">,</span> g<span class="token punctuation">.</span>centroid<span class="token punctuation">.</span>y<span class="token punctuation">)</span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> <span class="token builtin">type</span><span class="token punctuation">(</span>geom<span class="token punctuation">)</span><span class="token punctuation">(</span>sorted_geoms<span class="token punctuation">)</span>
+    <span class="token keyword">return</span> geom
+</code></pre>
+</div>
+<p>Call this after <code>make_valid()</code> and before the coordinate rounding pass.</p>
+<h3 id="out-of-order-delivery-and-state-drift" tabindex="-1"><a class="heading-anchor" href="#out-of-order-delivery-and-state-drift">Out-of-Order Delivery and State Drift</a></h3>
+<p>Message brokers guarantee at-least-once delivery but not ordering. If Event B (a newer boundary update) arrives first and Event A (an older snapshot) arrives later, exact key matching treats them as distinct events and applies the older state. Implement a monotonic version field or event sequence number alongside the spatial key to enforce state progression — the spatial key handles deduplication, the version handles ordering.</p>
+<hr>
+<h2 id="troubleshooting" tabindex="-1"><a class="heading-anchor" href="#troubleshooting">Troubleshooting</a></h2>
+<div style="overflow-x:auto">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely spatial cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Identical payloads produce different keys</td>
+<td>Floating-point precision differs between senders</td>
+<td>Enforce Decimal-based rounding in Step 3; log raw coordinates on key divergence</td>
+</tr>
+<tr>
+<td><code>make_valid()</code> returns empty geometry</td>
+<td>Self-intersecting polygon collapsed to a degenerate shape</td>
+<td>Raise <code>422</code> and alert; inspect source data pipeline for topology errors</td>
+</tr>
+<tr>
+<td>Cache hit rate is unexpectedly low</td>
+<td>Non-whitelisted fields (timestamps) leaking into key input</td>
+<td>Audit <code>extract_canonical_fields</code>; add test for timestamp exclusion</td>
+</tr>
+<tr>
+<td>Redis <code>SET NX EX</code> returns None but event was not processed</td>
+<td>Race condition in application code around the atomic check</td>
+<td>Ensure processing happens inside the same code block that reads the <code>SET</code> result</td>
+</tr>
+<tr>
+<td>Multi-geometry payloads from same source hash differently</td>
+<td>Member ordering varies across serializers</td>
+<td>Add <code>sort_multi_geometry()</code> before normalization</td>
+</tr>
+<tr>
+<td>Keys diverge after CRS transformation</td>
+<td>Source data mixing EPSG:4326 and EPSG:3857 without declaration</td>
+<td>Enforce CRS validation at Layer 1; transform all non-4326 input before normalization</td>
+</tr>
+<tr>
+<td>High normalization failure rate</td>
+<td>New geometry type entering the pipeline (e.g., <code>GeometryCollection</code>)</td>
+<td>Update schema validation to reject or handle the new type; alert on validation failure spikes</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<hr>
+<h2 id="faq" tabindex="-1"><a class="heading-anchor" href="#faq">FAQ</a></h2>
+<details class="faq">
+<summary><strong>How many decimal places should I use for GPS coordinates in idempotency keys?</strong></summary>
+<p>Six to seven decimal places covers sub-meter GPS accuracy (7 decimals ≈ 1 cm). Use fewer (3–4) only for administrative boundaries or zone polygons where centimeter precision is meaningless — over-precision in those cases causes legitimate boundary updates to hash identically when coordinates shift by less than your threshold. Document the policy and enforce it at ingestion time so all producers align.</p>
+</details>
+<details class="faq">
+<summary><strong>Can I use MD5 instead of SHA-256 for performance?</strong></summary>
+<p>MD5 is faster but has known collision weaknesses and should not be used for security-sensitive key derivation. For pure deduplication where security is not a concern, truncated SHA-256 (128 bits) costs approximately 1 µs per key on modern hardware — negligible compared to a Redis round-trip at 0.5–2 ms. The collision probability of truncated SHA-256 at 128 bits remains astronomically low even at 10 billion events per day, whereas MD5 provides worse collision resistance with marginal speed advantage.</p>
+</details>
+<details class="faq">
+<summary><strong>What happens when two geometries are topologically equivalent but have different vertex orderings?</strong></summary>
+<p>They will hash to different keys. Exact key matching is coordinate-level, not topology-level. If topological equivalence matters — e.g. two versions of the same zone boundary where one was resampled — compute a canonical representation such as a convex hull or a simplified geometry before hashing, or layer <a href="/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication</a> on top to catch geometrically equivalent but coordinate-different payloads.</p>
+</details>
+<details class="faq">
+<summary><strong>How long should idempotency keys be kept in Redis?</strong></summary>
+<p>Align the TTL with the maximum retry window of your upstream broker, then add a 2x safety margin. Most webhook platforms retry for 24–72 hours, so a 96-hour TTL covers redeliveries. For Kafka consumers with large retention windows (7–14 days), persist keys to a database table partitioned by day and use Redis only as the hot-path window. The full caching strategy, including cache stampede prevention and TTL alignment, is covered in <a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks</a>.</p>
+</details>
+<hr>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
+<ul>
+<li><a href="/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a> — parent section covering the full deduplication strategy for geospatial event streams</li>
+<li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/">Generating Deterministic Idempotency Keys for GeoJSON Events</a> — deep-dive long-tail on GeoJSON-specific canonicalization patterns</li>
+<li><a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks</a> — Redis architecture for key storage, TTL strategy, and cache stampede prevention</li>
+<li><a href="/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication</a> — topology-aware deduplication for geometries that are equivalent but not coordinate-identical</li>
+<li><a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a> — handling mixed-CRS payloads before they reach your key generation pipeline</li>
+</ul>
 
         <h2 id="explore-this-section">Explore this section</h2>
         <div class="children-grid">
           <a class="card " href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/">
             <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19c0-8 6-14 14-14 0 8-6 14-14 14z"/><path d="M5 19l6-6"/></svg></span>
-            <h3 class="card__title">Generating Deterministic Idempotency Keys for GeoJSON Events</h3>
+            <h3 class="card__title">Deterministic Idempotency Keys for GeoJSON Events</h3>
             <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
           </a>
         </div>
@@ -298,8 +684,8 @@ decimal<span class="token punctuation">.</span>getcontext<span class="token punc
           <h3>Related in this section</h3>
           <ul>
             <li><a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
-            <li><a href="/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Event-Driven Geospatial Systems</a></li>
-            <li><a href="/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication in Event-Driven Geospatial Systems</a></li>
+            <li><a href="/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+            <li><a href="/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
           </ul>
         </div>
         <div class="aside-card">
@@ -336,6 +722,9 @@ decimal<span class="token punctuation">.</span>getcontext<span class="token punc
         <h4>Site</h4>
         <ul>
           <li><a href="/">Home</a></li>
+          <li><a href="/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
         </ul>
       </div>
       <div>
@@ -365,7 +754,7 @@ decimal<span class="token punctuation">.</span>getcontext<span class="token punc
 </footer>
 
   </div>
-  <script src="/assets/js/site.js" defer></script>
+  <script src="/assets/js/site.js?v=6c55de86" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

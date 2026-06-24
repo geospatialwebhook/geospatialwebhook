@@ -34,23 +34,23 @@
   <meta property="og:url" content="https://www.geospatialwebhook.com/"/>
   <meta property="og:title" content="Python Geospatial Webhook &amp; Event-Driven Architecture"/>
   <meta property="og:description" content="Design, build, and scale event-driven spatial systems in Python — feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring."/>
-  <meta property="og:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
-  <meta property="og:image:width" content="512"/>
-  <meta property="og:image:height" content="512"/>
-  <meta property="og:image:alt" content="Geospatial Webhook logo"/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
 
   
   <meta name="twitter:card" content="summary_large_image"/>
   <meta name="twitter:title" content="Python Geospatial Webhook &amp; Event-Driven Architecture"/>
   <meta name="twitter:description" content="Design, build, and scale event-driven spatial systems in Python — feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring."/>
-  <meta name="twitter:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
-  <meta name="twitter:image:alt" content="Geospatial Webhook logo"/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
 
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/assets/css/site.css"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=8ef3d820"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -116,6 +116,8 @@
 
     <main class="layout__main" id="main">
       
+
+
 <section class="hero">
   <div class="container container--wide">
     <div class="hero__inner">
@@ -130,8 +132,8 @@
           Practical patterns for idempotency, retries, queues, and production monitoring.
         </p>
         <p class="hero__lead">
-          This site is a working playbook for platform engineers, GIS backend developers,
-          and SaaS founders who need event pipelines that don't lose data, don't double-write
+          A working playbook for platform engineers, GIS backend developers, and SaaS
+          founders who need event pipelines that don't lose data, don't double-write
           features, and stay observable at scale.
         </p>
         <div class="hero__ctas">
@@ -150,11 +152,64 @@
         </div>
       </div>
       <div class="hero__visual" aria-hidden="true">
-        <img src="/assets/img/logo.svg" alt=""/>
+        <svg viewBox="0 0 420 315" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">
+          <!-- Background map grid -->
+          <rect width="420" height="315" rx="18" fill="none"/>
+          <!-- Grid lines (lat/lon feel) -->
+          <g stroke="#d8c2a3" stroke-width="1" opacity="0.5">
+            <line x1="70" y1="0" x2="70" y2="315"/>
+            <line x1="140" y1="0" x2="140" y2="315"/>
+            <line x1="210" y1="0" x2="210" y2="315"/>
+            <line x1="280" y1="0" x2="280" y2="315"/>
+            <line x1="350" y1="0" x2="350" y2="315"/>
+            <line x1="0" y1="52" x2="420" y2="52"/>
+            <line x1="0" y1="104" x2="420" y2="104"/>
+            <line x1="0" y1="157" x2="420" y2="157"/>
+            <line x1="0" y1="210" x2="420" y2="210"/>
+            <line x1="0" y1="262" x2="420" y2="262"/>
+          </g>
+          <!-- Land polygon (stylised region) -->
+          <polygon points="55,80 130,55 210,70 300,50 370,90 390,160 340,220 260,250 170,240 90,210 45,160" fill="#b7e1c4" opacity="0.55" stroke="#5fb682" stroke-width="1.5"/>
+          <!-- River / routing line -->
+          <path d="M90,160 Q150,140 200,165 Q260,195 330,175" fill="none" stroke="#3e9763" stroke-width="2.5" stroke-dasharray="6,3" opacity="0.8"/>
+          <!-- Webhook event nodes -->
+          <circle cx="130" cy="105" r="9" fill="#d9744f" opacity="0.9"/>
+          <circle cx="130" cy="105" r="16" fill="none" stroke="#d9744f" stroke-width="1.5" opacity="0.4"/>
+          <circle cx="130" cy="105" r="24" fill="none" stroke="#d9744f" stroke-width="1" opacity="0.2"/>
+
+          <circle cx="270" cy="88" r="9" fill="#3e9763" opacity="0.9"/>
+          <circle cx="270" cy="88" r="16" fill="none" stroke="#3e9763" stroke-width="1.5" opacity="0.4"/>
+          <circle cx="270" cy="88" r="24" fill="none" stroke="#3e9763" stroke-width="1" opacity="0.2"/>
+
+          <circle cx="210" cy="180" r="9" fill="#8f7150" opacity="0.9"/>
+          <circle cx="210" cy="180" r="16" fill="none" stroke="#8f7150" stroke-width="1.5" opacity="0.4"/>
+
+          <!-- Connector lines (event routing) -->
+          <line x1="130" y1="105" x2="270" y2="88" stroke="#d9744f" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.6"/>
+          <line x1="270" y1="88" x2="210" y2="180" stroke="#3e9763" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.6"/>
+          <line x1="130" y1="105" x2="210" y2="180" stroke="#8f7150" stroke-width="1" stroke-dasharray="4,4" opacity="0.5"/>
+
+          <!-- Payload badge -->
+          <rect x="290" y="185" width="112" height="52" rx="8" fill="#ffffff" stroke="#ead7c0" stroke-width="1.2" opacity="0.95"/>
+          <text x="346" y="204" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="9.5" fill="#6b5238" font-weight="600">GeoJSON</text>
+          <text x="346" y="218" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="8.5" fill="#3e9763">type: Feature</text>
+          <text x="346" y="231" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="8.5" fill="#d9744f">sig: HMAC ✓</text>
+
+          <!-- H3 hexagons (sensor grid) -->
+          <g opacity="0.35" fill="none" stroke="#5fb682" stroke-width="1.2">
+            <polygon points="65,230 80,221 95,230 95,248 80,257 65,248"/>
+            <polygon points="95,230 110,221 125,230 125,248 110,257 95,248"/>
+            <polygon points="80,257 95,248 110,257 110,275 95,284 80,275"/>
+          </g>
+
+          <!-- Legend label -->
+          <text x="210" y="300" text-anchor="middle" font-family="'Inter',sans-serif" font-size="10" fill="#876e54" letter-spacing="0.06em">REAL-TIME SPATIAL EVENT ROUTING</text>
+        </svg>
       </div>
     </div>
   </div>
 </section>
+
 
 <section class="section">
   <div class="container container--wide">
@@ -188,6 +243,58 @@
     </div>
   </div>
 </section>
+
+
+<section class="section">
+  <div class="container container--wide">
+    <div class="section__head">
+      <h2 class="section__title">Start here</h2>
+      <p class="section__sub">
+        Six articles that cover the most common problems engineers hit when wiring up
+        geospatial webhooks for the first time. Read these before diving into a subsection.
+      </p>
+    </div>
+    <div class="card-grid">
+      <a class="card" href="/core-event-fundamentals-architecture/feature-change-triggers/how-to-design-a-geospatial-webhook-architecture-in-python/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></span>
+        <h3 class="card__title">Design a Geospatial Webhook Architecture in Python</h3>
+        <p class="card__text">Async dispatch, Shapely validation, HMAC signing, exponential backoff, and dead-letter routing for spatial event pipelines.</p>
+        <span class="card__more">Read <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card card--mint" href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+        <h3 class="card__title">Deterministic Idempotency Keys for GeoJSON Events</h3>
+        <p class="card__text">Canonicalize GeoJSON payloads and hash them into stable keys that survive retries, serializer drift, and float precision variance.</p>
+        <span class="card__more">Read <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card card--earth" href="/spatial-payload-routing-parsing/crs-normalization-strategies/handling-mixed-crs-payloads-in-python-event-handlers/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg></span>
+        <h3 class="card__title">Handling Mixed CRS Payloads in Python Webhooks</h3>
+        <p class="card__text">Detect, transform, and normalize coordinate reference systems on the fly so downstream consumers always receive WGS-84.</p>
+        <span class="card__more">Read <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card card--mint" href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/using-redis-to-cache-spatial-webhook-signatures/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></span>
+        <h3 class="card__title">Redis-Backed Spatial Webhook Signatures</h3>
+        <p class="card__text">Store HMAC-SHA256 hashes of geospatial payloads in Redis with SET NX EX for atomic, sub-millisecond duplicate detection.</p>
+        <span class="card__more">Read <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card card--rose" href="/core-event-fundamentals-architecture/webhook-security-boundaries/securing-webhook-endpoints-with-spatial-token-validation/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+        <h3 class="card__title">Securing Webhooks with Spatial Token Validation</h3>
+        <p class="card__text">Embed a signed geohash or bounding-box digest into HMAC or JWT so consumers reject events that fail cryptographic or geographic checks.</p>
+        <span class="card__more">Read <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card card--earth" href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/parsing-geojson-webhooks-with-fastapi-and-pydantic/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.5 5.5l2.5 2.5M16 16l2.5 2.5M5.5 18.5L8 16M16 8l2.5-2.5"/></svg></span>
+        <h3 class="card__title">Parsing GeoJSON Webhooks with FastAPI and Pydantic</h3>
+        <p class="card__text">RFC 7946-compliant Pydantic v2 models enforce spatial schemas at the HTTP layer, rejecting malformed payloads before they reach business logic.</p>
+        <span class="card__more">Read <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+    </div>
+  </div>
+</section>
+
 
 <section class="section">
   <div class="container container--wide">
@@ -256,6 +363,9 @@
         <h4>Site</h4>
         <ul>
           <li><a href="/">Home</a></li>
+          <li><a href="/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
         </ul>
       </div>
       <div>
@@ -285,7 +395,7 @@
 </footer>
 
   </div>
-  <script src="/assets/js/site.js" defer></script>
+  <script src="/assets/js/site.js?v=6c55de86" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

@@ -1,64 +1,588 @@
-# Sensor Data Routing Patterns
+---
+title: "Sensor Data Routing Patterns for Geospatial Webhooks"
+description: "Build spatial routing pipelines in Python: schema validation, spatial classification, broker dispatch, and at-least-once delivery for IoT and GIS streams."
+slug: "sensor-data-routing-patterns"
+type: "cluster"
+breadcrumb: "Sensor Data Routing Patterns"
+datePublished: "2024-03-15"
+dateModified: "2026-06-24"
+---
 
-In modern geospatial architectures, raw telemetry rarely flows directly to consumers. Instead, it passes through a deterministic routing layer that classifies, filters, and dispatches payloads based on spatial boundaries, attribute thresholds, and consumer subscriptions. Implementing robust **Sensor Data Routing Patterns** is critical for platform engineers and SaaS founders who must balance low-latency delivery with strict spatial accuracy. When built on a solid foundation of [Core Event Fundamentals & Architecture](/core-event-fundamentals-architecture/), routing layers transform chaotic IoT streams into structured, actionable event flows that power real-time mapping, alerting, and analytics.
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Sensor Data Routing Patterns for Geospatial Webhooks",
+      "description": "A step-by-step guide to building deterministic spatial routing pipelines in Python: schema validation, spatial classification, broker dispatch, and at-least-once delivery for IoT and GIS telemetry streams.",
+      "datePublished": "2024-03-15",
+      "dateModified": "2026-06-24",
+      "author": { "@type": "Organization", "name": "geospatialwebhook.com" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatialwebhook.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Core Event Fundamentals & Architecture", "item": "https://geospatialwebhook.com/core-event-fundamentals-architecture/" },
+        { "@type": "ListItem", "position": 3, "name": "Sensor Data Routing Patterns", "item": "https://geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/" }
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Build a Spatial Sensor Data Routing Pipeline",
+      "step": [
+        { "@type": "HowToStep", "position": 1, "name": "Secure ingestion and schema validation" },
+        { "@type": "HowToStep", "position": 2, "name": "Spatial and attribute classification" },
+        { "@type": "HowToStep", "position": 3, "name": "Route resolution and fan-out logic" },
+        { "@type": "HowToStep", "position": 4, "name": "Asynchronous broker dispatch" },
+        { "@type": "HowToStep", "position": 5, "name": "Downstream consumption and state sync" }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "When should I partition by H3 cell instead of device ID?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Use H3 partitioning when downstream consumers are regionaly scoped — tile renderers, per-city alerting services, or geographic shards of a PostGIS database. Use device-ID partitioning when ordering guarantees per sensor matter more than spatial locality, such as time-series telemetry streams where out-of-order events corrupt state." }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I handle sensors that report in a CRS other than WGS 84 (EPSG:4326)?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Reproject at the ingestion boundary before any spatial classification. Use pyproj's Transformer with always_xy=True to avoid axis-order ambiguity. Store the original CRS in the event envelope as a metadata field so consumers can audit provenance, but route exclusively on EPSG:4326 coordinates." }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the right queue depth limit to apply backpressure at the ingress?",
+          "acceptedAnswer": { "@type": "Answer", "text": "A practical starting point is 10,000 in-flight events per ingress worker. Monitor P99 ingestion latency and drop rate. When P99 exceeds 300 ms or drop rate exceeds 0.05%, tighten the limit or scale out workers. Return HTTP 429 with a Retry-After header so upstream senders back off gracefully." }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I skip the message broker and route directly from FastAPI to consumers?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Only for very low throughput (under ~50 events/second) with a single consumer. Without a broker, a consumer crash silently drops events and spatial mutations are lost. For production IoT feeds, always interpose a durable broker — Redis Streams is the lowest-friction option, Kafka is the right choice when you need replay, consumer group partitioning, or retention beyond 24 hours." }
+        }
+      ]
+    }
+  ]
+}
+</script>
 
-## Architectural Prerequisites & Baseline
+**Raw telemetry from spatial sensors rarely flows directly to consumers — it passes through a deterministic routing layer that validates, classifies, and dispatches payloads based on geographic boundaries, attribute thresholds, and subscriber rules.** This page is part of [Core Event Fundamentals & Architecture](/core-event-fundamentals-architecture/) and covers how to build that routing layer in Python from ingestion through broker dispatch.
 
-Before deploying a spatial routing pipeline, your environment must satisfy strict concurrency, validation, and interoperability requirements. Routing at scale fails when ingress layers lack schema enforcement or when spatial predicates consume excessive CPU cycles.
+---
 
-- **Python 3.10+** with native `asyncio` support for non-blocking I/O and cooperative multitasking. See the official [Python asyncio documentation](https://docs.python.org/3/library/asyncio.html) for event loop configuration and task scheduling best practices.
-- **FastAPI or Starlette** for high-throughput webhook ingestion, leveraging ASGI servers like Uvicorn or Hypercorn.
-- **Pydantic v2** for strict payload validation, model caching, and schema versioning across device firmware generations.
-- **Shapely 2.0+** or **GeoPandas** for in-memory spatial predicates, backed by GEOS for robust polygon intersection and point-in-polygon tests.
-- **Message Broker** (Redis Streams, RabbitMQ, or Apache Kafka) for decoupled dispatch, consumer group partitioning, and persistent offset tracking.
-- **GeoJSON compliance** per [RFC 7946](https://datatracker.ietf.org/doc/html/rfc7946) to ensure standardized coordinate representation, CRS assumptions, and geometry type interoperability.
-- **Observability stack** (OpenTelemetry, Prometheus, Grafana) for routing latency, queue depth, and drop-rate tracking across distributed nodes.
+## Prerequisites
 
-Routing patterns assume you already understand webhook signature verification, idempotency keys, and backpressure handling. If your architecture relies heavily on Designing edge-computed spatial webhooks for IoT sensors, you must align edge payload schemas with your central router’s validation layer to prevent schema drift and coordinate misalignment at scale.
+Before deploying a spatial routing pipeline, confirm your environment meets these requirements:
 
-## Deterministic Routing Pipeline
+- [ ] **Python 3.10+** — native `asyncio`, structural pattern matching, strict type hints
+- [ ] **FastAPI or Starlette** — ASGI webhook ingestion with Uvicorn or Hypercorn
+- [ ] **Pydantic v2** — strict payload validation, model caching, CRS enum enforcement
+- [ ] **Shapely 2.0+** — in-memory spatial predicates via GEOS (polygon intersection, point-in-polygon)
+- [ ] **pyproj 3.5+** — coordinate reprojection from device-native CRS to EPSG:4326
+- [ ] **Message broker** — Redis Streams, RabbitMQ, or Apache Kafka for decoupled dispatch
+- [ ] **GeoJSON compliance** — payloads must conform to [RFC 7946](https://datatracker.ietf.org/doc/html/rfc7946) before entering the router
+- [ ] **OpenTelemetry + Prometheus** — routing latency, queue depth, and drop-rate observability
 
-A production-grade spatial router follows a deterministic, stage-isolated pipeline. Each phase enforces strict contracts, enabling horizontal scaling and predictable failure domains.
+---
 
-### 1. Secure Ingestion & Schema Validation
-Raw sensor payloads arrive via HTTP POST or MQTT-to-HTTP bridges. The ingress layer immediately validates JSON structure, verifies cryptographic signatures (HMAC-SHA256 or Ed25519), and extracts routing metadata: device ID, epoch timestamp, coordinate reference system (CRS), and firmware version. Invalid payloads are quarantined to a dead-letter queue before consuming downstream compute resources. Validation must reject malformed coordinates early; spatial operations on invalid geometries cause silent routing failures or broker poisoning.
+## Architecture Overview
 
-### 2. Spatial & Attribute Classification
-Once validated, the router evaluates the payload against registered spatial zones (polygons, geofences, administrative boundaries) and attribute filters (thresholds, device types, state transitions). This stage frequently intersects with [Feature Change Triggers](/core-event-fundamentals-architecture/feature-change-triggers/) when routing decisions depend on delta detection rather than absolute state. For example, a temperature sensor might only trigger downstream alerts when crossing a threshold *and* located within a wildfire risk polygon. Spatial indexing (R-trees or QuadTrees) is mandatory here; brute-force polygon intersection testing degrades linearly with zone count and introduces unacceptable tail latency.
+The routing pipeline is a five-stage, stage-isolated sequence. Each stage enforces strict contracts so individual phases can be scaled or replaced independently.
 
-### 3. Route Resolution & Fan-Out Logic
-Based on classification results, the router builds a dispatch list. A single sensor event may route to multiple consumers (fan-out) or be suppressed entirely if it matches exclusion rules or deduplication windows. Suppression logic prevents alert fatigue and reduces broker load during high-frequency telemetry bursts. The router attaches routing metadata (partition keys, consumer tags, TTL) to each dispatch envelope. At this stage, you must decide between synchronous fan-out (blocking until all downstream ACKs) and asynchronous fan-out (fire-and-forget with guaranteed delivery queues). Most production systems opt for the latter to preserve ingress throughput.
+<svg viewBox="0 0 760 320" role="img" aria-label="Five-stage sensor data routing pipeline diagram" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:760px;height:auto;font-family:inherit;display:block;margin:1.5rem auto;">
+  <title>Sensor Data Routing Pipeline</title>
+  <desc>Data flows left-to-right through five stages: Ingestion, Classification, Route Resolution, Broker Dispatch, and Consumer Sync. Failed events are sent to a Dead-Letter Queue at the bottom.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.6"/>
+    </marker>
+  </defs>
+  <!-- Stage boxes -->
+  <rect x="10" y="100" width="118" height="64" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+  <text x="69" y="126" text-anchor="middle" font-size="11" fill="currentColor" font-weight="600">1. Ingestion</text>
+  <text x="69" y="142" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">&amp; Schema</text>
+  <text x="69" y="156" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">Validation</text>
 
-### 4. Asynchronous Broker Dispatch
-Resolved routes are serialized and pushed to a message broker. Partitioning strategy directly impacts consumer scaling and spatial locality. Hash-based partitioning on `device_id` ensures ordered delivery per sensor, while spatial partitioning (e.g., by geohash or S2 cell) optimizes downstream tile generation and regional analytics. Brokers must be configured with explicit retention policies, consumer group offsets, and backpressure thresholds to prevent memory exhaustion during telemetry spikes.
+  <rect x="162" y="100" width="118" height="64" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+  <text x="221" y="126" text-anchor="middle" font-size="11" fill="currentColor" font-weight="600">2. Spatial</text>
+  <text x="221" y="142" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">&amp; Attribute</text>
+  <text x="221" y="156" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">Classification</text>
 
-### 5. Downstream Consumption & State Sync
-Consumers pull from broker partitions, deserialize payloads, and update application state. In mapping-heavy architectures, this stage often feeds into [Tile Update Event Pipelines](/core-event-fundamentals-architecture/tile-update-event-pipelines/) to regenerate raster or vector tiles based on new sensor states. Consumers must implement idempotent write patterns, as network partitions or broker retries will inevitably deliver duplicate events. State synchronization should rely on optimistic concurrency control or version vectors rather than blind overwrites.
+  <rect x="314" y="100" width="118" height="64" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+  <text x="373" y="126" text-anchor="middle" font-size="11" fill="currentColor" font-weight="600">3. Route</text>
+  <text x="373" y="142" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">Resolution</text>
+  <text x="373" y="156" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">&amp; Fan-Out</text>
 
-## Reliability & Delivery Guarantees
+  <rect x="466" y="100" width="118" height="64" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+  <text x="525" y="126" text-anchor="middle" font-size="11" fill="currentColor" font-weight="600">4. Broker</text>
+  <text x="525" y="142" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">Dispatch</text>
+  <text x="525" y="156" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">(async)</text>
 
-Spatial routing introduces unique failure modes: coordinate drift, timezone misalignment, and partial zone updates. To maintain data integrity, implement explicit delivery semantics. At-least-once delivery is the industry standard for geospatial telemetry, ensuring no event is lost while requiring consumers to handle duplicates gracefully. For implementation details on retry backoff, idempotency key generation, and dead-letter routing, reference [Implementing at-least-once delivery for GIS webhooks](/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/).
+  <rect x="618" y="100" width="132" height="64" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+  <text x="684" y="126" text-anchor="middle" font-size="11" fill="currentColor" font-weight="600">5. Consumer</text>
+  <text x="684" y="142" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">&amp; State</text>
+  <text x="684" y="156" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">Sync</text>
 
-Exactly-once delivery is rarely achievable across distributed spatial systems due to network partitions and broker leader elections. Instead, design consumers to be idempotent and state-reconcilable. Use deterministic event IDs (e.g., `sha256(device_id + timestamp + payload_hash)`) to track processed events in a low-latency store like Redis. When a duplicate arrives, the consumer checks the ID, skips processing, and returns a 200 OK to prevent broker redelivery storms.
+  <!-- Horizontal arrows -->
+  <line x1="128" y1="132" x2="160" y2="132" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.6"/>
+  <line x1="280" y1="132" x2="312" y2="132" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.6"/>
+  <line x1="432" y1="132" x2="464" y2="132" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.6"/>
+  <line x1="584" y1="132" x2="616" y2="132" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.6"/>
 
-## Implementation Blueprint & Code Reliability
+  <!-- Sensor input -->
+  <rect x="10" y="30" width="118" height="36" rx="4" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3" stroke-dasharray="4,3"/>
+  <text x="69" y="52" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">HTTP POST / MQTT</text>
+  <line x1="69" y1="66" x2="69" y2="98" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.5"/>
 
-Building a custom router requires careful separation of concerns. The ingestion layer should never perform spatial intersection tests; instead, it should offload classification to a dedicated worker pool. FastAPI’s background task system or Celery with Redis/RabbitMQ provides reliable async execution boundaries. For a complete reference implementation covering middleware, spatial indexing, and consumer routing, see Building a custom spatial event router in FastAPI.
+  <!-- Dead-letter queue -->
+  <rect x="10" y="218" width="118" height="36" rx="4" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3" stroke-dasharray="4,3"/>
+  <text x="69" y="240" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">Dead-Letter Queue</text>
+  <line x1="69" y1="164" x2="69" y2="216" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.4" stroke-dasharray="4,3"/>
+  <text x="78" y="195" font-size="9" fill="currentColor" opacity="0.55">invalid</text>
 
-Code reliability hinges on three practices:
-1. **Strict Pydantic Models**: Define explicit coordinate bounds, CRS enums, and required fields. Reject payloads with `NaN` or `Infinity` coordinates at the validation stage.
-2. **Timeout & Circuit Breaking**: Wrap spatial predicates and broker publishes in circuit breakers. If the GEOS library hangs on a malformed polygon, the router must fail fast and quarantine the event rather than block the event loop.
-3. **Deterministic Logging**: Emit structured logs containing `event_id`, `routing_decision`, `spatial_match_count`, and `dispatch_latency`. This enables rapid post-mortem analysis when routing anomalies occur.
+  <!-- Suppression note under Route Resolution -->
+  <text x="373" y="195" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.55">suppression / dedup</text>
+  <line x1="373" y1="164" x2="373" y2="188" stroke="currentColor" stroke-width="1" opacity="0.35" stroke-dasharray="3,3"/>
 
-## Scaling Limits & Observability
+  <!-- Consumer outputs -->
+  <rect x="618" y="218" width="132" height="36" rx="4" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3" stroke-dasharray="4,3"/>
+  <text x="684" y="240" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">PostGIS / Tile Cache</text>
+  <line x1="684" y1="164" x2="684" y2="216" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.5"/>
 
-Sensor Data Routing Patterns scale predictably only when bottlenecks are isolated. The most common scaling limits are:
-- **CPU-bound spatial predicates**: Polygon intersection testing scales poorly beyond ~10,000 concurrent zones. Precompute spatial grids (H3 or S2) and map sensors to cell IDs rather than evaluating raw geometries per event.
-- **Broker partition exhaustion**: Too few partitions cause consumer lag; too many increase memory overhead and complicate offset tracking. Start with 12–24 partitions per topic and scale based on consumer group throughput.
-- **Memory pressure from in-flight events**: Unbounded async queues lead to OOM kills. Implement explicit queue depth limits and apply backpressure at the ingress layer (HTTP 429 or 503) when downstream consumers fall behind.
+  <!-- Bottom label -->
+  <text x="380" y="300" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.45">Sensor Data Routing Pipeline — geospatialwebhook.com</text>
+</svg>
 
-Observability must track routing latency percentiles (P50, P95, P99), spatial classification hit rates, and broker queue depths. Alert on sustained P99 latency > 500ms or drop rates > 0.1%. Use distributed tracing to follow an event from HTTP POST through spatial classification, broker enqueue, and consumer ACK. Without end-to-end tracing, routing failures appear as silent data gaps rather than actionable pipeline errors.
+---
 
-## Conclusion
+## Step-by-Step Implementation
 
-Effective spatial routing transforms high-velocity telemetry into reliable, actionable streams. By enforcing strict validation, leveraging spatial indexing, decoupling dispatch from ingestion, and designing for at-least-once delivery, platform teams can build routing layers that scale with device fleets and consumer demand. The patterns outlined here provide a deterministic foundation for real-time geospatial applications, ensuring that every sensor event reaches the right consumer, at the right time, with guaranteed integrity.
+### Step 1 — Secure Ingestion and Schema Validation
+
+**Purpose:** Reject malformed and tampered payloads before they consume any downstream compute.
+
+Raw sensor payloads arrive via HTTP POST or MQTT-to-HTTP bridge. The ingress layer validates JSON structure, verifies the cryptographic signature (`HMAC-SHA256` or `Ed25519`), and extracts routing metadata: `device_id`, epoch timestamp, coordinate reference system (CRS), and firmware version. Invalid payloads go straight to a dead-letter queue; spatial operations on corrupt geometries cause silent routing failures or broker poisoning.
+
+```python
+import hashlib
+import hmac
+from fastapi import FastAPI, Request, HTTPException
+from pydantic import BaseModel, field_validator, model_validator
+from shapely.geometry import shape
+from shapely.validation import make_valid
+import pyproj
+
+app = FastAPI()
+WEBHOOK_SECRET = b"your-hmac-secret"  # load from env in production
+
+class SensorPayload(BaseModel):
+    device_id: str
+    timestamp_utc: float          # Unix epoch, seconds
+    crs: str = "EPSG:4326"        # default; must be EPSG code string
+    geometry: dict                 # raw GeoJSON geometry object
+    properties: dict = {}
+
+    @field_validator("crs")
+    @classmethod
+    def crs_must_be_epsg(cls, v: str) -> str:
+        if not v.upper().startswith("EPSG:"):
+            raise ValueError("CRS must be an EPSG code, e.g. EPSG:4326")
+        return v.upper()
+
+    @model_validator(mode="after")
+    def geometry_must_be_valid(self) -> "SensorPayload":
+        try:
+            geom = shape(self.geometry)
+        except Exception as exc:
+            raise ValueError(f"GeoJSON geometry parse error: {exc}") from exc
+        if not geom.is_valid:
+            geom = make_valid(geom)  # attempt automatic repair
+        if geom.is_empty:
+            raise ValueError("Geometry is empty after validation")
+        return self
+
+def verify_hmac(body: bytes, signature: str) -> bool:
+    expected = hmac.new(WEBHOOK_SECRET, body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, signature.removeprefix("sha256="))
+
+@app.post("/ingest")
+async def ingest(request: Request):
+    body = await request.body()
+    sig = request.headers.get("X-Hub-Signature-256", "")
+    if not verify_hmac(body, sig):
+        raise HTTPException(status_code=401, detail="Invalid signature")
+    try:
+        payload = SensorPayload.model_validate_json(body)
+    except Exception as exc:
+        # quarantine to dead-letter queue instead of returning 400
+        await quarantine(body, reason=str(exc))
+        return {"status": "quarantined"}
+    return await route_payload(payload)
+```
+
+### Step 2 — Spatial and Attribute Classification
+
+**Purpose:** Determine which registered zones and consumers the event belongs to.
+
+The router evaluates the reprojected point or polygon against registered spatial zones (geofences, administrative boundaries, wildfire risk polygons) and attribute filters (device type, state transitions, threshold crossings). This stage intersects with [Feature Change Triggers](/core-event-fundamentals-architecture/feature-change-triggers/) when routing decisions depend on delta detection rather than absolute state. Spatial indexing with an R-tree is mandatory; brute-force intersection testing degrades linearly with zone count and introduces unacceptable tail latency at production scale.
+
+```python
+from shapely.strtree import STRtree
+from shapely.geometry import shape, Point
+import pyproj
+
+# Build once at startup; refresh when zone registry changes
+TRANSFORMER_CACHE: dict[str, pyproj.Transformer] = {}
+
+def get_transformer(source_crs: str) -> pyproj.Transformer:
+    if source_crs not in TRANSFORMER_CACHE:
+        TRANSFORMER_CACHE[source_crs] = pyproj.Transformer.from_crs(
+            source_crs, "EPSG:4326", always_xy=True
+        )
+    return TRANSFORMER_CACHE[source_crs]
+
+class ZoneIndex:
+    """R-tree-backed index of registered spatial zones."""
+
+    def __init__(self, zones: list[dict]):
+        self._zones = zones
+        self._geoms = [shape(z["geometry"]) for z in zones]
+        self._tree = STRtree(self._geoms)
+
+    def classify(self, geom) -> list[dict]:
+        candidate_indices = self._tree.query(geom)
+        return [
+            self._zones[i]
+            for i in candidate_indices
+            if self._geoms[i].intersects(geom)
+        ]
+
+def reproject_geometry(payload: SensorPayload):
+    """Return a Shapely geometry in EPSG:4326."""
+    geom = shape(payload.geometry)
+    if payload.crs == "EPSG:4326":
+        return geom
+    transformer = get_transformer(payload.crs)
+    return transform(transformer.transform, geom)
+
+async def classify_payload(payload: SensorPayload, index: ZoneIndex) -> list[dict]:
+    geom_wgs84 = reproject_geometry(payload)
+    matched_zones = index.classify(geom_wgs84)
+    # Attribute filtering — e.g. temperature threshold + zone membership
+    props = payload.properties
+    return [
+        z for z in matched_zones
+        if z.get("device_type") in (props.get("device_type"), None)
+    ]
+```
+
+### Step 3 — Route Resolution and Fan-Out
+
+**Purpose:** Translate matched zones into a dispatch list with partition keys and TTL metadata.
+
+A single sensor event may route to multiple consumers (fan-out) or be suppressed entirely if it matches an exclusion rule or a deduplication window. Suppression prevents alert fatigue and cuts broker load during high-frequency telemetry bursts. For idempotency key generation — essential when a consumer group receives the same event more than once — follow the approach in [Event Key Generation for Spatial Data](/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/).
+
+```python
+import hashlib, json, time
+from dataclasses import dataclass
+
+@dataclass
+class DispatchEnvelope:
+    topic: str
+    partition_key: str   # device_id for ordering; H3 cell for spatial locality
+    payload: dict
+    event_id: str
+    ttl_seconds: int = 300
+
+def build_event_id(payload: SensorPayload) -> str:
+    """Deterministic SHA-256 event ID for idempotency tracking."""
+    canonical = json.dumps(
+        {"device_id": payload.device_id,
+         "timestamp_utc": payload.timestamp_utc,
+         "geometry": payload.geometry},
+        sort_keys=True
+    ).encode()
+    return hashlib.sha256(canonical).hexdigest()
+
+def resolve_routes(
+    payload: SensorPayload,
+    matched_zones: list[dict],
+    dedup_window_seconds: int = 5,
+    seen_ids: set[str] | None = None,
+) -> list[DispatchEnvelope]:
+    seen_ids = seen_ids or set()
+    event_id = build_event_id(payload)
+    if event_id in seen_ids:
+        return []   # suppressed — duplicate within dedup window
+    envelopes = []
+    for zone in matched_zones:
+        envelopes.append(DispatchEnvelope(
+            topic=zone["topic"],
+            partition_key=payload.device_id,
+            payload={"event_id": event_id,
+                     "device_id": payload.device_id,
+                     "timestamp_utc": payload.timestamp_utc,
+                     "geometry": payload.geometry,
+                     "zone_id": zone["id"],
+                     "properties": payload.properties},
+            event_id=event_id,
+        ))
+    seen_ids.add(event_id)
+    return envelopes
+```
+
+### Step 4 — Asynchronous Broker Dispatch
+
+**Purpose:** Push resolved routes to a durable message broker without blocking the ingress worker.
+
+Partitioning strategy directly impacts consumer scaling and spatial locality. Hash-based partitioning on `device_id` ensures ordered delivery per sensor. Spatial partitioning by H3 cell (resolution 5–7) optimizes downstream [Tile Update Event Pipelines](/core-event-fundamentals-architecture/tile-update-event-pipelines/) and regional analytics. Configure explicit retention policies, consumer group offsets, and backpressure thresholds; unbounded broker topics exhaust memory during telemetry spikes.
+
+```python
+import asyncio
+import aioredis
+
+redis: aioredis.Redis | None = None
+
+async def get_redis() -> aioredis.Redis:
+    global redis
+    if redis is None:
+        redis = await aioredis.from_url("redis://localhost:6379", decode_responses=False)
+    return redis
+
+async def dispatch_to_broker(envelopes: list[DispatchEnvelope]) -> None:
+    r = await get_redis()
+    async with r.pipeline(transaction=False) as pipe:
+        for env in envelopes:
+            serialized = json.dumps(env.payload).encode()
+            # XADD to Redis Stream; maxlen trims to ~100k events per topic
+            pipe.xadd(
+                env.topic,
+                {"data": serialized, "partition_key": env.partition_key},
+                maxlen=100_000,
+                approximate=True,
+            )
+        await pipe.execute()
+
+async def route_payload(payload: SensorPayload) -> dict:
+    # ZoneIndex loaded at startup; passed via app state in production
+    zone_index: ZoneIndex = app.state.zone_index
+    matched = await classify_payload(payload, zone_index)
+    envelopes = resolve_routes(payload, matched)
+    if envelopes:
+        asyncio.create_task(dispatch_to_broker(envelopes))
+    return {"status": "accepted", "routes": len(envelopes)}
+```
+
+### Step 5 — Downstream Consumption and State Sync
+
+**Purpose:** Pull from broker partitions, apply idempotent writes, and update application state.
+
+Consumers pull from Redis Streams or Kafka partitions, deserialize payloads, and update PostGIS or an in-memory spatial cache. They must implement idempotent write patterns because network partitions or broker retries will deliver duplicate events. State synchronization should use optimistic concurrency control or version vectors rather than blind overwrites. For full implementation details on retry backoff, idempotency key tracking in Redis, and dead-letter routing, see [Implementing at-least-once delivery for GIS webhooks](/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/).
+
+```python
+import asyncio, json
+import aioredis
+import asyncpg
+
+CONSUMER_GROUP = "spatial-consumers"
+CONSUMER_NAME = "worker-1"
+PROCESSED_KEY = "processed_event_ids"   # Redis SET for idempotency tracking
+
+async def consume_stream(stream: str, db_pool: asyncpg.Pool) -> None:
+    r = await get_redis()
+    # Create group at stream start; ignore if already exists
+    try:
+        await r.xgroup_create(stream, CONSUMER_GROUP, id="0", mkstream=True)
+    except aioredis.ResponseError:
+        pass
+
+    while True:
+        messages = await r.xreadgroup(
+            CONSUMER_GROUP, CONSUMER_NAME,
+            streams={stream: ">"},
+            count=50, block=1000,
+        )
+        for _, entries in (messages or []):
+            for msg_id, fields in entries:
+                event = json.loads(fields[b"data"])
+                event_id = event["event_id"]
+                already_seen = await r.sismember(PROCESSED_KEY, event_id)
+                if already_seen:
+                    await r.xack(stream, CONSUMER_GROUP, msg_id)
+                    continue
+                try:
+                    await write_to_postgis(db_pool, event)
+                    await r.sadd(PROCESSED_KEY, event_id)
+                    await r.expire(PROCESSED_KEY, 86_400)   # 24 h TTL
+                    await r.xack(stream, CONSUMER_GROUP, msg_id)
+                except Exception as exc:
+                    # Leave unacknowledged; broker retries on next read
+                    print(f"Consumer error for {event_id}: {exc}")
+
+async def write_to_postgis(pool: asyncpg.Pool, event: dict) -> None:
+    geom_json = json.dumps(event["geometry"])
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO sensor_events (event_id, device_id, geom, recorded_at)
+            VALUES ($1, $2, ST_SetSRID(ST_GeomFromGeoJSON($3), 4326), to_timestamp($4))
+            ON CONFLICT (event_id) DO NOTHING
+            """,
+            event["event_id"], event["device_id"], geom_json, event["timestamp_utc"],
+        )
+```
+
+---
+
+## Spatial Validation and Error Handling
+
+Geometry topology checks must run inside the ingestion model validator (see Step 1), not inside the spatial classification worker. The classification worker should receive only pre-validated, EPSG:4326 geometries. CRS alignment code belongs at the boundary between ingestion and classification — never inside the broker consumer.
+
+When Pydantic rejects a payload, quarantine the raw bytes with a structured reason string, the originating `device_id`, and the wall-clock timestamp. This gives operators enough context to replay the event after a firmware fix without re-ingesting the entire stream.
+
+For mixed-CRS streams — common when a device fleet spans multiple manufacturers — normalize all incoming coordinates to EPSG:4326 at the ingestion boundary using `pyproj.Transformer` with `always_xy=True`. Storing EPSG codes in the event envelope rather than inferring them from coordinate magnitude prevents silent axis-order bugs. Full normalization strategies are covered in [CRS Normalization Strategies](/spatial-payload-routing-parsing/crs-normalization-strategies/).
+
+---
+
+## Retry, Backoff, and Delivery Guarantees
+
+At-least-once delivery is the industry standard for geospatial telemetry: no event is lost, but consumers must handle duplicates. Exactly-once delivery is rarely achievable across distributed spatial systems due to network partitions and broker leader elections.
+
+The exponential backoff with jitter pattern prevents retry thundering-herds when a PostGIS write or geometry validation fails:
+
+```python
+import asyncio, random
+
+async def retry_with_backoff(coro, max_attempts: int = 5, base_delay: float = 0.5):
+    """Exponential backoff with full jitter for spatial write operations."""
+    for attempt in range(max_attempts):
+        try:
+            return await coro()
+        except Exception as exc:
+            if attempt == max_attempts - 1:
+                raise
+            delay = base_delay * (2 ** attempt) + random.uniform(0, base_delay)
+            await asyncio.sleep(delay)
+```
+
+Use deterministic event IDs (SHA-256 of `device_id + timestamp + geometry hash`) to track processed events in Redis. When a duplicate arrives, the consumer checks membership in a Redis SET, skips processing, and returns a `200 OK` to prevent broker redelivery storms. The [Cache-Backed Idempotency Checks](/idempotency-spatial-deduplication/cache-backed-idempotency-checks/) pattern covers the Redis SET expiry strategy and handling hash collisions for high-cardinality device fleets.
+
+---
+
+## Verification
+
+Run this integration test harness against a local Redis + FastAPI stack to confirm the full pipeline works end-to-end:
+
+```python
+import pytest, asyncio, json, hashlib, hmac, httpx
+
+ENDPOINT = "http://localhost:8000/ingest"
+SECRET = b"your-hmac-secret"
+
+def sign(body: bytes) -> str:
+    return "sha256=" + hmac.new(SECRET, body, hashlib.sha256).hexdigest()
+
+VALID_PAYLOAD = {
+    "device_id": "sensor-001",
+    "timestamp_utc": 1700000000.0,
+    "crs": "EPSG:4326",
+    "geometry": {"type": "Point", "coordinates": [-122.4194, 37.7749]},
+    "properties": {"temperature_c": 24.5},
+}
+
+@pytest.mark.asyncio
+async def test_valid_payload_accepted():
+    body = json.dumps(VALID_PAYLOAD).encode()
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            ENDPOINT, content=body,
+            headers={"X-Hub-Signature-256": sign(body),
+                     "Content-Type": "application/json"}
+        )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "accepted"
+
+@pytest.mark.asyncio
+async def test_invalid_signature_rejected():
+    body = json.dumps(VALID_PAYLOAD).encode()
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            ENDPOINT, content=body,
+            headers={"X-Hub-Signature-256": "sha256=bad",
+                     "Content-Type": "application/json"}
+        )
+    assert resp.status_code == 401
+
+@pytest.mark.asyncio
+async def test_invalid_crs_quarantined():
+    payload = {**VALID_PAYLOAD, "crs": "OSGB36"}   # missing EPSG: prefix
+    body = json.dumps(payload).encode()
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            ENDPOINT, content=body,
+            headers={"X-Hub-Signature-256": sign(body),
+                     "Content-Type": "application/json"}
+        )
+    assert resp.json()["status"] == "quarantined"
+```
+
+---
+
+## Troubleshooting
+
+<div style="overflow-x:auto;">
+
+| Symptom | Likely spatial cause | Fix |
+|---|---|---|
+| P99 ingestion latency spikes above 500 ms | Brute-force polygon intersection on large zone registry | Replace linear scan with `STRtree.query()` R-tree index |
+| Consumers report duplicate geometry writes | Missing idempotency check before PostGIS `INSERT` | Add `ON CONFLICT (event_id) DO NOTHING` + Redis SET membership check |
+| Broker queue depth grows unbounded | Consumers blocked on slow geometry validation | Move geometry validation to ingestion worker; consumers receive pre-validated payloads |
+| Silent coordinate flip (lat/lon swapped) | `pyproj` axis order not forced to XY | Use `always_xy=True` in `Transformer.from_crs()` |
+| Dead-letter queue fills with `"Geometry is empty"` | Device firmware emits `null` coordinate arrays | Add `null`-coordinate guard in Pydantic `@model_validator` before calling `shape()` |
+| Consumer lag grows per geographic shard | Partition skew — one H3 cell has 10× events of others | Lower H3 resolution (larger cells) or add a secondary partition key for high-density areas |
+
+</div>
+
+---
+
+## FAQ
+
+<details class="faq">
+<summary><strong>When should I partition by H3 cell instead of device ID?</strong></summary>
+
+Use H3 partitioning when downstream consumers are regionally scoped — tile renderers, per-city alerting services, or geographic shards of a PostGIS database. Use device-ID partitioning when ordering guarantees per sensor matter more than spatial locality, such as time-series telemetry streams where out-of-order events corrupt state. You can combine both by using `device_id` as the primary partition key and including the H3 cell ID in the event envelope for downstream routing hints.
+
+</details>
+
+<details class="faq">
+<summary><strong>How do I handle sensors that report in a CRS other than WGS 84 (EPSG:4326)?</strong></summary>
+
+Reproject at the ingestion boundary, before spatial classification, using `pyproj.Transformer.from_crs(source, "EPSG:4326", always_xy=True)`. Store the original CRS in the event envelope as a metadata field so consumers can audit provenance. Route exclusively on EPSG:4326 coordinates. This is the same normalization strategy described in [CRS Normalization Strategies](/spatial-payload-routing-parsing/crs-normalization-strategies/).
+
+</details>
+
+<details class="faq">
+<summary><strong>Can I skip the message broker and route synchronously from FastAPI to consumers?</strong></summary>
+
+Only for very low throughput (under ~50 events per second) with a single consumer. Without a broker, a consumer crash silently drops events and spatial mutations are lost with no replay capability. For production IoT feeds, always interpose a durable broker. Redis Streams is the lowest-friction option; Kafka is the right choice when you need event replay, consumer group partitioning, or retention beyond 24 hours.
+
+</details>
+
+<details class="faq">
+<summary><strong>What queue depth limit should I use to apply backpressure at the ingress?</strong></summary>
+
+A practical starting point is 10,000 in-flight events per ingress worker. Monitor P99 ingestion latency and drop rate using OpenTelemetry counters. When P99 exceeds 300 ms or drop rate exceeds 0.05%, tighten the limit or scale out workers. Return HTTP 429 with a `Retry-After` header so upstream senders back off gracefully rather than hammering the endpoint.
+
+</details>
+
+---
+
+## Related
+
+- [Core Event Fundamentals & Architecture](/core-event-fundamentals-architecture/) — the parent section covering spatial event modeling, delivery semantics, and pipeline architecture
+- [Implementing at-least-once delivery for GIS webhooks](/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/) — deep-dive on retry backoff, idempotency key storage, and dead-letter routing
+- [Feature Change Triggers](/core-event-fundamentals-architecture/feature-change-triggers/) — how to detect and dispatch spatial mutations from PostGIS and CDC connectors
+- [Tile Update Event Pipelines](/core-event-fundamentals-architecture/tile-update-event-pipelines/) — consuming routed sensor events to invalidate and regenerate raster and vector tiles
+- [CRS Normalization Strategies](/spatial-payload-routing-parsing/crs-normalization-strategies/) — normalizing mixed-CRS payloads before they enter the routing layer

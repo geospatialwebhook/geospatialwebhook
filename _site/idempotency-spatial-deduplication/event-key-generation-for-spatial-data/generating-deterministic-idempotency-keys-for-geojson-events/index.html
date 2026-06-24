@@ -4,8 +4,8 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 
-  <title>Generating Deterministic Idempotency Keys for GeoJSON Events · Geo Webhook</title>
-  <meta name="description" content="To generate deterministic idempotency keys for GeoJSON events, canonicalize the payload by recursively normalizing floating-point coordinate precision,…"/>
+  <title>Deterministic Idempotency Keys for GeoJSON Events · Geo Webhook</title>
+  <meta name="description" content="Canonicalize GeoJSON payloads and hash them into deterministic idempotency keys that survive webhook retries, serializer drift, and float precision variance."/>
   <link rel="canonical" href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/"/>
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
 
@@ -32,25 +32,25 @@
   <meta property="og:site_name" content="Geo Webhook"/>
   <meta property="og:locale" content="en_US"/>
   <meta property="og:url" content="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/"/>
-  <meta property="og:title" content="Generating Deterministic Idempotency Keys for GeoJSON Events"/>
-  <meta property="og:description" content="To generate deterministic idempotency keys for GeoJSON events, canonicalize the payload by recursively normalizing floating-point coordinate precision,…"/>
-  <meta property="og:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
-  <meta property="og:image:width" content="512"/>
-  <meta property="og:image:height" content="512"/>
-  <meta property="og:image:alt" content="Geospatial Webhook logo"/>
+  <meta property="og:title" content="Deterministic Idempotency Keys for GeoJSON Events"/>
+  <meta property="og:description" content="Canonicalize GeoJSON payloads and hash them into deterministic idempotency keys that survive webhook retries, serializer drift, and float precision variance."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
 
   
   <meta name="twitter:card" content="summary_large_image"/>
-  <meta name="twitter:title" content="Generating Deterministic Idempotency Keys for GeoJSON Events"/>
-  <meta name="twitter:description" content="To generate deterministic idempotency keys for GeoJSON events, canonicalize the payload by recursively normalizing floating-point coordinate precision,…"/>
-  <meta name="twitter:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
-  <meta name="twitter:image:alt" content="Geospatial Webhook logo"/>
+  <meta name="twitter:title" content="Deterministic Idempotency Keys for GeoJSON Events"/>
+  <meta name="twitter:description" content="Canonicalize GeoJSON payloads and hash them into deterministic idempotency keys that survive webhook retries, serializer drift, and float precision variance."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
 
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/assets/css/site.css"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=8ef3d820"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -98,12 +98,12 @@
     "@type": "TechArticle",
     "@id": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/#article",
     "mainEntityOfPage": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/",
-    "headline": "Generating Deterministic Idempotency Keys for GeoJSON Events",
-    "description": "To generate deterministic idempotency keys for GeoJSON events, canonicalize the payload by recursively normalizing floating-point coordinate precision,…",
+    "headline": "Deterministic Idempotency Keys for GeoJSON Events",
+    "description": "Canonicalize GeoJSON payloads and hash them into deterministic idempotency keys that survive webhook retries, serializer drift, and float precision variance.",
     "inLanguage": "en",
     "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
     "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
-    "image": "https://www.geospatialwebhook.com/icon-512.png",
+    "image": "https://www.geospatialwebhook.com/og-image.png",
     "url": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/",
     "articleSection": "Idempotency Spatial Deduplication",
     "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
@@ -158,23 +158,122 @@
           <span aria-current="page">Generating Deterministic Idempotency Keys For Geojson Events</span>
     </nav>
 
+    <h1 class="page__title">Deterministic Idempotency Keys for GeoJSON Events</h1>
+
     <div class="page__layout">
       <div class="markdown">
-        <h1 id="generating-deterministic-idempotency-keys-for-geojson-events" tabindex="-1"><a class="heading-anchor" href="#generating-deterministic-idempotency-keys-for-geojson-events">Generating Deterministic Idempotency Keys for GeoJSON Events</a></h1>
-<p>To generate deterministic idempotency keys for GeoJSON events, canonicalize the payload by recursively normalizing floating-point coordinate precision, stripping insignificant whitespace, enforcing alphabetical key ordering, and hashing the resulting UTF-8 string with a collision-resistant algorithm like SHA-256 or BLAKE3. This pipeline guarantees that structurally identical spatial payloads produce identical digests regardless of webhook retry order, serializer differences, or minor formatting drift, enabling safe exactly-once processing in event-driven architectures.</p>
-<h2 id="why-naive-hashing-fails-in-production" tabindex="-1"><a class="heading-anchor" href="#why-naive-hashing-fails-in-production">Why Naive Hashing Fails in Production</a></h2>
-<p>Raw JSON hashing breaks immediately under real-world conditions. The <a href="https://www.rfc-editor.org/info/rfc8259/">JSON specification (RFC 8259)</a> explicitly defines object key ordering as insignificant, yet most serializers preserve insertion order. A webhook provider might deliver <code>{&quot;type&quot;: &quot;Feature&quot;, &quot;geometry&quot;: {...}}</code> on the first attempt and <code>{&quot;geometry&quot;: {...}, &quot;type&quot;: &quot;Feature&quot;}</code> on a retry. Hashing these strings directly yields different digests, triggering duplicate processing, state overwrites, or corrupted spatial indexes.</p>
-<p>GeoJSON compounds this problem. Coordinates are deeply nested arrays of floats, and different languages or HTTP clients serialize them with varying decimal precision. A coordinate like <code>-122.4194155</code> might arrive as <code>-122.41941550000001</code> due to IEEE-754 representation drift. Without strict normalization, your event bus treats identical spatial updates as distinct messages. Implementing robust <a href="/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a> requires treating the payload as a mathematical object rather than a raw byte stream.</p>
-<h2 id="canonicalization-pipeline" tabindex="-1"><a class="heading-anchor" href="#canonicalization-pipeline">Canonicalization Pipeline</a></h2>
-<p>Deterministic key generation relies on three sequential transformations that strip away serialization artifacts while preserving spatial semantics:</p>
-<ol>
-<li><strong>Recursive Float Normalization</strong>: Traverse the payload and round all numeric values in coordinate arrays to a fixed precision (typically 6–8 decimals for WGS84). This neutralizes cross-language floating-point representation drift. The <a href="https://www.rfc-editor.org/info/rfc7946/">GeoJSON specification (RFC 7946)</a> recommends 6 decimal places (~0.11m accuracy) for most web mapping use cases.</li>
-<li><strong>Deterministic Key Ordering</strong>: Enforce strict alphabetical sorting of all dictionary keys at every nesting level. This eliminates insertion-order variance introduced by different JSON parsers or webhook gateways.</li>
-<li><strong>Compact Serialization</strong>: Strip all whitespace using minimal separators (<code>(&quot;,&quot;, &quot;:&quot;)</code>). This ensures byte-for-byte consistency before hashing and reduces memory overhead during digest computation.</li>
-</ol>
-<p>The resulting canonical string is passed through a cryptographic or fast non-cryptographic hash. For high-throughput webhook pipelines, BLAKE3 or SHA-256 truncated to 16–32 bytes provides an optimal balance of collision resistance and CPU efficiency. When designing <a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a>, always hash the canonical string, never the raw payload.</p>
-<h2 id="production-ready-python-implementation" tabindex="-1"><a class="heading-anchor" href="#production-ready-python-implementation">Production-Ready Python Implementation</a></h2>
-<p>The following implementation handles nested GeoJSON structures, respects precision boundaries, and supports both zero-dependency SHA-256 and BLAKE3. It accepts raw dictionaries or JSON strings, making it safe for middleware, FastAPI/Flask handlers, or Celery workers.</p>
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Generating Deterministic Idempotency Keys for GeoJSON Events",
+      "description": "Learn how to canonicalize GeoJSON payloads and hash them into deterministic idempotency keys that survive webhook retries, serializer drift, and float precision variance.",
+      "datePublished": "2025-04-12",
+      "dateModified": "2026-06-24",
+      "author": { "@type": "Organization", "name": "geospatialwebhook.com" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Idempotency & Spatial Deduplication", "item": "https://geospatialwebhook.com/idempotency-spatial-deduplication/" },
+        { "@type": "ListItem", "position": 2, "name": "Event Key Generation for Spatial Data", "item": "https://geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/" },
+        { "@type": "ListItem", "position": 3, "name": "Generating Deterministic Idempotency Keys for GeoJSON Events", "item": "https://geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/" }
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Generate Deterministic Idempotency Keys for GeoJSON Events",
+      "step": [
+        { "@type": "HowToStep", "position": 1, "name": "Normalize float precision", "text": "Recursively round all coordinate floats to a fixed decimal places (6–8 for WGS84/EPSG:4326) to neutralize IEEE-754 serialization drift." },
+        { "@type": "HowToStep", "position": 2, "name": "Sort keys alphabetically", "text": "Enforce strict alphabetical ordering of all dictionary keys at every nesting level to eliminate insertion-order variance." },
+        { "@type": "HowToStep", "position": 3, "name": "Compact serialize", "text": "Dump to JSON with minimal separators and no whitespace to guarantee byte-for-byte consistency before hashing." },
+        { "@type": "HowToStep", "position": 4, "name": "Hash with SHA-256 or BLAKE2b", "text": "Feed the canonical UTF-8 string into a collision-resistant hash function to produce the final idempotency key." }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Why can't I just hash the raw JSON string from the webhook body?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Raw JSON strings carry insertion-order variance, float representation drift, and whitespace differences across serializers. Two payloads that are semantically identical will produce different digests if key order or decimal precision differs, causing false duplicate misses and double-processing." }
+        },
+        {
+          "@type": "Question",
+          "name": "How many decimal places should I use for WGS84 coordinates?",
+          "acceptedAnswer": { "@type": "Answer", "text": "RFC 7946 recommends 6 decimal places (~0.11 m resolution). Use 7–8 if you need centimetre-level fidelity. Go beyond 8 only when your source data genuinely carries that precision — extra digits amplify float serialization noise without adding accuracy." }
+        },
+        {
+          "@type": "Question",
+          "name": "Is SHA-256 or BLAKE2b better for webhook idempotency keys?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Both are collision-resistant for this use case. BLAKE2b is 2–4× faster on modern CPUs and is available in Python's standard library (hashlib.blake2b). SHA-256 is more universally recognised and works in all compliance contexts. Pick SHA-256 when auditability matters; BLAKE2b for high-throughput sub-millisecond paths." }
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>To generate a deterministic idempotency key for a GeoJSON event: canonicalize the payload by recursively normalizing coordinate float precision, enforcing alphabetical key ordering, stripping whitespace, then hashing the resulting UTF-8 string with SHA-256 or BLAKE2b.</strong> This produces an identical digest for every structurally equivalent payload regardless of serializer, retry count, or minor formatting drift.</p>
+<p>This page is part of <a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a>, which lives under the <a href="/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a> section.</p>
+<hr>
+<h2 id="when-to-use-this-pattern" tabindex="-1"><a class="heading-anchor" href="#when-to-use-this-pattern">When to use this pattern</a></h2>
+<p>Apply this canonicalization-before-hashing approach when:</p>
+<ul>
+<li>Your webhook provider may deliver the same event multiple times (at-least-once guarantees) and you need to filter duplicates without a unique ID from the sender.</li>
+<li>You consume GeoJSON from multiple upstream systems — different languages, ORMs, or HTTP clients — that serialize coordinate arrays with varying decimal precision or key insertion order.</li>
+<li>You need to compare spatial events across delivery attempts where ephemeral envelope fields (<code>delivery_id</code>, <code>received_at</code>, <code>x-signature</code>) must not influence the key.</li>
+</ul>
+<p>It is not the right tool when the webhook provider already guarantees a stable, opaque event ID per logical event — in that case, store that ID directly rather than computing a content digest.</p>
+<hr>
+<h2 id="why-naive-hashing-breaks-on-spatial-payloads" tabindex="-1"><a class="heading-anchor" href="#why-naive-hashing-breaks-on-spatial-payloads">Why naive hashing breaks on spatial payloads</a></h2>
+<p>The <a href="https://www.rfc-editor.org/info/rfc8259/">JSON specification (RFC 8259)</a> defines object key ordering as insignificant, yet serializers preserve insertion order. A webhook provider retrying a failed delivery might send <code>{&quot;type&quot;:&quot;Feature&quot;,&quot;geometry&quot;:{...}}</code> the first time and <code>{&quot;geometry&quot;:{...},&quot;type&quot;:&quot;Feature&quot;}</code> on the second attempt. Hashing both raw strings yields different digests, triggering double processing, state overwrites, or corrupted spatial indexes.</p>
+<p>GeoJSON compounds this further. Coordinates are deeply nested float arrays, and different languages round IEEE-754 values differently during JSON serialization. The coordinate <code>-122.4194155</code> may arrive as <code>-122.41941550000001</code> from a Java client even though the values represent the same geographic point. Without rounding to a shared precision, your event bus treats two deliveries of the same sensor ping as distinct messages.</p>
+<p>Robust <a href="/idempotency-spatial-deduplication/">idempotency &amp; spatial deduplication</a> requires treating the payload as a mathematical object rather than a raw byte stream. The three-step canonicalization pipeline below eliminates all three sources of variance.</p>
+<hr>
+<h2 id="canonicalization-pipeline-data-flow" tabindex="-1"><a class="heading-anchor" href="#canonicalization-pipeline-data-flow">Canonicalization pipeline — data flow</a></h2>
+<p>The diagram below shows how a raw webhook body moves through the three transformation stages before reaching the hash function.</p>
+<svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="GeoJSON idempotency key generation pipeline" style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;">
+  <title>GeoJSON idempotency key generation pipeline</title>
+  <desc>A four-stage data-flow diagram: raw GeoJSON payload enters a float normaliser, then an alphabetical key sorter, then compact JSON serialisation, and finally a SHA-256 or BLAKE2b hash function that outputs the hex idempotency key.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L8,3.5 Z" fill="currentColor" opacity="0.6"/>
+    </marker>
+  </defs>
+  <!-- Stage boxes -->
+  <rect x="10" y="70" width="130" height="80" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.25" stroke-width="1.5"/>
+  <text x="75" y="102" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Raw GeoJSON</text>
+  <text x="75" y="118" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">webhook body</text>
+  <text x="75" y="133" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">(dict or string)</text>
+  <line x1="140" y1="110" x2="168" y2="110" stroke="currentColor" stroke-opacity="0.5" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <rect x="170" y="70" width="130" height="80" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5"/>
+  <text x="235" y="97" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">1. Float</text>
+  <text x="235" y="112" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Normalisation</text>
+  <text x="235" y="131" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">round(coord, 8)</text>
+  <text x="235" y="144" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">recursive</text>
+  <line x1="300" y1="110" x2="328" y2="110" stroke="currentColor" stroke-opacity="0.5" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <rect x="330" y="70" width="130" height="80" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5"/>
+  <text x="395" y="97" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">2. Key Sort</text>
+  <text x="395" y="112" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">+ Compact</text>
+  <text x="395" y="131" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">sort_keys=True</text>
+  <text x="395" y="144" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">separators=(",",":")</text>
+  <line x1="460" y1="110" x2="488" y2="110" stroke="currentColor" stroke-opacity="0.5" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <rect x="490" y="70" width="130" height="80" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5"/>
+  <text x="555" y="97" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">3. Hash</text>
+  <text x="555" y="112" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">(SHA-256/BLAKE2b)</text>
+  <text x="555" y="131" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">hex digest →</text>
+  <text x="555" y="144" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">idempotency key</text>
+  <!-- Stage labels at bottom -->
+<p><text x="75" y="175" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.5">INPUT</text>
+<text x="235" y="175" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.5">STAGE 1</text>
+<text x="395" y="175" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.5">STAGE 2</text>
+<text x="555" y="175" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.5">STAGE 3 → OUTPUT</text>
+</svg></p>
+<hr>
+<h2 id="complete-runnable-implementation" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-implementation">Complete runnable implementation</a></h2>
+<p>The function below is self-contained and uses only the Python standard library. It accepts a raw dict or a JSON string, making it drop-in safe for FastAPI request handlers, Celery tasks, or asyncio message consumers. Before canonicalizing, strip any envelope fields that vary per delivery (webhook gateway metadata, timestamps, signatures) — only the semantic payload should influence the key.</p>
 <div class="code-block" data-lang="python">
   <div class="code-block__header">
     <span class="code-block__lang">python</span>
@@ -182,59 +281,98 @@
       <span class="code-block__copy-label">Copy</span>
     </button>
   </div>
-  <pre class="language-python"><code class="language-python"><span class="token keyword">import</span> json
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> json
 <span class="token keyword">import</span> hashlib
 <span class="token keyword">from</span> typing <span class="token keyword">import</span> Any<span class="token punctuation">,</span> Union
 
+
 <span class="token keyword">def</span> <span class="token function">_normalize_floats</span><span class="token punctuation">(</span>obj<span class="token punctuation">:</span> Any<span class="token punctuation">,</span> precision<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> Any<span class="token punctuation">:</span>
-    <span class="token triple-quoted-string string">"""Recursively round floats to prevent IEEE-754 serialization drift."""</span>
+    <span class="token triple-quoted-string string">"""
+    Recursively round floats to a fixed decimal precision.
+
+    GeoJSON coordinates (EPSG:4326 / WGS84) are deeply nested float arrays.
+    Different serializers (Python, Java, Go) produce slightly different
+    IEEE-754 string representations for the same geographic value, e.g.
+    -122.4194155 vs -122.41941550000001. Rounding to a shared precision
+    before hashing neutralises this drift without losing spatial fidelity.
+    RFC 7946 recommends 6 decimal places (~0.11 m); use 7–8 for sub-metre work.
+    """</span>
     <span class="token keyword">if</span> <span class="token builtin">isinstance</span><span class="token punctuation">(</span>obj<span class="token punctuation">,</span> <span class="token builtin">float</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
         <span class="token keyword">return</span> <span class="token builtin">round</span><span class="token punctuation">(</span>obj<span class="token punctuation">,</span> precision<span class="token punctuation">)</span>
     <span class="token keyword">if</span> <span class="token builtin">isinstance</span><span class="token punctuation">(</span>obj<span class="token punctuation">,</span> <span class="token builtin">list</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
         <span class="token keyword">return</span> <span class="token punctuation">[</span>_normalize_floats<span class="token punctuation">(</span>v<span class="token punctuation">,</span> precision<span class="token punctuation">)</span> <span class="token keyword">for</span> v <span class="token keyword">in</span> obj<span class="token punctuation">]</span>
     <span class="token keyword">if</span> <span class="token builtin">isinstance</span><span class="token punctuation">(</span>obj<span class="token punctuation">,</span> <span class="token builtin">dict</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
         <span class="token keyword">return</span> <span class="token punctuation">{</span>k<span class="token punctuation">:</span> _normalize_floats<span class="token punctuation">(</span>v<span class="token punctuation">,</span> precision<span class="token punctuation">)</span> <span class="token keyword">for</span> k<span class="token punctuation">,</span> v <span class="token keyword">in</span> obj<span class="token punctuation">.</span>items<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">}</span>
-    <span class="token keyword">return</span> obj
+    <span class="token keyword">return</span> obj  <span class="token comment"># int, str, bool, None — pass through unchanged</span>
+
+
+<span class="token comment"># Fields that vary per delivery attempt and must be excluded before hashing.</span>
+<span class="token comment"># Extend this set for your gateway's envelope schema.</span>
+_EPHEMERAL_FIELDS <span class="token operator">=</span> <span class="token builtin">frozenset</span><span class="token punctuation">(</span><span class="token punctuation">{</span>
+    <span class="token string">"webhook_id"</span><span class="token punctuation">,</span> <span class="token string">"delivery_id"</span><span class="token punctuation">,</span> <span class="token string">"received_at"</span><span class="token punctuation">,</span> <span class="token string">"timestamp"</span><span class="token punctuation">,</span>
+    <span class="token string">"x-signature"</span><span class="token punctuation">,</span> <span class="token string">"x-hub-signature-256"</span><span class="token punctuation">,</span> <span class="token string">"attempt"</span><span class="token punctuation">,</span>
+<span class="token punctuation">}</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">strip_ephemeral</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Remove top-level delivery-envelope keys that change on every retry."""</span>
+    <span class="token keyword">return</span> <span class="token punctuation">{</span>k<span class="token punctuation">:</span> v <span class="token keyword">for</span> k<span class="token punctuation">,</span> v <span class="token keyword">in</span> payload<span class="token punctuation">.</span>items<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token keyword">if</span> k <span class="token keyword">not</span> <span class="token keyword">in</span> _EPHEMERAL_FIELDS<span class="token punctuation">}</span>
+
 
 <span class="token keyword">def</span> <span class="token function">generate_geojson_idempotency_key</span><span class="token punctuation">(</span>
     payload<span class="token punctuation">:</span> Union<span class="token punctuation">[</span><span class="token builtin">dict</span><span class="token punctuation">,</span> <span class="token builtin">str</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
     precision<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">8</span><span class="token punctuation">,</span>
     algorithm<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">=</span> <span class="token string">"sha256"</span><span class="token punctuation">,</span>
-    truncate_bytes<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">0</span>
+    truncate_bytes<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">,</span>
 <span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
     <span class="token triple-quoted-string string">"""
-    Generate a deterministic idempotency key for a GeoJSON payload.
-    
+    Return a deterministic hex digest for a GeoJSON payload.
+
     Args:
-        payload: Raw GeoJSON dict or JSON string.
-        precision: Decimal places for coordinate normalization.
-        algorithm: Hash algorithm supported by hashlib (e.g., 'sha256', 'blake2b').
-        truncate_bytes: Optional byte truncation for shorter keys (e.g., 16).
+        payload:        Raw GeoJSON dict or a JSON string. Mixed CRS payloads
+                        should be normalised to EPSG:4326 upstream before
+                        calling this function.
+        precision:      Decimal places for coordinate rounding (6–8 typical).
+                        Values below 6 collapse distinct geographic points.
+        algorithm:      Any hashlib name: 'sha256' (safe default) or 'blake2b'
+                        (2–4× faster, equally collision-resistant for this use).
+        truncate_bytes: Trim digest to this many bytes before hex-encoding.
+                        16 bytes (32 hex chars) is safe for practical event
+                        volumes while halving index storage.
+
+    Returns:
+        Lowercase hex string of the digest (or truncated digest).
     """</span>
     <span class="token keyword">if</span> <span class="token builtin">isinstance</span><span class="token punctuation">(</span>payload<span class="token punctuation">,</span> <span class="token builtin">str</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
         payload <span class="token operator">=</span> json<span class="token punctuation">.</span>loads<span class="token punctuation">(</span>payload<span class="token punctuation">)</span>
-        
-    <span class="token comment"># 1. Normalize floating-point precision</span>
+
+    <span class="token comment"># 1. Strip delivery-envelope metadata that changes per attempt.</span>
+    payload <span class="token operator">=</span> strip_ephemeral<span class="token punctuation">(</span>payload<span class="token punctuation">)</span>
+
+    <span class="token comment"># 2. Normalize floating-point coordinate precision to remove IEEE-754 drift.</span>
     normalized <span class="token operator">=</span> _normalize_floats<span class="token punctuation">(</span>payload<span class="token punctuation">,</span> precision<span class="token punctuation">)</span>
-    
-    <span class="token comment"># 2. Canonicalize: sort keys recursively, strip whitespace</span>
+
+    <span class="token comment"># 3. Produce a canonical JSON string: alphabetically sorted keys, no whitespace.</span>
+    <span class="token comment">#    ensure_ascii=False preserves multi-byte property values (e.g. place names)</span>
+    <span class="token comment">#    without percent-encoding, which could introduce encoding variance.</span>
     canonical <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>
-        normalized<span class="token punctuation">,</span> 
-        sort_keys<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span> 
+        normalized<span class="token punctuation">,</span>
+        sort_keys<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span>
         separators<span class="token operator">=</span><span class="token punctuation">(</span><span class="token string">","</span><span class="token punctuation">,</span> <span class="token string">":"</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
-        ensure_ascii<span class="token operator">=</span><span class="token boolean">False</span>
+        ensure_ascii<span class="token operator">=</span><span class="token boolean">False</span><span class="token punctuation">,</span>
     <span class="token punctuation">)</span>
-    
-    <span class="token comment"># 3. Hash</span>
-    digest <span class="token operator">=</span> hashlib<span class="token punctuation">.</span>new<span class="token punctuation">(</span>algorithm<span class="token punctuation">,</span> canonical<span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token string">"utf-8"</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span>digest<span class="token punctuation">(</span><span class="token punctuation">)</span>
-    
+
+    <span class="token comment"># 4. Hash the canonical UTF-8 bytes.</span>
+    h <span class="token operator">=</span> hashlib<span class="token punctuation">.</span>new<span class="token punctuation">(</span>algorithm<span class="token punctuation">,</span> canonical<span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token string">"utf-8"</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    digest <span class="token operator">=</span> h<span class="token punctuation">.</span>digest<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
     <span class="token keyword">if</span> truncate_bytes <span class="token operator">></span> <span class="token number">0</span><span class="token punctuation">:</span>
         digest <span class="token operator">=</span> digest<span class="token punctuation">[</span><span class="token punctuation">:</span>truncate_bytes<span class="token punctuation">]</span>
-        
+
     <span class="token keyword">return</span> digest<span class="token punctuation">.</span><span class="token builtin">hex</span><span class="token punctuation">(</span><span class="token punctuation">)</span>
 </code></pre>
 </div>
-<h3 id="usage-example" tabindex="-1"><a class="heading-anchor" href="#usage-example">Usage Example</a></h3>
+<h3 id="usage-example" tabindex="-1"><a class="heading-anchor" href="#usage-example">Usage example</a></h3>
 <div class="code-block" data-lang="python">
   <div class="code-block__header">
     <span class="code-block__lang">python</span>
@@ -242,31 +380,188 @@
       <span class="code-block__copy-label">Copy</span>
     </button>
   </div>
-  <pre class="language-python"><code class="language-python">geojson_feature <span class="token operator">=</span> <span class="token punctuation">{</span>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token comment"># Two representations of the same feature — different key order, float drift.</span>
+delivery_1 <span class="token operator">=</span> <span class="token punctuation">{</span>
+    <span class="token string">"webhook_id"</span><span class="token punctuation">:</span> <span class="token string">"wh-001"</span><span class="token punctuation">,</span>          <span class="token comment"># ephemeral — stripped before hashing</span>
     <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Feature"</span><span class="token punctuation">,</span>
-    <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"name"</span><span class="token punctuation">:</span> <span class="token string">"Central Park"</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"sensor_id"</span><span class="token punctuation">:</span> <span class="token string">"SN-42"</span><span class="token punctuation">,</span> <span class="token string">"reading"</span><span class="token punctuation">:</span> <span class="token number">17.3</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
     <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span>
         <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span>
-        <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">73.965355</span><span class="token punctuation">,</span> <span class="token number">40.782865</span><span class="token punctuation">]</span>
-    <span class="token punctuation">}</span>
+        <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">73.96535500000001</span><span class="token punctuation">,</span> <span class="token number">40.78286500000002</span><span class="token punctuation">]</span><span class="token punctuation">,</span>  <span class="token comment"># float drift</span>
+    <span class="token punctuation">}</span><span class="token punctuation">,</span>
 <span class="token punctuation">}</span>
 
-<span class="token comment"># Produces identical keys across retries, even if key order or float precision shifts</span>
-key <span class="token operator">=</span> generate_geojson_idempotency_key<span class="token punctuation">(</span>geojson_feature<span class="token punctuation">,</span> precision<span class="token operator">=</span><span class="token number">7</span><span class="token punctuation">)</span>
-<span class="token keyword">print</span><span class="token punctuation">(</span>key<span class="token punctuation">)</span>  <span class="token comment"># e.g., 'a1b2c3...'</span>
+delivery_2 <span class="token operator">=</span> <span class="token punctuation">{</span>
+    <span class="token string">"webhook_id"</span><span class="token punctuation">:</span> <span class="token string">"wh-002"</span><span class="token punctuation">,</span>          <span class="token comment"># different delivery envelope</span>
+    <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span>                     <span class="token comment"># keys in a different order</span>
+        <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">73.965355</span><span class="token punctuation">,</span> <span class="token number">40.782865</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+        <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span>
+    <span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"sensor_id"</span><span class="token punctuation">:</span> <span class="token string">"SN-42"</span><span class="token punctuation">,</span> <span class="token string">"reading"</span><span class="token punctuation">:</span> <span class="token number">17.3</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Feature"</span><span class="token punctuation">,</span>
+<span class="token punctuation">}</span>
+
+key1 <span class="token operator">=</span> generate_geojson_idempotency_key<span class="token punctuation">(</span>delivery_1<span class="token punctuation">,</span> precision<span class="token operator">=</span><span class="token number">7</span><span class="token punctuation">,</span> truncate_bytes<span class="token operator">=</span><span class="token number">16</span><span class="token punctuation">)</span>
+key2 <span class="token operator">=</span> generate_geojson_idempotency_key<span class="token punctuation">(</span>delivery_2<span class="token punctuation">,</span> precision<span class="token operator">=</span><span class="token number">7</span><span class="token punctuation">,</span> truncate_bytes<span class="token operator">=</span><span class="token number">16</span><span class="token punctuation">)</span>
+
+<span class="token keyword">assert</span> key1 <span class="token operator">==</span> key2  <span class="token comment"># identical digest — safe to deduplicate</span>
+<span class="token keyword">print</span><span class="token punctuation">(</span>key1<span class="token punctuation">)</span>          <span class="token comment"># e.g. '3f8a92b1c4e7d05a' (32 hex chars)</span>
 </code></pre>
 </div>
-<h2 id="integration-operational-best-practices" tabindex="-1"><a class="heading-anchor" href="#integration-operational-best-practices">Integration &amp; Operational Best Practices</a></h2>
-<p><strong>Storage Strategy</strong>: Store generated keys in a low-latency datastore (Redis, DynamoDB, or PostgreSQL with a unique constraint). Set a TTL aligned with your webhook retry window (typically 24–72 hours). Once a key is recorded, reject subsequent events with the same digest.</p>
-<p><strong>Algorithm Selection</strong>: SHA-256 is universally available and cryptographically secure. For sub-millisecond throughput at scale, BLAKE3 (<code>pip install blake3</code>) outperforms SHA-256 by 3–5x on modern CPUs while maintaining equivalent collision resistance. Truncate to 16 bytes (32 hex chars) to reduce index bloat without sacrificing safety.</p>
-<p><strong>Edge Cases</strong>:</p>
+<hr>
+<h2 id="parameter-reference" tabindex="-1"><a class="heading-anchor" href="#parameter-reference">Parameter reference</a></h2>
+<div style="overflow-x:auto;">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Spatial constraint</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>payload</code></td>
+<td><code>dict | str</code></td>
+<td>Must be valid GeoJSON or a superset; geometry must be pre-projected to EPSG:4326 if you need cross-source deduplication</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>precision</code></td>
+<td><code>int</code></td>
+<td>6 = ~0.11 m (RFC 7946 minimum); 8 = ~1.1 mm; do not exceed 10 (amplifies float noise)</td>
+<td><code>8</code></td>
+</tr>
+<tr>
+<td><code>algorithm</code></td>
+<td><code>str</code></td>
+<td>Any <code>hashlib</code> name; <code>sha256</code> or <code>blake2b</code> recommended; avoid MD5/SHA-1</td>
+<td><code>&quot;sha256&quot;</code></td>
+</tr>
+<tr>
+<td><code>truncate_bytes</code></td>
+<td><code>int</code></td>
+<td><code>0</code> = full digest; <code>16</code> = 128-bit, safe for ≤ 10⁹ events; <code>32</code> = full SHA-256</td>
+<td><code>0</code></td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<hr>
+<h2 id="gotchas-and-spatial-edge-cases" tabindex="-1"><a class="heading-anchor" href="#gotchas-and-spatial-edge-cases">Gotchas and spatial edge cases</a></h2>
+<ol>
+<li>
+<p><strong>Precision below 6 collapses distinct points.</strong> Rounding to 5 decimal places creates a grid cell ~1.1 m wide. Two sensor readings from opposite sides of a road merge to the same canonical form and produce the same key even though they represent different physical events. Use at least 6 decimal places for EPSG:4326 (WGS84) data.</p>
+</li>
+<li>
+<p><strong>Mixed CRS payloads break cross-source deduplication.</strong> A feature in EPSG:3857 (Web Mercator) and the same feature in EPSG:4326 will produce different coordinate arrays and therefore different keys, even after float normalization. Normalize all payloads to a single CRS — ideally EPSG:4326 as required by RFC 7946 — before canonicalization. See <a href="/spatial-payload-routing-parsing/crs-normalization-strategies/handling-mixed-crs-payloads-in-python-event-handlers/">handling mixed CRS payloads in Python event handlers</a> for a reprojection approach.</p>
+</li>
+<li>
+<p><strong>Coordinate ring orientation differences (Polygon winding order).</strong> RFC 7946 mandates counter-clockwise exterior rings, but not all producers comply. A clockwise and a counter-clockwise representation of the same polygon produce identical geometry but different coordinate arrays, yielding different digests. Either validate and normalize ring orientation before hashing, or document that your key covers the serialized form, not the geometric shape.</p>
+</li>
+<li>
+<p><strong><code>null</code> geometry must be preserved, not filtered.</strong> GeoJSON features can have <code>&quot;geometry&quot;: null</code> (RFC 7946 §3.2). The recursive normalizer preserves <code>None</code> → <code>null</code> correctly; do not replace it with an empty dict or the key will shift.</p>
+</li>
+<li>
+<p><strong>Unicode in property strings.</strong> <code>ensure_ascii=False</code> lets property values like <code>&quot;name&quot;: &quot;São Paulo&quot;</code> or <code>&quot;区域&quot;: &quot;北京&quot;</code> serialize as UTF-8 rather than <code>\uXXXX</code> escape sequences. Mixing <code>ensure_ascii=True</code> and <code>ensure_ascii=False</code> across services produces different byte strings for the same semantic content — pick one and enforce it consistently.</p>
+</li>
+<li>
+<p><strong>Numeric property values are also normalized.</strong> <code>_normalize_floats</code> rounds floats inside <code>properties</code> as well as <code>geometry.coordinates</code>. If a property value is a measurement like <code>17.30000000000001</code> vs <code>17.3</code>, they will match after rounding. If you do not want property floats normalized, adapt the function to restrict rounding to coordinate paths only.</p>
+</li>
+<li>
+<p><strong>Algorithm version changes invalidate all stored keys.</strong> If you migrate from SHA-256 to BLAKE2b, existing keys in Redis or PostgreSQL will not match newly computed ones. Version the algorithm in your key store (e.g. prefix with <code>sha256:</code> or store an <code>algorithm</code> column), so you can run both in parallel during rollover.</p>
+</li>
+</ol>
+<hr>
+<h2 id="verification-snippet" tabindex="-1"><a class="heading-anchor" href="#verification-snippet">Verification snippet</a></h2>
+<p>Paste this into a test file and run with <code>pytest</code> or <code>python -m pytest</code>:</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> pytest
+<span class="token keyword">from</span> your_module <span class="token keyword">import</span> generate_geojson_idempotency_key  <span class="token comment"># adjust import path</span>
+
+
+FEATURE_A <span class="token operator">=</span> <span class="token punctuation">{</span>
+    <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Feature"</span><span class="token punctuation">,</span>
+    <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"id"</span><span class="token punctuation">:</span> <span class="token number">1</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">73.965355</span><span class="token punctuation">,</span> <span class="token number">40.782865</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+<span class="token punctuation">}</span>
+
+<span class="token comment"># Same feature — key order shuffled, float drift on coordinates, delivery envelope added.</span>
+FEATURE_B <span class="token operator">=</span> <span class="token punctuation">{</span>
+    <span class="token string">"delivery_id"</span><span class="token punctuation">:</span> <span class="token string">"retry-99"</span><span class="token punctuation">,</span>
+    <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">73.96535500000001</span><span class="token punctuation">,</span> <span class="token number">40.78286500000002</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"id"</span><span class="token punctuation">:</span> <span class="token number">1</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Feature"</span><span class="token punctuation">,</span>
+<span class="token punctuation">}</span>
+
+<span class="token comment"># Genuinely different feature — same geometry, different property.</span>
+FEATURE_C <span class="token operator">=</span> <span class="token punctuation">{</span>
+    <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Feature"</span><span class="token punctuation">,</span>
+    <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"id"</span><span class="token punctuation">:</span> <span class="token number">2</span><span class="token punctuation">}</span><span class="token punctuation">,</span>  <span class="token comment"># id differs</span>
+    <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">73.965355</span><span class="token punctuation">,</span> <span class="token number">40.782865</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+<span class="token punctuation">}</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_retry_produces_same_key</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Key must be identical for semantically equivalent retried deliveries."""</span>
+    <span class="token keyword">assert</span> <span class="token punctuation">(</span>
+        generate_geojson_idempotency_key<span class="token punctuation">(</span>FEATURE_A<span class="token punctuation">)</span>
+        <span class="token operator">==</span> generate_geojson_idempotency_key<span class="token punctuation">(</span>FEATURE_B<span class="token punctuation">)</span>
+    <span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_different_feature_produces_different_key</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Changing a property value must change the digest."""</span>
+    <span class="token keyword">assert</span> <span class="token punctuation">(</span>
+        generate_geojson_idempotency_key<span class="token punctuation">(</span>FEATURE_A<span class="token punctuation">)</span>
+        <span class="token operator">!=</span> generate_geojson_idempotency_key<span class="token punctuation">(</span>FEATURE_C<span class="token punctuation">)</span>
+    <span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_truncation_produces_shorter_key</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    full <span class="token operator">=</span> generate_geojson_idempotency_key<span class="token punctuation">(</span>FEATURE_A<span class="token punctuation">)</span>
+    short <span class="token operator">=</span> generate_geojson_idempotency_key<span class="token punctuation">(</span>FEATURE_A<span class="token punctuation">,</span> truncate_bytes<span class="token operator">=</span><span class="token number">16</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> <span class="token builtin">len</span><span class="token punctuation">(</span>short<span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token number">32</span>          <span class="token comment"># 16 bytes → 32 hex chars</span>
+    <span class="token keyword">assert</span> full<span class="token punctuation">.</span>startswith<span class="token punctuation">(</span>short<span class="token punctuation">)</span>    <span class="token comment"># truncation takes the leading bytes</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_accepts_json_string</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">import</span> json
+    as_str <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>FEATURE_A<span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> <span class="token punctuation">(</span>
+        generate_geojson_idempotency_key<span class="token punctuation">(</span>as_str<span class="token punctuation">)</span>
+        <span class="token operator">==</span> generate_geojson_idempotency_key<span class="token punctuation">(</span>FEATURE_A<span class="token punctuation">)</span>
+    <span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_precision_boundary</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Points that differ only beyond the precision threshold collapse to the same key."""</span>
+    near_a <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Feature"</span><span class="token punctuation">,</span> <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">73.9653550001</span><span class="token punctuation">,</span> <span class="token number">40.7828650001</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">}</span>
+    near_b <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Feature"</span><span class="token punctuation">,</span> <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">73.9653550002</span><span class="token punctuation">,</span> <span class="token number">40.7828650002</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">}</span>
+    <span class="token comment"># At precision=8 these differ; at precision=6 they collapse.</span>
+    <span class="token keyword">assert</span> generate_geojson_idempotency_key<span class="token punctuation">(</span>near_a<span class="token punctuation">,</span> precision<span class="token operator">=</span><span class="token number">6</span><span class="token punctuation">)</span> <span class="token operator">==</span> generate_geojson_idempotency_key<span class="token punctuation">(</span>near_b<span class="token punctuation">,</span> precision<span class="token operator">=</span><span class="token number">6</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> generate_geojson_idempotency_key<span class="token punctuation">(</span>near_a<span class="token punctuation">,</span> precision<span class="token operator">=</span><span class="token number">8</span><span class="token punctuation">)</span> <span class="token operator">!=</span> generate_geojson_idempotency_key<span class="token punctuation">(</span>near_b<span class="token punctuation">,</span> precision<span class="token operator">=</span><span class="token number">8</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<hr>
+<h2 id="storing-and-checking-keys-in-production" tabindex="-1"><a class="heading-anchor" href="#storing-and-checking-keys-in-production">Storing and checking keys in production</a></h2>
+<p>Once you have a key, store it in a low-latency idempotency store before processing the event. <a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/using-redis-to-cache-spatial-webhook-signatures/">Using Redis to cache spatial webhook signatures</a> walks through the <code>SET NX PX</code> atomic check-and-set pattern that prevents race conditions under concurrent delivery. Set the TTL to match your webhook provider’s retry window — typically 24–72 hours — and log the key alongside the canonical string length and algorithm version to simplify debugging during payload format migrations.</p>
+<p>For payloads where the same geographic boundary may legitimately trigger multiple distinct events (zone entry, sensor threshold breach, status change), add a <code>event_type</code> field to the canonical form before hashing so semantically different events at the same geometry produce different keys.</p>
+<hr>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
 <ul>
-<li>Handle <code>null</code> geometries gracefully. The recursive normalizer preserves <code>None</code> values, which serialize to <code>null</code> consistently.</li>
-<li>Exclude ephemeral fields like <code>received_at</code>, <code>webhook_id</code>, or <code>signature</code> before canonicalization. These vary per delivery and will break idempotency.</li>
-<li>Validate payloads against the GeoJSON schema before hashing to prevent malformed coordinates from generating misleading keys.</li>
+<li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a> — parent: key design strategies across geometry types and event schemas</li>
+<li><a href="/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a> — grandparent: the full deduplication architecture for spatial webhook pipelines</li>
+<li><a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/using-redis-to-cache-spatial-webhook-signatures/">Using Redis to Cache Spatial Webhook Signatures</a> — storing and atomically checking the keys this page generates</li>
+<li><a href="/spatial-payload-routing-parsing/crs-normalization-strategies/handling-mixed-crs-payloads-in-python-event-handlers/">Handling Mixed CRS Payloads in Python Event Handlers</a> — normalizing EPSG codes before canonicalization</li>
 </ul>
-<p><strong>Monitoring</strong>: Track key collision rates and deduplication hit ratios. A sudden spike in duplicate keys often indicates upstream serializer changes or webhook gateway misconfiguration. Log the canonical string length and hash algorithm version to simplify debugging during payload migrations.</p>
-<p>By enforcing strict canonicalization before hashing, you decouple idempotency from transport-layer quirks. This approach scales cleanly across microservices, supports exactly-once spatial event processing, and eliminates the silent data corruption that plagues naive JSON hashing.</p>
 
       </div>
 
@@ -305,6 +600,9 @@ key <span class="token operator">=</span> generate_geojson_idempotency_key<span 
         <h4>Site</h4>
         <ul>
           <li><a href="/">Home</a></li>
+          <li><a href="/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
         </ul>
       </div>
       <div>
@@ -334,7 +632,7 @@ key <span class="token operator">=</span> generate_geojson_idempotency_key<span 
 </footer>
 
   </div>
-  <script src="/assets/js/site.js" defer></script>
+  <script src="/assets/js/site.js?v=6c55de86" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

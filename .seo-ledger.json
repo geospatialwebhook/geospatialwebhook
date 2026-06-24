@@ -1,0 +1,75 @@
+{
+  "audited_at": "2026-06-02T14:58:46+00:00",
+  "critical": 0,
+  "duplicate_descriptions": {},
+  "duplicate_titles": {},
+  "indexnow_key": "c83a3f69279c4134a97f19a5d32c3bb1",
+  "og_image_file": "https://www.geospatialwebhook.com/og-image.png",
+  "pages": 27,
+  "score": 100,
+  "site": "geospatialwebhook.com",
+  "site_findings": [
+    {
+      "check": "sitemap.exists",
+      "detail": "",
+      "ok": true,
+      "severity": "critical"
+    },
+    {
+      "check": "sitemap.has_urls",
+      "detail": "26 urls",
+      "ok": true,
+      "severity": "critical"
+    },
+    {
+      "check": "sitemap.has_lastmod",
+      "detail": "no <lastmod> (needed for freshness signals)",
+      "ok": true,
+      "severity": "warn"
+    },
+    {
+      "check": "robots.exists",
+      "detail": "",
+      "ok": true,
+      "severity": "warn"
+    },
+    {
+      "check": "robots.references_sitemap",
+      "detail": "",
+      "ok": true,
+      "severity": "warn"
+    },
+    {
+      "check": "favicon.svg",
+      "detail": "no svg favicon referenced/served",
+      "ok": true,
+      "severity": "warn"
+    },
+    {
+      "check": "apple-touch-icon",
+      "detail": "",
+      "ok": true,
+      "severity": "warn"
+    },
+    {
+      "check": "manifest.exists",
+      "detail": "",
+      "ok": true,
+      "severity": "warn"
+    },
+    {
+      "check": "manifest.icons_exist",
+      "detail": "",
+      "ok": true,
+      "severity": "warn"
+    },
+    {
+      "check": "og_image.social_card",
+      "detail": "1200x630",
+      "ok": true,
+      "severity": "warn"
+    }
+  ],
+  "status": "pass",
+  "warn": 0
+}

@@ -34,23 +34,23 @@
   <meta property="og:url" content="https://www.geospatialwebhook.com/offline/"/>
   <meta property="og:title" content="Offline"/>
   <meta property="og:description" content="This is the offline fallback page served by the service worker when no network connection is available."/>
-  <meta property="og:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
-  <meta property="og:image:width" content="512"/>
-  <meta property="og:image:height" content="512"/>
-  <meta property="og:image:alt" content="Geospatial Webhook logo"/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
 
   
   <meta name="twitter:card" content="summary_large_image"/>
   <meta name="twitter:title" content="Offline"/>
   <meta name="twitter:description" content="This is the offline fallback page served by the service worker when no network connection is available."/>
-  <meta name="twitter:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
-  <meta name="twitter:image:alt" content="Geospatial Webhook logo"/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
 
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/assets/css/site.css"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=8ef3d820"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -128,6 +128,33 @@
     <div class="markdown">
       <h1>You're offline</h1>
       <p>It looks like your network is unavailable. Pages you've already visited may still load from the cache. Reconnect to fetch the latest updates.</p>
+<svg viewBox="0 0 560 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Service worker cache pipeline: browser request routed through service worker to cache or network" style="width:100%;max-width:560px;height:auto;display:block;margin:1.5rem auto;">
+  <title>Service Worker Cache Pipeline</title>
+  <desc>A three-stage flow diagram showing a browser request passing through the service worker, which checks the cache store first; on a cache hit the response is served immediately, and on a cache miss the request falls through to the network.</desc>
+  <defs>
+    <marker id="sw-arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
+    </marker>
+  </defs>
+  <rect x="8" y="55" width="110" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-opacity="0.4"/>
+  <text x="63" y="77" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Browser</text>
+  <text x="63" y="93" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">fetch request</text>
+  <line x1="118" y1="80" x2="148" y2="80" stroke="currentColor" stroke-opacity="0.5" stroke-width="1.5" marker-end="url(#sw-arr)"/>
+  <rect x="150" y="55" width="130" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-opacity="0.5"/>
+  <text x="215" y="77" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Service Worker</text>
+  <text x="215" y="93" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">intercept + route</text>
+  <line x1="280" y1="80" x2="310" y2="80" stroke="currentColor" stroke-opacity="0.5" stroke-width="1.5" marker-end="url(#sw-arr)"/>
+  <rect x="312" y="20" width="110" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-opacity="0.4"/>
+  <text x="367" y="42" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Cache Store</text>
+  <text x="367" y="58" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">cache hit → serve</text>
+  <rect x="312" y="90" width="110" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-opacity="0.35"/>
+  <text x="367" y="112" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Network</text>
+  <text x="367" y="128" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">cache miss → fetch</text>
+  <line x1="280" y1="72" x2="310" y2="45" stroke="currentColor" stroke-opacity="0.4" stroke-width="1.2" marker-end="url(#sw-arr)"/>
+  <line x1="280" y1="88" x2="310" y2="115" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.2" stroke-dasharray="4 2" marker-end="url(#sw-arr)"/>
+  <text x="430" y="48" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.5">HIT</text>
+  <text x="430" y="118" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.5">MISS</text>
+</svg>
       <p><a href="/">Return to the home page</a></p>
     </div>
   </div>
@@ -154,6 +181,9 @@
         <h4>Site</h4>
         <ul>
           <li><a href="/">Home</a></li>
+          <li><a href="/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
         </ul>
       </div>
       <div>
@@ -183,7 +213,7 @@
 </footer>
 
   </div>
-  <script src="/assets/js/site.js" defer></script>
+  <script src="/assets/js/site.js?v=6c55de86" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

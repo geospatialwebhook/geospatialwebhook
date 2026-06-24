@@ -72,7 +72,7 @@ md.renderer.rules.fence = function (tokens, idx) {
   if (isDiagramLang && ASCII_DIAGRAM_RE.test(code)) {
     const mer = asciiDiagramToMermaid(code);
     if (mer) {
-      return `<pre class="mermaid">${escapeHtml(mer)}</pre>\n`;
+      return `<pre class="mermaid" tabindex="0">${escapeHtml(mer)}</pre>\n`;
     }
   }
 
@@ -91,7 +91,7 @@ md.renderer.rules.fence = function (tokens, idx) {
       <span class="code-block__copy-label">Copy</span>
     </button>
   </div>
-  <pre class="language-${safeLabel}"><code class="language-${safeLabel}">${highlighted}</code></pre>
+  <pre class="language-${safeLabel}" tabindex="0"><code class="language-${safeLabel}">${highlighted}</code></pre>
 </div>\n`;
 };
 

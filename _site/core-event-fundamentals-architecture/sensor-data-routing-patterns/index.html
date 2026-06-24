@@ -4,8 +4,8 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 
-  <title>Sensor Data Routing Patterns · Geo Webhook</title>
-  <meta name="description" content="In modern geospatial architectures, raw telemetry rarely flows directly to consumers. Instead, it passes through a deterministic routing layer that…"/>
+  <title>Sensor Data Routing Patterns for Geospatial Webhooks · Geo Webhook</title>
+  <meta name="description" content="Build spatial routing pipelines in Python: schema validation, spatial classification, broker dispatch, and at-least-once delivery for IoT and GIS streams."/>
   <link rel="canonical" href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/"/>
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
 
@@ -32,25 +32,25 @@
   <meta property="og:site_name" content="Geo Webhook"/>
   <meta property="og:locale" content="en_US"/>
   <meta property="og:url" content="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/"/>
-  <meta property="og:title" content="Sensor Data Routing Patterns"/>
-  <meta property="og:description" content="In modern geospatial architectures, raw telemetry rarely flows directly to consumers. Instead, it passes through a deterministic routing layer that…"/>
-  <meta property="og:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
-  <meta property="og:image:width" content="512"/>
-  <meta property="og:image:height" content="512"/>
-  <meta property="og:image:alt" content="Geospatial Webhook logo"/>
+  <meta property="og:title" content="Sensor Data Routing Patterns for Geospatial Webhooks"/>
+  <meta property="og:description" content="Build spatial routing pipelines in Python: schema validation, spatial classification, broker dispatch, and at-least-once delivery for IoT and GIS streams."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
 
   
   <meta name="twitter:card" content="summary_large_image"/>
-  <meta name="twitter:title" content="Sensor Data Routing Patterns"/>
-  <meta name="twitter:description" content="In modern geospatial architectures, raw telemetry rarely flows directly to consumers. Instead, it passes through a deterministic routing layer that…"/>
-  <meta name="twitter:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
-  <meta name="twitter:image:alt" content="Geospatial Webhook logo"/>
+  <meta name="twitter:title" content="Sensor Data Routing Patterns for Geospatial Webhooks"/>
+  <meta name="twitter:description" content="Build spatial routing pipelines in Python: schema validation, spatial classification, broker dispatch, and at-least-once delivery for IoT and GIS streams."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
 
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/assets/css/site.css"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=8ef3d820"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -98,12 +98,12 @@
     "@type": "TechArticle",
     "@id": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/#article",
     "mainEntityOfPage": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/",
-    "headline": "Sensor Data Routing Patterns",
-    "description": "In modern geospatial architectures, raw telemetry rarely flows directly to consumers. Instead, it passes through a deterministic routing layer that…",
+    "headline": "Sensor Data Routing Patterns for Geospatial Webhooks",
+    "description": "Build spatial routing pipelines in Python: schema validation, spatial classification, broker dispatch, and at-least-once delivery for IoT and GIS streams.",
     "inLanguage": "en",
     "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
     "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
-    "image": "https://www.geospatialwebhook.com/icon-512.png",
+    "image": "https://www.geospatialwebhook.com/og-image.png",
     "url": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/",
     "articleSection": "Core Event Fundamentals Architecture",
     "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
@@ -156,61 +156,602 @@
           <span aria-current="page">Sensor Data Routing Patterns</span>
     </nav>
 
+    <h1 class="page__title">Sensor Data Routing Patterns for Geospatial Webhooks</h1>
+
     <div class="page__layout">
       <div class="markdown">
-        <h1 id="sensor-data-routing-patterns" tabindex="-1"><a class="heading-anchor" href="#sensor-data-routing-patterns">Sensor Data Routing Patterns</a></h1>
-<p>In modern geospatial architectures, raw telemetry rarely flows directly to consumers. Instead, it passes through a deterministic routing layer that classifies, filters, and dispatches payloads based on spatial boundaries, attribute thresholds, and consumer subscriptions. Implementing robust <strong>Sensor Data Routing Patterns</strong> is critical for platform engineers and SaaS founders who must balance low-latency delivery with strict spatial accuracy. When built on a solid foundation of <a href="/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a>, routing layers transform chaotic IoT streams into structured, actionable event flows that power real-time mapping, alerting, and analytics.</p>
-<h2 id="architectural-prerequisites-baseline" tabindex="-1"><a class="heading-anchor" href="#architectural-prerequisites-baseline">Architectural Prerequisites &amp; Baseline</a></h2>
-<p>Before deploying a spatial routing pipeline, your environment must satisfy strict concurrency, validation, and interoperability requirements. Routing at scale fails when ingress layers lack schema enforcement or when spatial predicates consume excessive CPU cycles.</p>
-<ul>
-<li><strong>Python 3.10+</strong> with native <code>asyncio</code> support for non-blocking I/O and cooperative multitasking. See the official <a href="https://docs.python.org/3/library/asyncio.html">Python asyncio documentation</a> for event loop configuration and task scheduling best practices.</li>
-<li><strong>FastAPI or Starlette</strong> for high-throughput webhook ingestion, leveraging ASGI servers like Uvicorn or Hypercorn.</li>
-<li><strong>Pydantic v2</strong> for strict payload validation, model caching, and schema versioning across device firmware generations.</li>
-<li><strong>Shapely 2.0+</strong> or <strong>GeoPandas</strong> for in-memory spatial predicates, backed by GEOS for robust polygon intersection and point-in-polygon tests.</li>
-<li><strong>Message Broker</strong> (Redis Streams, RabbitMQ, or Apache Kafka) for decoupled dispatch, consumer group partitioning, and persistent offset tracking.</li>
-<li><strong>GeoJSON compliance</strong> per <a href="https://datatracker.ietf.org/doc/html/rfc7946">RFC 7946</a> to ensure standardized coordinate representation, CRS assumptions, and geometry type interoperability.</li>
-<li><strong>Observability stack</strong> (OpenTelemetry, Prometheus, Grafana) for routing latency, queue depth, and drop-rate tracking across distributed nodes.</li>
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Sensor Data Routing Patterns for Geospatial Webhooks",
+      "description": "A step-by-step guide to building deterministic spatial routing pipelines in Python: schema validation, spatial classification, broker dispatch, and at-least-once delivery for IoT and GIS telemetry streams.",
+      "datePublished": "2024-03-15",
+      "dateModified": "2026-06-24",
+      "author": { "@type": "Organization", "name": "geospatialwebhook.com" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatialwebhook.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Core Event Fundamentals & Architecture", "item": "https://geospatialwebhook.com/core-event-fundamentals-architecture/" },
+        { "@type": "ListItem", "position": 3, "name": "Sensor Data Routing Patterns", "item": "https://geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/" }
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Build a Spatial Sensor Data Routing Pipeline",
+      "step": [
+        { "@type": "HowToStep", "position": 1, "name": "Secure ingestion and schema validation" },
+        { "@type": "HowToStep", "position": 2, "name": "Spatial and attribute classification" },
+        { "@type": "HowToStep", "position": 3, "name": "Route resolution and fan-out logic" },
+        { "@type": "HowToStep", "position": 4, "name": "Asynchronous broker dispatch" },
+        { "@type": "HowToStep", "position": 5, "name": "Downstream consumption and state sync" }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "When should I partition by H3 cell instead of device ID?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Use H3 partitioning when downstream consumers are regionaly scoped — tile renderers, per-city alerting services, or geographic shards of a PostGIS database. Use device-ID partitioning when ordering guarantees per sensor matter more than spatial locality, such as time-series telemetry streams where out-of-order events corrupt state." }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I handle sensors that report in a CRS other than WGS 84 (EPSG:4326)?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Reproject at the ingestion boundary before any spatial classification. Use pyproj's Transformer with always_xy=True to avoid axis-order ambiguity. Store the original CRS in the event envelope as a metadata field so consumers can audit provenance, but route exclusively on EPSG:4326 coordinates." }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the right queue depth limit to apply backpressure at the ingress?",
+          "acceptedAnswer": { "@type": "Answer", "text": "A practical starting point is 10,000 in-flight events per ingress worker. Monitor P99 ingestion latency and drop rate. When P99 exceeds 300 ms or drop rate exceeds 0.05%, tighten the limit or scale out workers. Return HTTP 429 with a Retry-After header so upstream senders back off gracefully." }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I skip the message broker and route directly from FastAPI to consumers?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Only for very low throughput (under ~50 events/second) with a single consumer. Without a broker, a consumer crash silently drops events and spatial mutations are lost. For production IoT feeds, always interpose a durable broker — Redis Streams is the lowest-friction option, Kafka is the right choice when you need replay, consumer group partitioning, or retention beyond 24 hours." }
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>Raw telemetry from spatial sensors rarely flows directly to consumers — it passes through a deterministic routing layer that validates, classifies, and dispatches payloads based on geographic boundaries, attribute thresholds, and subscriber rules.</strong> This page is part of <a href="/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a> and covers how to build that routing layer in Python from ingestion through broker dispatch.</p>
+<hr>
+<h2 id="prerequisites" tabindex="-1"><a class="heading-anchor" href="#prerequisites">Prerequisites</a></h2>
+<p>Before deploying a spatial routing pipeline, confirm your environment meets these requirements:</p>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Python 3.10+</strong> — native <code>asyncio</code>, structural pattern matching, strict type hints</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>FastAPI or Starlette</strong> — ASGI webhook ingestion with Uvicorn or Hypercorn</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Pydantic v2</strong> — strict payload validation, model caching, CRS enum enforcement</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Shapely 2.0+</strong> — in-memory spatial predicates via GEOS (polygon intersection, point-in-polygon)</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>pyproj 3.5+</strong> — coordinate reprojection from device-native CRS to EPSG:4326</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Message broker</strong> — Redis Streams, RabbitMQ, or Apache Kafka for decoupled dispatch</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>GeoJSON compliance</strong> — payloads must conform to <a href="https://datatracker.ietf.org/doc/html/rfc7946">RFC 7946</a> before entering the router</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>OpenTelemetry + Prometheus</strong> — routing latency, queue depth, and drop-rate observability</label></li>
 </ul>
-<p>Routing patterns assume you already understand webhook signature verification, idempotency keys, and backpressure handling. If your architecture relies heavily on Designing edge-computed spatial webhooks for IoT sensors, you must align edge payload schemas with your central router’s validation layer to prevent schema drift and coordinate misalignment at scale.</p>
-<h2 id="deterministic-routing-pipeline" tabindex="-1"><a class="heading-anchor" href="#deterministic-routing-pipeline">Deterministic Routing Pipeline</a></h2>
-<p>A production-grade spatial router follows a deterministic, stage-isolated pipeline. Each phase enforces strict contracts, enabling horizontal scaling and predictable failure domains.</p>
-<h3 id="1-secure-ingestion-schema-validation" tabindex="-1"><a class="heading-anchor" href="#1-secure-ingestion-schema-validation">1. Secure Ingestion &amp; Schema Validation</a></h3>
-<p>Raw sensor payloads arrive via HTTP POST or MQTT-to-HTTP bridges. The ingress layer immediately validates JSON structure, verifies cryptographic signatures (HMAC-SHA256 or Ed25519), and extracts routing metadata: device ID, epoch timestamp, coordinate reference system (CRS), and firmware version. Invalid payloads are quarantined to a dead-letter queue before consuming downstream compute resources. Validation must reject malformed coordinates early; spatial operations on invalid geometries cause silent routing failures or broker poisoning.</p>
-<h3 id="2-spatial-attribute-classification" tabindex="-1"><a class="heading-anchor" href="#2-spatial-attribute-classification">2. Spatial &amp; Attribute Classification</a></h3>
-<p>Once validated, the router evaluates the payload against registered spatial zones (polygons, geofences, administrative boundaries) and attribute filters (thresholds, device types, state transitions). This stage frequently intersects with <a href="/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers</a> when routing decisions depend on delta detection rather than absolute state. For example, a temperature sensor might only trigger downstream alerts when crossing a threshold <em>and</em> located within a wildfire risk polygon. Spatial indexing (R-trees or QuadTrees) is mandatory here; brute-force polygon intersection testing degrades linearly with zone count and introduces unacceptable tail latency.</p>
-<h3 id="3-route-resolution-fan-out-logic" tabindex="-1"><a class="heading-anchor" href="#3-route-resolution-fan-out-logic">3. Route Resolution &amp; Fan-Out Logic</a></h3>
-<p>Based on classification results, the router builds a dispatch list. A single sensor event may route to multiple consumers (fan-out) or be suppressed entirely if it matches exclusion rules or deduplication windows. Suppression logic prevents alert fatigue and reduces broker load during high-frequency telemetry bursts. The router attaches routing metadata (partition keys, consumer tags, TTL) to each dispatch envelope. At this stage, you must decide between synchronous fan-out (blocking until all downstream ACKs) and asynchronous fan-out (fire-and-forget with guaranteed delivery queues). Most production systems opt for the latter to preserve ingress throughput.</p>
-<h3 id="4-asynchronous-broker-dispatch" tabindex="-1"><a class="heading-anchor" href="#4-asynchronous-broker-dispatch">4. Asynchronous Broker Dispatch</a></h3>
-<p>Resolved routes are serialized and pushed to a message broker. Partitioning strategy directly impacts consumer scaling and spatial locality. Hash-based partitioning on <code>device_id</code> ensures ordered delivery per sensor, while spatial partitioning (e.g., by geohash or S2 cell) optimizes downstream tile generation and regional analytics. Brokers must be configured with explicit retention policies, consumer group offsets, and backpressure thresholds to prevent memory exhaustion during telemetry spikes.</p>
-<h3 id="5-downstream-consumption-state-sync" tabindex="-1"><a class="heading-anchor" href="#5-downstream-consumption-state-sync">5. Downstream Consumption &amp; State Sync</a></h3>
-<p>Consumers pull from broker partitions, deserialize payloads, and update application state. In mapping-heavy architectures, this stage often feeds into <a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a> to regenerate raster or vector tiles based on new sensor states. Consumers must implement idempotent write patterns, as network partitions or broker retries will inevitably deliver duplicate events. State synchronization should rely on optimistic concurrency control or version vectors rather than blind overwrites.</p>
-<h2 id="reliability-delivery-guarantees" tabindex="-1"><a class="heading-anchor" href="#reliability-delivery-guarantees">Reliability &amp; Delivery Guarantees</a></h2>
-<p>Spatial routing introduces unique failure modes: coordinate drift, timezone misalignment, and partial zone updates. To maintain data integrity, implement explicit delivery semantics. At-least-once delivery is the industry standard for geospatial telemetry, ensuring no event is lost while requiring consumers to handle duplicates gracefully. For implementation details on retry backoff, idempotency key generation, and dead-letter routing, reference <a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/">Implementing at-least-once delivery for GIS webhooks</a>.</p>
-<p>Exactly-once delivery is rarely achievable across distributed spatial systems due to network partitions and broker leader elections. Instead, design consumers to be idempotent and state-reconcilable. Use deterministic event IDs (e.g., <code>sha256(device_id + timestamp + payload_hash)</code>) to track processed events in a low-latency store like Redis. When a duplicate arrives, the consumer checks the ID, skips processing, and returns a 200 OK to prevent broker redelivery storms.</p>
-<h2 id="implementation-blueprint-code-reliability" tabindex="-1"><a class="heading-anchor" href="#implementation-blueprint-code-reliability">Implementation Blueprint &amp; Code Reliability</a></h2>
-<p>Building a custom router requires careful separation of concerns. The ingestion layer should never perform spatial intersection tests; instead, it should offload classification to a dedicated worker pool. FastAPI’s background task system or Celery with Redis/RabbitMQ provides reliable async execution boundaries. For a complete reference implementation covering middleware, spatial indexing, and consumer routing, see Building a custom spatial event router in FastAPI.</p>
-<p>Code reliability hinges on three practices:</p>
-<ol>
-<li><strong>Strict Pydantic Models</strong>: Define explicit coordinate bounds, CRS enums, and required fields. Reject payloads with <code>NaN</code> or <code>Infinity</code> coordinates at the validation stage.</li>
-<li><strong>Timeout &amp; Circuit Breaking</strong>: Wrap spatial predicates and broker publishes in circuit breakers. If the GEOS library hangs on a malformed polygon, the router must fail fast and quarantine the event rather than block the event loop.</li>
-<li><strong>Deterministic Logging</strong>: Emit structured logs containing <code>event_id</code>, <code>routing_decision</code>, <code>spatial_match_count</code>, and <code>dispatch_latency</code>. This enables rapid post-mortem analysis when routing anomalies occur.</li>
-</ol>
-<h2 id="scaling-limits-observability" tabindex="-1"><a class="heading-anchor" href="#scaling-limits-observability">Scaling Limits &amp; Observability</a></h2>
-<p>Sensor Data Routing Patterns scale predictably only when bottlenecks are isolated. The most common scaling limits are:</p>
+<hr>
+<h2 id="architecture-overview" tabindex="-1"><a class="heading-anchor" href="#architecture-overview">Architecture Overview</a></h2>
+<p>The routing pipeline is a five-stage, stage-isolated sequence. Each stage enforces strict contracts so individual phases can be scaled or replaced independently.</p>
+<svg viewBox="0 0 760 320" role="img" aria-label="Five-stage sensor data routing pipeline diagram" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:760px;height:auto;font-family:inherit;display:block;margin:1.5rem auto;">
+  <title>Sensor Data Routing Pipeline</title>
+  <desc>Data flows left-to-right through five stages: Ingestion, Classification, Route Resolution, Broker Dispatch, and Consumer Sync. Failed events are sent to a Dead-Letter Queue at the bottom.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.6"/>
+    </marker>
+  </defs>
+  <!-- Stage boxes -->
+  <rect x="10" y="100" width="118" height="64" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+  <text x="69" y="126" text-anchor="middle" font-size="11" fill="currentColor" font-weight="600">1. Ingestion</text>
+  <text x="69" y="142" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">&amp; Schema</text>
+  <text x="69" y="156" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">Validation</text>
+  <rect x="162" y="100" width="118" height="64" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+  <text x="221" y="126" text-anchor="middle" font-size="11" fill="currentColor" font-weight="600">2. Spatial</text>
+  <text x="221" y="142" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">&amp; Attribute</text>
+  <text x="221" y="156" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">Classification</text>
+  <rect x="314" y="100" width="118" height="64" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+  <text x="373" y="126" text-anchor="middle" font-size="11" fill="currentColor" font-weight="600">3. Route</text>
+  <text x="373" y="142" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">Resolution</text>
+  <text x="373" y="156" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">&amp; Fan-Out</text>
+  <rect x="466" y="100" width="118" height="64" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+  <text x="525" y="126" text-anchor="middle" font-size="11" fill="currentColor" font-weight="600">4. Broker</text>
+  <text x="525" y="142" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">Dispatch</text>
+  <text x="525" y="156" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">(async)</text>
+  <rect x="618" y="100" width="132" height="64" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+  <text x="684" y="126" text-anchor="middle" font-size="11" fill="currentColor" font-weight="600">5. Consumer</text>
+  <text x="684" y="142" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">&amp; State</text>
+  <text x="684" y="156" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">Sync</text>
+  <!-- Horizontal arrows -->
+  <line x1="128" y1="132" x2="160" y2="132" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.6"/>
+  <line x1="280" y1="132" x2="312" y2="132" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.6"/>
+  <line x1="432" y1="132" x2="464" y2="132" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.6"/>
+  <line x1="584" y1="132" x2="616" y2="132" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.6"/>
+  <!-- Sensor input -->
+  <rect x="10" y="30" width="118" height="36" rx="4" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3" stroke-dasharray="4,3"/>
+  <text x="69" y="52" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">HTTP POST / MQTT</text>
+  <line x1="69" y1="66" x2="69" y2="98" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.5"/>
+  <!-- Dead-letter queue -->
+  <rect x="10" y="218" width="118" height="36" rx="4" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3" stroke-dasharray="4,3"/>
+  <text x="69" y="240" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">Dead-Letter Queue</text>
+  <line x1="69" y1="164" x2="69" y2="216" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.4" stroke-dasharray="4,3"/>
+  <text x="78" y="195" font-size="9" fill="currentColor" opacity="0.55">invalid</text>
+  <!-- Suppression note under Route Resolution -->
+<p><text x="373" y="195" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.55">suppression / dedup</text>
+<line x1="373" y1="164" x2="373" y2="188" stroke="currentColor" stroke-width="1" opacity="0.35" stroke-dasharray="3,3"/></p>
+  <!-- Consumer outputs -->
+  <rect x="618" y="218" width="132" height="36" rx="4" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3" stroke-dasharray="4,3"/>
+  <text x="684" y="240" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">PostGIS / Tile Cache</text>
+  <line x1="684" y1="164" x2="684" y2="216" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.5"/>
+  <!-- Bottom label -->
+<p><text x="380" y="300" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.45">Sensor Data Routing Pipeline — geospatialwebhook.com</text>
+</svg></p>
+<hr>
+<h2 id="step-by-step-implementation" tabindex="-1"><a class="heading-anchor" href="#step-by-step-implementation">Step-by-Step Implementation</a></h2>
+<h3 id="step-1-secure-ingestion-and-schema-validation" tabindex="-1"><a class="heading-anchor" href="#step-1-secure-ingestion-and-schema-validation">Step 1 — Secure Ingestion and Schema Validation</a></h3>
+<p><strong>Purpose:</strong> Reject malformed and tampered payloads before they consume any downstream compute.</p>
+<p>Raw sensor payloads arrive via HTTP POST or MQTT-to-HTTP bridge. The ingress layer validates JSON structure, verifies the cryptographic signature (<code>HMAC-SHA256</code> or <code>Ed25519</code>), and extracts routing metadata: <code>device_id</code>, epoch timestamp, coordinate reference system (CRS), and firmware version. Invalid payloads go straight to a dead-letter queue; spatial operations on corrupt geometries cause silent routing failures or broker poisoning.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> hashlib
+<span class="token keyword">import</span> hmac
+<span class="token keyword">from</span> fastapi <span class="token keyword">import</span> FastAPI<span class="token punctuation">,</span> Request<span class="token punctuation">,</span> HTTPException
+<span class="token keyword">from</span> pydantic <span class="token keyword">import</span> BaseModel<span class="token punctuation">,</span> field_validator<span class="token punctuation">,</span> model_validator
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>validation <span class="token keyword">import</span> make_valid
+<span class="token keyword">import</span> pyproj
+
+app <span class="token operator">=</span> FastAPI<span class="token punctuation">(</span><span class="token punctuation">)</span>
+WEBHOOK_SECRET <span class="token operator">=</span> <span class="token string">b"your-hmac-secret"</span>  <span class="token comment"># load from env in production</span>
+
+<span class="token keyword">class</span> <span class="token class-name">SensorPayload</span><span class="token punctuation">(</span>BaseModel<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    device_id<span class="token punctuation">:</span> <span class="token builtin">str</span>
+    timestamp_utc<span class="token punctuation">:</span> <span class="token builtin">float</span>          <span class="token comment"># Unix epoch, seconds</span>
+    crs<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">=</span> <span class="token string">"EPSG:4326"</span>        <span class="token comment"># default; must be EPSG code string</span>
+    geometry<span class="token punctuation">:</span> <span class="token builtin">dict</span>                 <span class="token comment"># raw GeoJSON geometry object</span>
+    properties<span class="token punctuation">:</span> <span class="token builtin">dict</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token punctuation">}</span>
+
+    <span class="token decorator annotation punctuation">@field_validator</span><span class="token punctuation">(</span><span class="token string">"crs"</span><span class="token punctuation">)</span>
+    <span class="token decorator annotation punctuation">@classmethod</span>
+    <span class="token keyword">def</span> <span class="token function">crs_must_be_epsg</span><span class="token punctuation">(</span>cls<span class="token punctuation">,</span> v<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+        <span class="token keyword">if</span> <span class="token keyword">not</span> v<span class="token punctuation">.</span>upper<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span>startswith<span class="token punctuation">(</span><span class="token string">"EPSG:"</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"CRS must be an EPSG code, e.g. EPSG:4326"</span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> v<span class="token punctuation">.</span>upper<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+    <span class="token decorator annotation punctuation">@model_validator</span><span class="token punctuation">(</span>mode<span class="token operator">=</span><span class="token string">"after"</span><span class="token punctuation">)</span>
+    <span class="token keyword">def</span> <span class="token function">geometry_must_be_valid</span><span class="token punctuation">(</span>self<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token string">"SensorPayload"</span><span class="token punctuation">:</span>
+        <span class="token keyword">try</span><span class="token punctuation">:</span>
+            geom <span class="token operator">=</span> shape<span class="token punctuation">(</span>self<span class="token punctuation">.</span>geometry<span class="token punctuation">)</span>
+        <span class="token keyword">except</span> Exception <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"GeoJSON geometry parse error: </span><span class="token interpolation"><span class="token punctuation">{</span>exc<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span> <span class="token keyword">from</span> exc
+        <span class="token keyword">if</span> <span class="token keyword">not</span> geom<span class="token punctuation">.</span>is_valid<span class="token punctuation">:</span>
+            geom <span class="token operator">=</span> make_valid<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>  <span class="token comment"># attempt automatic repair</span>
+        <span class="token keyword">if</span> geom<span class="token punctuation">.</span>is_empty<span class="token punctuation">:</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"Geometry is empty after validation"</span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> self
+
+<span class="token keyword">def</span> <span class="token function">verify_hmac</span><span class="token punctuation">(</span>body<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">,</span> signature<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+    expected <span class="token operator">=</span> hmac<span class="token punctuation">.</span>new<span class="token punctuation">(</span>WEBHOOK_SECRET<span class="token punctuation">,</span> body<span class="token punctuation">,</span> hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> hmac<span class="token punctuation">.</span>compare_digest<span class="token punctuation">(</span>expected<span class="token punctuation">,</span> signature<span class="token punctuation">.</span>removeprefix<span class="token punctuation">(</span><span class="token string">"sha256="</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+<span class="token decorator annotation punctuation">@app<span class="token punctuation">.</span>post</span><span class="token punctuation">(</span><span class="token string">"/ingest"</span><span class="token punctuation">)</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">ingest</span><span class="token punctuation">(</span>request<span class="token punctuation">:</span> Request<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    body <span class="token operator">=</span> <span class="token keyword">await</span> request<span class="token punctuation">.</span>body<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    sig <span class="token operator">=</span> request<span class="token punctuation">.</span>headers<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"X-Hub-Signature-256"</span><span class="token punctuation">,</span> <span class="token string">""</span><span class="token punctuation">)</span>
+    <span class="token keyword">if</span> <span class="token keyword">not</span> verify_hmac<span class="token punctuation">(</span>body<span class="token punctuation">,</span> sig<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> HTTPException<span class="token punctuation">(</span>status_code<span class="token operator">=</span><span class="token number">401</span><span class="token punctuation">,</span> detail<span class="token operator">=</span><span class="token string">"Invalid signature"</span><span class="token punctuation">)</span>
+    <span class="token keyword">try</span><span class="token punctuation">:</span>
+        payload <span class="token operator">=</span> SensorPayload<span class="token punctuation">.</span>model_validate_json<span class="token punctuation">(</span>body<span class="token punctuation">)</span>
+    <span class="token keyword">except</span> Exception <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+        <span class="token comment"># quarantine to dead-letter queue instead of returning 400</span>
+        <span class="token keyword">await</span> quarantine<span class="token punctuation">(</span>body<span class="token punctuation">,</span> reason<span class="token operator">=</span><span class="token builtin">str</span><span class="token punctuation">(</span>exc<span class="token punctuation">)</span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"quarantined"</span><span class="token punctuation">}</span>
+    <span class="token keyword">return</span> <span class="token keyword">await</span> route_payload<span class="token punctuation">(</span>payload<span class="token punctuation">)</span>
+</code></pre>
+</div>
+<h3 id="step-2-spatial-and-attribute-classification" tabindex="-1"><a class="heading-anchor" href="#step-2-spatial-and-attribute-classification">Step 2 — Spatial and Attribute Classification</a></h3>
+<p><strong>Purpose:</strong> Determine which registered zones and consumers the event belongs to.</p>
+<p>The router evaluates the reprojected point or polygon against registered spatial zones (geofences, administrative boundaries, wildfire risk polygons) and attribute filters (device type, state transitions, threshold crossings). This stage intersects with <a href="/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers</a> when routing decisions depend on delta detection rather than absolute state. Spatial indexing with an R-tree is mandatory; brute-force intersection testing degrades linearly with zone count and introduces unacceptable tail latency at production scale.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> shapely<span class="token punctuation">.</span>strtree <span class="token keyword">import</span> STRtree
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape<span class="token punctuation">,</span> Point
+<span class="token keyword">import</span> pyproj
+
+<span class="token comment"># Build once at startup; refresh when zone registry changes</span>
+TRANSFORMER_CACHE<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> pyproj<span class="token punctuation">.</span>Transformer<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token punctuation">}</span>
+
+<span class="token keyword">def</span> <span class="token function">get_transformer</span><span class="token punctuation">(</span>source_crs<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> pyproj<span class="token punctuation">.</span>Transformer<span class="token punctuation">:</span>
+    <span class="token keyword">if</span> source_crs <span class="token keyword">not</span> <span class="token keyword">in</span> TRANSFORMER_CACHE<span class="token punctuation">:</span>
+        TRANSFORMER_CACHE<span class="token punctuation">[</span>source_crs<span class="token punctuation">]</span> <span class="token operator">=</span> pyproj<span class="token punctuation">.</span>Transformer<span class="token punctuation">.</span>from_crs<span class="token punctuation">(</span>
+            source_crs<span class="token punctuation">,</span> <span class="token string">"EPSG:4326"</span><span class="token punctuation">,</span> always_xy<span class="token operator">=</span><span class="token boolean">True</span>
+        <span class="token punctuation">)</span>
+    <span class="token keyword">return</span> TRANSFORMER_CACHE<span class="token punctuation">[</span>source_crs<span class="token punctuation">]</span>
+
+<span class="token keyword">class</span> <span class="token class-name">ZoneIndex</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""R-tree-backed index of registered spatial zones."""</span>
+
+    <span class="token keyword">def</span> <span class="token function">__init__</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> zones<span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">dict</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        self<span class="token punctuation">.</span>_zones <span class="token operator">=</span> zones
+        self<span class="token punctuation">.</span>_geoms <span class="token operator">=</span> <span class="token punctuation">[</span>shape<span class="token punctuation">(</span>z<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token keyword">for</span> z <span class="token keyword">in</span> zones<span class="token punctuation">]</span>
+        self<span class="token punctuation">.</span>_tree <span class="token operator">=</span> STRtree<span class="token punctuation">(</span>self<span class="token punctuation">.</span>_geoms<span class="token punctuation">)</span>
+
+    <span class="token keyword">def</span> <span class="token function">classify</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> geom<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">dict</span><span class="token punctuation">]</span><span class="token punctuation">:</span>
+        candidate_indices <span class="token operator">=</span> self<span class="token punctuation">.</span>_tree<span class="token punctuation">.</span>query<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>
+        <span class="token keyword">return</span> <span class="token punctuation">[</span>
+            self<span class="token punctuation">.</span>_zones<span class="token punctuation">[</span>i<span class="token punctuation">]</span>
+            <span class="token keyword">for</span> i <span class="token keyword">in</span> candidate_indices
+            <span class="token keyword">if</span> self<span class="token punctuation">.</span>_geoms<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>intersects<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>
+        <span class="token punctuation">]</span>
+
+<span class="token keyword">def</span> <span class="token function">reproject_geometry</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> SensorPayload<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Return a Shapely geometry in EPSG:4326."""</span>
+    geom <span class="token operator">=</span> shape<span class="token punctuation">(</span>payload<span class="token punctuation">.</span>geometry<span class="token punctuation">)</span>
+    <span class="token keyword">if</span> payload<span class="token punctuation">.</span>crs <span class="token operator">==</span> <span class="token string">"EPSG:4326"</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> geom
+    transformer <span class="token operator">=</span> get_transformer<span class="token punctuation">(</span>payload<span class="token punctuation">.</span>crs<span class="token punctuation">)</span>
+    <span class="token keyword">return</span> transform<span class="token punctuation">(</span>transformer<span class="token punctuation">.</span>transform<span class="token punctuation">,</span> geom<span class="token punctuation">)</span>
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">classify_payload</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> SensorPayload<span class="token punctuation">,</span> index<span class="token punctuation">:</span> ZoneIndex<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">dict</span><span class="token punctuation">]</span><span class="token punctuation">:</span>
+    geom_wgs84 <span class="token operator">=</span> reproject_geometry<span class="token punctuation">(</span>payload<span class="token punctuation">)</span>
+    matched_zones <span class="token operator">=</span> index<span class="token punctuation">.</span>classify<span class="token punctuation">(</span>geom_wgs84<span class="token punctuation">)</span>
+    <span class="token comment"># Attribute filtering — e.g. temperature threshold + zone membership</span>
+    props <span class="token operator">=</span> payload<span class="token punctuation">.</span>properties
+    <span class="token keyword">return</span> <span class="token punctuation">[</span>
+        z <span class="token keyword">for</span> z <span class="token keyword">in</span> matched_zones
+        <span class="token keyword">if</span> z<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"device_type"</span><span class="token punctuation">)</span> <span class="token keyword">in</span> <span class="token punctuation">(</span>props<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"device_type"</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token boolean">None</span><span class="token punctuation">)</span>
+    <span class="token punctuation">]</span>
+</code></pre>
+</div>
+<h3 id="step-3-route-resolution-and-fan-out" tabindex="-1"><a class="heading-anchor" href="#step-3-route-resolution-and-fan-out">Step 3 — Route Resolution and Fan-Out</a></h3>
+<p><strong>Purpose:</strong> Translate matched zones into a dispatch list with partition keys and TTL metadata.</p>
+<p>A single sensor event may route to multiple consumers (fan-out) or be suppressed entirely if it matches an exclusion rule or a deduplication window. Suppression prevents alert fatigue and cuts broker load during high-frequency telemetry bursts. For idempotency key generation — essential when a consumer group receives the same event more than once — follow the approach in <a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a>.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> hashlib<span class="token punctuation">,</span> json<span class="token punctuation">,</span> time
+<span class="token keyword">from</span> dataclasses <span class="token keyword">import</span> dataclass
+
+<span class="token decorator annotation punctuation">@dataclass</span>
+<span class="token keyword">class</span> <span class="token class-name">DispatchEnvelope</span><span class="token punctuation">:</span>
+    topic<span class="token punctuation">:</span> <span class="token builtin">str</span>
+    partition_key<span class="token punctuation">:</span> <span class="token builtin">str</span>   <span class="token comment"># device_id for ordering; H3 cell for spatial locality</span>
+    payload<span class="token punctuation">:</span> <span class="token builtin">dict</span>
+    event_id<span class="token punctuation">:</span> <span class="token builtin">str</span>
+    ttl_seconds<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">300</span>
+
+<span class="token keyword">def</span> <span class="token function">build_event_id</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> SensorPayload<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Deterministic SHA-256 event ID for idempotency tracking."""</span>
+    canonical <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>
+        <span class="token punctuation">{</span><span class="token string">"device_id"</span><span class="token punctuation">:</span> payload<span class="token punctuation">.</span>device_id<span class="token punctuation">,</span>
+         <span class="token string">"timestamp_utc"</span><span class="token punctuation">:</span> payload<span class="token punctuation">.</span>timestamp_utc<span class="token punctuation">,</span>
+         <span class="token string">"geometry"</span><span class="token punctuation">:</span> payload<span class="token punctuation">.</span>geometry<span class="token punctuation">}</span><span class="token punctuation">,</span>
+        sort_keys<span class="token operator">=</span><span class="token boolean">True</span>
+    <span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">(</span>canonical<span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+<span class="token keyword">def</span> <span class="token function">resolve_routes</span><span class="token punctuation">(</span>
+    payload<span class="token punctuation">:</span> SensorPayload<span class="token punctuation">,</span>
+    matched_zones<span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">dict</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+    dedup_window_seconds<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">5</span><span class="token punctuation">,</span>
+    seen_ids<span class="token punctuation">:</span> <span class="token builtin">set</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span><span class="token punctuation">,</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">list</span><span class="token punctuation">[</span>DispatchEnvelope<span class="token punctuation">]</span><span class="token punctuation">:</span>
+    seen_ids <span class="token operator">=</span> seen_ids <span class="token keyword">or</span> <span class="token builtin">set</span><span class="token punctuation">(</span><span class="token punctuation">)</span>
+    event_id <span class="token operator">=</span> build_event_id<span class="token punctuation">(</span>payload<span class="token punctuation">)</span>
+    <span class="token keyword">if</span> event_id <span class="token keyword">in</span> seen_ids<span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>   <span class="token comment"># suppressed — duplicate within dedup window</span>
+    envelopes <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+    <span class="token keyword">for</span> zone <span class="token keyword">in</span> matched_zones<span class="token punctuation">:</span>
+        envelopes<span class="token punctuation">.</span>append<span class="token punctuation">(</span>DispatchEnvelope<span class="token punctuation">(</span>
+            topic<span class="token operator">=</span>zone<span class="token punctuation">[</span><span class="token string">"topic"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+            partition_key<span class="token operator">=</span>payload<span class="token punctuation">.</span>device_id<span class="token punctuation">,</span>
+            payload<span class="token operator">=</span><span class="token punctuation">{</span><span class="token string">"event_id"</span><span class="token punctuation">:</span> event_id<span class="token punctuation">,</span>
+                     <span class="token string">"device_id"</span><span class="token punctuation">:</span> payload<span class="token punctuation">.</span>device_id<span class="token punctuation">,</span>
+                     <span class="token string">"timestamp_utc"</span><span class="token punctuation">:</span> payload<span class="token punctuation">.</span>timestamp_utc<span class="token punctuation">,</span>
+                     <span class="token string">"geometry"</span><span class="token punctuation">:</span> payload<span class="token punctuation">.</span>geometry<span class="token punctuation">,</span>
+                     <span class="token string">"zone_id"</span><span class="token punctuation">:</span> zone<span class="token punctuation">[</span><span class="token string">"id"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+                     <span class="token string">"properties"</span><span class="token punctuation">:</span> payload<span class="token punctuation">.</span>properties<span class="token punctuation">}</span><span class="token punctuation">,</span>
+            event_id<span class="token operator">=</span>event_id<span class="token punctuation">,</span>
+        <span class="token punctuation">)</span><span class="token punctuation">)</span>
+    seen_ids<span class="token punctuation">.</span>add<span class="token punctuation">(</span>event_id<span class="token punctuation">)</span>
+    <span class="token keyword">return</span> envelopes
+</code></pre>
+</div>
+<h3 id="step-4-asynchronous-broker-dispatch" tabindex="-1"><a class="heading-anchor" href="#step-4-asynchronous-broker-dispatch">Step 4 — Asynchronous Broker Dispatch</a></h3>
+<p><strong>Purpose:</strong> Push resolved routes to a durable message broker without blocking the ingress worker.</p>
+<p>Partitioning strategy directly impacts consumer scaling and spatial locality. Hash-based partitioning on <code>device_id</code> ensures ordered delivery per sensor. Spatial partitioning by H3 cell (resolution 5–7) optimizes downstream <a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a> and regional analytics. Configure explicit retention policies, consumer group offsets, and backpressure thresholds; unbounded broker topics exhaust memory during telemetry spikes.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">import</span> aioredis
+
+redis<span class="token punctuation">:</span> aioredis<span class="token punctuation">.</span>Redis <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span>
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">get_redis</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> aioredis<span class="token punctuation">.</span>Redis<span class="token punctuation">:</span>
+    <span class="token keyword">global</span> redis
+    <span class="token keyword">if</span> redis <span class="token keyword">is</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        redis <span class="token operator">=</span> <span class="token keyword">await</span> aioredis<span class="token punctuation">.</span>from_url<span class="token punctuation">(</span><span class="token string">"redis://localhost:6379"</span><span class="token punctuation">,</span> decode_responses<span class="token operator">=</span><span class="token boolean">False</span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> redis
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">dispatch_to_broker</span><span class="token punctuation">(</span>envelopes<span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">[</span>DispatchEnvelope<span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    r <span class="token operator">=</span> <span class="token keyword">await</span> get_redis<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">async</span> <span class="token keyword">with</span> r<span class="token punctuation">.</span>pipeline<span class="token punctuation">(</span>transaction<span class="token operator">=</span><span class="token boolean">False</span><span class="token punctuation">)</span> <span class="token keyword">as</span> pipe<span class="token punctuation">:</span>
+        <span class="token keyword">for</span> env <span class="token keyword">in</span> envelopes<span class="token punctuation">:</span>
+            serialized <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>env<span class="token punctuation">.</span>payload<span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+            <span class="token comment"># XADD to Redis Stream; maxlen trims to ~100k events per topic</span>
+            pipe<span class="token punctuation">.</span>xadd<span class="token punctuation">(</span>
+                env<span class="token punctuation">.</span>topic<span class="token punctuation">,</span>
+                <span class="token punctuation">{</span><span class="token string">"data"</span><span class="token punctuation">:</span> serialized<span class="token punctuation">,</span> <span class="token string">"partition_key"</span><span class="token punctuation">:</span> env<span class="token punctuation">.</span>partition_key<span class="token punctuation">}</span><span class="token punctuation">,</span>
+                maxlen<span class="token operator">=</span><span class="token number">100_000</span><span class="token punctuation">,</span>
+                approximate<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span>
+            <span class="token punctuation">)</span>
+        <span class="token keyword">await</span> pipe<span class="token punctuation">.</span>execute<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">route_payload</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> SensorPayload<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">:</span>
+    <span class="token comment"># ZoneIndex loaded at startup; passed via app state in production</span>
+    zone_index<span class="token punctuation">:</span> ZoneIndex <span class="token operator">=</span> app<span class="token punctuation">.</span>state<span class="token punctuation">.</span>zone_index
+    matched <span class="token operator">=</span> <span class="token keyword">await</span> classify_payload<span class="token punctuation">(</span>payload<span class="token punctuation">,</span> zone_index<span class="token punctuation">)</span>
+    envelopes <span class="token operator">=</span> resolve_routes<span class="token punctuation">(</span>payload<span class="token punctuation">,</span> matched<span class="token punctuation">)</span>
+    <span class="token keyword">if</span> envelopes<span class="token punctuation">:</span>
+        asyncio<span class="token punctuation">.</span>create_task<span class="token punctuation">(</span>dispatch_to_broker<span class="token punctuation">(</span>envelopes<span class="token punctuation">)</span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"accepted"</span><span class="token punctuation">,</span> <span class="token string">"routes"</span><span class="token punctuation">:</span> <span class="token builtin">len</span><span class="token punctuation">(</span>envelopes<span class="token punctuation">)</span><span class="token punctuation">}</span>
+</code></pre>
+</div>
+<h3 id="step-5-downstream-consumption-and-state-sync" tabindex="-1"><a class="heading-anchor" href="#step-5-downstream-consumption-and-state-sync">Step 5 — Downstream Consumption and State Sync</a></h3>
+<p><strong>Purpose:</strong> Pull from broker partitions, apply idempotent writes, and update application state.</p>
+<p>Consumers pull from Redis Streams or Kafka partitions, deserialize payloads, and update PostGIS or an in-memory spatial cache. They must implement idempotent write patterns because network partitions or broker retries will deliver duplicate events. State synchronization should use optimistic concurrency control or version vectors rather than blind overwrites. For full implementation details on retry backoff, idempotency key tracking in Redis, and dead-letter routing, see <a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/">Implementing at-least-once delivery for GIS webhooks</a>.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio<span class="token punctuation">,</span> json
+<span class="token keyword">import</span> aioredis
+<span class="token keyword">import</span> asyncpg
+
+CONSUMER_GROUP <span class="token operator">=</span> <span class="token string">"spatial-consumers"</span>
+CONSUMER_NAME <span class="token operator">=</span> <span class="token string">"worker-1"</span>
+PROCESSED_KEY <span class="token operator">=</span> <span class="token string">"processed_event_ids"</span>   <span class="token comment"># Redis SET for idempotency tracking</span>
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">consume_stream</span><span class="token punctuation">(</span>stream<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> db_pool<span class="token punctuation">:</span> asyncpg<span class="token punctuation">.</span>Pool<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    r <span class="token operator">=</span> <span class="token keyword">await</span> get_redis<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token comment"># Create group at stream start; ignore if already exists</span>
+    <span class="token keyword">try</span><span class="token punctuation">:</span>
+        <span class="token keyword">await</span> r<span class="token punctuation">.</span>xgroup_create<span class="token punctuation">(</span>stream<span class="token punctuation">,</span> CONSUMER_GROUP<span class="token punctuation">,</span> <span class="token builtin">id</span><span class="token operator">=</span><span class="token string">"0"</span><span class="token punctuation">,</span> mkstream<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span>
+    <span class="token keyword">except</span> aioredis<span class="token punctuation">.</span>ResponseError<span class="token punctuation">:</span>
+        <span class="token keyword">pass</span>
+
+    <span class="token keyword">while</span> <span class="token boolean">True</span><span class="token punctuation">:</span>
+        messages <span class="token operator">=</span> <span class="token keyword">await</span> r<span class="token punctuation">.</span>xreadgroup<span class="token punctuation">(</span>
+            CONSUMER_GROUP<span class="token punctuation">,</span> CONSUMER_NAME<span class="token punctuation">,</span>
+            streams<span class="token operator">=</span><span class="token punctuation">{</span>stream<span class="token punctuation">:</span> <span class="token string">">"</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+            count<span class="token operator">=</span><span class="token number">50</span><span class="token punctuation">,</span> block<span class="token operator">=</span><span class="token number">1000</span><span class="token punctuation">,</span>
+        <span class="token punctuation">)</span>
+        <span class="token keyword">for</span> _<span class="token punctuation">,</span> entries <span class="token keyword">in</span> <span class="token punctuation">(</span>messages <span class="token keyword">or</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+            <span class="token keyword">for</span> msg_id<span class="token punctuation">,</span> fields <span class="token keyword">in</span> entries<span class="token punctuation">:</span>
+                event <span class="token operator">=</span> json<span class="token punctuation">.</span>loads<span class="token punctuation">(</span>fields<span class="token punctuation">[</span><span class="token string">b"data"</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+                event_id <span class="token operator">=</span> event<span class="token punctuation">[</span><span class="token string">"event_id"</span><span class="token punctuation">]</span>
+                already_seen <span class="token operator">=</span> <span class="token keyword">await</span> r<span class="token punctuation">.</span>sismember<span class="token punctuation">(</span>PROCESSED_KEY<span class="token punctuation">,</span> event_id<span class="token punctuation">)</span>
+                <span class="token keyword">if</span> already_seen<span class="token punctuation">:</span>
+                    <span class="token keyword">await</span> r<span class="token punctuation">.</span>xack<span class="token punctuation">(</span>stream<span class="token punctuation">,</span> CONSUMER_GROUP<span class="token punctuation">,</span> msg_id<span class="token punctuation">)</span>
+                    <span class="token keyword">continue</span>
+                <span class="token keyword">try</span><span class="token punctuation">:</span>
+                    <span class="token keyword">await</span> write_to_postgis<span class="token punctuation">(</span>db_pool<span class="token punctuation">,</span> event<span class="token punctuation">)</span>
+                    <span class="token keyword">await</span> r<span class="token punctuation">.</span>sadd<span class="token punctuation">(</span>PROCESSED_KEY<span class="token punctuation">,</span> event_id<span class="token punctuation">)</span>
+                    <span class="token keyword">await</span> r<span class="token punctuation">.</span>expire<span class="token punctuation">(</span>PROCESSED_KEY<span class="token punctuation">,</span> <span class="token number">86_400</span><span class="token punctuation">)</span>   <span class="token comment"># 24 h TTL</span>
+                    <span class="token keyword">await</span> r<span class="token punctuation">.</span>xack<span class="token punctuation">(</span>stream<span class="token punctuation">,</span> CONSUMER_GROUP<span class="token punctuation">,</span> msg_id<span class="token punctuation">)</span>
+                <span class="token keyword">except</span> Exception <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+                    <span class="token comment"># Leave unacknowledged; broker retries on next read</span>
+                    <span class="token keyword">print</span><span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Consumer error for </span><span class="token interpolation"><span class="token punctuation">{</span>event_id<span class="token punctuation">}</span></span><span class="token string">: </span><span class="token interpolation"><span class="token punctuation">{</span>exc<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">write_to_postgis</span><span class="token punctuation">(</span>pool<span class="token punctuation">:</span> asyncpg<span class="token punctuation">.</span>Pool<span class="token punctuation">,</span> event<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    geom_json <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>event<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+    <span class="token keyword">async</span> <span class="token keyword">with</span> pool<span class="token punctuation">.</span>acquire<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token keyword">as</span> conn<span class="token punctuation">:</span>
+        <span class="token keyword">await</span> conn<span class="token punctuation">.</span>execute<span class="token punctuation">(</span>
+            <span class="token triple-quoted-string string">"""
+            INSERT INTO sensor_events (event_id, device_id, geom, recorded_at)
+            VALUES ($1, $2, ST_SetSRID(ST_GeomFromGeoJSON($3), 4326), to_timestamp($4))
+            ON CONFLICT (event_id) DO NOTHING
+            """</span><span class="token punctuation">,</span>
+            event<span class="token punctuation">[</span><span class="token string">"event_id"</span><span class="token punctuation">]</span><span class="token punctuation">,</span> event<span class="token punctuation">[</span><span class="token string">"device_id"</span><span class="token punctuation">]</span><span class="token punctuation">,</span> geom_json<span class="token punctuation">,</span> event<span class="token punctuation">[</span><span class="token string">"timestamp_utc"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+        <span class="token punctuation">)</span>
+</code></pre>
+</div>
+<hr>
+<h2 id="spatial-validation-and-error-handling" tabindex="-1"><a class="heading-anchor" href="#spatial-validation-and-error-handling">Spatial Validation and Error Handling</a></h2>
+<p>Geometry topology checks must run inside the ingestion model validator (see Step 1), not inside the spatial classification worker. The classification worker should receive only pre-validated, EPSG:4326 geometries. CRS alignment code belongs at the boundary between ingestion and classification — never inside the broker consumer.</p>
+<p>When Pydantic rejects a payload, quarantine the raw bytes with a structured reason string, the originating <code>device_id</code>, and the wall-clock timestamp. This gives operators enough context to replay the event after a firmware fix without re-ingesting the entire stream.</p>
+<p>For mixed-CRS streams — common when a device fleet spans multiple manufacturers — normalize all incoming coordinates to EPSG:4326 at the ingestion boundary using <code>pyproj.Transformer</code> with <code>always_xy=True</code>. Storing EPSG codes in the event envelope rather than inferring them from coordinate magnitude prevents silent axis-order bugs. Full normalization strategies are covered in <a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a>.</p>
+<hr>
+<h2 id="retry-backoff-and-delivery-guarantees" tabindex="-1"><a class="heading-anchor" href="#retry-backoff-and-delivery-guarantees">Retry, Backoff, and Delivery Guarantees</a></h2>
+<p>At-least-once delivery is the industry standard for geospatial telemetry: no event is lost, but consumers must handle duplicates. Exactly-once delivery is rarely achievable across distributed spatial systems due to network partitions and broker leader elections.</p>
+<p>The exponential backoff with jitter pattern prevents retry thundering-herds when a PostGIS write or geometry validation fails:</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio<span class="token punctuation">,</span> random
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">retry_with_backoff</span><span class="token punctuation">(</span>coro<span class="token punctuation">,</span> max_attempts<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">5</span><span class="token punctuation">,</span> base_delay<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> <span class="token number">0.5</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Exponential backoff with full jitter for spatial write operations."""</span>
+    <span class="token keyword">for</span> attempt <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span>max_attempts<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">try</span><span class="token punctuation">:</span>
+            <span class="token keyword">return</span> <span class="token keyword">await</span> coro<span class="token punctuation">(</span><span class="token punctuation">)</span>
+        <span class="token keyword">except</span> Exception <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+            <span class="token keyword">if</span> attempt <span class="token operator">==</span> max_attempts <span class="token operator">-</span> <span class="token number">1</span><span class="token punctuation">:</span>
+                <span class="token keyword">raise</span>
+            delay <span class="token operator">=</span> base_delay <span class="token operator">*</span> <span class="token punctuation">(</span><span class="token number">2</span> <span class="token operator">**</span> attempt<span class="token punctuation">)</span> <span class="token operator">+</span> random<span class="token punctuation">.</span>uniform<span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> base_delay<span class="token punctuation">)</span>
+            <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span>delay<span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>Use deterministic event IDs (SHA-256 of <code>device_id + timestamp + geometry hash</code>) to track processed events in Redis. When a duplicate arrives, the consumer checks membership in a Redis SET, skips processing, and returns a <code>200 OK</code> to prevent broker redelivery storms. The <a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks</a> pattern covers the Redis SET expiry strategy and handling hash collisions for high-cardinality device fleets.</p>
+<hr>
+<h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
+<p>Run this integration test harness against a local Redis + FastAPI stack to confirm the full pipeline works end-to-end:</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> pytest<span class="token punctuation">,</span> asyncio<span class="token punctuation">,</span> json<span class="token punctuation">,</span> hashlib<span class="token punctuation">,</span> hmac<span class="token punctuation">,</span> httpx
+
+ENDPOINT <span class="token operator">=</span> <span class="token string">"http://localhost:8000/ingest"</span>
+SECRET <span class="token operator">=</span> <span class="token string">b"your-hmac-secret"</span>
+
+<span class="token keyword">def</span> <span class="token function">sign</span><span class="token punctuation">(</span>body<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+    <span class="token keyword">return</span> <span class="token string">"sha256="</span> <span class="token operator">+</span> hmac<span class="token punctuation">.</span>new<span class="token punctuation">(</span>SECRET<span class="token punctuation">,</span> body<span class="token punctuation">,</span> hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+VALID_PAYLOAD <span class="token operator">=</span> <span class="token punctuation">{</span>
+    <span class="token string">"device_id"</span><span class="token punctuation">:</span> <span class="token string">"sensor-001"</span><span class="token punctuation">,</span>
+    <span class="token string">"timestamp_utc"</span><span class="token punctuation">:</span> <span class="token number">1700000000.0</span><span class="token punctuation">,</span>
+    <span class="token string">"crs"</span><span class="token punctuation">:</span> <span class="token string">"EPSG:4326"</span><span class="token punctuation">,</span>
+    <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">122.4194</span><span class="token punctuation">,</span> <span class="token number">37.7749</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"temperature_c"</span><span class="token punctuation">:</span> <span class="token number">24.5</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+<span class="token punctuation">}</span>
+
+<span class="token decorator annotation punctuation">@pytest<span class="token punctuation">.</span>mark<span class="token punctuation">.</span>asyncio</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">test_valid_payload_accepted</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    body <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>VALID_PAYLOAD<span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">async</span> <span class="token keyword">with</span> httpx<span class="token punctuation">.</span>AsyncClient<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token keyword">as</span> client<span class="token punctuation">:</span>
+        resp <span class="token operator">=</span> <span class="token keyword">await</span> client<span class="token punctuation">.</span>post<span class="token punctuation">(</span>
+            ENDPOINT<span class="token punctuation">,</span> content<span class="token operator">=</span>body<span class="token punctuation">,</span>
+            headers<span class="token operator">=</span><span class="token punctuation">{</span><span class="token string">"X-Hub-Signature-256"</span><span class="token punctuation">:</span> sign<span class="token punctuation">(</span>body<span class="token punctuation">)</span><span class="token punctuation">,</span>
+                     <span class="token string">"Content-Type"</span><span class="token punctuation">:</span> <span class="token string">"application/json"</span><span class="token punctuation">}</span>
+        <span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> resp<span class="token punctuation">.</span>status_code <span class="token operator">==</span> <span class="token number">200</span>
+    <span class="token keyword">assert</span> resp<span class="token punctuation">.</span>json<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">[</span><span class="token string">"status"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token string">"accepted"</span>
+
+<span class="token decorator annotation punctuation">@pytest<span class="token punctuation">.</span>mark<span class="token punctuation">.</span>asyncio</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">test_invalid_signature_rejected</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    body <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>VALID_PAYLOAD<span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">async</span> <span class="token keyword">with</span> httpx<span class="token punctuation">.</span>AsyncClient<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token keyword">as</span> client<span class="token punctuation">:</span>
+        resp <span class="token operator">=</span> <span class="token keyword">await</span> client<span class="token punctuation">.</span>post<span class="token punctuation">(</span>
+            ENDPOINT<span class="token punctuation">,</span> content<span class="token operator">=</span>body<span class="token punctuation">,</span>
+            headers<span class="token operator">=</span><span class="token punctuation">{</span><span class="token string">"X-Hub-Signature-256"</span><span class="token punctuation">:</span> <span class="token string">"sha256=bad"</span><span class="token punctuation">,</span>
+                     <span class="token string">"Content-Type"</span><span class="token punctuation">:</span> <span class="token string">"application/json"</span><span class="token punctuation">}</span>
+        <span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> resp<span class="token punctuation">.</span>status_code <span class="token operator">==</span> <span class="token number">401</span>
+
+<span class="token decorator annotation punctuation">@pytest<span class="token punctuation">.</span>mark<span class="token punctuation">.</span>asyncio</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">test_invalid_crs_quarantined</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    payload <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token operator">**</span>VALID_PAYLOAD<span class="token punctuation">,</span> <span class="token string">"crs"</span><span class="token punctuation">:</span> <span class="token string">"OSGB36"</span><span class="token punctuation">}</span>   <span class="token comment"># missing EPSG: prefix</span>
+    body <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>payload<span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">async</span> <span class="token keyword">with</span> httpx<span class="token punctuation">.</span>AsyncClient<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token keyword">as</span> client<span class="token punctuation">:</span>
+        resp <span class="token operator">=</span> <span class="token keyword">await</span> client<span class="token punctuation">.</span>post<span class="token punctuation">(</span>
+            ENDPOINT<span class="token punctuation">,</span> content<span class="token operator">=</span>body<span class="token punctuation">,</span>
+            headers<span class="token operator">=</span><span class="token punctuation">{</span><span class="token string">"X-Hub-Signature-256"</span><span class="token punctuation">:</span> sign<span class="token punctuation">(</span>body<span class="token punctuation">)</span><span class="token punctuation">,</span>
+                     <span class="token string">"Content-Type"</span><span class="token punctuation">:</span> <span class="token string">"application/json"</span><span class="token punctuation">}</span>
+        <span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> resp<span class="token punctuation">.</span>json<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">[</span><span class="token string">"status"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token string">"quarantined"</span>
+</code></pre>
+</div>
+<hr>
+<h2 id="troubleshooting" tabindex="-1"><a class="heading-anchor" href="#troubleshooting">Troubleshooting</a></h2>
+<div style="overflow-x:auto;">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely spatial cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P99 ingestion latency spikes above 500 ms</td>
+<td>Brute-force polygon intersection on large zone registry</td>
+<td>Replace linear scan with <code>STRtree.query()</code> R-tree index</td>
+</tr>
+<tr>
+<td>Consumers report duplicate geometry writes</td>
+<td>Missing idempotency check before PostGIS <code>INSERT</code></td>
+<td>Add <code>ON CONFLICT (event_id) DO NOTHING</code> + Redis SET membership check</td>
+</tr>
+<tr>
+<td>Broker queue depth grows unbounded</td>
+<td>Consumers blocked on slow geometry validation</td>
+<td>Move geometry validation to ingestion worker; consumers receive pre-validated payloads</td>
+</tr>
+<tr>
+<td>Silent coordinate flip (lat/lon swapped)</td>
+<td><code>pyproj</code> axis order not forced to XY</td>
+<td>Use <code>always_xy=True</code> in <code>Transformer.from_crs()</code></td>
+</tr>
+<tr>
+<td>Dead-letter queue fills with <code>&quot;Geometry is empty&quot;</code></td>
+<td>Device firmware emits <code>null</code> coordinate arrays</td>
+<td>Add <code>null</code>-coordinate guard in Pydantic <code>@model_validator</code> before calling <code>shape()</code></td>
+</tr>
+<tr>
+<td>Consumer lag grows per geographic shard</td>
+<td>Partition skew — one H3 cell has 10× events of others</td>
+<td>Lower H3 resolution (larger cells) or add a secondary partition key for high-density areas</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<hr>
+<h2 id="faq" tabindex="-1"><a class="heading-anchor" href="#faq">FAQ</a></h2>
+<details class="faq">
+<summary><strong>When should I partition by H3 cell instead of device ID?</strong></summary>
+<p>Use H3 partitioning when downstream consumers are regionally scoped — tile renderers, per-city alerting services, or geographic shards of a PostGIS database. Use device-ID partitioning when ordering guarantees per sensor matter more than spatial locality, such as time-series telemetry streams where out-of-order events corrupt state. You can combine both by using <code>device_id</code> as the primary partition key and including the H3 cell ID in the event envelope for downstream routing hints.</p>
+</details>
+<details class="faq">
+<summary><strong>How do I handle sensors that report in a CRS other than WGS 84 (EPSG:4326)?</strong></summary>
+<p>Reproject at the ingestion boundary, before spatial classification, using <code>pyproj.Transformer.from_crs(source, &quot;EPSG:4326&quot;, always_xy=True)</code>. Store the original CRS in the event envelope as a metadata field so consumers can audit provenance. Route exclusively on EPSG:4326 coordinates. This is the same normalization strategy described in <a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a>.</p>
+</details>
+<details class="faq">
+<summary><strong>Can I skip the message broker and route synchronously from FastAPI to consumers?</strong></summary>
+<p>Only for very low throughput (under ~50 events per second) with a single consumer. Without a broker, a consumer crash silently drops events and spatial mutations are lost with no replay capability. For production IoT feeds, always interpose a durable broker. Redis Streams is the lowest-friction option; Kafka is the right choice when you need event replay, consumer group partitioning, or retention beyond 24 hours.</p>
+</details>
+<details class="faq">
+<summary><strong>What queue depth limit should I use to apply backpressure at the ingress?</strong></summary>
+<p>A practical starting point is 10,000 in-flight events per ingress worker. Monitor P99 ingestion latency and drop rate using OpenTelemetry counters. When P99 exceeds 300 ms or drop rate exceeds 0.05%, tighten the limit or scale out workers. Return HTTP 429 with a <code>Retry-After</code> header so upstream senders back off gracefully rather than hammering the endpoint.</p>
+</details>
+<hr>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
 <ul>
-<li><strong>CPU-bound spatial predicates</strong>: Polygon intersection testing scales poorly beyond ~10,000 concurrent zones. Precompute spatial grids (H3 or S2) and map sensors to cell IDs rather than evaluating raw geometries per event.</li>
-<li><strong>Broker partition exhaustion</strong>: Too few partitions cause consumer lag; too many increase memory overhead and complicate offset tracking. Start with 12–24 partitions per topic and scale based on consumer group throughput.</li>
-<li><strong>Memory pressure from in-flight events</strong>: Unbounded async queues lead to OOM kills. Implement explicit queue depth limits and apply backpressure at the ingress layer (HTTP 429 or 503) when downstream consumers fall behind.</li>
+<li><a href="/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a> — the parent section covering spatial event modeling, delivery semantics, and pipeline architecture</li>
+<li><a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/">Implementing at-least-once delivery for GIS webhooks</a> — deep-dive on retry backoff, idempotency key storage, and dead-letter routing</li>
+<li><a href="/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers</a> — how to detect and dispatch spatial mutations from PostGIS and CDC connectors</li>
+<li><a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a> — consuming routed sensor events to invalidate and regenerate raster and vector tiles</li>
+<li><a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a> — normalizing mixed-CRS payloads before they enter the routing layer</li>
 </ul>
-<p>Observability must track routing latency percentiles (P50, P95, P99), spatial classification hit rates, and broker queue depths. Alert on sustained P99 latency &gt; 500ms or drop rates &gt; 0.1%. Use distributed tracing to follow an event from HTTP POST through spatial classification, broker enqueue, and consumer ACK. Without end-to-end tracing, routing failures appear as silent data gaps rather than actionable pipeline errors.</p>
-<h2 id="conclusion" tabindex="-1"><a class="heading-anchor" href="#conclusion">Conclusion</a></h2>
-<p>Effective spatial routing transforms high-velocity telemetry into reliable, actionable streams. By enforcing strict validation, leveraging spatial indexing, decoupling dispatch from ingestion, and designing for at-least-once delivery, platform teams can build routing layers that scale with device fleets and consumer demand. The patterns outlined here provide a deterministic foundation for real-time geospatial applications, ensuring that every sensor event reaches the right consumer, at the right time, with guaranteed integrity.</p>
 
         <h2 id="explore-this-section">Explore this section</h2>
         <div class="children-grid">
           <a class="card " href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/">
             <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19c0-8 6-14 14-14 0 8-6 14-14 14z"/><path d="M5 19l6-6"/></svg></span>
-            <h3 class="card__title">Implementing at-least-once delivery for GIS webhooks</h3>
+            <h3 class="card__title">Implementing At-Least-Once Delivery for GIS Webhooks</h3>
             <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
           </a>
         </div>
@@ -220,9 +761,9 @@
         <div class="aside-card">
           <h3>Related in this section</h3>
           <ul>
-            <li><a href="/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers in Python Geospatial Webhook &amp; Event-Driven Architecture</a></li>
-            <li><a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines: Architecture &amp; Implementation in Python</a></li>
-            <li><a href="/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries</a></li>
+            <li><a href="/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+            <li><a href="/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+            <li><a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
           </ul>
         </div>
         <div class="aside-card">
@@ -259,6 +800,9 @@
         <h4>Site</h4>
         <ul>
           <li><a href="/">Home</a></li>
+          <li><a href="/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
         </ul>
       </div>
       <div>
@@ -288,7 +832,7 @@
 </footer>
 
   </div>
-  <script src="/assets/js/site.js" defer></script>
+  <script src="/assets/js/site.js?v=6c55de86" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

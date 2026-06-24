@@ -4,8 +4,8 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 
-  <title>Conflict Resolution Strategies for Event-Driven Geospatial Systems · Geo Webhook</title>
-  <meta name="description" content="In real-time spatial architectures, webhook payloads rarely arrive in perfect sequence. Network partitions, provider retries, and concurrent field edits…"/>
+  <title>Conflict Resolution Strategies for Geospatial Webhooks · Geo Webhook</title>
+  <meta name="description" content="Resolve competing spatial state updates in GIS pipelines: LWW, semantic merge, distributed locking, and backoff patterns with runnable Python code."/>
   <link rel="canonical" href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/"/>
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
 
@@ -32,25 +32,25 @@
   <meta property="og:site_name" content="Geo Webhook"/>
   <meta property="og:locale" content="en_US"/>
   <meta property="og:url" content="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/"/>
-  <meta property="og:title" content="Conflict Resolution Strategies for Event-Driven Geospatial Systems"/>
-  <meta property="og:description" content="In real-time spatial architectures, webhook payloads rarely arrive in perfect sequence. Network partitions, provider retries, and concurrent field edits…"/>
-  <meta property="og:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
-  <meta property="og:image:width" content="512"/>
-  <meta property="og:image:height" content="512"/>
-  <meta property="og:image:alt" content="Geospatial Webhook logo"/>
+  <meta property="og:title" content="Conflict Resolution Strategies for Geospatial Webhooks"/>
+  <meta property="og:description" content="Resolve competing spatial state updates in GIS pipelines: LWW, semantic merge, distributed locking, and backoff patterns with runnable Python code."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
 
   
   <meta name="twitter:card" content="summary_large_image"/>
-  <meta name="twitter:title" content="Conflict Resolution Strategies for Event-Driven Geospatial Systems"/>
-  <meta name="twitter:description" content="In real-time spatial architectures, webhook payloads rarely arrive in perfect sequence. Network partitions, provider retries, and concurrent field edits…"/>
-  <meta name="twitter:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
-  <meta name="twitter:image:alt" content="Geospatial Webhook logo"/>
+  <meta name="twitter:title" content="Conflict Resolution Strategies for Geospatial Webhooks"/>
+  <meta name="twitter:description" content="Resolve competing spatial state updates in GIS pipelines: LWW, semantic merge, distributed locking, and backoff patterns with runnable Python code."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
 
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/assets/css/site.css"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=8ef3d820"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -98,12 +98,12 @@
     "@type": "TechArticle",
     "@id": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/#article",
     "mainEntityOfPage": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/",
-    "headline": "Conflict Resolution Strategies for Event-Driven Geospatial Systems",
-    "description": "In real-time spatial architectures, webhook payloads rarely arrive in perfect sequence. Network partitions, provider retries, and concurrent field edits…",
+    "headline": "Conflict Resolution Strategies for Geospatial Webhooks",
+    "description": "Resolve competing spatial state updates in GIS pipelines: LWW, semantic merge, distributed locking, and backoff patterns with runnable Python code.",
     "inLanguage": "en",
     "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
     "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
-    "image": "https://www.geospatialwebhook.com/icon-512.png",
+    "image": "https://www.geospatialwebhook.com/og-image.png",
     "url": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/",
     "articleSection": "Idempotency Spatial Deduplication",
     "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
@@ -156,36 +156,160 @@
           <span aria-current="page">Conflict Resolution Strategies</span>
     </nav>
 
+    <h1 class="page__title">Conflict Resolution Strategies for Geospatial Webhooks</h1>
+
     <div class="page__layout">
       <div class="markdown">
-        <h1 id="conflict-resolution-strategies-for-event-driven-geospatial-systems" tabindex="-1"><a class="heading-anchor" href="#conflict-resolution-strategies-for-event-driven-geospatial-systems">Conflict Resolution Strategies for Event-Driven Geospatial Systems</a></h1>
-<p>In real-time spatial architectures, webhook payloads rarely arrive in perfect sequence. Network partitions, provider retries, and concurrent field edits generate overlapping geometry updates that, if processed naively, corrupt topology, duplicate features, and break downstream analytics. Implementing deterministic <strong>Conflict Resolution Strategies</strong> is a foundational requirement for platform engineers, GIS backend developers, and SaaS founders building event-driven mapping platforms.</p>
-<p>This guide extends the principles of <a href="/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a> by detailing how to detect state collisions, evaluate competing spatial payloads, and commit resolved geometries without sacrificing consistency or throughput.</p>
-<h2 id="prerequisites-system-readiness" tabindex="-1"><a class="heading-anchor" href="#prerequisites-system-readiness">Prerequisites &amp; System Readiness</a></h2>
-<p>Before implementing conflict resolution at the webhook ingestion layer, your architecture must satisfy several baseline conditions:</p>
-<ul>
-<li><strong>Python 3.10+ runtime</strong> with <code>asyncio</code>, <code>FastAPI</code> (or equivalent), and <code>shapely&gt;=2.0</code> installed</li>
-<li><strong>Distributed state store</strong> (Redis or Valkey) for cross-node coordination, lock management, and idempotency tracking</li>
-<li><strong>Spatial validation pipeline</strong> capable of normalizing coordinate reference systems and repairing invalid geometries</li>
-<li><strong>Established event fingerprinting</strong> using <a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a> to create deterministic identifiers from payload metadata and geometry hashes</li>
-<li><strong>Pre-filtering layer</strong> leveraging <a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks</a> to drop exact duplicates before conflict evaluation begins</li>
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Conflict Resolution Strategies for Geospatial Webhook Systems",
+      "description": "Step-by-step guide to detecting and resolving competing spatial state updates in event-driven GIS pipelines — covering LWW, semantic merge, distributed locking, and backoff patterns with runnable Python code.",
+      "datePublished": "2024-11-01",
+      "dateModified": "2026-06-24",
+      "author": {"@type": "Organization", "name": "GeoSpatialWebhook"}
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatialwebhook.com/"},
+        {"@type": "ListItem", "position": 2, "name": "Idempotency & Spatial Deduplication", "item": "https://geospatialwebhook.com/idempotency-spatial-deduplication/"},
+        {"@type": "ListItem", "position": 3, "name": "Conflict Resolution Strategies", "item": "https://geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/"}
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "How to Resolve Conflicting Spatial Webhook Payloads",
+      "step": [
+        {"@type": "HowToStep", "position": 1, "name": "Normalize payload CRS and validate geometry"},
+        {"@type": "HowToStep", "position": 2, "name": "Gate on idempotency key before conflict evaluation"},
+        {"@type": "HowToStep", "position": 3, "name": "Retrieve current state and compute spatial overlap"},
+        {"@type": "HowToStep", "position": 4, "name": "Apply resolution policy (LWW or semantic merge)"},
+        {"@type": "HowToStep", "position": 5, "name": "Acquire distributed lock and commit atomically"},
+        {"@type": "HowToStep", "position": 6, "name": "Release lock, update cache, emit audit event"}
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "When should I use last-write-wins vs semantic merge for spatial conflicts?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Use last-write-wins for high-throughput sensor telemetry where recent observations supersede older ones and occasional data loss is acceptable. Use semantic merge for cadastral, regulatory, or collaborative editing scenarios where every geometry edit carries independent authority and must be preserved — for example, unioning parcel boundary updates from two concurrent field surveyors."}
+        },
+        {
+          "@type": "Question",
+          "name": "How do I prevent deadlocks when locking features under high concurrency?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Always set a hard TTL on every distributed lock (SET NX EX in Redis) and wrap lock release in a finally block. Use exponential backoff with jitter on acquisition retries rather than tight polling, and set a maximum retry budget before returning HTTP 429 to the webhook provider."}
+        },
+        {
+          "@type": "Question",
+          "name": "What causes false-positive spatial conflicts in webhook pipelines?",
+          "acceptedAnswer": {"@type": "Answer", "text": "The two most common causes are floating-point drift between CRS projections (two representations of the same geometry in EPSG:4326 vs EPSG:3857 that differ after reprojection) and geometry self-intersections that Shapely's intersection test resolves differently before and after make_valid(). Always normalize to a single CRS and call make_valid() before any topology check."}
+        },
+        {
+          "@type": "Question",
+          "name": "How do I route irreconcilable spatial conflicts to a dead-letter queue?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Catch resolution exceptions or detect conflicting attribute schemas in the handler and publish the raw payload plus diagnostic metadata to a dedicated DLQ topic (Redis Stream, SQS, or Kafka). Include the feature ID, both timestamps, and the resolution strategy attempted so operators can replay with corrected logic without re-fetching from the webhook provider."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>When two webhook deliveries target the same geospatial feature simultaneously, a deterministic resolution policy prevents topology corruption, duplicate vertices, and cascading state divergence across downstream consumers.</strong></p>
+<p>This page is part of <a href="/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a>, the section covering how to guarantee exactly-once spatial state changes in event-driven GIS pipelines.</p>
+<hr>
+<h2 id="prerequisites" tabindex="-1"><a class="heading-anchor" href="#prerequisites">Prerequisites</a></h2>
+<p>Before wiring up a conflict resolution layer, verify the following are in place:</p>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> Python 3.10+ with <code>asyncio</code> support</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <code>shapely&gt;=2.0</code> and <code>pyproj&gt;=3.5</code> installed</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <code>fastapi</code> and <code>redis[asyncio]</code> (or <code>valkey</code>) available in the service</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> A running Redis or Valkey instance reachable from all webhook handler nodes</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> Idempotency key generation already applied, following the approach in <a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> Exact-duplicate filtering in place via <a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks</a> so only genuinely divergent updates reach the resolution engine</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> A primary spatial datastore (PostGIS, SpatiaLite, or equivalent) accessible from handlers</label></li>
 </ul>
-<p>Without these components, conflict resolution becomes a reactive patch rather than a systematic guarantee. The workflow below assumes idempotency keys are already validated and that only genuinely divergent state updates reach the resolution engine.</p>
-<h2 id="step-by-step-conflict-resolution-workflow" tabindex="-1"><a class="heading-anchor" href="#step-by-step-conflict-resolution-workflow">Step-by-Step Conflict Resolution Workflow</a></h2>
-<p>The following sequence transforms raw webhook deliveries into consistent spatial state:</p>
-<h3 id="1-payload-normalization-crs-enforcement" tabindex="-1"><a class="heading-anchor" href="#1-payload-normalization-crs-enforcement">1. Payload Normalization &amp; CRS Enforcement</a></h3>
-<p>Parse incoming GeoJSON and strictly enforce <a href="https://datatracker.ietf.org/doc/html/rfc7946">RFC 7946</a> compliance. Strip provider-specific metadata, standardize all coordinates to a single CRS (typically EPSG:4326 or EPSG:3857), and extract the core geometry envelope. Normalization prevents false-positive collisions caused by floating-point drift or differing projection representations.</p>
-<h3 id="2-idempotency-gate-pre-filtering" tabindex="-1"><a class="heading-anchor" href="#2-idempotency-gate-pre-filtering">2. Idempotency Gate &amp; Pre-Filtering</a></h3>
-<p>Query the distributed cache using the precomputed event key. If the key exists, acknowledge the webhook with a <code>200 OK</code> and exit immediately. If absent, register the key with a short TTL (e.g., 5–15 minutes) to prevent duplicate processing during transient network retries. This gate ensures the resolution engine only evaluates genuinely new state transitions.</p>
-<h3 id="3-state-retrieval-spatial-overlap-analysis" tabindex="-1"><a class="heading-anchor" href="#3-state-retrieval-spatial-overlap-analysis">3. State Retrieval &amp; Spatial Overlap Analysis</a></h3>
-<p>Fetch the current persisted geometry for the target feature ID from your primary datastore. Compute spatial intersection using Shapely. If <code>current_geom.disjoint(incoming_geom)</code> evaluates to <code>True</code>, the update affects non-overlapping space; apply the change immediately. If overlap exists, trigger resolution logic. Refer to the <a href="https://shapely.readthedocs.io/en/stable/manual.html#spatial-analysis-methods">Shapely spatial operations documentation</a> for optimized intersection and topology validation patterns that avoid expensive full-geometry comparisons when bounding boxes suffice.</p>
-<h3 id="4-conflict-evaluation-resolution-logic" tabindex="-1"><a class="heading-anchor" href="#4-conflict-evaluation-resolution-logic">4. Conflict Evaluation &amp; Resolution Logic</a></h3>
-<p>Compare temporal metadata (<code>updated_at</code>, <code>version</code>, or <code>sequence_id</code>) alongside spatial topology. When timestamps collide or version vectors diverge, your system must decide whether to overwrite, merge, or queue the update for manual review. For detailed topology-aware branching logic, see Resolving concurrent spatial feature edits.</p>
-<p>In most high-throughput pipelines, teams default to a strict ordering policy. However, spatial data often requires semantic merging (e.g., unioning parcel boundaries or clipping overlapping sensor footprints). Evaluate your domain requirements against Implementing last-write-wins vs merge strategies for GIS before hardcoding resolution behavior.</p>
-<h3 id="5-atomic-commit-distributed-locking" tabindex="-1"><a class="heading-anchor" href="#5-atomic-commit-distributed-locking">5. Atomic Commit &amp; Distributed Locking</a></h3>
-<p>Once the resolution engine selects a winner or computes a merged geometry, acquire a feature-level distributed lock before writing to the primary database. This prevents race conditions when multiple webhook handlers process updates for the same feature concurrently. After the transaction commits, release the lock, update the idempotency cache, and emit an audit event. Lock acquisition should use exponential backoff with jitter to avoid thundering herd scenarios.</p>
-<h2 id="implementation-patterns-code-reliability" tabindex="-1"><a class="heading-anchor" href="#implementation-patterns-code-reliability">Implementation Patterns &amp; Code Reliability</a></h2>
-<p>Production-grade conflict resolution requires explicit error boundaries, type safety, and non-blocking I/O. The following pattern demonstrates a reliable FastAPI + Redis + Shapely 2.0 implementation:</p>
+<hr>
+<h2 id="architecture-overview" tabindex="-1"><a class="heading-anchor" href="#architecture-overview">Architecture Overview</a></h2>
+<p>The diagram below shows the four-layer path from raw webhook delivery to committed spatial state. Each layer has a single responsibility so failures are isolated and the pipeline remains resumable.</p>
+<svg viewBox="0 0 720 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four-layer conflict resolution pipeline from webhook ingestion to spatial state commit" style="width:100%;max-width:720px;height:auto;font-family:inherit;display:block;margin:1.5rem auto;">
+  <title>Conflict Resolution Pipeline</title>
+  <desc>Diagram showing four layers: Ingestion &amp; Normalization, Idempotency Gate, Spatial Conflict Evaluation, and Atomic Commit, connected by arrows. A Dead-Letter Queue branches from the Conflict Evaluation layer.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
+    </marker>
+  </defs>
+  <!-- Layer boxes -->
+  <rect x="20" y="20" width="160" height="68" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+  <text x="100" y="48" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Layer 1</text>
+  <text x="100" y="65" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Ingestion &amp;</text>
+  <text x="100" y="80" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Normalization</text>
+  <rect x="220" y="20" width="160" height="68" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+  <text x="300" y="48" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Layer 2</text>
+  <text x="300" y="65" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Idempotency</text>
+  <text x="300" y="80" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Gate</text>
+  <rect x="420" y="20" width="160" height="68" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+  <text x="500" y="48" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Layer 3</text>
+  <text x="500" y="65" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Spatial Conflict</text>
+  <text x="500" y="80" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Evaluation</text>
+  <rect x="620" y="20" width="80" height="68" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+  <text x="660" y="48" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Layer 4</text>
+  <text x="660" y="65" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Atomic</text>
+  <text x="660" y="80" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Commit</text>
+  <!-- Arrows between layers -->
+  <line x1="182" y1="54" x2="218" y2="54" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.6"/>
+  <line x1="382" y1="54" x2="418" y2="54" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.6"/>
+  <line x1="582" y1="54" x2="618" y2="54" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.6"/>
+  <!-- Duplicate short-circuit from Gate -->
+  <line x1="300" y1="88" x2="300" y2="140" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" opacity="0.5"/>
+  <rect x="220" y="140" width="160" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3"/>
+  <text x="300" y="162" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.75">Duplicate detected</text>
+  <text x="300" y="177" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.75">→ 200 OK, discard</text>
+  <!-- DLQ branch from Layer 3 -->
+  <line x1="500" y1="88" x2="500" y2="140" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" opacity="0.5"/>
+  <rect x="420" y="140" width="160" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3"/>
+  <text x="500" y="162" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.75">Irreconcilable</text>
+  <text x="500" y="177" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.75">→ Dead-Letter Queue</text>
+  <!-- Detail rows -->
+<p><text x="100" y="118" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">CRS → EPSG:4326</text>
+<text x="100" y="132" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">make_valid()</text>
+<text x="100" y="146" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">strip provider metadata</text></p>
+<p><text x="660" y="118" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">Lock → write</text>
+<text x="660" y="132" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">→ audit event</text>
+<text x="660" y="146" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">→ unlock</text></p>
+  <!-- Resolution strategies box -->
+  <rect x="20" y="220" width="680" height="100" rx="8" fill="none" stroke="currentColor" stroke-width="1" opacity="0.2"/>
+  <text x="360" y="243" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor" opacity="0.8">Resolution Policies (Layer 3)</text>
+  <text x="120" y="268" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7" font-weight="600">Last-Write-Wins</text>
+  <text x="120" y="284" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">Compare timestamps;</text>
+  <text x="120" y="298" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">higher ts wins</text>
+  <text x="120" y="312" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">Fast, may lose data</text>
+  <text x="360" y="268" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7" font-weight="600">Semantic Merge</text>
+  <text x="360" y="284" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">Union / clip geometries;</text>
+  <text x="360" y="298" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">version vector required</text>
+  <text x="360" y="312" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">Safe, higher CPU cost</text>
+  <text x="590" y="268" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7" font-weight="600">Manual Review</text>
+  <text x="590" y="284" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">Route to DLQ;</text>
+  <text x="590" y="298" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">operator resolves</text>
+  <text x="590" y="312" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">For regulatory data</text>
+</svg>
+<p>The pipeline has four numbered layers:</p>
+<ol>
+<li><strong>Ingestion and normalization</strong> — parse GeoJSON, enforce a single CRS (EPSG:4326), strip provider-specific metadata, and repair geometry topology.</li>
+<li><strong>Idempotency gate</strong> — check the distributed cache; discard exact duplicates before any database read.</li>
+<li><strong>Spatial conflict evaluation</strong> — fetch current state, compute overlap, and apply a resolution policy.</li>
+<li><strong>Atomic commit</strong> — acquire a feature-level lock, write the resolved geometry, release the lock, and emit an audit event.</li>
+</ol>
+<hr>
+<h2 id="step-by-step-implementation" tabindex="-1"><a class="heading-anchor" href="#step-by-step-implementation">Step-by-Step Implementation</a></h2>
+<h3 id="step-1-payload-normalization-and-crs-enforcement" tabindex="-1"><a class="heading-anchor" href="#step-1-payload-normalization-and-crs-enforcement">Step 1 — Payload Normalization and CRS Enforcement</a></h3>
+<p>Parse the incoming payload and convert all coordinates to EPSG:4326 before any spatial operation. Mixed CRS payloads are one of the primary causes of false-positive conflict detections; normalizing geometries to a canonical projection, as covered in <a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a>, eliminates this class of error entirely.</p>
 <div class="code-block" data-lang="python">
   <div class="code-block__header">
     <span class="code-block__lang">python</span>
@@ -193,97 +317,418 @@
       <span class="code-block__copy-label">Copy</span>
     </button>
   </div>
-  <pre class="language-python"><code class="language-python"><span class="token keyword">import</span> asyncio
-<span class="token keyword">import</span> hashlib
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> pyproj <span class="token keyword">import</span> Transformer
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape<span class="token punctuation">,</span> mapping
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>validation <span class="token keyword">import</span> make_valid
+<span class="token keyword">from</span> typing <span class="token keyword">import</span> Any
+
+_transformer_cache<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Transformer<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token punctuation">}</span>
+
+<span class="token keyword">def</span> <span class="token function">_get_transformer</span><span class="token punctuation">(</span>source_epsg<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> Transformer<span class="token punctuation">:</span>
+    key <span class="token operator">=</span> <span class="token string-interpolation"><span class="token string">f"</span><span class="token interpolation"><span class="token punctuation">{</span>source_epsg<span class="token punctuation">}</span></span><span class="token string">:4326"</span></span>
+    <span class="token keyword">if</span> key <span class="token keyword">not</span> <span class="token keyword">in</span> _transformer_cache<span class="token punctuation">:</span>
+        _transformer_cache<span class="token punctuation">[</span>key<span class="token punctuation">]</span> <span class="token operator">=</span> Transformer<span class="token punctuation">.</span>from_crs<span class="token punctuation">(</span>
+            source_epsg<span class="token punctuation">,</span> <span class="token number">4326</span><span class="token punctuation">,</span> always_xy<span class="token operator">=</span><span class="token boolean">True</span>
+        <span class="token punctuation">)</span>
+    <span class="token keyword">return</span> _transformer_cache<span class="token punctuation">[</span>key<span class="token punctuation">]</span>
+
+<span class="token keyword">def</span> <span class="token function">normalize_geometry</span><span class="token punctuation">(</span>geom_dict<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">,</span> source_epsg<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">4326</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Return a valid GeoJSON geometry dict in EPSG:4326."""</span>
+    geom <span class="token operator">=</span> make_valid<span class="token punctuation">(</span>shape<span class="token punctuation">(</span>geom_dict<span class="token punctuation">)</span><span class="token punctuation">)</span>
+    <span class="token keyword">if</span> source_epsg <span class="token operator">!=</span> <span class="token number">4326</span><span class="token punctuation">:</span>
+        transformer <span class="token operator">=</span> _get_transformer<span class="token punctuation">(</span>source_epsg<span class="token punctuation">)</span>
+        <span class="token comment"># shapely.ops.transform applies the projection coordinate-wise</span>
+        <span class="token keyword">from</span> shapely<span class="token punctuation">.</span>ops <span class="token keyword">import</span> transform <span class="token keyword">as</span> shapely_transform
+        geom <span class="token operator">=</span> make_valid<span class="token punctuation">(</span>shapely_transform<span class="token punctuation">(</span>transformer<span class="token punctuation">.</span>transform<span class="token punctuation">,</span> geom<span class="token punctuation">)</span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> mapping<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>
+</code></pre>
+</div>
+<h3 id="step-2-idempotency-gate" tabindex="-1"><a class="heading-anchor" href="#step-2-idempotency-gate">Step 2 — Idempotency Gate</a></h3>
+<p>Before touching the database, check whether the event key already exists in the distributed cache. This gate, which builds on <a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks</a>, ensures only genuinely new state transitions enter the resolution pipeline. Register a short TTL immediately on first sight to block concurrent duplicates arriving within milliseconds of each other.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> hashlib
 <span class="token keyword">import</span> json
-<span class="token keyword">from</span> typing <span class="token keyword">import</span> Dict<span class="token punctuation">,</span> Any
-<span class="token keyword">from</span> fastapi <span class="token keyword">import</span> FastAPI<span class="token punctuation">,</span> HTTPException<span class="token punctuation">,</span> BackgroundTasks
 <span class="token keyword">from</span> redis<span class="token punctuation">.</span>asyncio <span class="token keyword">import</span> Redis
-<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape<span class="token punctuation">,</span> GeometryCollection
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">is_duplicate</span><span class="token punctuation">(</span>redis<span class="token punctuation">:</span> Redis<span class="token punctuation">,</span> payload<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Return True if this event was already processed."""</span>
+    <span class="token comment"># Sort keys for a stable hash across providers that reorder JSON fields</span>
+    event_key <span class="token operator">=</span> hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">(</span>
+        json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>payload<span class="token punctuation">,</span> sort_keys<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    idem_key <span class="token operator">=</span> <span class="token string-interpolation"><span class="token string">f"idem:</span><span class="token interpolation"><span class="token punctuation">{</span>event_key<span class="token punctuation">}</span></span><span class="token string">"</span></span>
+    <span class="token comment"># SET NX returns None if key exists, "OK" if newly set</span>
+    registered <span class="token operator">=</span> <span class="token keyword">await</span> redis<span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">(</span>idem_key<span class="token punctuation">,</span> <span class="token string">"1"</span><span class="token punctuation">,</span> nx<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span> ex<span class="token operator">=</span><span class="token number">300</span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> registered <span class="token keyword">is</span> <span class="token boolean">None</span>  <span class="token comment"># None means the key was already present</span>
+</code></pre>
+</div>
+<h3 id="step-3-state-retrieval-and-spatial-overlap-analysis" tabindex="-1"><a class="heading-anchor" href="#step-3-state-retrieval-and-spatial-overlap-analysis">Step 3 — State Retrieval and Spatial Overlap Analysis</a></h3>
+<p>Retrieve the current persisted geometry for the feature from your primary datastore. Use a bounding-box pre-filter before computing the full intersection — this is a significant performance optimization for large polygon geometries and mirrors the spatial indexing approach discussed in <a href="/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication</a>.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape
 <span class="token keyword">from</span> shapely<span class="token punctuation">.</span>validation <span class="token keyword">import</span> make_valid
 
-app <span class="token operator">=</span> FastAPI<span class="token punctuation">(</span><span class="token punctuation">)</span>
-redis<span class="token punctuation">:</span> Redis <span class="token operator">=</span> Redis<span class="token punctuation">.</span>from_url<span class="token punctuation">(</span><span class="token string">"redis://localhost:6379/0"</span><span class="token punctuation">)</span>
+<span class="token keyword">def</span> <span class="token function">compute_overlap</span><span class="token punctuation">(</span>
+    current_geom_dict<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">,</span>
+    incoming_geom_dict<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Return True when the two geometries share area — trigger resolution."""</span>
+    current <span class="token operator">=</span> make_valid<span class="token punctuation">(</span>shape<span class="token punctuation">(</span>current_geom_dict<span class="token punctuation">)</span><span class="token punctuation">)</span>
+    incoming <span class="token operator">=</span> make_valid<span class="token punctuation">(</span>shape<span class="token punctuation">(</span>incoming_geom_dict<span class="token punctuation">)</span><span class="token punctuation">)</span>
+    <span class="token comment"># Bounding-box envelope check is O(1); skip full intersection if boxes miss</span>
+    <span class="token keyword">if</span> <span class="token keyword">not</span> current<span class="token punctuation">.</span>envelope<span class="token punctuation">.</span>intersects<span class="token punctuation">(</span>incoming<span class="token punctuation">.</span>envelope<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token boolean">False</span>
+    <span class="token keyword">return</span> current<span class="token punctuation">.</span>intersects<span class="token punctuation">(</span>incoming<span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>If the geometries are disjoint, apply the incoming update directly — there is no spatial conflict.</p>
+<h3 id="step-4-resolution-policy" tabindex="-1"><a class="heading-anchor" href="#step-4-resolution-policy">Step 4 — Resolution Policy</a></h3>
+<p>Two policies cover the majority of real-world cases. Choose based on data semantics, not on convenience.</p>
+<p><strong>Last-write-wins (LWW)</strong> is appropriate for sensor telemetry, vehicle tracking, or any domain where a more-recent observation supersedes older ones. Compare <code>updated_at</code> timestamps or monotonic <code>version</code> integers. LWW is fast but can silently discard a concurrent edit if two writes land within the same clock tick — acceptable for ephemeral spatial telemetry, unacceptable for authoritative cadastral records.</p>
+<p><strong>Semantic merge</strong> preserves both edits by computing a spatial union (for additive changes such as expanding a zone boundary) or a difference/clip (for subtractive changes such as shrinking a service area). It requires a version vector to detect concurrency and is more expensive, but it guarantees no data loss.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape<span class="token punctuation">,</span> mapping
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>validation <span class="token keyword">import</span> make_valid
 
-<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">acquire_feature_lock</span><span class="token punctuation">(</span>feature_id<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> ttl<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">10</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
-    lock_key <span class="token operator">=</span> <span class="token string-interpolation"><span class="token string">f"lock:feature:</span><span class="token interpolation"><span class="token punctuation">{</span>feature_id<span class="token punctuation">}</span></span><span class="token string">"</span></span>
-    <span class="token comment"># SET NX EX for atomic lock acquisition</span>
-    acquired <span class="token operator">=</span> <span class="token keyword">await</span> redis<span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">(</span>lock_key<span class="token punctuation">,</span> <span class="token string">"1"</span><span class="token punctuation">,</span> nx<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span> ex<span class="token operator">=</span>ttl<span class="token punctuation">)</span>
-    <span class="token keyword">return</span> <span class="token builtin">bool</span><span class="token punctuation">(</span>acquired<span class="token punctuation">)</span>
-
-<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">resolve_spatial_conflict</span><span class="token punctuation">(</span>
-    feature_id<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span>
-    incoming_geom<span class="token punctuation">:</span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">,</span>
-    current_geom<span class="token punctuation">:</span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">,</span>
+<span class="token keyword">def</span> <span class="token function">resolve_conflict</span><span class="token punctuation">(</span>
+    current_geom_dict<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">,</span>
+    current_ts<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">,</span>
+    incoming_geom_dict<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">,</span>
     incoming_ts<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">,</span>
-    current_ts<span class="token punctuation">:</span> <span class="token builtin">float</span>
-<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">:</span>
-    geom_a <span class="token operator">=</span> make_valid<span class="token punctuation">(</span>shape<span class="token punctuation">(</span>current_geom<span class="token punctuation">)</span><span class="token punctuation">)</span>
-    geom_b <span class="token operator">=</span> make_valid<span class="token punctuation">(</span>shape<span class="token punctuation">(</span>incoming_geom<span class="token punctuation">)</span><span class="token punctuation">)</span>
-    
-    <span class="token comment"># Fast bounding-box check before expensive intersection</span>
-    <span class="token keyword">if</span> <span class="token keyword">not</span> geom_a<span class="token punctuation">.</span>intersects<span class="token punctuation">(</span>geom_b<span class="token punctuation">)</span><span class="token punctuation">:</span>
-        <span class="token keyword">return</span> incoming_geom  <span class="token comment"># No spatial conflict</span>
-        
-    <span class="token comment"># Temporal tie-breaker (LWW fallback)</span>
+    strategy<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">=</span> <span class="token string">"lww"</span><span class="token punctuation">,</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Resolve a spatial conflict between two geometry versions.
+
+    strategy: "lww" (last-write-wins) or "merge" (spatial union).
+    Returns the winning GeoJSON geometry dict.
+    """</span>
+    current <span class="token operator">=</span> make_valid<span class="token punctuation">(</span>shape<span class="token punctuation">(</span>current_geom_dict<span class="token punctuation">)</span><span class="token punctuation">)</span>
+    incoming <span class="token operator">=</span> make_valid<span class="token punctuation">(</span>shape<span class="token punctuation">(</span>incoming_geom_dict<span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+    <span class="token keyword">if</span> strategy <span class="token operator">==</span> <span class="token string">"merge"</span><span class="token punctuation">:</span>
+        <span class="token comment"># Union preserves both edits — use for additive / collaborative domains</span>
+        merged <span class="token operator">=</span> make_valid<span class="token punctuation">(</span>current<span class="token punctuation">.</span>union<span class="token punctuation">(</span>incoming<span class="token punctuation">)</span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> mapping<span class="token punctuation">(</span>merged<span class="token punctuation">)</span>
+
+    <span class="token comment"># Default: last-write-wins on timestamp</span>
     <span class="token keyword">if</span> incoming_ts <span class="token operator">>=</span> current_ts<span class="token punctuation">:</span>
-        <span class="token keyword">return</span> incoming_geom
-    <span class="token keyword">return</span> current_geom
+        <span class="token keyword">return</span> incoming_geom_dict
+    <span class="token keyword">return</span> current_geom_dict
+</code></pre>
+</div>
+<h3 id="step-5-distributed-locking-and-atomic-commit" tabindex="-1"><a class="heading-anchor" href="#step-5-distributed-locking-and-atomic-commit">Step 5 — Distributed Locking and Atomic Commit</a></h3>
+<p>Acquire a per-feature lock before writing to the database. Without this, two concurrent handlers can both pass the idempotency gate (the first write hasn’t committed yet when the second checks) and produce conflicting writes. The <code>SET NX EX</code> Redis primitive is atomic and self-expiring, eliminating orphaned locks on handler crashes.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">from</span> redis<span class="token punctuation">.</span>asyncio <span class="token keyword">import</span> Redis
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">acquire_lock</span><span class="token punctuation">(</span>redis<span class="token punctuation">:</span> Redis<span class="token punctuation">,</span> feature_id<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> ttl_seconds<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">10</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Attempt atomic lock acquisition. Returns False if already locked."""</span>
+    lock_key <span class="token operator">=</span> <span class="token string-interpolation"><span class="token string">f"lock:feature:</span><span class="token interpolation"><span class="token punctuation">{</span>feature_id<span class="token punctuation">}</span></span><span class="token string">"</span></span>
+    result <span class="token operator">=</span> <span class="token keyword">await</span> redis<span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">(</span>lock_key<span class="token punctuation">,</span> <span class="token string">"1"</span><span class="token punctuation">,</span> nx<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span> ex<span class="token operator">=</span>ttl_seconds<span class="token punctuation">)</span>
+    <span class="token keyword">return</span> result <span class="token keyword">is</span> <span class="token keyword">not</span> <span class="token boolean">None</span>
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">release_lock</span><span class="token punctuation">(</span>redis<span class="token punctuation">:</span> Redis<span class="token punctuation">,</span> feature_id<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token keyword">await</span> redis<span class="token punctuation">.</span>delete<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"lock:feature:</span><span class="token interpolation"><span class="token punctuation">{</span>feature_id<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<h3 id="step-6-full-handler-integration" tabindex="-1"><a class="heading-anchor" href="#step-6-full-handler-integration">Step 6 — Full Handler Integration</a></h3>
+<p>The complete FastAPI endpoint wires all five steps together. The <code>finally</code> block guarantees lock release even if <code>commit_to_db</code> raises an unhandled exception.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">from</span> fastapi <span class="token keyword">import</span> FastAPI<span class="token punctuation">,</span> HTTPException<span class="token punctuation">,</span> Request
+<span class="token keyword">from</span> redis<span class="token punctuation">.</span>asyncio <span class="token keyword">import</span> Redis
+
+app <span class="token operator">=</span> FastAPI<span class="token punctuation">(</span><span class="token punctuation">)</span>
+redis_client <span class="token operator">=</span> Redis<span class="token punctuation">.</span>from_url<span class="token punctuation">(</span><span class="token string">"redis://localhost:6379/0"</span><span class="token punctuation">,</span> decode_responses<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span>
 
 <span class="token decorator annotation punctuation">@app<span class="token punctuation">.</span>post</span><span class="token punctuation">(</span><span class="token string">"/webhooks/spatial-update"</span><span class="token punctuation">)</span>
-<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">handle_spatial_webhook</span><span class="token punctuation">(</span>
-    payload<span class="token punctuation">:</span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">,</span>
-    background_tasks<span class="token punctuation">:</span> BackgroundTasks
-<span class="token punctuation">)</span><span class="token punctuation">:</span>
-    feature_id <span class="token operator">=</span> payload<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"feature_id"</span><span class="token punctuation">)</span>
-    event_key <span class="token operator">=</span> hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">(</span>json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>payload<span class="token punctuation">,</span> sort_keys<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span>
-    
-    <span class="token comment"># Idempotency gate</span>
-    <span class="token keyword">if</span> <span class="token keyword">await</span> redis<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"idem:</span><span class="token interpolation"><span class="token punctuation">{</span>event_key<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">handle_spatial_webhook</span><span class="token punctuation">(</span>request<span class="token punctuation">:</span> Request<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    payload<span class="token punctuation">:</span> <span class="token builtin">dict</span> <span class="token operator">=</span> <span class="token keyword">await</span> request<span class="token punctuation">.</span>json<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    feature_id<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">=</span> payload<span class="token punctuation">[</span><span class="token string">"feature_id"</span><span class="token punctuation">]</span>
+
+    <span class="token comment"># Step 1: normalize CRS to EPSG:4326</span>
+    payload<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span> <span class="token operator">=</span> normalize_geometry<span class="token punctuation">(</span>
+        payload<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+        source_epsg<span class="token operator">=</span>payload<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"crs_epsg"</span><span class="token punctuation">,</span> <span class="token number">4326</span><span class="token punctuation">)</span>
+    <span class="token punctuation">)</span>
+
+    <span class="token comment"># Step 2: idempotency gate</span>
+    <span class="token keyword">if</span> <span class="token keyword">await</span> is_duplicate<span class="token punctuation">(</span>redis_client<span class="token punctuation">,</span> payload<span class="token punctuation">)</span><span class="token punctuation">:</span>
         <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"duplicate_acknowledged"</span><span class="token punctuation">}</span>
-    
-    <span class="token keyword">await</span> redis<span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"idem:</span><span class="token interpolation"><span class="token punctuation">{</span>event_key<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">,</span> <span class="token string">"1"</span><span class="token punctuation">,</span> ex<span class="token operator">=</span><span class="token number">300</span><span class="token punctuation">)</span>
-    
-    <span class="token comment"># Acquire lock to serialize writes per feature</span>
-    <span class="token keyword">if</span> <span class="token keyword">not</span> <span class="token keyword">await</span> acquire_feature_lock<span class="token punctuation">(</span>feature_id<span class="token punctuation">)</span><span class="token punctuation">:</span>
-        <span class="token keyword">raise</span> HTTPException<span class="token punctuation">(</span>status_code<span class="token operator">=</span><span class="token number">429</span><span class="token punctuation">,</span> detail<span class="token operator">=</span><span class="token string">"Feature locked, retry later"</span><span class="token punctuation">)</span>
-    
+
+    <span class="token comment"># Step 3: check for spatial overlap with current persisted state</span>
+    current_state <span class="token operator">=</span> <span class="token keyword">await</span> fetch_from_db<span class="token punctuation">(</span>feature_id<span class="token punctuation">)</span>  <span class="token comment"># returns {"geometry": ..., "updated_at": ...}</span>
+    has_conflict <span class="token operator">=</span> compute_overlap<span class="token punctuation">(</span>current_state<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span><span class="token punctuation">,</span> payload<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+
+    <span class="token keyword">if</span> <span class="token keyword">not</span> has_conflict<span class="token punctuation">:</span>
+        <span class="token comment"># Disjoint update — no resolution required</span>
+        <span class="token keyword">await</span> commit_to_db<span class="token punctuation">(</span>feature_id<span class="token punctuation">,</span> payload<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span><span class="token punctuation">,</span> payload<span class="token punctuation">[</span><span class="token string">"updated_at"</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"applied_no_conflict"</span><span class="token punctuation">}</span>
+
+    <span class="token comment"># Step 4: apply resolution policy</span>
+    resolved_geom <span class="token operator">=</span> resolve_conflict<span class="token punctuation">(</span>
+        current_state<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+        current_state<span class="token punctuation">[</span><span class="token string">"updated_at"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+        payload<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+        payload<span class="token punctuation">[</span><span class="token string">"updated_at"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+        strategy<span class="token operator">=</span>payload<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"resolution_hint"</span><span class="token punctuation">,</span> <span class="token string">"lww"</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+    <span class="token punctuation">)</span>
+
+    <span class="token comment"># Step 5: acquire lock before writing</span>
+    locked <span class="token operator">=</span> <span class="token keyword">await</span> acquire_lock<span class="token punctuation">(</span>redis_client<span class="token punctuation">,</span> feature_id<span class="token punctuation">)</span>
+    <span class="token keyword">if</span> <span class="token keyword">not</span> locked<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> HTTPException<span class="token punctuation">(</span>status_code<span class="token operator">=</span><span class="token number">429</span><span class="token punctuation">,</span> detail<span class="token operator">=</span><span class="token string">"Feature locked — retry later"</span><span class="token punctuation">)</span>
+
     <span class="token keyword">try</span><span class="token punctuation">:</span>
-        <span class="token comment"># Fetch current state (pseudo-code for DB fetch)</span>
-        current_state <span class="token operator">=</span> <span class="token keyword">await</span> fetch_from_db<span class="token punctuation">(</span>feature_id<span class="token punctuation">)</span>
-        resolved <span class="token operator">=</span> <span class="token keyword">await</span> resolve_spatial_conflict<span class="token punctuation">(</span>
-            feature_id<span class="token punctuation">,</span>
-            payload<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
-            current_state<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
-            payload<span class="token punctuation">[</span><span class="token string">"updated_at"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
-            current_state<span class="token punctuation">[</span><span class="token string">"updated_at"</span><span class="token punctuation">]</span>
-        <span class="token punctuation">)</span>
-        <span class="token keyword">await</span> commit_to_db<span class="token punctuation">(</span>feature_id<span class="token punctuation">,</span> resolved<span class="token punctuation">)</span>
+        <span class="token keyword">await</span> commit_to_db<span class="token punctuation">(</span>feature_id<span class="token punctuation">,</span> resolved_geom<span class="token punctuation">,</span> payload<span class="token punctuation">[</span><span class="token string">"updated_at"</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+        <span class="token keyword">await</span> emit_audit_event<span class="token punctuation">(</span>feature_id<span class="token punctuation">,</span> payload<span class="token punctuation">,</span> current_state<span class="token punctuation">,</span> resolved_geom<span class="token punctuation">)</span>
     <span class="token keyword">finally</span><span class="token punctuation">:</span>
-        <span class="token keyword">await</span> redis<span class="token punctuation">.</span>delete<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"lock:feature:</span><span class="token interpolation"><span class="token punctuation">{</span>feature_id<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
-        
+        <span class="token keyword">await</span> release_lock<span class="token punctuation">(</span>redis_client<span class="token punctuation">,</span> feature_id<span class="token punctuation">)</span>
+
     <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"resolved_and_committed"</span><span class="token punctuation">}</span>
 </code></pre>
 </div>
-<p>Key reliability considerations in this pattern:</p>
+<hr>
+<h2 id="spatial-validation-and-error-handling" tabindex="-1"><a class="heading-anchor" href="#spatial-validation-and-error-handling">Spatial Validation and Error Handling</a></h2>
+<p>Geometry errors surface in two places: at ingestion (malformed provider payloads) and at resolution time (operations that produce degenerate results such as empty intersections or self-touching rings).</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> pydantic <span class="token keyword">import</span> BaseModel<span class="token punctuation">,</span> field_validator
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>validation <span class="token keyword">import</span> make_valid<span class="token punctuation">,</span> explain_validity
+
+<span class="token keyword">class</span> <span class="token class-name">SpatialWebhookPayload</span><span class="token punctuation">(</span>BaseModel<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    feature_id<span class="token punctuation">:</span> <span class="token builtin">str</span>
+    geometry<span class="token punctuation">:</span> <span class="token builtin">dict</span>
+    updated_at<span class="token punctuation">:</span> <span class="token builtin">float</span>
+    crs_epsg<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">4326</span>
+    resolution_hint<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">=</span> <span class="token string">"lww"</span>
+
+    <span class="token decorator annotation punctuation">@field_validator</span><span class="token punctuation">(</span><span class="token string">"geometry"</span><span class="token punctuation">)</span>
+    <span class="token decorator annotation punctuation">@classmethod</span>
+    <span class="token keyword">def</span> <span class="token function">geometry_must_be_valid_geojson</span><span class="token punctuation">(</span>cls<span class="token punctuation">,</span> v<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">:</span>
+        allowed <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"LineString"</span><span class="token punctuation">,</span> <span class="token string">"Polygon"</span><span class="token punctuation">,</span> <span class="token string">"MultiPolygon"</span><span class="token punctuation">,</span>
+                   <span class="token string">"MultiPoint"</span><span class="token punctuation">,</span> <span class="token string">"MultiLineString"</span><span class="token punctuation">,</span> <span class="token string">"GeometryCollection"</span><span class="token punctuation">}</span>
+        <span class="token keyword">if</span> v<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"type"</span><span class="token punctuation">)</span> <span class="token keyword">not</span> <span class="token keyword">in</span> allowed<span class="token punctuation">:</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Unknown geometry type: </span><span class="token interpolation"><span class="token punctuation">{</span>v<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">'type'</span><span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+        <span class="token keyword">try</span><span class="token punctuation">:</span>
+            geom <span class="token operator">=</span> shape<span class="token punctuation">(</span>v<span class="token punctuation">)</span>
+        <span class="token keyword">except</span> Exception <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Cannot parse geometry: </span><span class="token interpolation"><span class="token punctuation">{</span>exc<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span> <span class="token keyword">from</span> exc
+        <span class="token keyword">if</span> <span class="token keyword">not</span> geom<span class="token punctuation">.</span>is_valid<span class="token punctuation">:</span>
+            explanation <span class="token operator">=</span> explain_validity<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>
+            <span class="token comment"># Attempt auto-repair; raise only if repair fails</span>
+            repaired <span class="token operator">=</span> make_valid<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>
+            <span class="token keyword">if</span> <span class="token keyword">not</span> repaired<span class="token punctuation">.</span>is_valid<span class="token punctuation">:</span>
+                <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Geometry invalid and unrepairable: </span><span class="token interpolation"><span class="token punctuation">{</span>explanation<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> v
+</code></pre>
+</div>
+<p>Use Pydantic’s <code>field_validator</code> to validate geometry types and repair topology at the boundary of the service, keeping resolution logic free of defensive guards. When <code>make_valid()</code> cannot produce a valid geometry (extremely rare, usually caused by coordinate overflow), log the failure with the raw payload and route to a dead-letter queue rather than returning HTTP 500.</p>
+<hr>
+<h2 id="retry-backoff-and-delivery-guarantees" tabindex="-1"><a class="heading-anchor" href="#retry-backoff-and-delivery-guarantees">Retry, Backoff, and Delivery Guarantees</a></h2>
+<p>When lock acquisition fails because another handler is processing the same feature, the correct response is to signal the webhook provider to retry — not to queue the event internally, which masks the contention.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">import</span> random
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">acquire_lock_with_backoff</span><span class="token punctuation">(</span>
+    redis<span class="token punctuation">:</span> Redis<span class="token punctuation">,</span>
+    feature_id<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span>
+    max_attempts<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">5</span><span class="token punctuation">,</span>
+    base_delay_ms<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">50</span><span class="token punctuation">,</span>
+    ttl_seconds<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">10</span><span class="token punctuation">,</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Exponential backoff with full jitter for distributed lock acquisition.
+    Returns True if the lock was acquired within max_attempts.
+    """</span>
+    <span class="token keyword">for</span> attempt <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span>max_attempts<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">if</span> <span class="token keyword">await</span> acquire_lock<span class="token punctuation">(</span>redis<span class="token punctuation">,</span> feature_id<span class="token punctuation">,</span> ttl_seconds<span class="token punctuation">)</span><span class="token punctuation">:</span>
+            <span class="token keyword">return</span> <span class="token boolean">True</span>
+        <span class="token comment"># Full jitter: sleep between 0 and 2^attempt * base_delay_ms</span>
+        ceiling_ms <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token number">2</span> <span class="token operator">**</span> attempt<span class="token punctuation">)</span> <span class="token operator">*</span> base_delay_ms
+        delay_s <span class="token operator">=</span> random<span class="token punctuation">.</span>uniform<span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> ceiling_ms<span class="token punctuation">)</span> <span class="token operator">/</span> <span class="token number">1000.0</span>
+        <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span>delay_s<span class="token punctuation">)</span>
+    <span class="token keyword">return</span> <span class="token boolean">False</span>
+</code></pre>
+</div>
+<p><strong>At-least-once vs exactly-once:</strong> Most webhook providers guarantee at-least-once delivery. The idempotency gate at Step 2 converts at-least-once into effectively-once for exact payload duplicates. For genuine concurrent edits (same feature, different payloads), the distributed lock serializes writes — ensuring each edit is processed in isolation even if the delivery order was not guaranteed.</p>
+<p>Return HTTP <code>429 Too Many Requests</code> with a <code>Retry-After: 2</code> header when the lock cannot be acquired. Do not queue the payload inside the handler; that would silently accumulate backpressure and break the <code>Retry-After</code> contract with the provider.</p>
+<hr>
+<h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
+<p>The following integration test confirms the core resolution path without a live database — it mocks <code>fetch_from_db</code> and <code>commit_to_db</code> to isolate the conflict logic.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">import</span> pytest
+<span class="token keyword">from</span> unittest<span class="token punctuation">.</span>mock <span class="token keyword">import</span> AsyncMock<span class="token punctuation">,</span> patch
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> mapping
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> Polygon
+
+<span class="token comment"># Two overlapping squares in EPSG:4326</span>
+CURRENT_GEOM <span class="token operator">=</span> mapping<span class="token punctuation">(</span>Polygon<span class="token punctuation">(</span><span class="token punctuation">[</span><span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+INCOMING_GEOM <span class="token operator">=</span> mapping<span class="token punctuation">(</span>Polygon<span class="token punctuation">(</span><span class="token punctuation">[</span><span class="token punctuation">(</span><span class="token number">0.5</span><span class="token punctuation">,</span> <span class="token number">0.5</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token number">1.5</span><span class="token punctuation">,</span> <span class="token number">0.5</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token number">1.5</span><span class="token punctuation">,</span> <span class="token number">1.5</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token number">0.5</span><span class="token punctuation">,</span> <span class="token number">1.5</span><span class="token punctuation">)</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+<span class="token keyword">def</span> <span class="token function">test_overlap_detected</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">from</span> your_module <span class="token keyword">import</span> compute_overlap
+    <span class="token keyword">assert</span> compute_overlap<span class="token punctuation">(</span>CURRENT_GEOM<span class="token punctuation">,</span> INCOMING_GEOM<span class="token punctuation">)</span> <span class="token keyword">is</span> <span class="token boolean">True</span>
+
+<span class="token keyword">def</span> <span class="token function">test_lww_incoming_wins</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">from</span> your_module <span class="token keyword">import</span> resolve_conflict
+    result <span class="token operator">=</span> resolve_conflict<span class="token punctuation">(</span>CURRENT_GEOM<span class="token punctuation">,</span> <span class="token number">1000.0</span><span class="token punctuation">,</span> INCOMING_GEOM<span class="token punctuation">,</span> <span class="token number">1001.0</span><span class="token punctuation">,</span> strategy<span class="token operator">=</span><span class="token string">"lww"</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> result <span class="token operator">==</span> INCOMING_GEOM
+
+<span class="token keyword">def</span> <span class="token function">test_lww_current_wins</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">from</span> your_module <span class="token keyword">import</span> resolve_conflict
+    result <span class="token operator">=</span> resolve_conflict<span class="token punctuation">(</span>CURRENT_GEOM<span class="token punctuation">,</span> <span class="token number">1002.0</span><span class="token punctuation">,</span> INCOMING_GEOM<span class="token punctuation">,</span> <span class="token number">1001.0</span><span class="token punctuation">,</span> strategy<span class="token operator">=</span><span class="token string">"lww"</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> result <span class="token operator">==</span> CURRENT_GEOM
+
+<span class="token keyword">def</span> <span class="token function">test_merge_union_contains_both</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">from</span> your_module <span class="token keyword">import</span> resolve_conflict
+    <span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape
+    result <span class="token operator">=</span> resolve_conflict<span class="token punctuation">(</span>CURRENT_GEOM<span class="token punctuation">,</span> <span class="token number">1000.0</span><span class="token punctuation">,</span> INCOMING_GEOM<span class="token punctuation">,</span> <span class="token number">1001.0</span><span class="token punctuation">,</span> strategy<span class="token operator">=</span><span class="token string">"merge"</span><span class="token punctuation">)</span>
+    merged <span class="token operator">=</span> shape<span class="token punctuation">(</span>result<span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> shape<span class="token punctuation">(</span>CURRENT_GEOM<span class="token punctuation">)</span><span class="token punctuation">.</span>within<span class="token punctuation">(</span>merged<span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> shape<span class="token punctuation">(</span>INCOMING_GEOM<span class="token punctuation">)</span><span class="token punctuation">.</span>within<span class="token punctuation">(</span>merged<span class="token punctuation">)</span>
+
+<span class="token decorator annotation punctuation">@pytest<span class="token punctuation">.</span>mark<span class="token punctuation">.</span>asyncio</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">test_duplicate_is_short_circuited</span><span class="token punctuation">(</span>redis_mock<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">from</span> your_module <span class="token keyword">import</span> is_duplicate
+    payload <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"feature_id"</span><span class="token punctuation">:</span> <span class="token string">"f1"</span><span class="token punctuation">,</span> <span class="token string">"geometry"</span><span class="token punctuation">:</span> INCOMING_GEOM<span class="token punctuation">,</span> <span class="token string">"updated_at"</span><span class="token punctuation">:</span> <span class="token number">1000.0</span><span class="token punctuation">}</span>
+    <span class="token comment"># First call should register the key</span>
+    <span class="token keyword">assert</span> <span class="token keyword">await</span> is_duplicate<span class="token punctuation">(</span>redis_mock<span class="token punctuation">,</span> payload<span class="token punctuation">)</span> <span class="token keyword">is</span> <span class="token boolean">False</span>
+    <span class="token comment"># Second call with same payload should detect duplicate</span>
+    <span class="token keyword">assert</span> <span class="token keyword">await</span> is_duplicate<span class="token punctuation">(</span>redis_mock<span class="token punctuation">,</span> payload<span class="token punctuation">)</span> <span class="token keyword">is</span> <span class="token boolean">True</span>
+</code></pre>
+</div>
+<p>Run the tests with <code>pytest -v</code> — all four assertions should pass without network access.</p>
+<hr>
+<h2 id="troubleshooting" tabindex="-1"><a class="heading-anchor" href="#troubleshooting">Troubleshooting</a></h2>
+<div style="overflow-x:auto">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely Spatial Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Resolution engine produces more conflicts than expected</td>
+<td>CRS mismatch — EPSG:3857 vs EPSG:4326 geometries appear spatially overlapping after reprojection drift</td>
+<td>Enforce a single CRS in Layer 1 normalization before any <code>intersects()</code> call</td>
+</tr>
+<tr>
+<td><code>TopologyException</code> raised during <code>union()</code> or <code>intersection()</code></td>
+<td>Input geometries have self-intersections or duplicate vertices</td>
+<td>Call <code>make_valid()</code> on both operands before any spatial operation</td>
+</tr>
+<tr>
+<td>Lock TTL expires mid-write under PostGIS contention</td>
+<td>Geometry write to PostGIS takes longer than <code>ttl_seconds</code></td>
+<td>Increase lock TTL or move geometry validation out of the critical section</td>
+</tr>
+<tr>
+<td>High <code>conflict_rate</code> metric after a provider upgrade</td>
+<td>Provider changed payload field order, invalidating stable <code>sort_keys</code> hash</td>
+<td>Log both the raw and normalized hash; confirm JSON serialization is deterministic across provider versions</td>
+</tr>
+<tr>
+<td>Dead-letter queue growing rapidly</td>
+<td>Resolution strategy (<code>lww</code> or <code>merge</code>) produces geometries that fail schema validation on commit</td>
+<td>Add a post-resolution <code>make_valid()</code> check and log the feature ID + both input geometries for manual inspection</td>
+</tr>
+<tr>
+<td>HTTP 429 storms from the webhook provider</td>
+<td>Lock contention is too high — multiple handlers competing for the same features</td>
+<td>Shard lock namespaces by H3 cell or geographic bounding box to reduce per-lock contention</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<hr>
+<h2 id="faq" tabindex="-1"><a class="heading-anchor" href="#faq">FAQ</a></h2>
+<details class="faq">
+<summary><strong>When should I use last-write-wins vs semantic merge?</strong></summary>
+<p>Use last-write-wins for high-throughput sensor telemetry where recent observations supersede older ones and occasional data loss is acceptable. Use semantic merge for cadastral, regulatory, or collaborative editing scenarios where every geometry edit carries independent authority and must be preserved — for example, unioning parcel boundary updates from two concurrent field surveyors.</p>
+</details>
+<details class="faq">
+<summary><strong>How do I prevent deadlocks under high concurrency?</strong></summary>
+<p>Always set a hard TTL on every distributed lock (<code>SET NX EX</code> in Redis) and wrap lock release in a <code>finally</code> block. Use exponential backoff with full jitter on acquisition retries rather than tight-polling, and set a maximum retry budget before returning HTTP 429 to the webhook provider. Never hold the lock across a network call you do not control.</p>
+</details>
+<details class="faq">
+<summary><strong>What causes false-positive spatial conflicts?</strong></summary>
+<p>The two most common causes are floating-point drift between CRS projections (two representations of the same geometry in EPSG:4326 vs EPSG:3857 that differ after reprojection) and geometry self-intersections that Shapely’s <code>intersection</code> test resolves differently before and after <code>make_valid()</code>. Always normalize to a single CRS and call <code>make_valid()</code> before any topology check.</p>
+</details>
+<details class="faq">
+<summary><strong>How do I route irreconcilable conflicts to a dead-letter queue?</strong></summary>
+<p>Catch resolution exceptions or detect conflicting attribute schemas in the handler and publish the raw payload plus diagnostic metadata to a dedicated DLQ topic (Redis Stream, SQS, or Kafka). Include the feature ID, both timestamps, and the resolution strategy attempted so operators can replay with corrected logic without re-fetching the event from the webhook provider.</p>
+</details>
+<hr>
+<h2 id="operational-considerations" tabindex="-1"><a class="heading-anchor" href="#operational-considerations">Operational Considerations</a></h2>
+<p><strong>Partitioned locking:</strong> Instead of a flat <code>lock:feature:&lt;id&gt;</code> namespace, shard by geographic region — for example, prefix by H3 cell at resolution 5. This reduces contention when high-velocity events cluster spatially (a common pattern in sensor grids and fleet tracking) while preserving per-feature serialization within each shard.</p>
+<p><strong>Observability metrics:</strong> Instrument <code>conflict_rate</code> (conflicts per 1,000 events), <code>lock_wait_time_ms</code> (P95 latency to acquire a feature lock), <code>resolution_strategy_distribution</code> (LWW vs merge vs DLQ ratio), and <code>geometry_repair_count</code> (calls to <code>make_valid()</code> that changed the geometry). These four metrics are the primary indicators of data quality and pipeline health. The <a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a> page covers <code>geometry_repair_count</code> instrumentation in depth.</p>
+<p><strong>Audit trail:</strong> Every resolved conflict should emit an immutable event containing the incoming payload, current state, the chosen resolution strategy, and the resulting geometry. This enables deterministic replay and compliance auditing without re-querying the webhook provider. Route these events to the same message broker used for <a href="/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers</a> so the audit stream is co-located with the primary event stream.</p>
+<p><strong>Circuit breaker:</strong> If the Redis cluster is unreachable, do not silently fail open. Return HTTP 503 with a <code>Retry-After</code> header rather than processing the event without an idempotency gate or lock, which would make conflict resolution semantics undefined for the duration of the outage.</p>
+<hr>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
 <ul>
-<li><strong>Atomic Locking:</strong> <code>SET NX EX</code> guarantees only one worker processes a feature at a time. Always wrap lock release in a <code>finally</code> block to prevent deadlocks on unhandled exceptions.</li>
-<li><strong>Geometry Validation:</strong> <code>make_valid()</code> repairs self-intersections and ring orientation issues before topology checks, preventing <code>TopologyException</code> crashes.</li>
-<li><strong>TTL Management:</strong> Idempotency keys and locks must expire. Set TTLs slightly longer than your maximum expected webhook processing latency.</li>
-<li><strong>Graceful Degradation:</strong> If the Redis cluster is unreachable, fail open with a warning metric rather than dropping webhooks, or implement a local in-memory fallback for single-node deployments.</li>
+<li><a href="/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a> — parent section covering the full consistency guarantee stack for geospatial webhooks</li>
+<li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a> — deterministic fingerprinting of GeoJSON payloads before conflict evaluation</li>
+<li><a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks</a> — Redis-based duplicate filtering that feeds the gate in Layer 2</li>
+<li><a href="/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication</a> — bounding-box and geometry intersection strategies for near-duplicate filtering</li>
+<li><a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a> — topology repair and CRS alignment patterns that underpin normalization in Layer 1</li>
 </ul>
-<h2 id="operational-considerations-scaling" tabindex="-1"><a class="heading-anchor" href="#operational-considerations-scaling">Operational Considerations &amp; Scaling</a></h2>
-<p>As webhook volume scales, conflict resolution engines must balance strict consistency with ingestion throughput. Consider these operational patterns:</p>
-<ul>
-<li><strong>Partitioned Locking:</strong> Instead of global locks, shard locks by geographic bounding box or tenant ID. This reduces contention while maintaining per-feature serialization.</li>
-<li><strong>Dead-Letter Queues (DLQ):</strong> When resolution logic encounters irreconcilable state (e.g., conflicting attribute schemas or corrupted geometry), route the payload to a DLQ. Implement automated alerting and manual reconciliation dashboards.</li>
-<li><strong>Observability &amp; Metrics:</strong> Track <code>conflict_rate</code>, <code>lock_wait_time_ms</code>, <code>resolution_strategy_distribution</code>, and <code>geometry_repair_count</code>. These metrics directly correlate with data quality and system health.</li>
-<li><strong>Backpressure Handling:</strong> If the resolution layer falls behind, apply circuit breakers at the webhook receiver. Return <code>503 Service Unavailable</code> with a <code>Retry-After</code> header rather than queuing indefinitely, which masks underlying bottlenecks.</li>
-<li><strong>Audit Trail Integration:</strong> Every resolved conflict should emit an immutable event containing the incoming payload, current state, chosen strategy, and resulting geometry. This enables deterministic replay and compliance auditing.</li>
-</ul>
-<h2 id="conclusion" tabindex="-1"><a class="heading-anchor" href="#conclusion">Conclusion</a></h2>
-<p>Deterministic conflict resolution transforms chaotic webhook streams into reliable spatial state. By combining strict idempotency gates, topology-aware overlap detection, distributed locking, and explicit resolution policies, platform teams can guarantee data consistency without sacrificing real-time throughput. As your event-driven architecture matures, continuously refine your resolution policies based on domain semantics and monitor conflict patterns to optimize ingestion pipelines.</p>
-<p>For deeper dives into spatial deduplication mechanics, explore <a href="/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a> and integrate audit logging early to maintain full lineage across all webhook lifecycles.</p>
 
       </div>
 
@@ -293,7 +738,7 @@ redis<span class="token punctuation">:</span> Redis <span class="token operator"
           <ul>
             <li><a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
             <li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
-            <li><a href="/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication in Event-Driven Geospatial Systems</a></li>
+            <li><a href="/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
           </ul>
         </div>
         <div class="aside-card">
@@ -330,6 +775,9 @@ redis<span class="token punctuation">:</span> Redis <span class="token operator"
         <h4>Site</h4>
         <ul>
           <li><a href="/">Home</a></li>
+          <li><a href="/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
         </ul>
       </div>
       <div>
@@ -359,7 +807,7 @@ redis<span class="token punctuation">:</span> Redis <span class="token operator"
 </footer>
 
   </div>
-  <script src="/assets/js/site.js" defer></script>
+  <script src="/assets/js/site.js?v=6c55de86" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

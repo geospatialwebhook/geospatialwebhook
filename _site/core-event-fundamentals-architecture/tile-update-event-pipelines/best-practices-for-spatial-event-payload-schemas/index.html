@@ -4,8 +4,8 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 
-  <title>Best practices for spatial event payload schemas · Geo Webhook</title>
-  <meta name="description" content="Best practices for spatial event payload schemas require strict adherence to standardized geometry formats, explicit coordinate reference system (CRS)…"/>
+  <title>Best Practices for Spatial Event Payload Schemas · Geo Webhook</title>
+  <meta name="description" content="Design production-grade spatial event payload schemas: WGS84 geometry, bbox pre-computation, CRS declarations, CloudEvents envelopes, and idempotency keys in Python."/>
   <link rel="canonical" href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/best-practices-for-spatial-event-payload-schemas/"/>
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
 
@@ -32,25 +32,25 @@
   <meta property="og:site_name" content="Geo Webhook"/>
   <meta property="og:locale" content="en_US"/>
   <meta property="og:url" content="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/best-practices-for-spatial-event-payload-schemas/"/>
-  <meta property="og:title" content="Best practices for spatial event payload schemas"/>
-  <meta property="og:description" content="Best practices for spatial event payload schemas require strict adherence to standardized geometry formats, explicit coordinate reference system (CRS)…"/>
-  <meta property="og:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
-  <meta property="og:image:width" content="512"/>
-  <meta property="og:image:height" content="512"/>
-  <meta property="og:image:alt" content="Geospatial Webhook logo"/>
+  <meta property="og:title" content="Best Practices for Spatial Event Payload Schemas"/>
+  <meta property="og:description" content="Design production-grade spatial event payload schemas: WGS84 geometry, bbox pre-computation, CRS declarations, CloudEvents envelopes, and idempotency keys in Python."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
 
   
   <meta name="twitter:card" content="summary_large_image"/>
-  <meta name="twitter:title" content="Best practices for spatial event payload schemas"/>
-  <meta name="twitter:description" content="Best practices for spatial event payload schemas require strict adherence to standardized geometry formats, explicit coordinate reference system (CRS)…"/>
-  <meta name="twitter:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
-  <meta name="twitter:image:alt" content="Geospatial Webhook logo"/>
+  <meta name="twitter:title" content="Best Practices for Spatial Event Payload Schemas"/>
+  <meta name="twitter:description" content="Design production-grade spatial event payload schemas: WGS84 geometry, bbox pre-computation, CRS declarations, CloudEvents envelopes, and idempotency keys in Python."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
 
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/assets/css/site.css"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=8ef3d820"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -98,12 +98,12 @@
     "@type": "TechArticle",
     "@id": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/best-practices-for-spatial-event-payload-schemas/#article",
     "mainEntityOfPage": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/best-practices-for-spatial-event-payload-schemas/",
-    "headline": "Best practices for spatial event payload schemas",
-    "description": "Best practices for spatial event payload schemas require strict adherence to standardized geometry formats, explicit coordinate reference system (CRS)…",
+    "headline": "Best Practices for Spatial Event Payload Schemas",
+    "description": "Design production-grade spatial event payload schemas: WGS84 geometry, bbox pre-computation, CRS declarations, CloudEvents envelopes, and idempotency keys in Python.",
     "inLanguage": "en",
     "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
     "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
-    "image": "https://www.geospatialwebhook.com/icon-512.png",
+    "image": "https://www.geospatialwebhook.com/og-image.png",
     "url": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/best-practices-for-spatial-event-payload-schemas/",
     "articleSection": "Core Event Fundamentals Architecture",
     "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
@@ -158,21 +158,164 @@
           <span aria-current="page">Best Practices For Spatial Event Payload Schemas</span>
     </nav>
 
+    <h1 class="page__title">Best Practices for Spatial Event Payload Schemas</h1>
+
     <div class="page__layout">
       <div class="markdown">
-        <h1 id="best-practices-for-spatial-event-payload-schemas" tabindex="-1"><a class="heading-anchor" href="#best-practices-for-spatial-event-payload-schemas">Best practices for spatial event payload schemas</a></h1>
-<p><strong>Best practices for spatial event payload schemas</strong> require strict adherence to standardized geometry formats, explicit coordinate reference system (CRS) declarations, pre-computed bounding boxes, and deterministic temporal metadata. In production geospatial architectures, you must validate geometry at the ingress layer, decouple routing metadata from spatial coordinates, and enforce idempotent update operations. This prevents downstream tile regeneration bottlenecks, eliminates projection ambiguity, and guarantees predictable parsing across distributed consumers.</p>
-<h2 id="core-schema-architecture-field-requirements" tabindex="-1"><a class="heading-anchor" href="#core-schema-architecture-field-requirements">Core Schema Architecture &amp; Field Requirements</a></h2>
-<p>Spatial event payloads degrade when transport concerns bleed into geometric data. A resilient schema isolates five distinct domains:</p>
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Best Practices for Spatial Event Payload Schemas",
+      "description": "Design production-grade spatial event payload schemas: enforce WGS84 geometry, bbox pre-computation, CRS declarations, CloudEvents envelopes, and idempotency keys for tile update pipelines in Python.",
+      "datePublished": "2025-06-01",
+      "dateModified": "2026-06-24",
+      "author": {"@type": "Organization", "name": "geospatialwebhook.com"}
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Core Event Fundamentals & Architecture", "item": "https://geospatialwebhook.com/core-event-fundamentals-architecture/"},
+        {"@type": "ListItem", "position": 2, "name": "Tile Update Event Pipelines", "item": "https://geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/"},
+        {"@type": "ListItem", "position": 3, "name": "Best Practices for Spatial Event Payload Schemas", "item": "https://geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/best-practices-for-spatial-event-payload-schemas/"}
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "How to design a spatial event payload schema",
+      "step": [
+        {"@type": "HowToStep", "name": "Declare an explicit CRS field (EPSG:4326)", "text": "Always include a crs string in every payload, even when the default WGS84 is assumed."},
+        {"@type": "HowToStep", "name": "Pre-compute the bounding box at publish time", "text": "Embed a 4-element bbox array so consumers avoid deserializing the full geometry for spatial routing."},
+        {"@type": "HowToStep", "name": "Isolate routing metadata from geometry", "text": "Place tenant_id, priority, and correlation_id outside the geometry object for sub-millisecond broker routing."},
+        {"@type": "HowToStep", "name": "Wrap in a CloudEvents v1.0 envelope", "text": "Use the specversion, type, source, and id fields so infrastructure can route without parsing spatial data."},
+        {"@type": "HowToStep", "name": "Validate at the ingress layer with Pydantic v2", "text": "Reject malformed payloads before they enter the message bus to prevent consumer group stalls."}
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Why must I include a CRS field even when using the WGS84 default?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Implicit CRS assumptions break whenever a second data source enters the pipeline with a different projection. Explicit EPSG codes eliminate axis-ordering ambiguity and make payloads self-describing for consumers that apply CRS transformations before geometry comparison."}
+        },
+        {
+          "@type": "Question",
+          "name": "How many decimal places should I use for GeoJSON coordinates?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Cap at 6–8 decimal places. Six decimals gives ~0.11 m horizontal accuracy on WGS84, which is sufficient for tile invalidation. Excess precision inflates payload size, increases network latency, and triggers false cache invalidations when floating-point noise moves coordinates by sub-millimeter amounts."}
+        },
+        {
+          "@type": "Question",
+          "name": "When should I send delta geometries instead of full feature state?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Use delta encoding for update operations on large polygons or multipolygons where only a single ring changes. Full-state payloads are simpler and safer for insert and delete operations, where consumers need the complete geometry to rebuild spatial indexes."}
+        },
+        {
+          "@type": "Question",
+          "name": "How do I detect duplicate spatial events from broker retries?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Derive a deterministic idempotency key from correlation_id + update_operation + a SHA-256 hash of the canonicalized geometry. Store this key in Redis or DynamoDB with a TTL matching your retry window. Consumers skip processing if the key already exists."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>Spatial event payload schemas for tile update pipelines must enforce explicit CRS declarations (<code>EPSG:4326</code>), pre-computed bounding boxes, isolated routing metadata, and CloudEvents-wrapped envelopes — validated by Pydantic v2 at the ingress layer before any event reaches a message broker.</strong> This page is part of <a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a>, which sits under <a href="/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a>.</p>
+<h2 id="when-to-apply-this-schema-pattern" tabindex="-1"><a class="heading-anchor" href="#when-to-apply-this-schema-pattern">When to apply this schema pattern</a></h2>
+<p>This approach is appropriate over a minimal ad-hoc JSON structure in three situations:</p>
+<ul>
+<li>You route events through a message broker (Kafka, RabbitMQ, AWS EventBridge) where infrastructure must make routing decisions without deserializing full coordinate arrays.</li>
+<li>Multiple downstream consumers — tile renderers, spatial analytics engines, audit logs — each need a different slice of the payload, making field isolation critical to avoid tight coupling.</li>
+<li>Your pipeline requires safe broker retries, meaning consumers must detect and skip duplicate events without replaying spatial index rebuilds or tile regeneration jobs.</li>
+</ul>
+<hr>
+<svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Spatial event payload schema: five isolated domains flowing left to right from GIS source to broker to consumers" style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;">
+  <title>Spatial event payload schema: five isolated domains</title>
+  <desc>Diagram showing a GeoJSON feature mutation entering the ingress validator, which produces a CloudEvents envelope containing five domains — Geometry, BBox, Temporal, Routing, Precision — before delivery to the message broker and downstream consumers.</desc>
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.5"/>
+    </marker>
+  </defs>
+  <!-- GIS Source -->
+  <rect x="8" y="110" width="100" height="48" rx="6" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5"/>
+  <text x="58" y="130" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.75">GIS Source</text>
+  <text x="58" y="148" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.55">feature edit</text>
+  <!-- Arrow -->
+  <line x1="109" y1="134" x2="138" y2="134" stroke="currentColor" stroke-opacity="0.4" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Ingress Validator -->
+  <rect x="140" y="96" width="106" height="76" rx="6" fill="none" stroke="#c87941" stroke-opacity="0.6" stroke-width="1.5"/>
+  <text x="193" y="118" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Ingress</text>
+  <text x="193" y="133" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Validator</text>
+  <text x="193" y="152" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.55">Pydantic v2</text>
+  <text x="193" y="165" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.55">coord bounds</text>
+  <!-- Arrow -->
+  <line x1="247" y1="134" x2="276" y2="134" stroke="currentColor" stroke-opacity="0.4" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Envelope box -->
+  <rect x="278" y="40" width="220" height="228" rx="8" fill="none" stroke="#7ab5a0" stroke-opacity="0.45" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="388" y="60" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.5">CloudEvents v1.0 envelope</text>
+  <!-- 5 domain pills -->
+  <!-- Geometry -->
+  <rect x="290" y="70" width="90" height="34" rx="5" fill="#7ab5a0" fill-opacity="0.18" stroke="#7ab5a0" stroke-opacity="0.5" stroke-width="1"/>
+  <text x="335" y="84" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.85" font-weight="600">Geometry</text>
+  <text x="335" y="97" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.6">type + coordinates</text>
+  <!-- BBox -->
+  <rect x="394" y="70" width="90" height="34" rx="5" fill="#c87941" fill-opacity="0.15" stroke="#c87941" stroke-opacity="0.5" stroke-width="1"/>
+  <text x="439" y="84" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.85" font-weight="600">BBox</text>
+  <text x="439" y="97" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.6">[min_lon … max_lat]</text>
+  <!-- Temporal -->
+  <rect x="290" y="116" width="90" height="34" rx="5" fill="#a07ab5" fill-opacity="0.15" stroke="#a07ab5" stroke-opacity="0.5" stroke-width="1"/>
+  <text x="335" y="130" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.85" font-weight="600">Temporal</text>
+  <text x="335" y="143" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.6">event_time · version</text>
+  <!-- Routing -->
+  <rect x="394" y="116" width="90" height="34" rx="5" fill="#7ab5a0" fill-opacity="0.18" stroke="#7ab5a0" stroke-opacity="0.5" stroke-width="1"/>
+  <text x="439" y="130" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.85" font-weight="600">Routing</text>
+  <text x="439" y="143" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.6">tenant · priority · cid</text>
+  <!-- Precision -->
+  <rect x="342" y="162" width="90" height="34" rx="5" fill="#c87941" fill-opacity="0.15" stroke="#c87941" stroke-opacity="0.5" stroke-width="1"/>
+  <text x="387" y="176" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.85" font-weight="600">Precision</text>
+  <text x="387" y="189" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.6">6–8 decimal places</text>
+  <!-- CRS note -->
+  <text x="388" y="240" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.45">crs: EPSG:4326 explicit on every event</text>
+  <!-- Arrow out of envelope -->
+  <line x1="499" y1="134" x2="528" y2="134" stroke="currentColor" stroke-opacity="0.4" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Broker -->
+  <rect x="530" y="96" width="90" height="76" rx="6" fill="none" stroke="#c87941" stroke-opacity="0.6" stroke-width="1.5"/>
+  <text x="575" y="126" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Message</text>
+  <text x="575" y="141" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Broker</text>
+  <text x="575" y="158" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.55">Kafka / SQS</text>
+  <!-- Arrow out of broker -->
+  <line x1="621" y1="134" x2="650" y2="134" stroke="currentColor" stroke-opacity="0.4" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Consumers -->
+  <rect x="652" y="86" width="60" height="28" rx="5" fill="none" stroke="currentColor" stroke-opacity="0.3" stroke-width="1"/>
+  <text x="682" y="105" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.7">Tile renderer</text>
+  <rect x="652" y="120" width="60" height="28" rx="5" fill="none" stroke="currentColor" stroke-opacity="0.3" stroke-width="1"/>
+  <text x="682" y="139" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.7">Spatial index</text>
+  <rect x="652" y="154" width="60" height="28" rx="5" fill="none" stroke="currentColor" stroke-opacity="0.3" stroke-width="1"/>
+  <text x="682" y="173" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.7">Audit log</text>
+</svg>
+<h2 id="schema-anatomy-five-isolated-domains" tabindex="-1"><a class="heading-anchor" href="#schema-anatomy-five-isolated-domains">Schema anatomy: five isolated domains</a></h2>
+<p>Spatial event payloads break down in production when transport concerns bleed into geometric data. A resilient schema isolates five distinct domains:</p>
 <ol>
-<li><strong>Geometry &amp; Projection</strong>: Default to WGS84 (<code>EPSG:4326</code>) with explicit <code>[longitude, latitude]</code> ordering. Always include a <code>crs</code> string, even when using the default, and never rely on implicit axis ordering. The <a href="https://datatracker.ietf.org/doc/html/rfc7946">RFC 7946 GeoJSON specification</a> mandates this ordering to prevent coordinate inversion across parsers.</li>
-<li><strong>Bounding Box (<code>bbox</code>)</strong>: Require a fixed 4-element array <code>[min_lon, min_lat, max_lon, max_lat]</code>. Consumers leverage this for rapid spatial indexing, tile routing, and bounding-box intersection tests without deserializing full coordinate arrays.</li>
-<li><strong>Temporal &amp; Versioning</strong>: Include <code>event_time</code> (ISO 8601 UTC), <code>schema_version</code>, and <code>update_operation</code> (<code>insert</code>, <code>update</code>, <code>delete</code>). This enables idempotent replay, out-of-order event handling, and schema drift detection.</li>
-<li><strong>Routing &amp; Context</strong>: Keep <code>tenant_id</code>, <code>priority</code>, <code>source_system</code>, and <code>correlation_id</code> outside the <code>geometry</code> object. Message brokers can route, throttle, or drop events based on these flat keys before incurring the CPU cost of parsing nested spatial structures, a pattern foundational to scalable <a href="/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a>.</li>
-<li><strong>Precision Control</strong>: Cap coordinate precision at 6–8 decimal places (~1–10 cm accuracy). Excess precision inflates JSON payloads, increases network latency, and triggers unnecessary tile cache invalidations when floating-point noise shifts coordinates by sub-millimeter margins.</li>
+<li>
+<p><strong>Geometry and projection.</strong> Default to WGS84 (<code>EPSG:4326</code>) with explicit <code>[longitude, latitude]</code> ordering. Always include a <code>crs</code> string even when using the default, and never rely on implicit axis ordering. The <a href="https://datatracker.ietf.org/doc/html/rfc7946">RFC 7946 GeoJSON specification</a> mandates longitude-first ordering to prevent coordinate inversion across parsers. For payloads mixing projections, apply <a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS normalization</a> before serialization.</p>
+</li>
+<li>
+<p><strong>Bounding box (<code>bbox</code>).</strong> Require a fixed 4-element array <code>[min_lon, min_lat, max_lon, max_lat]</code>. Consumers use this for rapid spatial indexing, tile routing, and bounding-box intersection tests without deserializing full coordinate arrays — essential for the sub-millisecond routing decisions described in <a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a>.</p>
+</li>
+<li>
+<p><strong>Temporal and versioning.</strong> Include <code>event_time</code> (ISO 8601 UTC), <code>schema_version</code>, and <code>update_operation</code> (<code>insert</code>, <code>update</code>, <code>delete</code>). This enables idempotent replay, out-of-order event handling, and schema drift detection. Pair these fields with a deterministic idempotency key as described in <a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a>.</p>
+</li>
+<li>
+<p><strong>Routing and context.</strong> Keep <code>tenant_id</code>, <code>priority</code>, <code>source_system</code>, and <code>correlation_id</code> outside the <code>geometry</code> object. Message brokers can route, throttle, or drop events based on these flat keys before incurring the CPU cost of parsing nested spatial structures.</p>
+</li>
+<li>
+<p><strong>Precision control.</strong> Cap coordinate precision at 6–8 decimal places (~1–10 cm accuracy on WGS84). Excess precision inflates JSON payloads, increases network latency, and triggers unnecessary tile cache invalidations when floating-point noise shifts coordinates by sub-millimeter margins.</p>
+</li>
 </ol>
-<h2 id="production-ready-python-implementation" tabindex="-1"><a class="heading-anchor" href="#production-ready-python-implementation">Production-Ready Python Implementation</a></h2>
-<p>The following Pydantic v2 model enforces strict GeoJSON validation, auto-computes fallback bounding boxes, and serializes to a CloudEvents-compatible envelope. It replaces implicit type coercion with explicit validation gates.</p>
+<h2 id="complete-runnable-implementation" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-implementation">Complete runnable implementation</a></h2>
+<p>The Pydantic v2 model below enforces strict GeoJSON validation, auto-computes fallback bounding boxes from any geometry type, and serializes to a CloudEvents v1.0 envelope. It rejects invalid payloads at the class boundary rather than letting errors propagate into consumer workers.</p>
 <div class="code-block" data-lang="python">
   <div class="code-block__header">
     <span class="code-block__lang">python</span>
@@ -180,91 +323,315 @@
       <span class="code-block__copy-label">Copy</span>
     </button>
   </div>
-  <pre class="language-python"><code class="language-python"><span class="token keyword">from</span> pydantic <span class="token keyword">import</span> BaseModel<span class="token punctuation">,</span> Field<span class="token punctuation">,</span> field_validator<span class="token punctuation">,</span> model_validator
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> pydantic <span class="token keyword">import</span> BaseModel<span class="token punctuation">,</span> Field<span class="token punctuation">,</span> field_validator<span class="token punctuation">,</span> model_validator
 <span class="token keyword">from</span> datetime <span class="token keyword">import</span> datetime<span class="token punctuation">,</span> timezone
 <span class="token keyword">from</span> typing <span class="token keyword">import</span> Literal<span class="token punctuation">,</span> Optional
 <span class="token keyword">import</span> uuid
-<span class="token keyword">import</span> math
+
 
 <span class="token keyword">class</span> <span class="token class-name">SpatialEventPayload</span><span class="token punctuation">(</span>BaseModel<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token comment"># Schema versioning — consumers gate on this before parsing geometry</span>
     schema_version<span class="token punctuation">:</span> Literal<span class="token punctuation">[</span><span class="token string">"1.0"</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token string">"1.0"</span>
+
+    <span class="token comment"># Operational envelope — routable without touching geometry</span>
     event_type<span class="token punctuation">:</span> Literal<span class="token punctuation">[</span><span class="token string">"tile_update"</span><span class="token punctuation">,</span> <span class="token string">"geometry_change"</span><span class="token punctuation">,</span> <span class="token string">"attribute_sync"</span><span class="token punctuation">]</span>
-    geometry<span class="token punctuation">:</span> <span class="token builtin">dict</span>
-    bbox<span class="token punctuation">:</span> Optional<span class="token punctuation">[</span><span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">float</span><span class="token punctuation">]</span><span class="token punctuation">]</span> <span class="token operator">=</span> Field<span class="token punctuation">(</span>default<span class="token operator">=</span><span class="token boolean">None</span><span class="token punctuation">,</span> min_length<span class="token operator">=</span><span class="token number">4</span><span class="token punctuation">,</span> max_length<span class="token operator">=</span><span class="token number">4</span><span class="token punctuation">)</span>
-    crs<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">=</span> Field<span class="token punctuation">(</span>default<span class="token operator">=</span><span class="token string">"EPSG:4326"</span><span class="token punctuation">)</span>
-    event_time<span class="token punctuation">:</span> datetime <span class="token operator">=</span> Field<span class="token punctuation">(</span>default_factory<span class="token operator">=</span><span class="token keyword">lambda</span><span class="token punctuation">:</span> datetime<span class="token punctuation">.</span>now<span class="token punctuation">(</span>timezone<span class="token punctuation">.</span>utc<span class="token punctuation">)</span><span class="token punctuation">)</span>
     update_operation<span class="token punctuation">:</span> Literal<span class="token punctuation">[</span><span class="token string">"insert"</span><span class="token punctuation">,</span> <span class="token string">"update"</span><span class="token punctuation">,</span> <span class="token string">"delete"</span><span class="token punctuation">]</span>
     correlation_id<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">=</span> Field<span class="token punctuation">(</span>default_factory<span class="token operator">=</span><span class="token keyword">lambda</span><span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">(</span>uuid<span class="token punctuation">.</span>uuid4<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    tenant_id<span class="token punctuation">:</span> Optional<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token boolean">None</span>
+    priority<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> Field<span class="token punctuation">(</span>default<span class="token operator">=</span><span class="token number">5</span><span class="token punctuation">,</span> ge<span class="token operator">=</span><span class="token number">1</span><span class="token punctuation">,</span> le<span class="token operator">=</span><span class="token number">10</span><span class="token punctuation">)</span>
+    source_system<span class="token punctuation">:</span> Optional<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token boolean">None</span>
+
+    <span class="token comment"># Geometry domain — always GeoJSON, always explicit CRS</span>
+    geometry<span class="token punctuation">:</span> <span class="token builtin">dict</span>
+    crs<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">=</span> Field<span class="token punctuation">(</span>default<span class="token operator">=</span><span class="token string">"EPSG:4326"</span><span class="token punctuation">)</span>
+
+    <span class="token comment"># Pre-computed bbox: [min_lon, min_lat, max_lon, max_lat] — 4 elements exactly</span>
+    bbox<span class="token punctuation">:</span> Optional<span class="token punctuation">[</span><span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">float</span><span class="token punctuation">]</span><span class="token punctuation">]</span> <span class="token operator">=</span> Field<span class="token punctuation">(</span>default<span class="token operator">=</span><span class="token boolean">None</span><span class="token punctuation">,</span> min_length<span class="token operator">=</span><span class="token number">4</span><span class="token punctuation">,</span> max_length<span class="token operator">=</span><span class="token number">4</span><span class="token punctuation">)</span>
+
+    <span class="token comment"># Temporal domain — ISO 8601 UTC, mandatory</span>
+    event_time<span class="token punctuation">:</span> datetime <span class="token operator">=</span> Field<span class="token punctuation">(</span>default_factory<span class="token operator">=</span><span class="token keyword">lambda</span><span class="token punctuation">:</span> datetime<span class="token punctuation">.</span>now<span class="token punctuation">(</span>timezone<span class="token punctuation">.</span>utc<span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+    <span class="token comment"># Arbitrary attribute payload (properties, not geometry or routing)</span>
     metadata<span class="token punctuation">:</span> <span class="token builtin">dict</span> <span class="token operator">=</span> Field<span class="token punctuation">(</span>default_factory<span class="token operator">=</span><span class="token builtin">dict</span><span class="token punctuation">)</span>
 
     <span class="token decorator annotation punctuation">@field_validator</span><span class="token punctuation">(</span><span class="token string">"geometry"</span><span class="token punctuation">)</span>
     <span class="token decorator annotation punctuation">@classmethod</span>
     <span class="token keyword">def</span> <span class="token function">validate_geojson_structure</span><span class="token punctuation">(</span>cls<span class="token punctuation">,</span> v<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">:</span>
         valid_types <span class="token operator">=</span> <span class="token punctuation">{</span>
-            <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"LineString"</span><span class="token punctuation">,</span> <span class="token string">"Polygon"</span><span class="token punctuation">,</span> <span class="token string">"MultiPoint"</span><span class="token punctuation">,</span>
-            <span class="token string">"MultiLineString"</span><span class="token punctuation">,</span> <span class="token string">"MultiPolygon"</span><span class="token punctuation">,</span> <span class="token string">"GeometryCollection"</span>
+            <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"LineString"</span><span class="token punctuation">,</span> <span class="token string">"Polygon"</span><span class="token punctuation">,</span>
+            <span class="token string">"MultiPoint"</span><span class="token punctuation">,</span> <span class="token string">"MultiLineString"</span><span class="token punctuation">,</span> <span class="token string">"MultiPolygon"</span><span class="token punctuation">,</span>
+            <span class="token string">"GeometryCollection"</span><span class="token punctuation">,</span>
         <span class="token punctuation">}</span>
         <span class="token keyword">if</span> v<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"type"</span><span class="token punctuation">)</span> <span class="token keyword">not</span> <span class="token keyword">in</span> valid_types<span class="token punctuation">:</span>
-            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Invalid GeoJSON type: </span><span class="token interpolation"><span class="token punctuation">{</span>v<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">'type'</span><span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Invalid GeoJSON geometry type: </span><span class="token interpolation"><span class="token punctuation">{</span>v<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">'type'</span><span class="token punctuation">)</span><span class="token conversion-option punctuation">!r</span><span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
         <span class="token keyword">if</span> <span class="token string">"coordinates"</span> <span class="token keyword">not</span> <span class="token keyword">in</span> v <span class="token keyword">and</span> v<span class="token punctuation">[</span><span class="token string">"type"</span><span class="token punctuation">]</span> <span class="token operator">!=</span> <span class="token string">"GeometryCollection"</span><span class="token punctuation">:</span>
-            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"GeoJSON object missing 'coordinates' array"</span><span class="token punctuation">)</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"GeoJSON object missing required 'coordinates' array"</span><span class="token punctuation">)</span>
+        <span class="token comment"># Validate coordinate bounds: lon in [-180, 180], lat in [-90, 90]</span>
+        <span class="token keyword">for</span> lon<span class="token punctuation">,</span> lat <span class="token keyword">in</span> cls<span class="token punctuation">.</span>_flatten_coordinates<span class="token punctuation">(</span>v<span class="token punctuation">)</span><span class="token punctuation">:</span>
+            <span class="token keyword">if</span> <span class="token keyword">not</span> <span class="token punctuation">(</span><span class="token operator">-</span><span class="token number">180</span> <span class="token operator">&lt;=</span> lon <span class="token operator">&lt;=</span> <span class="token number">180</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+                <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Longitude </span><span class="token interpolation"><span class="token punctuation">{</span>lon<span class="token punctuation">}</span></span><span class="token string"> out of WGS84 range [-180, 180]"</span></span><span class="token punctuation">)</span>
+            <span class="token keyword">if</span> <span class="token keyword">not</span> <span class="token punctuation">(</span><span class="token operator">-</span><span class="token number">90</span> <span class="token operator">&lt;=</span> lat <span class="token operator">&lt;=</span> <span class="token number">90</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+                <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Latitude </span><span class="token interpolation"><span class="token punctuation">{</span>lat<span class="token punctuation">}</span></span><span class="token string"> out of WGS84 range [-90, 90]"</span></span><span class="token punctuation">)</span>
         <span class="token keyword">return</span> v
 
     <span class="token decorator annotation punctuation">@model_validator</span><span class="token punctuation">(</span>mode<span class="token operator">=</span><span class="token string">"before"</span><span class="token punctuation">)</span>
     <span class="token decorator annotation punctuation">@classmethod</span>
     <span class="token keyword">def</span> <span class="token function">compute_bbox_if_missing</span><span class="token punctuation">(</span>cls<span class="token punctuation">,</span> data<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">:</span>
+        <span class="token triple-quoted-string string">"""Auto-derive bbox from geometry coordinates if not supplied by producer."""</span>
         <span class="token keyword">if</span> <span class="token keyword">not</span> data<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"bbox"</span><span class="token punctuation">)</span> <span class="token keyword">and</span> data<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"geometry"</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
             coords <span class="token operator">=</span> cls<span class="token punctuation">.</span>_flatten_coordinates<span class="token punctuation">(</span>data<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
             <span class="token keyword">if</span> coords<span class="token punctuation">:</span>
                 lons <span class="token operator">=</span> <span class="token punctuation">[</span>c<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span> <span class="token keyword">for</span> c <span class="token keyword">in</span> coords<span class="token punctuation">]</span>
                 lats <span class="token operator">=</span> <span class="token punctuation">[</span>c<span class="token punctuation">[</span><span class="token number">1</span><span class="token punctuation">]</span> <span class="token keyword">for</span> c <span class="token keyword">in</span> coords<span class="token punctuation">]</span>
-                data<span class="token punctuation">[</span><span class="token string">"bbox"</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token builtin">min</span><span class="token punctuation">(</span>lons<span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token builtin">min</span><span class="token punctuation">(</span>lats<span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token builtin">max</span><span class="token punctuation">(</span>lons<span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token builtin">max</span><span class="token punctuation">(</span>lats<span class="token punctuation">)</span><span class="token punctuation">]</span>
+                <span class="token comment"># Round to 7 decimal places to match coordinate precision policy</span>
+                data<span class="token punctuation">[</span><span class="token string">"bbox"</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">[</span>
+                    <span class="token builtin">round</span><span class="token punctuation">(</span><span class="token builtin">min</span><span class="token punctuation">(</span>lons<span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token number">7</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+                    <span class="token builtin">round</span><span class="token punctuation">(</span><span class="token builtin">min</span><span class="token punctuation">(</span>lats<span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token number">7</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+                    <span class="token builtin">round</span><span class="token punctuation">(</span><span class="token builtin">max</span><span class="token punctuation">(</span>lons<span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token number">7</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+                    <span class="token builtin">round</span><span class="token punctuation">(</span><span class="token builtin">max</span><span class="token punctuation">(</span>lats<span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token number">7</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+                <span class="token punctuation">]</span>
         <span class="token keyword">return</span> data
 
     <span class="token decorator annotation punctuation">@staticmethod</span>
     <span class="token keyword">def</span> <span class="token function">_flatten_coordinates</span><span class="token punctuation">(</span>geom<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">float</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">:</span>
-        <span class="token triple-quoted-string string">"""Recursively extract coordinate pairs for bbox computation."""</span>
-        geom_type <span class="token operator">=</span> geom<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"type"</span><span class="token punctuation">)</span>
-        coords <span class="token operator">=</span> geom<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"coordinates"</span><span class="token punctuation">)</span>
-        
-        <span class="token keyword">if</span> geom_type <span class="token operator">==</span> <span class="token string">"Point"</span><span class="token punctuation">:</span>
-            <span class="token keyword">return</span> <span class="token punctuation">[</span>coords<span class="token punctuation">]</span>
-        <span class="token keyword">if</span> geom_type <span class="token keyword">in</span> <span class="token punctuation">{</span><span class="token string">"LineString"</span><span class="token punctuation">,</span> <span class="token string">"MultiPoint"</span><span class="token punctuation">}</span><span class="token punctuation">:</span>
-            <span class="token keyword">return</span> coords
-        <span class="token keyword">if</span> geom_type <span class="token keyword">in</span> <span class="token punctuation">{</span><span class="token string">"Polygon"</span><span class="token punctuation">,</span> <span class="token string">"MultiLineString"</span><span class="token punctuation">}</span><span class="token punctuation">:</span>
-            <span class="token keyword">return</span> <span class="token punctuation">[</span>c <span class="token keyword">for</span> ring <span class="token keyword">in</span> coords <span class="token keyword">for</span> c <span class="token keyword">in</span> ring<span class="token punctuation">]</span>
-        <span class="token keyword">if</span> geom_type <span class="token operator">==</span> <span class="token string">"MultiPolygon"</span><span class="token punctuation">:</span>
-            <span class="token keyword">return</span> <span class="token punctuation">[</span>c <span class="token keyword">for</span> poly <span class="token keyword">in</span> coords <span class="token keyword">for</span> ring <span class="token keyword">in</span> poly <span class="token keyword">for</span> c <span class="token keyword">in</span> ring<span class="token punctuation">]</span>
-        <span class="token keyword">if</span> geom_type <span class="token operator">==</span> <span class="token string">"GeometryCollection"</span><span class="token punctuation">:</span>
-            <span class="token keyword">return</span> <span class="token punctuation">[</span>c <span class="token keyword">for</span> g <span class="token keyword">in</span> geom<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"geometries"</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token keyword">for</span> c <span class="token keyword">in</span> cls<span class="token punctuation">.</span>_flatten_coordinates<span class="token punctuation">(</span>g<span class="token punctuation">)</span><span class="token punctuation">]</span>
+        <span class="token triple-quoted-string string">"""Recursively extract all [lon, lat] pairs for bbox computation."""</span>
+        t <span class="token operator">=</span> geom<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"type"</span><span class="token punctuation">)</span>
+        c <span class="token operator">=</span> geom<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"coordinates"</span><span class="token punctuation">)</span>
+        <span class="token keyword">if</span> t <span class="token operator">==</span> <span class="token string">"Point"</span><span class="token punctuation">:</span>
+            <span class="token keyword">return</span> <span class="token punctuation">[</span>c<span class="token punctuation">]</span>
+        <span class="token keyword">if</span> t <span class="token keyword">in</span> <span class="token punctuation">{</span><span class="token string">"LineString"</span><span class="token punctuation">,</span> <span class="token string">"MultiPoint"</span><span class="token punctuation">}</span><span class="token punctuation">:</span>
+            <span class="token keyword">return</span> <span class="token builtin">list</span><span class="token punctuation">(</span>c<span class="token punctuation">)</span>
+        <span class="token keyword">if</span> t <span class="token keyword">in</span> <span class="token punctuation">{</span><span class="token string">"Polygon"</span><span class="token punctuation">,</span> <span class="token string">"MultiLineString"</span><span class="token punctuation">}</span><span class="token punctuation">:</span>
+            <span class="token keyword">return</span> <span class="token punctuation">[</span>pt <span class="token keyword">for</span> ring <span class="token keyword">in</span> c <span class="token keyword">for</span> pt <span class="token keyword">in</span> ring<span class="token punctuation">]</span>
+        <span class="token keyword">if</span> t <span class="token operator">==</span> <span class="token string">"MultiPolygon"</span><span class="token punctuation">:</span>
+            <span class="token keyword">return</span> <span class="token punctuation">[</span>pt <span class="token keyword">for</span> poly <span class="token keyword">in</span> c <span class="token keyword">for</span> ring <span class="token keyword">in</span> poly <span class="token keyword">for</span> pt <span class="token keyword">in</span> ring<span class="token punctuation">]</span>
+        <span class="token keyword">if</span> t <span class="token operator">==</span> <span class="token string">"GeometryCollection"</span><span class="token punctuation">:</span>
+            <span class="token keyword">return</span> <span class="token punctuation">[</span>
+                pt
+                <span class="token keyword">for</span> g <span class="token keyword">in</span> geom<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"geometries"</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+                <span class="token keyword">for</span> pt <span class="token keyword">in</span> SpatialEventPayload<span class="token punctuation">.</span>_flatten_coordinates<span class="token punctuation">(</span>g<span class="token punctuation">)</span>
+            <span class="token punctuation">]</span>
         <span class="token keyword">return</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
 
+    <span class="token keyword">def</span> <span class="token function">round_coordinates</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> precision<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">7</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token string">"SpatialEventPayload"</span><span class="token punctuation">:</span>
+        <span class="token triple-quoted-string string">"""
+        Return a copy with coordinates rounded to `precision` decimal places.
+        Call before to_cloudevent() to enforce the precision policy.
+        """</span>
+        <span class="token keyword">import</span> json
+
+        <span class="token keyword">def</span> <span class="token function">round_coords</span><span class="token punctuation">(</span>obj<span class="token punctuation">)</span><span class="token punctuation">:</span>
+            <span class="token keyword">if</span> <span class="token builtin">isinstance</span><span class="token punctuation">(</span>obj<span class="token punctuation">,</span> <span class="token builtin">float</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+                <span class="token keyword">return</span> <span class="token builtin">round</span><span class="token punctuation">(</span>obj<span class="token punctuation">,</span> precision<span class="token punctuation">)</span>
+            <span class="token keyword">if</span> <span class="token builtin">isinstance</span><span class="token punctuation">(</span>obj<span class="token punctuation">,</span> <span class="token builtin">list</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+                <span class="token keyword">return</span> <span class="token punctuation">[</span>round_coords<span class="token punctuation">(</span>x<span class="token punctuation">)</span> <span class="token keyword">for</span> x <span class="token keyword">in</span> obj<span class="token punctuation">]</span>
+            <span class="token keyword">if</span> <span class="token builtin">isinstance</span><span class="token punctuation">(</span>obj<span class="token punctuation">,</span> <span class="token builtin">dict</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+                <span class="token keyword">return</span> <span class="token punctuation">{</span>k<span class="token punctuation">:</span> round_coords<span class="token punctuation">(</span>v<span class="token punctuation">)</span> <span class="token keyword">for</span> k<span class="token punctuation">,</span> v <span class="token keyword">in</span> obj<span class="token punctuation">.</span>items<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">}</span>
+            <span class="token keyword">return</span> obj
+
+        rounded_geom <span class="token operator">=</span> round_coords<span class="token punctuation">(</span>self<span class="token punctuation">.</span>geometry<span class="token punctuation">)</span>
+        <span class="token keyword">return</span> self<span class="token punctuation">.</span>model_copy<span class="token punctuation">(</span>update<span class="token operator">=</span><span class="token punctuation">{</span><span class="token string">"geometry"</span><span class="token punctuation">:</span> rounded_geom<span class="token punctuation">}</span><span class="token punctuation">)</span>
+
     <span class="token keyword">def</span> <span class="token function">to_cloudevent</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> source<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">=</span> <span class="token string">"geospatial-ingest"</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">:</span>
-        <span class="token triple-quoted-string string">"""Serialize to a CloudEvents v1.0 envelope."""</span>
+        <span class="token triple-quoted-string string">"""
+        Serialize to a CloudEvents v1.0 envelope.
+        Brokers route on specversion / type / source / subject without touching 'data'.
+        """</span>
         <span class="token keyword">return</span> <span class="token punctuation">{</span>
             <span class="token string">"specversion"</span><span class="token punctuation">:</span> <span class="token string">"1.0"</span><span class="token punctuation">,</span>
             <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string-interpolation"><span class="token string">f"com.spatial.</span><span class="token interpolation"><span class="token punctuation">{</span>self<span class="token punctuation">.</span>event_type<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">,</span>
             <span class="token string">"source"</span><span class="token punctuation">:</span> source<span class="token punctuation">,</span>
             <span class="token string">"id"</span><span class="token punctuation">:</span> self<span class="token punctuation">.</span>correlation_id<span class="token punctuation">,</span>
             <span class="token string">"time"</span><span class="token punctuation">:</span> self<span class="token punctuation">.</span>event_time<span class="token punctuation">.</span>isoformat<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+            <span class="token string">"subject"</span><span class="token punctuation">:</span> self<span class="token punctuation">.</span>tenant_id <span class="token keyword">or</span> <span class="token string">"default"</span><span class="token punctuation">,</span>
             <span class="token string">"datacontenttype"</span><span class="token punctuation">:</span> <span class="token string">"application/json"</span><span class="token punctuation">,</span>
-            <span class="token string">"data"</span><span class="token punctuation">:</span> self<span class="token punctuation">.</span>model_dump<span class="token punctuation">(</span>mode<span class="token operator">=</span><span class="token string">"json"</span><span class="token punctuation">)</span>
+            <span class="token string">"data"</span><span class="token punctuation">:</span> self<span class="token punctuation">.</span>model_dump<span class="token punctuation">(</span>mode<span class="token operator">=</span><span class="token string">"json"</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
         <span class="token punctuation">}</span>
 </code></pre>
 </div>
-<h2 id="validation-routing-pipeline-integration" tabindex="-1"><a class="heading-anchor" href="#validation-routing-pipeline-integration">Validation, Routing &amp; Pipeline Integration</a></h2>
-<p>Schema validation must occur before events enter the message bus. Rejecting malformed payloads at the edge prevents poison-pill events from stalling consumer groups. Use JSON Schema or Pydantic to enforce coordinate bounds (<code>-180 ≤ lon ≤ 180</code>, <code>-90 ≤ lat ≤ 90</code>) and validate that <code>bbox</code> values strictly contain the geometry’s extents.</p>
-<p>When integrating with asynchronous brokers (Kafka, RabbitMQ, AWS EventBridge), separate the envelope from the payload. The CloudEvents specification standardizes this separation, allowing infrastructure to route based on <code>type</code>, <code>source</code>, and <code>subject</code> while leaving spatial data opaque until it reaches the processing worker. This decoupling is critical when building <a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a>, where routing decisions must execute in sub-millisecond latency windows.</p>
-<p>Implement deterministic idempotency keys derived from <code>correlation_id</code> + <code>update_operation</code> + <code>geometry_hash</code>. Hash the geometry using a stable algorithm (e.g., SHA-256 over sorted coordinate arrays) to detect duplicate events. Consumers should maintain a short-lived idempotency store (Redis or DynamoDB with TTL) to safely retry failed deliveries without triggering redundant spatial index rebuilds.</p>
-<h2 id="performance-cache-considerations" tabindex="-1"><a class="heading-anchor" href="#performance-cache-considerations">Performance &amp; Cache Considerations</a></h2>
-<p>Spatial payloads directly impact rendering performance and storage costs. Apply these optimizations before publishing:</p>
+<h2 id="parameter-reference" tabindex="-1"><a class="heading-anchor" href="#parameter-reference">Parameter reference</a></h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Constraint</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>schema_version</code></td>
+<td><code>Literal[&quot;1.0&quot;]</code></td>
+<td>Must match consumer version gate</td>
+<td><code>&quot;1.0&quot;</code></td>
+</tr>
+<tr>
+<td><code>event_type</code></td>
+<td><code>str</code> (enum)</td>
+<td><code>tile_update</code>, <code>geometry_change</code>, <code>attribute_sync</code></td>
+<td>required</td>
+</tr>
+<tr>
+<td><code>update_operation</code></td>
+<td><code>str</code> (enum)</td>
+<td><code>insert</code>, <code>update</code>, <code>delete</code></td>
+<td>required</td>
+</tr>
+<tr>
+<td><code>correlation_id</code></td>
+<td><code>str</code></td>
+<td>UUID4; used as CloudEvents <code>id</code></td>
+<td>auto-generated</td>
+</tr>
+<tr>
+<td><code>tenant_id</code></td>
+<td><code>str | None</code></td>
+<td>Routable flat key; must not be inside <code>geometry</code></td>
+<td><code>None</code></td>
+</tr>
+<tr>
+<td><code>priority</code></td>
+<td><code>int</code></td>
+<td>1 (highest) to 10 (lowest)</td>
+<td><code>5</code></td>
+</tr>
+<tr>
+<td><code>geometry</code></td>
+<td><code>dict</code></td>
+<td>Valid RFC 7946 GeoJSON geometry object</td>
+<td>required</td>
+</tr>
+<tr>
+<td><code>crs</code></td>
+<td><code>str</code></td>
+<td>Always include EPSG code, e.g. <code>&quot;EPSG:4326&quot;</code></td>
+<td><code>&quot;EPSG:4326&quot;</code></td>
+</tr>
+<tr>
+<td><code>bbox</code></td>
+<td><code>list[float]</code> (4)</td>
+<td><code>[min_lon, min_lat, max_lon, max_lat]</code>; auto-computed if absent</td>
+<td>auto</td>
+</tr>
+<tr>
+<td><code>event_time</code></td>
+<td><code>datetime</code></td>
+<td>ISO 8601, timezone-aware UTC</td>
+<td><code>utcnow()</code></td>
+</tr>
+<tr>
+<td><code>metadata</code></td>
+<td><code>dict</code></td>
+<td>Feature properties; never coordinates</td>
+<td><code>{}</code></td>
+</tr>
+</tbody>
+</table>
+</div><h2 id="gotchas-and-spatial-edge-cases" tabindex="-1"><a class="heading-anchor" href="#gotchas-and-spatial-edge-cases">Gotchas and spatial edge cases</a></h2>
+<ol>
+<li>
+<p><strong>Coordinate axis ordering silently inverts across systems.</strong> The RFC 7946 GeoJSON format requires <code>[longitude, latitude]</code>, but legacy WFS services and many GIS desktop exports emit <code>[latitude, longitude]</code> (EPSG geographic ordering). Always validate that the first coordinate component stays in <code>[-180, 180]</code> before accepting a payload — your <code>field_validator</code> above does this. For payloads arriving in non-WGS84 projections, apply <a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS normalization strategies</a> before the schema validator runs.</p>
+</li>
+<li>
+<p><strong>Floating-point noise causes spurious tile invalidations.</strong> IEEE-754 representation drift can shift a coordinate by <code>1e-15</code> degrees between serializer versions. If you hash raw coordinates for cache keys or idempotency checks without rounding first, structurally identical geometries produce different hashes. Round to 7 decimal places before serialization; this is the responsibility of <code>round_coordinates()</code> in the model above.</p>
+</li>
+<li>
+<p><strong>Polygon ring orientation is not enforced by JSON parsers.</strong> RFC 7946 requires exterior rings to be counter-clockwise and holes to be clockwise, but no standard JSON library checks this. Some spatial databases (PostGIS) silently reorient rings on insert; others (SQLite/SpatiaLite) do not. If downstream consumers compare geometries directly, mismatched orientations cause false non-equality. Use <code>shapely.geometry.shape(geom).normalize()</code> before serialization if ring orientation must be canonical.</p>
+</li>
+<li>
+<p><strong><code>GeometryCollection</code> breaks naive bbox computation.</strong> The <code>coordinates</code> key does not exist on <code>GeometryCollection</code> — child geometries live under <code>geometries</code>. The <code>_flatten_coordinates</code> method handles this recursively, but any third-party bbox utility you call must also support it; many do not.</p>
+</li>
+<li>
+<p><strong><code>bbox</code> that does not contain the geometry’s extents fails spatial routing.</strong> If a producer manually supplies a stale <code>bbox</code> from a cached feature and then edits the geometry, the bbox may no longer enclose the new shape. The <code>model_validator</code> auto-computes bbox only when the field is absent; it does not re-validate a supplied bbox against the geometry. Add an explicit containment check in production: <code>assert bbox[0] &lt;= min(lons) and bbox[2] &gt;= max(lons)</code>.</p>
+</li>
+<li>
+<p><strong>CloudEvents <code>id</code> must be unique per event, not per feature.</strong> Reusing the same <code>correlation_id</code> across retries is intentional for idempotency at the consumer. However, the broker may deduplicate based on <code>id</code>, which would silently drop legitimate re-deliveries. Use the <code>correlation_id</code> as the idempotency key inside your consumer’s Redis store; let the broker see unique <code>id</code> values if it performs producer-side deduplication.</p>
+</li>
+</ol>
+<h2 id="verification-snippet" tabindex="-1"><a class="heading-anchor" href="#verification-snippet">Verification snippet</a></h2>
+<p>This pytest confirms that bbox auto-computation, coordinate rounding, and CloudEvents envelope structure all behave correctly against a representative GeoJSON polygon:</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> pytest
+<span class="token keyword">from</span> datetime <span class="token keyword">import</span> timezone
+<span class="token keyword">from</span> your_module <span class="token keyword">import</span> SpatialEventPayload  <span class="token comment"># replace with your import path</span>
+
+
+POLYGON_PAYLOAD <span class="token operator">=</span> <span class="token punctuation">{</span>
+    <span class="token string">"event_type"</span><span class="token punctuation">:</span> <span class="token string">"tile_update"</span><span class="token punctuation">,</span>
+    <span class="token string">"update_operation"</span><span class="token punctuation">:</span> <span class="token string">"update"</span><span class="token punctuation">,</span>
+    <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span>
+        <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Polygon"</span><span class="token punctuation">,</span>
+        <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token punctuation">[</span>
+            <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">122.41941550000001</span><span class="token punctuation">,</span> <span class="token number">37.77492950000001</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+            <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">122.41800000000000</span><span class="token punctuation">,</span> <span class="token number">37.77492950000001</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+            <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">122.41800000000000</span><span class="token punctuation">,</span> <span class="token number">37.77350000000000</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+            <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">122.41941550000001</span><span class="token punctuation">,</span> <span class="token number">37.77350000000000</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+            <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">122.41941550000001</span><span class="token punctuation">,</span> <span class="token number">37.77492950000001</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+        <span class="token punctuation">]</span><span class="token punctuation">]</span>
+    <span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token string">"tenant_id"</span><span class="token punctuation">:</span> <span class="token string">"acme-maps"</span><span class="token punctuation">,</span>
+    <span class="token string">"crs"</span><span class="token punctuation">:</span> <span class="token string">"EPSG:4326"</span><span class="token punctuation">,</span>
+<span class="token punctuation">}</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_bbox_auto_computed</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    event <span class="token operator">=</span> SpatialEventPayload<span class="token punctuation">(</span><span class="token operator">**</span>POLYGON_PAYLOAD<span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> event<span class="token punctuation">.</span>bbox <span class="token keyword">is</span> <span class="token keyword">not</span> <span class="token boolean">None</span><span class="token punctuation">,</span> <span class="token string">"bbox must be auto-computed when absent"</span>
+    <span class="token keyword">assert</span> <span class="token builtin">len</span><span class="token punctuation">(</span>event<span class="token punctuation">.</span>bbox<span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token number">4</span><span class="token punctuation">,</span> <span class="token string">"bbox must be a 4-element list"</span>
+    min_lon<span class="token punctuation">,</span> min_lat<span class="token punctuation">,</span> max_lon<span class="token punctuation">,</span> max_lat <span class="token operator">=</span> event<span class="token punctuation">.</span>bbox
+    <span class="token keyword">assert</span> min_lon <span class="token operator">&lt;=</span> max_lon<span class="token punctuation">,</span> <span class="token string">"bbox min_lon must not exceed max_lon"</span>
+    <span class="token keyword">assert</span> min_lat <span class="token operator">&lt;=</span> max_lat<span class="token punctuation">,</span> <span class="token string">"bbox min_lat must not exceed max_lat"</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_coordinate_precision_capped</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    event <span class="token operator">=</span> SpatialEventPayload<span class="token punctuation">(</span><span class="token operator">**</span>POLYGON_PAYLOAD<span class="token punctuation">)</span><span class="token punctuation">.</span>round_coordinates<span class="token punctuation">(</span>precision<span class="token operator">=</span><span class="token number">7</span><span class="token punctuation">)</span>
+    <span class="token comment"># After rounding, no coordinate should have more than 7 decimal places</span>
+    <span class="token keyword">for</span> lon<span class="token punctuation">,</span> lat <span class="token keyword">in</span> SpatialEventPayload<span class="token punctuation">.</span>_flatten_coordinates<span class="token punctuation">(</span>event<span class="token punctuation">.</span>geometry<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">assert</span> <span class="token builtin">len</span><span class="token punctuation">(</span><span class="token builtin">str</span><span class="token punctuation">(</span>lon<span class="token punctuation">)</span><span class="token punctuation">.</span>split<span class="token punctuation">(</span><span class="token string">"."</span><span class="token punctuation">)</span><span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">1</span><span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token operator">&lt;=</span> <span class="token number">7</span><span class="token punctuation">,</span> <span class="token string-interpolation"><span class="token string">f"lon </span><span class="token interpolation"><span class="token punctuation">{</span>lon<span class="token punctuation">}</span></span><span class="token string"> exceeds 7 decimal places"</span></span>
+        <span class="token keyword">assert</span> <span class="token builtin">len</span><span class="token punctuation">(</span><span class="token builtin">str</span><span class="token punctuation">(</span>lat<span class="token punctuation">)</span><span class="token punctuation">.</span>split<span class="token punctuation">(</span><span class="token string">"."</span><span class="token punctuation">)</span><span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">1</span><span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token operator">&lt;=</span> <span class="token number">7</span><span class="token punctuation">,</span> <span class="token string-interpolation"><span class="token string">f"lat </span><span class="token interpolation"><span class="token punctuation">{</span>lat<span class="token punctuation">}</span></span><span class="token string"> exceeds 7 decimal places"</span></span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_cloudevent_envelope_structure</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    event <span class="token operator">=</span> SpatialEventPayload<span class="token punctuation">(</span><span class="token operator">**</span>POLYGON_PAYLOAD<span class="token punctuation">)</span>
+    envelope <span class="token operator">=</span> event<span class="token punctuation">.</span>to_cloudevent<span class="token punctuation">(</span>source<span class="token operator">=</span><span class="token string">"test-ingest"</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> envelope<span class="token punctuation">[</span><span class="token string">"specversion"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token string">"1.0"</span>
+    <span class="token keyword">assert</span> envelope<span class="token punctuation">[</span><span class="token string">"type"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token string">"com.spatial.tile_update"</span>
+    <span class="token keyword">assert</span> envelope<span class="token punctuation">[</span><span class="token string">"subject"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token string">"acme-maps"</span>
+    <span class="token keyword">assert</span> <span class="token string">"data"</span> <span class="token keyword">in</span> envelope
+    <span class="token keyword">assert</span> envelope<span class="token punctuation">[</span><span class="token string">"data"</span><span class="token punctuation">]</span><span class="token punctuation">[</span><span class="token string">"crs"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token string">"EPSG:4326"</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_out_of_bounds_longitude_rejected</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    bad <span class="token operator">=</span> <span class="token builtin">dict</span><span class="token punctuation">(</span>POLYGON_PAYLOAD<span class="token punctuation">)</span>
+    bad<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">{</span>
+        <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span>
+        <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token number">200.0</span><span class="token punctuation">,</span> <span class="token number">37.77</span><span class="token punctuation">]</span>  <span class="token comment"># longitude 200 is invalid</span>
+    <span class="token punctuation">}</span>
+    <span class="token keyword">with</span> pytest<span class="token punctuation">.</span>raises<span class="token punctuation">(</span>ValueError<span class="token punctuation">,</span> <span class="token keyword">match</span><span class="token operator">=</span><span class="token string">"Longitude"</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        SpatialEventPayload<span class="token punctuation">(</span><span class="token operator">**</span>bad<span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_event_time_is_utc</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    event <span class="token operator">=</span> SpatialEventPayload<span class="token punctuation">(</span><span class="token operator">**</span>POLYGON_PAYLOAD<span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> event<span class="token punctuation">.</span>event_time<span class="token punctuation">.</span>tzinfo <span class="token keyword">is</span> <span class="token keyword">not</span> <span class="token boolean">None</span><span class="token punctuation">,</span> <span class="token string">"event_time must be timezone-aware"</span>
+    <span class="token keyword">assert</span> event<span class="token punctuation">.</span>event_time<span class="token punctuation">.</span>tzinfo <span class="token operator">==</span> timezone<span class="token punctuation">.</span>utc <span class="token keyword">or</span> <span class="token builtin">str</span><span class="token punctuation">(</span>event<span class="token punctuation">.</span>event_time<span class="token punctuation">.</span>tzinfo<span class="token punctuation">)</span> <span class="token keyword">in</span> <span class="token punctuation">(</span><span class="token string">"+00:00"</span><span class="token punctuation">,</span> <span class="token string">"UTC"</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<hr>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
 <ul>
-<li><strong>Coordinate Quantization</strong>: Round coordinates to 7 decimal places. This reduces JSON size by ~15–20% while preserving survey-grade accuracy. Use <code>math.floor(val * 1e7) / 1e7</code> during serialization.</li>
-<li><strong>Delta Encoding for Updates</strong>: When transmitting <code>update</code> operations, consider sending only the modified geometry rings or attribute dictionaries rather than full feature states. This minimizes network egress and reduces consumer parsing overhead.</li>
-<li><strong>Tile Routing Pre-computation</strong>: Calculate the affected tile grid (e.g., Mapbox GL or OGC WMTS levels 0–14) at publish time. Embed <code>affected_tiles: [&quot;z/x/y&quot;, ...]</code> in the payload to allow downstream renderers to skip spatial intersection math and directly invalidate cached raster/vector tiles.</li>
-<li><strong>Schema Evolution Strategy</strong>: Version your payloads explicitly (<code>schema_version</code>). Use additive-only changes for minor versions and enforce strict backward compatibility for consumers reading older envelopes. Deprecate fields with a 90-day sunset window rather than breaking changes.</li>
+<li><a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a> — parent: architecture and orchestration of the full tile invalidation workflow</li>
+<li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a> — sibling: derive deterministic idempotency keys from the canonicalized geometry in these payloads</li>
+<li><a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a> — normalize mixed-projection inputs before they reach the ingress validator</li>
+<li><a href="/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a> — grandparent pillar covering the full spatial event architecture</li>
 </ul>
-<p>By enforcing strict validation, isolating routing metadata, and pre-computing spatial derivatives, your event payloads become predictable, cache-friendly, and resilient to scale. This architectural discipline eliminates projection drift, guarantees deterministic tile regeneration, and ensures your geospatial infrastructure remains responsive under high-throughput workloads.</p>
 
       </div>
 
@@ -303,6 +670,9 @@
         <h4>Site</h4>
         <ul>
           <li><a href="/">Home</a></li>
+          <li><a href="/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
         </ul>
       </div>
       <div>
@@ -332,7 +702,7 @@
 </footer>
 
   </div>
-  <script src="/assets/js/site.js" defer></script>
+  <script src="/assets/js/site.js?v=6c55de86" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

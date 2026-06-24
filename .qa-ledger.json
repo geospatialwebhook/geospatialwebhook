@@ -1,0 +1,484 @@
+{
+  "freshness_runs": 1,
+  "last_freshness_at": "2026-06-17T22:29:32+00:00",
+  "last_freshness_changed": 2,
+  "pages": {
+    "core-event-fundamentals-architecture/feature-change-triggers/how-to-design-a-geospatial-webhook-architecture-in-python/index.md": {
+      "code_status": "skipped",
+      "content_hash": "a711bcbddc3c720a7290d2422fa03ed1fc318dd28003b141f094dd3e76de6e4b",
+      "grade": "A+",
+      "notes": "freshness: no change needed",
+      "reviewed_at": "2026-06-17T22:29:26+00:00",
+      "reviewer": "claude-code",
+      "rewrite_count": 0,
+      "rubric_version": "v1",
+      "scores": {
+        "clarity": 96,
+        "depth_completeness": 95,
+        "originality_value": 94,
+        "prose_code_consistency": 97,
+        "structure_flow": 96,
+        "technical_accuracy": 97
+      },
+      "status": "passed"
+    },
+    "core-event-fundamentals-architecture/feature-change-triggers/index.md": {
+      "code_status": "skipped",
+      "content_hash": "3a61e8a6385ce49d7ebef1284208b2c13b5735fcb9a4cf4e462a8da02573648f",
+      "grade": "A+",
+      "notes": "freshness: no change needed",
+      "reviewed_at": "2026-06-17T22:29:26+00:00",
+      "reviewer": "claude-code",
+      "rewrite_count": 0,
+      "rubric_version": "v1",
+      "scores": {
+        "clarity": 96,
+        "depth_completeness": 96,
+        "originality_value": 94,
+        "prose_code_consistency": 96,
+        "structure_flow": 96,
+        "technical_accuracy": 96
+      },
+      "status": "passed"
+    },
+    "core-event-fundamentals-architecture/index.md": {
+      "code_status": "skipped",
+      "content_hash": "d209b9de3b8a3ea58535650e27a64ec64bab726d895c65219c3c6bac30781257",
+      "grade": "A+",
+      "notes": "freshness: no change needed",
+      "reviewed_at": "2026-06-17T22:29:26+00:00",
+      "reviewer": "claude-code",
+      "rewrite_count": 0,
+      "rubric_version": "v1",
+      "scores": {
+        "clarity": 96,
+        "depth_completeness": 95,
+        "originality_value": 93,
+        "prose_code_consistency": 96,
+        "structure_flow": 96,
+        "technical_accuracy": 96
+      },
+      "status": "passed"
+    },
+    "core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/index.md": {
+      "code_status": "skipped",
+      "content_hash": "d2620d471068b5ea918758ad675a0a4d8df96081f851e138633938e2eadf206f",
+      "grade": "A+",
+      "notes": "freshness: no change needed",
+      "reviewed_at": "2026-06-17T22:29:26+00:00",
+      "reviewer": "claude-code",
+      "rewrite_count": 0,
+      "rubric_version": "v1",
+      "scores": {
+        "clarity": 96,
+        "depth_completeness": 95,
+        "originality_value": 94,
+        "prose_code_consistency": 97,
+        "structure_flow": 96,
+        "technical_accuracy": 97
+      },
+      "status": "passed"
+    },
+    "core-event-fundamentals-architecture/sensor-data-routing-patterns/index.md": {
+      "code_status": "skipped",
+      "content_hash": "c99d26a51dbcade7d6195352f334b45f02e25879a26d86253c7f39d25f51d707",
+      "grade": "A+",
+      "notes": "freshness: no change needed",
+      "reviewed_at": "2026-06-17T22:29:26+00:00",
+      "reviewer": "claude-code",
+      "rewrite_count": 0,
+      "rubric_version": "v1",
+      "scores": {
+        "clarity": 96,
+        "depth_completeness": 95,
+        "originality_value": 93,
+        "prose_code_consistency": 96,
+        "structure_flow": 95,
+        "technical_accuracy": 96
+      },
+      "status": "passed"
+    },
+    "core-event-fundamentals-architecture/tile-update-event-pipelines/best-practices-for-spatial-event-payload-schemas/index.md": {
+      "code_status": "skipped",
+      "content_hash": "af49f07cbefb5d3450736b7d8f020c02537a09d0352e30a249756176519ab544",
+      "grade": "A+",
+      "notes": "freshness: no change needed",
+      "reviewed_at": "2026-06-17T22:29:26+00:00",
+      "reviewer": "claude-code",
+      "rewrite_count": 0,
+      "rubric_version": "v1",
+      "scores": {
+        "clarity": 96,
+        "depth_completeness": 96,
+        "originality_value": 94,
+        "prose_code_consistency": 97,
+        "structure_flow": 96,
+        "technical_accuracy": 97
+      },
+      "status": "passed"
+    },
+    "core-event-fundamentals-architecture/tile-update-event-pipelines/index.md": {
+      "code_status": "skipped",
+      "content_hash": "cfa2e59f106f230384f60d422f17be5e69e9b181558cf8efb3fca8908ba0a30b",
+      "grade": "A+",
+      "notes": "freshness: no change needed",
+      "reviewed_at": "2026-06-17T22:29:26+00:00",
+      "reviewer": "claude-code",
+      "rewrite_count": 0,
+      "rubric_version": "v1",
+      "scores": {
+        "clarity": 96,
+        "depth_completeness": 95,
+        "originality_value": 93,
+        "prose_code_consistency": 96,
+        "structure_flow": 96,
+        "technical_accuracy": 96
+      },
+      "status": "passed"
+    },
+    "core-event-fundamentals-architecture/webhook-security-boundaries/index.md": {
+      "code_status": "skipped",
+      "content_hash": "c101bedd599c2208abe15bde39c233841c34bd00470ac7a88756c668df7b16f8",
+      "grade": "A+",
+      "notes": "freshness: no change needed",
+      "reviewed_at": "2026-06-17T22:29:27+00:00",
+      "reviewer": "claude-code",
+      "rewrite_count": 0,
+      "rubric_version": "v1",
+      "scores": {
+        "clarity": 96,
+        "depth_completeness": 96,
+        "originality_value": 94,
+        "prose_code_consistency": 97,
+        "structure_flow": 96,
+        "technical_accuracy": 97
+      },
+      "status": "passed"
+    },
+    "core-event-fundamentals-architecture/webhook-security-boundaries/securing-webhook-endpoints-with-spatial-token-validation/index.md": {
+      "code_status": "skipped",
+      "content_hash": "918f690e2887b57277712a27fa568221d94d4b455216c6929a7abac76cce31ff",
+      "grade": "A+",
+      "notes": "freshness: no change needed",
+      "reviewed_at": "2026-06-17T22:29:27+00:00",
+      "reviewer": "claude-code",
+      "rewrite_count": 0,
+      "rubric_version": "v1",
+      "scores": {
+        "clarity": 96,
+        "depth_completeness": 95,
+        "originality_value": 95,
+        "prose_code_consistency": 97,
+        "structure_flow": 96,
+        "technical_accuracy": 97
+      },
+      "status": "passed"
+    },
+    "idempotency-spatial-deduplication/cache-backed-idempotency-checks/index.md": {
+      "code_status": "skipped",
+      "content_hash": "ad12c7bb3196d2a7fa3a0c7556b27ca6fb81d8a3e6ceeb5c9066c8c882f053d0",
+      "grade": "A+",
+      "notes": "freshness: no change needed",
+      "reviewed_at": "2026-06-17T22:29:27+00:00",
+      "reviewer": "claude-code",
+      "rewrite_count": 0,
+      "rubric_version": "v1",
+      "scores": {
+        "clarity": 96,
+        "depth_completeness": 96,
+        "originality_value": 94,
+        "prose_code_consistency": 97,
+        "structure_flow": 96,
+        "technical_accuracy": 97
+      },
+      "status": "passed"
+    },
+    "idempotency-spatial-deduplication/cache-backed-idempotency-checks/using-redis-to-cache-spatial-webhook-signatures/index.md": {
+      "code_status": "skipped",
+      "content_hash": "994a0e4dc4f4dcb9d93b0aff68088849510ece42589c791320ad4d92c342787e",
+      "grade": "A+",
+      "notes": "freshness: softened exactly-once to effectively-once for accuracy",
+      "reviewed_at": "2026-06-17T22:29:27+00:00",
+      "reviewer": "claude-code",
+      "rewrite_count": 0,
+      "rubric_version": "v1",
+      "scores": {
+        "clarity": 96,
+        "depth_completeness": 95,
+        "originality_value": 94,
+        "prose_code_consistency": 97,
+        "structure_flow": 95,
+        "technical_accuracy": 97
+      },
+      "status": "passed"
+    },
+    "idempotency-spatial-deduplication/conflict-resolution-strategies/index.md": {
+      "code_status": "skipped",
+      "content_hash": "800aec98006d4cfee7d9b8c6fa64244475679e2a1195387ac62ca20e601ce57f",
+      "grade": "A+",
+      "notes": "freshness: no change needed",
+      "reviewed_at": "2026-06-17T22:29:27+00:00",
+      "reviewer": "claude-code",
+      "rewrite_count": 0,
+      "rubric_version": "v1",
+      "scores": {
+        "clarity": 96,
+        "depth_completeness": 96,
+        "originality_value": 94,
+        "prose_code_consistency": 96,
+        "structure_flow": 96,
+        "technical_accuracy": 96
+      },
+      "status": "passed"
+    },
+    "idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/index.md": {
+      "code_status": "skipped",
+      "content_hash": "411466b6dc44ef4fd9d76bee4d4ce61d631af6d47fc5840269d637738ed49029",
+      "grade": "A+",
+      "notes": "freshness: no change needed",
+      "reviewed_at": "2026-06-17T22:29:27+00:00",
+      "reviewer": "claude-code",
+      "rewrite_count": 0,
+      "rubric_version": "v1",
+      "scores": {
+        "clarity": 96,
+        "depth_completeness": 96,
+        "originality_value": 94,
+        "prose_code_consistency": 97,
+        "structure_flow": 96,
+        "technical_accuracy": 97
+      },
+      "status": "passed"
+    },
+    "idempotency-spatial-deduplication/event-key-generation-for-spatial-data/index.md": {
+      "code_status": "skipped",
+      "content_hash": "01c345786574f0663b6ee9a483ecb69d4f1f4dcd0baa82fb5eb5a7738abef89d",
+      "grade": "A+",
+      "notes": "freshness: no change needed",
+      "reviewed_at": "2026-06-17T22:29:27+00:00",
+      "reviewer": "claude-code",
+      "rewrite_count": 0,
+      "rubric_version": "v1",
+      "scores": {
+        "clarity": 96,
+        "depth_completeness": 96,
+        "originality_value": 94,
+        "prose_code_consistency": 97,
+        "structure_flow": 96,
+        "technical_accuracy": 97
+      },
+      "status": "passed"
+    },
+    "idempotency-spatial-deduplication/index.md": {
+      "code_status": "skipped",
+      "content_hash": "3b560fbf4d79524b152750836ccedf0b465a0e43dc5305fd607b6fbfd63f7fa8",
+      "grade": "A+",
+      "notes": "freshness: bumped PostGIS manual link 3.4 to 3.5",
+      "reviewed_at": "2026-06-17T22:29:27+00:00",
+      "reviewer": "claude-code",
+      "rewrite_count": 0,
+      "rubric_version": "v1",
+      "scores": {
+        "clarity": 96,
+        "depth_completeness": 96,
+        "originality_value": 94,
+        "prose_code_consistency": 97,
+        "structure_flow": 96,
+        "technical_accuracy": 97
+      },
+      "status": "passed"
+    },
+    "idempotency-spatial-deduplication/spatial-overlap-deduplication/index.md": {
+      "code_status": "skipped",
+      "content_hash": "dc2f74fca09d8e0cec3366cf0c7577f6fe8f42fc0a0787194fc85da4e9ceba83",
+      "grade": "A+",
+      "notes": "freshness: no change needed",
+      "reviewed_at": "2026-06-17T22:29:27+00:00",
+      "reviewer": "claude-code",
+      "rewrite_count": 0,
+      "rubric_version": "v1",
+      "scores": {
+        "clarity": 96,
+        "depth_completeness": 96,
+        "originality_value": 94,
+        "prose_code_consistency": 97,
+        "structure_flow": 96,
+        "technical_accuracy": 97
+      },
+      "status": "passed"
+    },
+    "spatial-payload-routing-parsing/async-processing-for-heavy-geometries/index.md": {
+      "code_status": "skipped",
+      "content_hash": "92dc743ad22310381aa32b1b6d5356881b67a6c4b826c171a0faea480219bbc4",
+      "grade": "A+",
+      "notes": "freshness: tightened Python 3.10+ prereq (asyncio.to_thread is 3.9, task groups 3.11)",
+      "reviewed_at": "2026-06-17T22:29:27+00:00",
+      "reviewer": "claude-code",
+      "rewrite_count": 0,
+      "rubric_version": "v1",
+      "scores": {
+        "clarity": 96,
+        "depth_completeness": 95,
+        "originality_value": 94,
+        "prose_code_consistency": 96,
+        "structure_flow": 96,
+        "technical_accuracy": 96
+      },
+      "status": "passed"
+    },
+    "spatial-payload-routing-parsing/async-processing-for-heavy-geometries/optimizing-async-geometry-parsing-with-asyncio/index.md": {
+      "code_status": "skipped",
+      "content_hash": "d8275691bfc119b16b7a33c97bafd66066c3ab0c0f1075d7271d8021219d48ae",
+      "grade": "A+",
+      "notes": "freshness: no change needed",
+      "reviewed_at": "2026-06-17T22:29:27+00:00",
+      "reviewer": "claude-code",
+      "rewrite_count": 0,
+      "rubric_version": "v1",
+      "scores": {
+        "clarity": 96,
+        "depth_completeness": 96,
+        "originality_value": 94,
+        "prose_code_consistency": 97,
+        "structure_flow": 96,
+        "technical_accuracy": 97
+      },
+      "status": "passed"
+    },
+    "spatial-payload-routing-parsing/crs-normalization-strategies/handling-mixed-crs-payloads-in-python-event-handlers/index.md": {
+      "code_status": "skipped",
+      "content_hash": "9eb30eba03baf58d082e2fa03c4a9ff1420c439f3ab6ad1bfd7180a7541c669f",
+      "grade": "A+",
+      "notes": "freshness: no change needed",
+      "reviewed_at": "2026-06-17T22:29:27+00:00",
+      "reviewer": "claude-code",
+      "rewrite_count": 0,
+      "rubric_version": "v1",
+      "scores": {
+        "clarity": 96,
+        "depth_completeness": 95,
+        "originality_value": 94,
+        "prose_code_consistency": 97,
+        "structure_flow": 96,
+        "technical_accuracy": 97
+      },
+      "status": "passed"
+    },
+    "spatial-payload-routing-parsing/crs-normalization-strategies/index.md": {
+      "code_status": "skipped",
+      "content_hash": "693d686bf26f3dec3d0e583b34f55dc38ac733f8ddf6de7092268f7d703d3309",
+      "grade": "A+",
+      "notes": "freshness: no change needed",
+      "reviewed_at": "2026-06-17T22:29:27+00:00",
+      "reviewer": "claude-code",
+      "rewrite_count": 0,
+      "rubric_version": "v1",
+      "scores": {
+        "clarity": 96,
+        "depth_completeness": 96,
+        "originality_value": 94,
+        "prose_code_consistency": 97,
+        "structure_flow": 96,
+        "technical_accuracy": 97
+      },
+      "status": "passed"
+    },
+    "spatial-payload-routing-parsing/geojson-to-protobuf-mapping/index.md": {
+      "code_status": "skipped",
+      "content_hash": "61ced84d74fc650feafbc065e722a47e3a09eb36c4b64e3472c21e93cce47508",
+      "grade": "A+",
+      "notes": "freshness: no change needed",
+      "reviewed_at": "2026-06-17T22:29:27+00:00",
+      "reviewer": "claude-code",
+      "rewrite_count": 0,
+      "rubric_version": "v1",
+      "scores": {
+        "clarity": 96,
+        "depth_completeness": 96,
+        "originality_value": 94,
+        "prose_code_consistency": 97,
+        "structure_flow": 96,
+        "technical_accuracy": 97
+      },
+      "status": "passed"
+    },
+    "spatial-payload-routing-parsing/geojson-to-protobuf-mapping/parsing-geojson-webhooks-with-fastapi-and-pydantic/index.md": {
+      "code_status": "skipped",
+      "content_hash": "67ced016cd0dc7b2a1b6cd87aa4635423b6d401c3f72d4adbf43201374ad9303",
+      "grade": "A+",
+      "notes": "freshness: no change needed",
+      "reviewed_at": "2026-06-17T22:29:27+00:00",
+      "reviewer": "claude-code",
+      "rewrite_count": 0,
+      "rubric_version": "v1",
+      "scores": {
+        "clarity": 96,
+        "depth_completeness": 95,
+        "originality_value": 94,
+        "prose_code_consistency": 97,
+        "structure_flow": 96,
+        "technical_accuracy": 97
+      },
+      "status": "passed"
+    },
+    "spatial-payload-routing-parsing/geometry-validation-pipelines/converting-wkt-to-protobuf-for-low-latency-routing/index.md": {
+      "code_status": "skipped",
+      "content_hash": "115d046d75b93a0d8478d0e6afd4b22e989c69422537a38fb3d5605f8b924cd1",
+      "grade": "A+",
+      "notes": "freshness: no change needed",
+      "reviewed_at": "2026-06-17T22:29:27+00:00",
+      "reviewer": "claude-code",
+      "rewrite_count": 0,
+      "rubric_version": "v1",
+      "scores": {
+        "clarity": 96,
+        "depth_completeness": 96,
+        "originality_value": 95,
+        "prose_code_consistency": 97,
+        "structure_flow": 96,
+        "technical_accuracy": 97
+      },
+      "status": "passed"
+    },
+    "spatial-payload-routing-parsing/geometry-validation-pipelines/index.md": {
+      "code_status": "skipped",
+      "content_hash": "5de72525c4804f57c26b4eb10cf23ea520b971a5d96fbc4d82ee7ba4e66c67bf",
+      "grade": "A+",
+      "notes": "freshness: no change needed",
+      "reviewed_at": "2026-06-17T22:29:27+00:00",
+      "reviewer": "claude-code",
+      "rewrite_count": 0,
+      "rubric_version": "v1",
+      "scores": {
+        "clarity": 96,
+        "depth_completeness": 96,
+        "originality_value": 94,
+        "prose_code_consistency": 97,
+        "structure_flow": 96,
+        "technical_accuracy": 97
+      },
+      "status": "passed"
+    },
+    "spatial-payload-routing-parsing/index.md": {
+      "code_status": "skipped",
+      "content_hash": "1ef4c0addc50d72606940f495ddf0cd91e6f78c5333bd3f3333311c4b676fcca",
+      "grade": "A+",
+      "notes": "freshness: no change needed",
+      "reviewed_at": "2026-06-17T22:29:27+00:00",
+      "reviewer": "claude-code",
+      "rewrite_count": 0,
+      "rubric_version": "v1",
+      "scores": {
+        "clarity": 96,
+        "depth_completeness": 95,
+        "originality_value": 93,
+        "prose_code_consistency": 96,
+        "structure_flow": 96,
+        "technical_accuracy": 96
+      },
+      "status": "passed"
+    }
+  },
+  "rubric_version": "v1",
+  "site": "geospatialwebhook.com"
+}

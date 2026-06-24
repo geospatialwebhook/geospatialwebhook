@@ -19,7 +19,7 @@
   --mint-300:  #8ccda3;
   --mint-400:  #5fb682;
   --mint-500:  #3e9763;
-  --mint-600:  #2d7a4d;
+  --mint-600:  #256040;
 
   --earth-50:  #f8f3ec;
   --earth-100: #ece0cd;
@@ -42,7 +42,7 @@
   --surface-2:  var(--peach-100);
   --ink:        #2f2418;
   --ink-soft:   #5b4a37;
-  --muted:      #876e54;
+  --muted:      #6b5640;
   --line:       #ead7c0;
   --accent:     var(--peach-500);
   --accent-2:   var(--mint-500);
@@ -483,15 +483,28 @@ h1, h2, h3, h4, h5 {
   margin: 2em 0;
 }
 
-/* Inline code: subtle, no border, blends in. */
+/* Links in prose text must be distinguishable without relying on color (WCAG 1.4.1).
+   Solid underline on the link itself, removed on headings and interactive controls. */
+.markdown a:not(.heading-anchor):not(.card):not(.cta-button) {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
+.markdown a:not(.heading-anchor):not(.card):not(.cta-button):hover,
+.markdown a:not(.heading-anchor):not(.card):not(.cta-button):focus-visible {
+  text-decoration-thickness: 2px;
+}
+
+/* Inline code: no box, no background — blends with prose text. */
 .markdown :not(pre) > code {
-  background: var(--code-inline-bg);
-  color: var(--code-ink);
-  padding: 0.12em 0.42em;
-  border-radius: 5px;
+  background: none;
+  color: var(--ink);
+  padding: 0;
+  border-radius: 0;
   font-family: var(--font-mono);
   font-size: 0.92em;
   border: none;
+  box-shadow: none;
 }
 
 /* Codeblock wrapper */
@@ -562,14 +575,14 @@ h1, h2, h3, h4, h5 {
   border: none;
 }
 
-/* Prism token colors tuned to Whimsical Garden */
+/* Prism token colors tuned to Whimsical Garden — all pass 4.5:1 on code-bg (#fbf5ec) */
 .token.comment, .token.prolog, .token.doctype, .token.cdata {
-  color: #a08a6a; font-style: italic;
+  color: #7a5a48; font-style: italic;
 }
 .token.punctuation { color: #6b5238; }
 .token.namespace { opacity: .7; }
 .token.property, .token.tag, .token.boolean, .token.number, .token.constant, .token.symbol, .token.deleted {
-  color: var(--peach-600);
+  color: #9a4428;
 }
 .token.selector, .token.attr-name, .token.string, .token.char, .token.builtin, .token.inserted {
   color: var(--mint-600);
@@ -578,12 +591,12 @@ h1, h2, h3, h4, h5 {
   color: var(--earth-500);
 }
 .token.atrule, .token.attr-value, .token.keyword {
-  color: var(--rose-500); font-weight: 600;
+  color: #b33030; font-weight: 600;
 }
 .token.function, .token.class-name {
-  color: #b95c2f;
+  color: #9a4018;
 }
-.token.regex, .token.important, .token.variable { color: #8a5a00; }
+.token.regex, .token.important, .token.variable { color: #7a5200; }
 
 /* Mermaid: light theme tweaks */
 pre.mermaid {

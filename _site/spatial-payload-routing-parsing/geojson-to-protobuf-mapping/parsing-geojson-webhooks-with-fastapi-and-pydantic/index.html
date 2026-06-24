@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 
   <title>Parsing GeoJSON Webhooks with FastAPI and Pydantic · Geo Webhook</title>
-  <meta name="description" content="Parsing GeoJSON webhooks with FastAPI and Pydantic requires strict schema enforcement, cryptographic verification, and idempotent processing. By defining…"/>
+  <meta name="description" content="Enforce RFC 7946-compliant spatial schemas at the HTTP layer with Pydantic v2 models, rejecting malformed payloads before they reach event-driven pipeline logic."/>
   <link rel="canonical" href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/parsing-geojson-webhooks-with-fastapi-and-pydantic/"/>
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
 
@@ -33,24 +33,24 @@
   <meta property="og:locale" content="en_US"/>
   <meta property="og:url" content="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/parsing-geojson-webhooks-with-fastapi-and-pydantic/"/>
   <meta property="og:title" content="Parsing GeoJSON Webhooks with FastAPI and Pydantic"/>
-  <meta property="og:description" content="Parsing GeoJSON webhooks with FastAPI and Pydantic requires strict schema enforcement, cryptographic verification, and idempotent processing. By defining…"/>
-  <meta property="og:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
-  <meta property="og:image:width" content="512"/>
-  <meta property="og:image:height" content="512"/>
-  <meta property="og:image:alt" content="Geospatial Webhook logo"/>
+  <meta property="og:description" content="Enforce RFC 7946-compliant spatial schemas at the HTTP layer with Pydantic v2 models, rejecting malformed payloads before they reach event-driven pipeline logic."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
 
   
   <meta name="twitter:card" content="summary_large_image"/>
   <meta name="twitter:title" content="Parsing GeoJSON Webhooks with FastAPI and Pydantic"/>
-  <meta name="twitter:description" content="Parsing GeoJSON webhooks with FastAPI and Pydantic requires strict schema enforcement, cryptographic verification, and idempotent processing. By defining…"/>
-  <meta name="twitter:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
-  <meta name="twitter:image:alt" content="Geospatial Webhook logo"/>
+  <meta name="twitter:description" content="Enforce RFC 7946-compliant spatial schemas at the HTTP layer with Pydantic v2 models, rejecting malformed payloads before they reach event-driven pipeline logic."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
 
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/assets/css/site.css"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=8ef3d820"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -99,11 +99,11 @@
     "@id": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/parsing-geojson-webhooks-with-fastapi-and-pydantic/#article",
     "mainEntityOfPage": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/parsing-geojson-webhooks-with-fastapi-and-pydantic/",
     "headline": "Parsing GeoJSON Webhooks with FastAPI and Pydantic",
-    "description": "Parsing GeoJSON webhooks with FastAPI and Pydantic requires strict schema enforcement, cryptographic verification, and idempotent processing. By defining…",
+    "description": "Enforce RFC 7946-compliant spatial schemas at the HTTP layer with Pydantic v2 models, rejecting malformed payloads before they reach event-driven pipeline logic.",
     "inLanguage": "en",
     "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
     "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
-    "image": "https://www.geospatialwebhook.com/icon-512.png",
+    "image": "https://www.geospatialwebhook.com/og-image.png",
     "url": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/parsing-geojson-webhooks-with-fastapi-and-pydantic/",
     "articleSection": "Spatial Payload Routing Parsing",
     "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
@@ -158,10 +158,11 @@
           <span aria-current="page">Parsing Geojson Webhooks With Fastapi And Pydantic</span>
     </nav>
 
+    <h1 class="page__title">Parsing GeoJSON Webhooks with FastAPI and Pydantic</h1>
+
     <div class="page__layout">
       <div class="markdown">
-        <h1 id="parsing-geojson-webhooks-with-fastapi-and-pydantic" tabindex="-1"><a class="heading-anchor" href="#parsing-geojson-webhooks-with-fastapi-and-pydantic">Parsing GeoJSON Webhooks with FastAPI and Pydantic</a></h1>
-<p>Parsing GeoJSON webhooks with FastAPI and Pydantic requires strict schema enforcement, cryptographic verification, and idempotent processing. By defining <a href="https://datatracker.ietf.org/doc/html/rfc7946">RFC 7946</a>-compliant Pydantic v2 models, you reject malformed spatial payloads at the HTTP layer before they reach your business logic. FastAPI’s native JSON deserialization handles this automatically, returning structured <code>422 Unprocessable Entity</code> responses when coordinates, geometry types, or required fields violate the spec. This eliminates boilerplate validation and guarantees that your event-driven pipeline only receives spatially valid payloads.</p>
+        <p>Parsing GeoJSON webhooks with FastAPI and Pydantic requires strict schema enforcement, cryptographic verification, and idempotent processing. By defining <a href="https://datatracker.ietf.org/doc/html/rfc7946">RFC 7946</a>-compliant Pydantic v2 models, you reject malformed spatial payloads at the HTTP layer before they reach your business logic. FastAPI’s native JSON deserialization handles this automatically, returning structured <code>422 Unprocessable Entity</code> responses when coordinates, geometry types, or required fields violate the spec. This eliminates boilerplate validation and guarantees that your event-driven pipeline only receives spatially valid payloads.</p>
 <h2 id="core-implementation-strict-validation-routing" tabindex="-1"><a class="heading-anchor" href="#core-implementation-strict-validation-routing">Core Implementation: Strict Validation &amp; Routing</a></h2>
 <p>The implementation below uses modern Pydantic v2 syntax, explicit type hints, and FastAPI’s dependency injection to ingest, verify, and route webhooks securely. It validates geometry structure, verifies HMAC signatures, and enforces idempotency keys.</p>
 <div class="code-block" data-lang="python">
@@ -171,17 +172,17 @@
       <span class="code-block__copy-label">Copy</span>
     </button>
   </div>
-  <pre class="language-python"><code class="language-python"><span class="token keyword">import</span> hashlib
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> hashlib
 <span class="token keyword">import</span> hmac
 <span class="token keyword">import</span> json
 <span class="token keyword">import</span> time
 <span class="token keyword">from</span> typing <span class="token keyword">import</span> Any<span class="token punctuation">,</span> Literal<span class="token punctuation">,</span> Optional
-<span class="token keyword">from</span> fastapi <span class="token keyword">import</span> FastAPI<span class="token punctuation">,</span> Request<span class="token punctuation">,</span> HTTPException<span class="token punctuation">,</span> Header<span class="token punctuation">,</span> Depends<span class="token punctuation">,</span> status
+<span class="token keyword">from</span> fastapi <span class="token keyword">import</span> FastAPI<span class="token punctuation">,</span> Request<span class="token punctuation">,</span> HTTPException<span class="token punctuation">,</span> Header<span class="token punctuation">,</span> status
 <span class="token keyword">from</span> pydantic <span class="token keyword">import</span> BaseModel<span class="token punctuation">,</span> Field<span class="token punctuation">,</span> model_validator<span class="token punctuation">,</span> ConfigDict
 
 app <span class="token operator">=</span> FastAPI<span class="token punctuation">(</span>title<span class="token operator">=</span><span class="token string">"GeoJSON Webhook Ingestor"</span><span class="token punctuation">)</span>
 
-<span class="token comment"># --- In-memory idempotency store (replace with Redis/DB in production) ---</span>
+<span class="token comment"># --- In-memory idempotency store (replace with Redis in production) ---</span>
 IDEMPOTENCY_STORE<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> <span class="token builtin">float</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token punctuation">}</span>
 REPLAY_WINDOW_SECONDS <span class="token operator">=</span> <span class="token number">300</span>  <span class="token comment"># 5 minutes</span>
 
@@ -221,15 +222,21 @@ REPLAY_WINDOW_SECONDS <span class="token operator">=</span> <span class="token n
     timestamp<span class="token punctuation">:</span> <span class="token builtin">float</span>
     data<span class="token punctuation">:</span> GeoJSONFeature <span class="token operator">|</span> GeoJSONFeatureCollection
 
-<span class="token comment"># --- Security &amp; Validation Dependencies ---</span>
+<span class="token comment"># --- Security &amp; Validation Helpers ---</span>
 <span class="token keyword">def</span> <span class="token function">verify_signature</span><span class="token punctuation">(</span>payload_bytes<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">,</span> signature<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> secret<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
     expected <span class="token operator">=</span> hmac<span class="token punctuation">.</span>new<span class="token punctuation">(</span>secret<span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> payload_bytes<span class="token punctuation">,</span> hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span>
     <span class="token keyword">return</span> hmac<span class="token punctuation">.</span>compare_digest<span class="token punctuation">(</span>expected<span class="token punctuation">,</span> signature<span class="token punctuation">)</span>
 
 <span class="token keyword">def</span> <span class="token function">check_idempotency</span><span class="token punctuation">(</span>idempotency_key<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    now <span class="token operator">=</span> time<span class="token punctuation">.</span>time<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token comment"># Purge expired keys on each check (acceptable for low-volume in-memory store)</span>
+    expired <span class="token operator">=</span> <span class="token punctuation">[</span>k <span class="token keyword">for</span> k<span class="token punctuation">,</span> ts <span class="token keyword">in</span> IDEMPOTENCY_STORE<span class="token punctuation">.</span>items<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token keyword">if</span> now <span class="token operator">-</span> ts <span class="token operator">></span> REPLAY_WINDOW_SECONDS<span class="token punctuation">]</span>
+    <span class="token keyword">for</span> k <span class="token keyword">in</span> expired<span class="token punctuation">:</span>
+        <span class="token keyword">del</span> IDEMPOTENCY_STORE<span class="token punctuation">[</span>k<span class="token punctuation">]</span>
+
     <span class="token keyword">if</span> idempotency_key <span class="token keyword">in</span> IDEMPOTENCY_STORE<span class="token punctuation">:</span>
         <span class="token keyword">raise</span> HTTPException<span class="token punctuation">(</span>status_code<span class="token operator">=</span>status<span class="token punctuation">.</span>HTTP_409_CONFLICT<span class="token punctuation">,</span> detail<span class="token operator">=</span><span class="token string">"Duplicate request"</span><span class="token punctuation">)</span>
-    IDEMPOTENCY_STORE<span class="token punctuation">[</span>idempotency_key<span class="token punctuation">]</span> <span class="token operator">=</span> time<span class="token punctuation">.</span>time<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    IDEMPOTENCY_STORE<span class="token punctuation">[</span>idempotency_key<span class="token punctuation">]</span> <span class="token operator">=</span> now
 
 <span class="token comment"># --- Route Handler ---</span>
 <span class="token decorator annotation punctuation">@app<span class="token punctuation">.</span>post</span><span class="token punctuation">(</span><span class="token string">"/webhooks/geojson"</span><span class="token punctuation">,</span> status_code<span class="token operator">=</span>status<span class="token punctuation">.</span>HTTP_202_ACCEPTED<span class="token punctuation">)</span>
@@ -267,18 +274,18 @@ REPLAY_WINDOW_SECONDS <span class="token operator">=</span> <span class="token n
 <ol>
 <li><strong>HMAC-SHA256 Verification</strong>: The raw request body is hashed using a shared secret and compared against the <code>X-Webhook-Signature</code> header. Using <code>hmac.compare_digest()</code> prevents timing attacks that could leak secret material.</li>
 <li><strong>Idempotency Keys</strong>: Every webhook delivery should include a unique <code>X-Idempotency-Key</code>. Checking this key against a short-lived store prevents duplicate processing if the sender retries due to network timeouts.</li>
-<li><strong>Strict Schema Boundaries</strong>: Pydantic’s <code>extra=&quot;forbid&quot;</code> configuration drops unexpected fields immediately. Combined with <code>@model_validator(mode=&quot;after&quot;)</code>, you catch structural violations (empty coordinate arrays, missing features) before they propagate downstream.</li>
+<li><strong>Strict Schema Boundaries</strong>: Pydantic’s <code>extra=&quot;forbid&quot;</code> configuration rejects unexpected fields immediately. Combined with <code>@model_validator(mode=&quot;after&quot;)</code>, you catch structural violations (empty coordinate arrays, missing features) before they propagate downstream.</li>
 </ol>
-<p>For production deployments, replace the in-memory <code>IDEMPOTENCY_STORE</code> with Redis or a relational database with TTL expiration. Store webhook secrets in a secrets manager, never in plaintext configuration.</p>
+<p>For production deployments, replace the in-memory <code>IDEMPOTENCY_STORE</code> with Redis using atomic <code>SET NX EX</code> to handle concurrent duplicates safely. Store webhook secrets in a secrets manager (AWS Secrets Manager, HashiCorp Vault), never in plaintext configuration or environment variables checked into source control.</p>
 <h2 id="routing-to-spatial-pipelines" tabindex="-1"><a class="heading-anchor" href="#routing-to-spatial-pipelines">Routing to Spatial Pipelines</a></h2>
 <p>Once validated, GeoJSON payloads can be safely routed to downstream services. FastAPI’s async architecture pairs naturally with message brokers like RabbitMQ or Kafka, allowing you to decouple ingestion from heavy spatial operations. Validated payloads can be indexed in PostGIS, streamed to real-time map renderers, or transformed into compact binary formats for low-latency transmission.</p>
 <p>When designing event-driven spatial architectures, consider how payload validation feeds into broader <a href="/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a> strategies. Routing decisions often depend on geometry type, bounding box, or custom properties. By enforcing schema compliance at the ingress layer, you guarantee that downstream consumers never handle malformed coordinate sequences or missing type declarations.</p>
 <h2 id="production-considerations-next-steps" tabindex="-1"><a class="heading-anchor" href="#production-considerations-next-steps">Production Considerations &amp; Next Steps</a></h2>
 <ul>
-<li><strong>Coordinate Precision &amp; Validation</strong>: Pydantic validates structure, not mathematical correctness. For strict RFC compliance, integrate libraries like <code>shapely</code> or <code>geojson</code> to verify closed polygons, correct coordinate ordering (longitude, latitude), and valid CRS references.</li>
+<li><strong>Coordinate Precision &amp; Validation</strong>: Pydantic validates structure, not mathematical correctness. For strict RFC compliance, integrate <code>shapely</code> or <code>geojson</code> to verify closed polygons, correct coordinate ordering (longitude, latitude), and valid geometry bounds (<code>-180 ≤ lon ≤ 180</code>, <code>-90 ≤ lat ≤ 90</code>).</li>
 <li><strong>Binary Serialization</strong>: Large GeoJSON payloads consume bandwidth and increase JSON parsing latency. Converting validated features to Protocol Buffers reduces payload size by 40–70% and enables strongly typed streaming. See <a href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping</a> for schema translation patterns that preserve spatial semantics while optimizing throughput.</li>
 <li><strong>Observability</strong>: Instrument webhook routes with structured logging. Capture <code>event_type</code>, validation errors, and processing latency. Use OpenTelemetry to trace payloads from ingestion through spatial indexing or protobuf conversion.</li>
-<li><strong>Rate Limiting</strong>: Apply FastAPI’s <code>SlowAPI</code> or API gateway rate limits to prevent abuse. Webhook endpoints are common targets for credential stuffing or payload flooding.</li>
+<li><strong>Rate Limiting</strong>: Apply rate limits at the API gateway or using a FastAPI middleware (e.g., <code>slowapi</code>) to prevent abuse. Webhook endpoints are common targets for payload flooding and credential stuffing.</li>
 </ul>
 <p>By combining FastAPI’s request lifecycle with Pydantic v2’s declarative validation, you build a resilient ingress layer that guarantees spatial correctness, cryptographic integrity, and exactly-once processing semantics.</p>
 
@@ -319,6 +326,9 @@ REPLAY_WINDOW_SECONDS <span class="token operator">=</span> <span class="token n
         <h4>Site</h4>
         <ul>
           <li><a href="/">Home</a></li>
+          <li><a href="/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
         </ul>
       </div>
       <div>
@@ -348,7 +358,7 @@ REPLAY_WINDOW_SECONDS <span class="token operator">=</span> <span class="token n
 </footer>
 
   </div>
-  <script src="/assets/js/site.js" defer></script>
+  <script src="/assets/js/site.js?v=6c55de86" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

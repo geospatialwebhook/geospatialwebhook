@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 
   <title>Securing Webhook Endpoints with Spatial Token Validation · Geo Webhook</title>
-  <meta name="description" content="Securing webhook endpoints with spatial token validation requires verifying both the cryptographic integrity of the incoming payload and its geographic…"/>
+  <meta name="description" content="Validate spatial tokens on webhook endpoints: embed a signed geohash into an HMAC or JWT, then reject events that fail cryptographic or geographic checks."/>
   <link rel="canonical" href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/securing-webhook-endpoints-with-spatial-token-validation/"/>
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
 
@@ -33,24 +33,24 @@
   <meta property="og:locale" content="en_US"/>
   <meta property="og:url" content="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/securing-webhook-endpoints-with-spatial-token-validation/"/>
   <meta property="og:title" content="Securing Webhook Endpoints with Spatial Token Validation"/>
-  <meta property="og:description" content="Securing webhook endpoints with spatial token validation requires verifying both the cryptographic integrity of the incoming payload and its geographic…"/>
-  <meta property="og:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
-  <meta property="og:image:width" content="512"/>
-  <meta property="og:image:height" content="512"/>
-  <meta property="og:image:alt" content="Geospatial Webhook logo"/>
+  <meta property="og:description" content="Validate spatial tokens on webhook endpoints: embed a signed geohash into an HMAC or JWT, then reject events that fail cryptographic or geographic checks."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
 
   
   <meta name="twitter:card" content="summary_large_image"/>
   <meta name="twitter:title" content="Securing Webhook Endpoints with Spatial Token Validation"/>
-  <meta name="twitter:description" content="Securing webhook endpoints with spatial token validation requires verifying both the cryptographic integrity of the incoming payload and its geographic…"/>
-  <meta name="twitter:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
-  <meta name="twitter:image:alt" content="Geospatial Webhook logo"/>
+  <meta name="twitter:description" content="Validate spatial tokens on webhook endpoints: embed a signed geohash into an HMAC or JWT, then reject events that fail cryptographic or geographic checks."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
 
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/assets/css/site.css"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=8ef3d820"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -99,11 +99,11 @@
     "@id": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/securing-webhook-endpoints-with-spatial-token-validation/#article",
     "mainEntityOfPage": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/securing-webhook-endpoints-with-spatial-token-validation/",
     "headline": "Securing Webhook Endpoints with Spatial Token Validation",
-    "description": "Securing webhook endpoints with spatial token validation requires verifying both the cryptographic integrity of the incoming payload and its geographic…",
+    "description": "Validate spatial tokens on webhook endpoints: embed a signed geohash into an HMAC or JWT, then reject events that fail cryptographic or geographic checks.",
     "inLanguage": "en",
     "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
     "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
-    "image": "https://www.geospatialwebhook.com/icon-512.png",
+    "image": "https://www.geospatialwebhook.com/og-image.png",
     "url": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/securing-webhook-endpoints-with-spatial-token-validation/",
     "articleSection": "Core Event Fundamentals Architecture",
     "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
@@ -158,23 +158,142 @@
           <span aria-current="page">Securing Webhook Endpoints With Spatial Token Validation</span>
     </nav>
 
+    <h1 class="page__title">Securing Webhook Endpoints with Spatial Token Validation</h1>
+
     <div class="page__layout">
       <div class="markdown">
-        <h1 id="securing-webhook-endpoints-with-spatial-token-validation" tabindex="-1"><a class="heading-anchor" href="#securing-webhook-endpoints-with-spatial-token-validation">Securing Webhook Endpoints with Spatial Token Validation</a></h1>
-<p>Securing webhook endpoints with spatial token validation requires verifying both the cryptographic integrity of the incoming payload and its geographic provenance. Unlike traditional signature checks, this approach embeds a spatial claim—such as a signed geohash, bounding-box digest, or coordinate-derived nonce—directly into the webhook token. The receiver validates the HMAC or JWT signature first, then confirms the embedded spatial claim matches the payload’s coordinates and falls within authorized operational boundaries. This dual-validation model prevents replay attacks, spoofed location telemetry, and unauthorized event injection from outside your physical footprint, making it essential for IoT telemetry, fleet routing, and location-aware SaaS platforms.</p>
-<h2 id="architecture-spatial-attestation" tabindex="-1"><a class="heading-anchor" href="#architecture-spatial-attestation">Architecture &amp; Spatial Attestation</a></h2>
-<p>Standard webhook security typically stops at signature verification and IP allowlisting. When building event-driven geospatial systems, you must extend <a href="/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries</a> to treat location as a cryptographic primitive rather than a mutable metadata field. A spatial token contains three mandatory components: a monotonic timestamp, a cryptographic signature computed over the raw payload plus coordinates, and a spatial constraint (e.g., a precomputed geofence ID or bounding-box hash). If any component fails validation, the event is quarantined rather than dropped. This pattern aligns with <a href="/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a> by enforcing geographic attestation at the ingress layer, which reduces downstream fraud detection overhead and simplifies compliance auditing.</p>
-<h2 id="token-structure-validation-sequence" tabindex="-1"><a class="heading-anchor" href="#token-structure-validation-sequence">Token Structure &amp; Validation Sequence</a></h2>
-<p>The recommended token format uses <code>base64url(signature:geohash:timestamp)</code>. Validation follows a strict, fail-fast sequence to minimize compute overhead:</p>
-<ol>
-<li><strong>Decode &amp; Parse:</strong> Extract the hex signature, spatial claim, and Unix timestamp from the base64url-encoded string.</li>
-<li><strong>TTL Check:</strong> Reject if <code>abs(current_time - timestamp) &gt; allowed_window</code>. This neutralizes replay attacks.</li>
-<li><strong>HMAC Verification:</strong> Recompute the signature over <code>payload_bytes + f&quot;{lon}:{lat}&quot;.encode()</code> using a shared secret. Use constant-time comparison to prevent timing side-channels.</li>
-<li><strong>Spatial Containment:</strong> Verify the payload coordinates fall within the authorized polygon or match the claimed geofence.</li>
-<li><strong>Quarantine on Failure:</strong> Route invalid payloads to a dead-letter queue for forensic analysis instead of silently returning <code>403</code>.</li>
-</ol>
-<h2 id="production-ready-python-implementation" tabindex="-1"><a class="heading-anchor" href="#production-ready-python-implementation">Production-Ready Python Implementation</a></h2>
-<p>The following FastAPI endpoint validates a spatial webhook token using HMAC-SHA256 and <code>shapely</code> for precise boundary checks. The implementation prioritizes constant-time operations, strict type enforcement, and graceful degradation.</p>
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Securing Webhook Endpoints with Spatial Token Validation",
+      "description": "Step-by-step guide to validating spatial tokens on webhook endpoints: embed a signed geohash or bounding-box digest into an HMAC or JWT, then reject events that fail cryptographic or geographic checks.",
+      "datePublished": "2024-03-15",
+      "dateModified": "2026-06-24",
+      "author": { "@type": "Organization", "name": "geospatialwebhook.com" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Core Event Fundamentals & Architecture", "item": "https://geospatialwebhook.com/core-event-fundamentals-architecture/" },
+        { "@type": "ListItem", "position": 2, "name": "Webhook Security Boundaries", "item": "https://geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/" },
+        { "@type": "ListItem", "position": 3, "name": "Securing Webhook Endpoints with Spatial Token Validation", "item": "https://geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/securing-webhook-endpoints-with-spatial-token-validation/" }
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Securing Webhook Endpoints with Spatial Token Validation",
+      "step": [
+        { "@type": "HowToStep", "position": 1, "name": "Decode and parse the spatial token", "text": "Extract the hex signature, spatial claim (geohash or bounding-box digest), and Unix timestamp from the base64url-encoded X-Spatial-Token header." },
+        { "@type": "HowToStep", "position": 2, "name": "Check the TTL window", "text": "Reject the request immediately if the absolute difference between the current time and the token timestamp exceeds your allowed window, preventing replay attacks." },
+        { "@type": "HowToStep", "position": 3, "name": "Verify the HMAC signature", "text": "Recompute HMAC-SHA256 over raw payload bytes plus the coordinate string, then compare with constant-time digest comparison to prevent timing side-channel attacks." },
+        { "@type": "HowToStep", "position": 4, "name": "Assert spatial containment", "text": "Use a prepared Shapely polygon to confirm the payload coordinates fall within the authorized operational zone." },
+        { "@type": "HowToStep", "position": 5, "name": "Route failures to a dead-letter queue", "text": "On any validation failure, enqueue the raw payload for forensic analysis rather than silently returning 403." }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What coordinate precision should I sign into the spatial token?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Sign the coordinates at the precision your device actually reports — typically 6 decimal places for consumer GPS (WGS 84 / EPSG:4326). Do not round before signing, but buffer your authorized polygon by the expected device error radius (5–50 m) to absorb legitimate variance." }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use a JWT instead of a raw HMAC token?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Embed the geohash and bounding-box hash in custom JWT claims (e.g. 'geo_hash' and 'bbox_digest'), sign with HS256 or RS256, and validate them after standard JWT signature and expiry checks. The containment check logic stays the same." }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I rotate the HMAC secret without downtime?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Version your token format (e.g. 'v2:base64...') and accept both the old and the new secret during a transition window. Once all edge devices have received the new secret, remove the fallback." }
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>Embed a signed spatial claim — a geohash or bounding-box digest — into every webhook token, then validate the cryptographic signature <em>and</em> geographic containment before accepting the event.</strong> This page is part of <a href="/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries</a>, which in turn sits within <a href="/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a>.</p>
+<h2 id="when-to-use-this-pattern" tabindex="-1"><a class="heading-anchor" href="#when-to-use-this-pattern">When to use this pattern</a></h2>
+<p>Spatial token validation adds meaningful overhead; deploy it only when location is a primary trust boundary, not just contextual metadata:</p>
+<ul>
+<li>Your business logic must <strong>reject events originating outside a physical service area</strong> — ride-hailing dispatch zones, drone delivery corridors, or jurisdiction-specific compliance regions.</li>
+<li>You ingest telemetry from <strong>untrusted edge devices</strong> (IoT sensors, fleet trackers, mobile clients) where GPS spoofing or relay attacks are economically viable — an attacker can replay a legitimate coordinate pair from a different physical location.</li>
+<li>Regulatory frameworks require <strong>geographic attestation</strong> for routing or storing data, for example, requiring that health or financial records are processed only in a specific country’s infrastructure.</li>
+</ul>
+<p>For general-purpose event ingestion where location is metadata, standard HMAC/JWT validation with IP allowlists and rate limiting is sufficient. Reserve spatial attestation for systems where “where did this event originate?” is a security question, not just an analytics one.</p>
+<h2 id="validation-flow" tabindex="-1"><a class="heading-anchor" href="#validation-flow">Validation flow</a></h2>
+<p>The diagram below shows the fail-fast sequence. Each gate is ordered to minimize compute: cheapest checks (TTL, decode) run first; the most expensive check (spatial containment) runs last.</p>
+<svg viewBox="0 0 720 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Spatial token validation sequence diagram" style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;">
+  <title>Spatial token validation sequence</title>
+  <desc>A flowchart showing five sequential validation gates: decode token, TTL check, HMAC verify, spatial containment check, and accept or quarantine. Failure at any gate routes the event to a dead-letter queue.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <!-- Incoming request box -->
+  <rect x="10" y="30" width="140" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="80" y="57" text-anchor="middle" font-size="13" fill="currentColor">Incoming POST</text>
+  <!-- Arrow 1 -->
+  <line x1="150" y1="52" x2="188" y2="52" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <!-- Decode box -->
+  <rect x="190" y="30" width="130" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="255" y="50" text-anchor="middle" font-size="13" fill="currentColor">1. Decode</text>
+  <text x="255" y="66" text-anchor="middle" font-size="11" fill="currentColor">&amp; parse token</text>
+  <!-- Fail arrow down from decode -->
+  <line x1="255" y1="74" x2="255" y2="112" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+  <text x="262" y="97" font-size="10" fill="currentColor">invalid format</text>
+  <!-- Arrow 2 -->
+  <line x1="320" y1="52" x2="358" y2="52" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <!-- TTL box -->
+  <rect x="360" y="30" width="130" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="425" y="50" text-anchor="middle" font-size="13" fill="currentColor">2. TTL check</text>
+  <text x="425" y="66" text-anchor="middle" font-size="11" fill="currentColor">|now − ts| ≤ window</text>
+  <!-- Fail arrow down from TTL -->
+  <line x1="425" y1="74" x2="425" y2="112" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+  <text x="432" y="97" font-size="10" fill="currentColor">expired</text>
+  <!-- Arrow 3 -->
+  <line x1="490" y1="52" x2="528" y2="52" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <!-- HMAC box -->
+  <rect x="530" y="30" width="130" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="595" y="50" text-anchor="middle" font-size="13" fill="currentColor">3. HMAC verify</text>
+  <text x="595" y="66" text-anchor="middle" font-size="11" fill="currentColor">constant-time compare</text>
+  <!-- Fail arrow down from HMAC -->
+  <line x1="595" y1="74" x2="595" y2="112" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+  <text x="602" y="97" font-size="10" fill="currentColor">bad signature</text>
+  <!-- Row 2: spatial check and accept -->
+  <!-- Wrap-around arrow from HMAC to Spatial -->
+  <line x1="595" y1="74" x2="595" y2="155" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <!-- Spatial box -->
+  <rect x="530" y="157" width="130" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="595" y="177" text-anchor="middle" font-size="13" fill="currentColor">4. Spatial</text>
+  <text x="595" y="193" text-anchor="middle" font-size="11" fill="currentColor">containment check</text>
+  <!-- Fail arrow left from Spatial -->
+  <line x1="530" y1="179" x2="492" y2="179" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+  <text x="497" y="170" font-size="10" fill="currentColor">outside zone</text>
+  <!-- Accept arrow left -->
+  <line x1="530" y1="179" x2="350" y2="179" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="420" y="170" text-anchor="middle" font-size="11" fill="currentColor">inside zone ✓</text>
+  <!-- Accept box -->
+  <rect x="200" y="157" width="148" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="274" y="177" text-anchor="middle" font-size="13" fill="currentColor">5. Accept event</text>
+  <text x="274" y="193" text-anchor="middle" font-size="11" fill="currentColor">200 OK → processor</text>
+  <!-- DLQ box -->
+  <rect x="170" y="112" width="148" height="40" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="244" y="136" text-anchor="middle" font-size="12" fill="currentColor">Dead-letter queue (DLQ)</text>
+  <!-- Arrows from fail paths converge at DLQ -->
+  <line x1="255" y1="112" x2="244" y2="112" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3"/>
+  <line x1="425" y1="112" x2="318" y2="112" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+  <line x1="492" y1="179" x2="393" y2="179" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3"/>
+  <line x1="393" y1="179" x2="393" y2="132" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3"/>
+  <line x1="393" y1="132" x2="318" y2="132" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+</svg>
+<h2 id="complete-runnable-implementation" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-implementation">Complete runnable implementation</a></h2>
+<p>The FastAPI endpoint below is self-contained: paste it into a project that has <code>fastapi</code>, <code>shapely</code>, and <code>python-multipart</code> installed and run it with <code>uvicorn app:app</code>. Every spatial-specific choice is annotated inline.</p>
 <div class="code-block" data-lang="python">
   <div class="code-block__header">
     <span class="code-block__lang">python</span>
@@ -182,95 +301,330 @@
       <span class="code-block__copy-label">Copy</span>
     </button>
   </div>
-  <pre class="language-python"><code class="language-python"><span class="token keyword">import</span> base64
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> base64
 <span class="token keyword">import</span> hashlib
 <span class="token keyword">import</span> hmac
-<span class="token keyword">import</span> time
 <span class="token keyword">import</span> json
+<span class="token keyword">import</span> time
 <span class="token keyword">from</span> typing <span class="token keyword">import</span> Optional
 
-<span class="token keyword">from</span> fastapi <span class="token keyword">import</span> FastAPI<span class="token punctuation">,</span> Request<span class="token punctuation">,</span> HTTPException<span class="token punctuation">,</span> status
+<span class="token keyword">from</span> fastapi <span class="token keyword">import</span> FastAPI<span class="token punctuation">,</span> Header<span class="token punctuation">,</span> HTTPException<span class="token punctuation">,</span> Request<span class="token punctuation">,</span> status
 <span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> Point<span class="token punctuation">,</span> Polygon
 <span class="token keyword">from</span> shapely<span class="token punctuation">.</span>prepared <span class="token keyword">import</span> prep
 
 app <span class="token operator">=</span> FastAPI<span class="token punctuation">(</span><span class="token punctuation">)</span>
 
-<span class="token comment"># Configuration</span>
-WEBHOOK_SECRET <span class="token operator">=</span> <span class="token string">b"your-256-bit-secret-key-here"</span>
-ALLOWED_TTL_SECONDS <span class="token operator">=</span> <span class="token number">300</span>
-<span class="token comment"># Authorized operational zone (longitude, latitude)</span>
-AUTHORIZED_ZONE <span class="token operator">=</span> prep<span class="token punctuation">(</span>Polygon<span class="token punctuation">(</span><span class="token punctuation">[</span>
-    <span class="token punctuation">(</span><span class="token operator">-</span><span class="token number">122.5</span><span class="token punctuation">,</span> <span class="token number">37.7</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token operator">-</span><span class="token number">122.3</span><span class="token punctuation">,</span> <span class="token number">37.7</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
-    <span class="token punctuation">(</span><span class="token operator">-</span><span class="token number">122.3</span><span class="token punctuation">,</span> <span class="token number">37.9</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token operator">-</span><span class="token number">122.5</span><span class="token punctuation">,</span> <span class="token number">37.9</span><span class="token punctuation">)</span>
-<span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+<span class="token comment"># --- Configuration -----------------------------------------------------------</span>
+<span class="token comment"># Use a 256-bit (32-byte) secret loaded from an environment variable in prod.</span>
+WEBHOOK_SECRET<span class="token punctuation">:</span> <span class="token builtin">bytes</span> <span class="token operator">=</span> <span class="token string">b"change-me-to-a-32-byte-env-secret"</span>
+<span class="token comment"># TTL window: 5 minutes. Include ±15 s skew allowance for NTP drift.</span>
+ALLOWED_TTL_SECONDS<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">315</span>
+<span class="token comment"># Authorized operational zone in WGS 84 (EPSG:4326): (longitude, latitude).</span>
+<span class="token comment"># prep() builds a spatial index for repeated containment queries — do this</span>
+<span class="token comment"># once at import time, not per request.</span>
+AUTHORIZED_ZONE <span class="token operator">=</span> prep<span class="token punctuation">(</span>
+    Polygon<span class="token punctuation">(</span><span class="token punctuation">[</span>
+        <span class="token punctuation">(</span><span class="token operator">-</span><span class="token number">122.5</span><span class="token punctuation">,</span> <span class="token number">37.70</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token operator">-</span><span class="token number">122.30</span><span class="token punctuation">,</span> <span class="token number">37.70</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+        <span class="token punctuation">(</span><span class="token operator">-</span><span class="token number">122.30</span><span class="token punctuation">,</span> <span class="token number">37.90</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token operator">-</span><span class="token number">122.50</span><span class="token punctuation">,</span> <span class="token number">37.90</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+        <span class="token punctuation">(</span><span class="token operator">-</span><span class="token number">122.5</span><span class="token punctuation">,</span> <span class="token number">37.70</span><span class="token punctuation">)</span><span class="token punctuation">,</span>  <span class="token comment"># closed exterior ring</span>
+    <span class="token punctuation">]</span><span class="token punctuation">)</span>
+<span class="token punctuation">)</span>
+<span class="token comment"># Buffer radius in degrees (≈ 50 m at mid-latitudes) to absorb GPS variance.</span>
+GPS_TOLERANCE_DEG<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> <span class="token number">0.0005</span>
 
-<span class="token keyword">def</span> <span class="token function">verify_spatial_token</span><span class="token punctuation">(</span>token<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> payload_bytes<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">,</span> lon<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">,</span> lat<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+
+<span class="token keyword">def</span> <span class="token function">verify_spatial_token</span><span class="token punctuation">(</span>
+    token<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span>
+    payload_bytes<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">,</span>
+    lon<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">,</span>
+    lat<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">,</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Returns True only when ALL three conditions pass:
+      1. The token is within the TTL window.
+      2. The HMAC-SHA256 over (payload_bytes + "&lt;lon>:&lt;lat>") matches.
+      3. The coordinate point falls inside the authorized zone (with buffer).
+    """</span>
     <span class="token keyword">try</span><span class="token punctuation">:</span>
-        <span class="token comment"># Pad base64 if necessary</span>
-        decoded <span class="token operator">=</span> base64<span class="token punctuation">.</span>urlsafe_b64decode<span class="token punctuation">(</span>token <span class="token operator">+</span> <span class="token string">"="</span> <span class="token operator">*</span> <span class="token punctuation">(</span><span class="token operator">-</span><span class="token builtin">len</span><span class="token punctuation">(</span>token<span class="token punctuation">)</span> <span class="token operator">%</span> <span class="token number">4</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
-        sig_hex<span class="token punctuation">,</span> geohash<span class="token punctuation">,</span> ts_str <span class="token operator">=</span> decoded<span class="token punctuation">.</span>decode<span class="token punctuation">(</span><span class="token string">"utf-8"</span><span class="token punctuation">)</span><span class="token punctuation">.</span>split<span class="token punctuation">(</span><span class="token string">":"</span><span class="token punctuation">)</span>
+        <span class="token comment"># base64url padding: Python requires multiples of 4.</span>
+        padding <span class="token operator">=</span> <span class="token string">"="</span> <span class="token operator">*</span> <span class="token punctuation">(</span><span class="token operator">-</span><span class="token builtin">len</span><span class="token punctuation">(</span>token<span class="token punctuation">)</span> <span class="token operator">%</span> <span class="token number">4</span><span class="token punctuation">)</span>
+        decoded <span class="token operator">=</span> base64<span class="token punctuation">.</span>urlsafe_b64decode<span class="token punctuation">(</span>token <span class="token operator">+</span> padding<span class="token punctuation">)</span><span class="token punctuation">.</span>decode<span class="token punctuation">(</span><span class="token string">"utf-8"</span><span class="token punctuation">)</span>
+        sig_hex<span class="token punctuation">,</span> _spatial_claim<span class="token punctuation">,</span> ts_str <span class="token operator">=</span> decoded<span class="token punctuation">.</span>split<span class="token punctuation">(</span><span class="token string">":"</span><span class="token punctuation">,</span> maxsplit<span class="token operator">=</span><span class="token number">2</span><span class="token punctuation">)</span>
         timestamp <span class="token operator">=</span> <span class="token builtin">int</span><span class="token punctuation">(</span>ts_str<span class="token punctuation">)</span>
-        
-        <span class="token comment"># 1. Time window check</span>
-        <span class="token keyword">if</span> <span class="token builtin">abs</span><span class="token punctuation">(</span>time<span class="token punctuation">.</span>time<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span> timestamp<span class="token punctuation">)</span> <span class="token operator">></span> ALLOWED_TTL_SECONDS<span class="token punctuation">:</span>
-            <span class="token keyword">return</span> <span class="token boolean">False</span>
-            
-        <span class="token comment"># 2. HMAC verification over payload + coordinates</span>
-        expected_sig <span class="token operator">=</span> hmac<span class="token punctuation">.</span>new<span class="token punctuation">(</span>
-            WEBHOOK_SECRET<span class="token punctuation">,</span>
-            payload_bytes <span class="token operator">+</span> <span class="token string-interpolation"><span class="token string">f"</span><span class="token interpolation"><span class="token punctuation">{</span>lon<span class="token punctuation">}</span></span><span class="token string">:</span><span class="token interpolation"><span class="token punctuation">{</span>lat<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
-            hashlib<span class="token punctuation">.</span>sha256
-        <span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span>
-        
-        <span class="token keyword">if</span> <span class="token keyword">not</span> hmac<span class="token punctuation">.</span>compare_digest<span class="token punctuation">(</span>sig_hex<span class="token punctuation">,</span> expected_sig<span class="token punctuation">)</span><span class="token punctuation">:</span>
-            <span class="token keyword">return</span> <span class="token boolean">False</span>
-            
-        <span class="token comment"># 3. Spatial containment check</span>
-        point <span class="token operator">=</span> Point<span class="token punctuation">(</span>lon<span class="token punctuation">,</span> lat<span class="token punctuation">)</span>
-        <span class="token keyword">if</span> <span class="token keyword">not</span> AUTHORIZED_ZONE<span class="token punctuation">.</span>contains<span class="token punctuation">(</span>point<span class="token punctuation">)</span><span class="token punctuation">:</span>
-            <span class="token keyword">return</span> <span class="token boolean">False</span>
-            
-        <span class="token keyword">return</span> <span class="token boolean">True</span>
     <span class="token keyword">except</span> Exception<span class="token punctuation">:</span>
         <span class="token keyword">return</span> <span class="token boolean">False</span>
 
-<span class="token decorator annotation punctuation">@app<span class="token punctuation">.</span>post</span><span class="token punctuation">(</span><span class="token string">"/webhook/spatial"</span><span class="token punctuation">)</span>
-<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">handle_spatial_webhook</span><span class="token punctuation">(</span>request<span class="token punctuation">:</span> Request<span class="token punctuation">)</span><span class="token punctuation">:</span>
-    token <span class="token operator">=</span> request<span class="token punctuation">.</span>headers<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"X-Spatial-Token"</span><span class="token punctuation">)</span>
-    <span class="token keyword">if</span> <span class="token keyword">not</span> token<span class="token punctuation">:</span>
-        <span class="token keyword">raise</span> HTTPException<span class="token punctuation">(</span>status_code<span class="token operator">=</span>status<span class="token punctuation">.</span>HTTP_400_BAD_REQUEST<span class="token punctuation">,</span> detail<span class="token operator">=</span><span class="token string">"Missing X-Spatial-Token header"</span><span class="token punctuation">)</span>
-        
+    <span class="token comment"># Gate 1 — TTL (replay protection). Evaluate before HMAC to avoid</span>
+    <span class="token comment"># unnecessary crypto work on clearly stale tokens.</span>
+    <span class="token keyword">if</span> <span class="token builtin">abs</span><span class="token punctuation">(</span>time<span class="token punctuation">.</span>time<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span> timestamp<span class="token punctuation">)</span> <span class="token operator">></span> ALLOWED_TTL_SECONDS<span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token boolean">False</span>
+
+    <span class="token comment"># Gate 2 — HMAC-SHA256. Sign over payload bytes AND coordinate string so</span>
+    <span class="token comment"># that swapping coordinates invalidates the token even with a valid payload.</span>
+    coord_bytes <span class="token operator">=</span> <span class="token string-interpolation"><span class="token string">f"</span><span class="token interpolation"><span class="token punctuation">{</span>lon<span class="token punctuation">:</span><span class="token format-spec">.6f</span><span class="token punctuation">}</span></span><span class="token string">:</span><span class="token interpolation"><span class="token punctuation">{</span>lat<span class="token punctuation">:</span><span class="token format-spec">.6f</span><span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    expected_sig <span class="token operator">=</span> hmac<span class="token punctuation">.</span>new<span class="token punctuation">(</span>
+        WEBHOOK_SECRET<span class="token punctuation">,</span>
+        payload_bytes <span class="token operator">+</span> coord_bytes<span class="token punctuation">,</span>
+        hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">,</span>
+    <span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token comment"># constant-time comparison prevents timing side-channel attacks.</span>
+    <span class="token keyword">if</span> <span class="token keyword">not</span> hmac<span class="token punctuation">.</span>compare_digest<span class="token punctuation">(</span>sig_hex<span class="token punctuation">,</span> expected_sig<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token boolean">False</span>
+
+    <span class="token comment"># Gate 3 — spatial containment. Buffer by GPS_TOLERANCE_DEG to accept</span>
+    <span class="token comment"># events from devices reporting within the expected hardware error radius.</span>
+    point <span class="token operator">=</span> Point<span class="token punctuation">(</span>lon<span class="token punctuation">,</span> lat<span class="token punctuation">)</span>
+    buffered_zone <span class="token operator">=</span> AUTHORIZED_ZONE<span class="token punctuation">.</span>context<span class="token punctuation">.</span><span class="token builtin">buffer</span><span class="token punctuation">(</span>GPS_TOLERANCE_DEG<span class="token punctuation">)</span>
+    <span class="token keyword">if</span> <span class="token keyword">not</span> buffered_zone<span class="token punctuation">.</span>contains<span class="token punctuation">(</span>point<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token boolean">False</span>
+
+    <span class="token keyword">return</span> <span class="token boolean">True</span>
+
+
+<span class="token keyword">def</span> <span class="token function">_enqueue_dlq</span><span class="token punctuation">(</span>payload_bytes<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">,</span> reason<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    In production: push to a Kafka topic, SQS dead-letter queue, or Redis
+    stream for forensic analysis. Here we just log for illustration.
+    """</span>
+    <span class="token keyword">import</span> logging
+    logging<span class="token punctuation">.</span>warning<span class="token punctuation">(</span><span class="token string">"DLQ: spatial validation failed — %s — %d bytes"</span><span class="token punctuation">,</span> reason<span class="token punctuation">,</span> <span class="token builtin">len</span><span class="token punctuation">(</span>payload_bytes<span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+
+<span class="token decorator annotation punctuation">@app<span class="token punctuation">.</span>post</span><span class="token punctuation">(</span><span class="token string">"/webhook/spatial"</span><span class="token punctuation">,</span> status_code<span class="token operator">=</span><span class="token number">200</span><span class="token punctuation">)</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">handle_spatial_webhook</span><span class="token punctuation">(</span>
+    request<span class="token punctuation">:</span> Request<span class="token punctuation">,</span>
+    x_spatial_token<span class="token punctuation">:</span> Optional<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">]</span> <span class="token operator">=</span> Header<span class="token punctuation">(</span>default<span class="token operator">=</span><span class="token boolean">None</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">:</span>
+    <span class="token keyword">if</span> <span class="token keyword">not</span> x_spatial_token<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> HTTPException<span class="token punctuation">(</span>
+            status_code<span class="token operator">=</span>status<span class="token punctuation">.</span>HTTP_400_BAD_REQUEST<span class="token punctuation">,</span>
+            detail<span class="token operator">=</span><span class="token string">"Missing X-Spatial-Token header"</span><span class="token punctuation">,</span>
+        <span class="token punctuation">)</span>
+
     payload_bytes <span class="token operator">=</span> <span class="token keyword">await</span> request<span class="token punctuation">.</span>body<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
     <span class="token keyword">try</span><span class="token punctuation">:</span>
         data <span class="token operator">=</span> json<span class="token punctuation">.</span>loads<span class="token punctuation">(</span>payload_bytes<span class="token punctuation">)</span>
-        lon <span class="token operator">=</span> <span class="token builtin">float</span><span class="token punctuation">(</span>data<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"lon"</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
-        lat <span class="token operator">=</span> <span class="token builtin">float</span><span class="token punctuation">(</span>data<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"lat"</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
-    <span class="token keyword">except</span> <span class="token punctuation">(</span>json<span class="token punctuation">.</span>JSONDecodeError<span class="token punctuation">,</span> TypeError<span class="token punctuation">,</span> ValueError<span class="token punctuation">)</span><span class="token punctuation">:</span>
-        <span class="token keyword">raise</span> HTTPException<span class="token punctuation">(</span>status_code<span class="token operator">=</span>status<span class="token punctuation">.</span>HTTP_400_BAD_REQUEST<span class="token punctuation">,</span> detail<span class="token operator">=</span><span class="token string">"Invalid payload or missing coordinates"</span><span class="token punctuation">)</span>
-        
-    <span class="token keyword">if</span> <span class="token keyword">not</span> verify_spatial_token<span class="token punctuation">(</span>token<span class="token punctuation">,</span> payload_bytes<span class="token punctuation">,</span> lon<span class="token punctuation">,</span> lat<span class="token punctuation">)</span><span class="token punctuation">:</span>
-        <span class="token comment"># Production: route to DLQ, log for SIEM, return generic 403</span>
-        <span class="token keyword">raise</span> HTTPException<span class="token punctuation">(</span>status_code<span class="token operator">=</span>status<span class="token punctuation">.</span>HTTP_403_FORBIDDEN<span class="token punctuation">,</span> detail<span class="token operator">=</span><span class="token string">"Spatial validation failed"</span><span class="token punctuation">)</span>
-        
-    <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"accepted"</span><span class="token punctuation">,</span> <span class="token string">"message"</span><span class="token punctuation">:</span> <span class="token string">"Event processed"</span><span class="token punctuation">}</span>
+        <span class="token comment"># Coordinates must be WGS 84 (EPSG:4326): lon first, then lat.</span>
+        lon <span class="token operator">=</span> <span class="token builtin">float</span><span class="token punctuation">(</span>data<span class="token punctuation">[</span><span class="token string">"lon"</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+        lat <span class="token operator">=</span> <span class="token builtin">float</span><span class="token punctuation">(</span>data<span class="token punctuation">[</span><span class="token string">"lat"</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+    <span class="token keyword">except</span> <span class="token punctuation">(</span>json<span class="token punctuation">.</span>JSONDecodeError<span class="token punctuation">,</span> KeyError<span class="token punctuation">,</span> TypeError<span class="token punctuation">,</span> ValueError<span class="token punctuation">)</span> <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> HTTPException<span class="token punctuation">(</span>
+            status_code<span class="token operator">=</span>status<span class="token punctuation">.</span>HTTP_400_BAD_REQUEST<span class="token punctuation">,</span>
+            detail<span class="token operator">=</span><span class="token string-interpolation"><span class="token string">f"Invalid payload or missing coordinates: </span><span class="token interpolation"><span class="token punctuation">{</span>exc<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">,</span>
+        <span class="token punctuation">)</span>
+
+    <span class="token keyword">if</span> <span class="token keyword">not</span> verify_spatial_token<span class="token punctuation">(</span>x_spatial_token<span class="token punctuation">,</span> payload_bytes<span class="token punctuation">,</span> lon<span class="token punctuation">,</span> lat<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token comment"># Do NOT reveal which gate failed — treat all failures identically</span>
+        <span class="token comment"># to prevent oracle attacks. Route to DLQ for SIEM analysis.</span>
+        _enqueue_dlq<span class="token punctuation">(</span>payload_bytes<span class="token punctuation">,</span> reason<span class="token operator">=</span><span class="token string">"token_validation_failed"</span><span class="token punctuation">)</span>
+        <span class="token keyword">raise</span> HTTPException<span class="token punctuation">(</span>
+            status_code<span class="token operator">=</span>status<span class="token punctuation">.</span>HTTP_403_FORBIDDEN<span class="token punctuation">,</span>
+            detail<span class="token operator">=</span><span class="token string">"Forbidden"</span><span class="token punctuation">,</span>
+        <span class="token punctuation">)</span>
+
+    <span class="token comment"># Hand off to your event processor, feature-change trigger pipeline,</span>
+    <span class="token comment"># or sensor-data router here.</span>
+    <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"accepted"</span><span class="token punctuation">}</span>
 </code></pre>
 </div>
-<h2 id="operational-hardening-edge-cases" tabindex="-1"><a class="heading-anchor" href="#operational-hardening-edge-cases">Operational Hardening &amp; Edge Cases</a></h2>
-<p>Spatial token validation introduces unique failure modes that require explicit handling:</p>
+<p>The <code>_enqueue_dlq</code> stub is where you wire in a <a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">sensor-data routing pattern</a> to persist rejected payloads — doing so turns security rejections into auditable forensic data rather than silent drops. To generate deterministic idempotency keys for accepted events before handing them downstream, follow the approach in <a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a>.</p>
+<h2 id="parameter-reference" tabindex="-1"><a class="heading-anchor" href="#parameter-reference">Parameter reference</a></h2>
+<div style="overflow-x:auto;">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Spatial constraint</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>WEBHOOK_SECRET</code></td>
+<td><code>bytes</code></td>
+<td>Min 32 bytes; load from env var</td>
+<td>— (must be set)</td>
+</tr>
+<tr>
+<td><code>ALLOWED_TTL_SECONDS</code></td>
+<td><code>int</code></td>
+<td>Include ±15 s NTP skew; max 900 s recommended</td>
+<td><code>315</code></td>
+</tr>
+<tr>
+<td><code>AUTHORIZED_ZONE</code></td>
+<td><code>shapely.prepared.PreparedGeometry</code></td>
+<td>Must be a valid, closed exterior ring in EPSG:4326</td>
+<td>Bay Area demo polygon</td>
+</tr>
+<tr>
+<td><code>GPS_TOLERANCE_DEG</code></td>
+<td><code>float</code></td>
+<td>~0.0001° ≈ 10 m; ~0.0005° ≈ 50 m at equatorial latitudes</td>
+<td><code>0.0005</code></td>
+</tr>
+<tr>
+<td><code>lon</code> / <code>lat</code></td>
+<td><code>float</code></td>
+<td>WGS 84 (EPSG:4326); lon ∈ [−180, 180], lat ∈ [−90, 90]</td>
+<td>from payload</td>
+</tr>
+<tr>
+<td><code>sig_hex</code></td>
+<td><code>str</code></td>
+<td>64-char lowercase hex (HMAC-SHA256 output)</td>
+<td>from token</td>
+</tr>
+<tr>
+<td><code>_spatial_claim</code></td>
+<td><code>str</code></td>
+<td>Geohash or bounding-box digest (informational; not re-verified here)</td>
+<td>from token</td>
+</tr>
+<tr>
+<td><code>ts_str</code></td>
+<td><code>str</code></td>
+<td>Unix epoch as string; must be parseable as <code>int</code></td>
+<td>from token</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<h2 id="gotchas-and-spatial-edge-cases" tabindex="-1"><a class="heading-anchor" href="#gotchas-and-spatial-edge-cases">Gotchas and spatial edge cases</a></h2>
+<ol>
+<li>
+<p><strong>Coordinate order mismatch (EPSG:4326).</strong> GeoJSON specifies coordinates as <code>[longitude, latitude]</code>, but many mapping libraries and some device SDKs emit <code>[latitude, longitude]</code>. Sign and verify with a consistent order, and document it in your API contract. A coordinate-swapped token will produce a valid HMAC but fail the containment check in confusing ways.</p>
+</li>
+<li>
+<p><strong>Coordinate precision drift.</strong> Consumer GPS (u-blox, SiRF) reports 6–7 decimal places but has hardware accuracy of ±3–15 m. Cellular and Wi-Fi triangulation degrades to ±50–200 m. Use <code>GPS_TOLERANCE_DEG</code> to buffer your zone rather than requiring exact point matching. Review <a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a> if your devices report in projected CRS (e.g., EPSG:3857) — reproject to EPSG:4326 <em>before</em> computing the HMAC.</p>
+</li>
+<li>
+<p><strong>Polygon exterior ring orientation.</strong> Shapely accepts both clockwise and counter-clockwise rings for <code>Polygon()</code>, but ensure your ring is closed (first and last points identical). An unclosed ring creates a <code>TopologicalError</code> at <code>prep()</code> time, which surfaces only when the first request arrives — not at startup.</p>
+</li>
+<li>
+<p><strong>Prepared geometry is not thread-safe for mutation.</strong> Call <code>prep()</code> once at module load and treat the result as read-only. If you need to reload zones (e.g., from a database), build the new <code>PreparedGeometry</code> object in a separate variable and swap the reference atomically.</p>
+</li>
+<li>
+<p><strong>Buffering a prepared geometry.</strong> <code>PreparedGeometry</code> does not expose <code>.buffer()</code> directly. Call <code>.buffer()</code> on the underlying <code>Polygon</code> first, then wrap with <code>prep()</code>: <code>prep(raw_polygon.buffer(GPS_TOLERANCE_DEG))</code>. The implementation above deliberately keeps this explicit to avoid the silent <code>AttributeError</code>.</p>
+</li>
+<li>
+<p><strong>Token format versioning.</strong> When you rotate your HMAC secret, you need a transition window where both the old and new secrets are valid. Prefix the token with a version string (e.g., <code>v2:base64url(...)</code>) and maintain a dict of <code>{version: secret}</code>. This prevents downtime during key rotation and lets you audit which devices are still sending v1 tokens.</p>
+</li>
+<li>
+<p><strong>Replay from a different spatial context.</strong> An attacker can capture a valid token emitted from within the authorized zone and replay it from outside. The TTL window limits the replay window, but for high-security contexts consider binding the token to a per-request nonce (a UUID the server issues and the client echoes back), as described in the idempotency pattern at <a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks</a>.</p>
+</li>
+</ol>
+<h2 id="minimal-verification-snippet" tabindex="-1"><a class="heading-anchor" href="#minimal-verification-snippet">Minimal verification snippet</a></h2>
+<p>Run this with <code>pytest</code> after installing <code>fastapi</code>, <code>httpx</code>, <code>shapely</code>, and <code>pytest-asyncio</code>:</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> base64
+<span class="token keyword">import</span> hashlib
+<span class="token keyword">import</span> hmac
+<span class="token keyword">import</span> json
+<span class="token keyword">import</span> time
+
+<span class="token keyword">import</span> pytest
+<span class="token keyword">from</span> fastapi<span class="token punctuation">.</span>testclient <span class="token keyword">import</span> TestClient
+
+<span class="token comment"># Import the app defined in the implementation section above.</span>
+<span class="token keyword">from</span> app <span class="token keyword">import</span> app<span class="token punctuation">,</span> WEBHOOK_SECRET
+
+client <span class="token operator">=</span> TestClient<span class="token punctuation">(</span>app<span class="token punctuation">)</span>
+
+<span class="token keyword">def</span> <span class="token function">_make_token</span><span class="token punctuation">(</span>lon<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">,</span> lat<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">,</span> payload_bytes<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">,</span> offset<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Build a valid spatial token for the given coordinates and payload."""</span>
+    ts <span class="token operator">=</span> <span class="token builtin">int</span><span class="token punctuation">(</span>time<span class="token punctuation">.</span>time<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token operator">+</span> offset
+    coord_bytes <span class="token operator">=</span> <span class="token string-interpolation"><span class="token string">f"</span><span class="token interpolation"><span class="token punctuation">{</span>lon<span class="token punctuation">:</span><span class="token format-spec">.6f</span><span class="token punctuation">}</span></span><span class="token string">:</span><span class="token interpolation"><span class="token punctuation">{</span>lat<span class="token punctuation">:</span><span class="token format-spec">.6f</span><span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    sig <span class="token operator">=</span> hmac<span class="token punctuation">.</span>new<span class="token punctuation">(</span>WEBHOOK_SECRET<span class="token punctuation">,</span> payload_bytes <span class="token operator">+</span> coord_bytes<span class="token punctuation">,</span> hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token comment"># spatial_claim field: a placeholder geohash (not validated by this endpoint)</span>
+    raw <span class="token operator">=</span> <span class="token string-interpolation"><span class="token string">f"</span><span class="token interpolation"><span class="token punctuation">{</span>sig<span class="token punctuation">}</span></span><span class="token string">:9q8y:</span><span class="token interpolation"><span class="token punctuation">{</span>ts<span class="token punctuation">}</span></span><span class="token string">"</span></span>
+    <span class="token keyword">return</span> base64<span class="token punctuation">.</span>urlsafe_b64encode<span class="token punctuation">(</span>raw<span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span>rstrip<span class="token punctuation">(</span><span class="token string">b"="</span><span class="token punctuation">)</span><span class="token punctuation">.</span>decode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">_payload</span><span class="token punctuation">(</span>lon<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> <span class="token operator">-</span><span class="token number">122.4</span><span class="token punctuation">,</span> lat<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> <span class="token number">37.8</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">:</span>
+    <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"lon"</span><span class="token punctuation">:</span> lon<span class="token punctuation">,</span> <span class="token string">"lat"</span><span class="token punctuation">:</span> lat<span class="token punctuation">,</span> <span class="token string">"sensor_id"</span><span class="token punctuation">:</span> <span class="token string">"device-001"</span><span class="token punctuation">}</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_valid_event_accepted</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    data <span class="token operator">=</span> _payload<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    body <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>data<span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    token <span class="token operator">=</span> _make_token<span class="token punctuation">(</span>data<span class="token punctuation">[</span><span class="token string">"lon"</span><span class="token punctuation">]</span><span class="token punctuation">,</span> data<span class="token punctuation">[</span><span class="token string">"lat"</span><span class="token punctuation">]</span><span class="token punctuation">,</span> body<span class="token punctuation">)</span>
+    resp <span class="token operator">=</span> client<span class="token punctuation">.</span>post<span class="token punctuation">(</span>
+        <span class="token string">"/webhook/spatial"</span><span class="token punctuation">,</span>
+        content<span class="token operator">=</span>body<span class="token punctuation">,</span>
+        headers<span class="token operator">=</span><span class="token punctuation">{</span><span class="token string">"X-Spatial-Token"</span><span class="token punctuation">:</span> token<span class="token punctuation">,</span> <span class="token string">"Content-Type"</span><span class="token punctuation">:</span> <span class="token string">"application/json"</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> resp<span class="token punctuation">.</span>status_code <span class="token operator">==</span> <span class="token number">200</span>
+    <span class="token keyword">assert</span> resp<span class="token punctuation">.</span>json<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">[</span><span class="token string">"status"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token string">"accepted"</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_event_outside_zone_rejected</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token comment"># Coordinates clearly outside the Bay Area demo zone</span>
+    data <span class="token operator">=</span> _payload<span class="token punctuation">(</span>lon<span class="token operator">=</span><span class="token number">2.35</span><span class="token punctuation">,</span> lat<span class="token operator">=</span><span class="token number">48.86</span><span class="token punctuation">)</span>  <span class="token comment"># Paris</span>
+    body <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>data<span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    token <span class="token operator">=</span> _make_token<span class="token punctuation">(</span>data<span class="token punctuation">[</span><span class="token string">"lon"</span><span class="token punctuation">]</span><span class="token punctuation">,</span> data<span class="token punctuation">[</span><span class="token string">"lat"</span><span class="token punctuation">]</span><span class="token punctuation">,</span> body<span class="token punctuation">)</span>
+    resp <span class="token operator">=</span> client<span class="token punctuation">.</span>post<span class="token punctuation">(</span>
+        <span class="token string">"/webhook/spatial"</span><span class="token punctuation">,</span>
+        content<span class="token operator">=</span>body<span class="token punctuation">,</span>
+        headers<span class="token operator">=</span><span class="token punctuation">{</span><span class="token string">"X-Spatial-Token"</span><span class="token punctuation">:</span> token<span class="token punctuation">,</span> <span class="token string">"Content-Type"</span><span class="token punctuation">:</span> <span class="token string">"application/json"</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> resp<span class="token punctuation">.</span>status_code <span class="token operator">==</span> <span class="token number">403</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_expired_token_rejected</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    data <span class="token operator">=</span> _payload<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    body <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>data<span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token comment"># Timestamp 10 minutes in the past — outside the TTL window</span>
+    token <span class="token operator">=</span> _make_token<span class="token punctuation">(</span>data<span class="token punctuation">[</span><span class="token string">"lon"</span><span class="token punctuation">]</span><span class="token punctuation">,</span> data<span class="token punctuation">[</span><span class="token string">"lat"</span><span class="token punctuation">]</span><span class="token punctuation">,</span> body<span class="token punctuation">,</span> offset<span class="token operator">=</span><span class="token operator">-</span><span class="token number">600</span><span class="token punctuation">)</span>
+    resp <span class="token operator">=</span> client<span class="token punctuation">.</span>post<span class="token punctuation">(</span>
+        <span class="token string">"/webhook/spatial"</span><span class="token punctuation">,</span>
+        content<span class="token operator">=</span>body<span class="token punctuation">,</span>
+        headers<span class="token operator">=</span><span class="token punctuation">{</span><span class="token string">"X-Spatial-Token"</span><span class="token punctuation">:</span> token<span class="token punctuation">,</span> <span class="token string">"Content-Type"</span><span class="token punctuation">:</span> <span class="token string">"application/json"</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> resp<span class="token punctuation">.</span>status_code <span class="token operator">==</span> <span class="token number">403</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_tampered_payload_rejected</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    data <span class="token operator">=</span> _payload<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    body <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>data<span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    token <span class="token operator">=</span> _make_token<span class="token punctuation">(</span>data<span class="token punctuation">[</span><span class="token string">"lon"</span><span class="token punctuation">]</span><span class="token punctuation">,</span> data<span class="token punctuation">[</span><span class="token string">"lat"</span><span class="token punctuation">]</span><span class="token punctuation">,</span> body<span class="token punctuation">)</span>
+    <span class="token comment"># Modify the payload after signing — HMAC must fail</span>
+    tampered <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token operator">**</span>data<span class="token punctuation">,</span> <span class="token string">"sensor_id"</span><span class="token punctuation">:</span> <span class="token string">"attacker"</span><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    resp <span class="token operator">=</span> client<span class="token punctuation">.</span>post<span class="token punctuation">(</span>
+        <span class="token string">"/webhook/spatial"</span><span class="token punctuation">,</span>
+        content<span class="token operator">=</span>tampered<span class="token punctuation">,</span>
+        headers<span class="token operator">=</span><span class="token punctuation">{</span><span class="token string">"X-Spatial-Token"</span><span class="token punctuation">:</span> token<span class="token punctuation">,</span> <span class="token string">"Content-Type"</span><span class="token punctuation">:</span> <span class="token string">"application/json"</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> resp<span class="token punctuation">.</span>status_code <span class="token operator">==</span> <span class="token number">403</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_missing_token_returns_400</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    data <span class="token operator">=</span> _payload<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    body <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>data<span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    resp <span class="token operator">=</span> client<span class="token punctuation">.</span>post<span class="token punctuation">(</span>
+        <span class="token string">"/webhook/spatial"</span><span class="token punctuation">,</span>
+        content<span class="token operator">=</span>body<span class="token punctuation">,</span>
+        headers<span class="token operator">=</span><span class="token punctuation">{</span><span class="token string">"Content-Type"</span><span class="token punctuation">:</span> <span class="token string">"application/json"</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> resp<span class="token punctuation">.</span>status_code <span class="token operator">==</span> <span class="token number">400</span>
+</code></pre>
+</div>
+<hr>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
 <ul>
-<li><strong>Coordinate Precision Drift:</strong> GPS modules and cellular triangulation introduce ±5–50m variance. Use geohash precision levels (e.g., 6–8 characters) or buffer your authorized polygon by a tolerance radius rather than exact point matching. Refer to the <a href="https://shapely.readthedocs.io/en/stable/">Shapely Documentation</a> for robust buffering and topology operations.</li>
-<li><strong>Clock Skew:</strong> Distributed systems rarely share perfectly synchronized clocks. Allow a ±15s skew window and monitor NTP drift across your fleet.</li>
-<li><strong>HMAC Standardization:</strong> Always follow <a href="https://www.rfc-editor.org/info/rfc2104/">RFC 2104</a> for key derivation and digest computation. Rotate secrets quarterly and version your token format (e.g., <code>v2:base64...</code>) to support zero-downtime key rotation.</li>
-<li><strong>Geofence Complexity:</strong> Precompute spatial constraints at deployment time. Running <code>shapely.prepared</code> checks on every webhook invocation is efficient, but dynamically loading thousands of polygons will degrade ingress latency. Cache prepared geometries in memory or use a spatial index (e.g., R-tree) for multi-zone routing.</li>
+<li><a href="/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries</a> — parent overview covering the full trust model for geospatial event ingress</li>
+<li><a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns</a> — routing validated events to the correct downstream consumers based on geographic partitioning</li>
+<li><a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks</a> — combining spatial token validation with Redis-backed nonce caching to prevent replay within the TTL window</li>
+<li><a href="/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a> — the broader architectural context for secure, location-aware event pipelines</li>
 </ul>
-<h2 id="when-to-deploy-spatial-validation" tabindex="-1"><a class="heading-anchor" href="#when-to-deploy-spatial-validation">When to Deploy Spatial Validation</a></h2>
-<p>Spatial token validation is not a replacement for standard webhook security; it is a specialized layer for location-dependent trust boundaries. Deploy it when:</p>
-<ul>
-<li>Your business logic rejects events originating outside a physical service area (e.g., ride-hailing dispatch, drone delivery, localized compliance reporting).</li>
-<li>You ingest telemetry from untrusted edge devices where GPS spoofing or relay attacks are economically viable.</li>
-<li>Regulatory frameworks require geographic attestation for data processing or storage routing.</li>
-</ul>
-<p>For general-purpose event ingestion, standard HMAC/JWT validation with IP allowlists and rate limiting remains sufficient. Reserve spatial attestation for systems where location is a primary security primitive, not just a metadata tag.</p>
 
       </div>
 
@@ -309,6 +663,9 @@ AUTHORIZED_ZONE <span class="token operator">=</span> prep<span class="token pun
         <h4>Site</h4>
         <ul>
           <li><a href="/">Home</a></li>
+          <li><a href="/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
         </ul>
       </div>
       <div>
@@ -338,7 +695,7 @@ AUTHORIZED_ZONE <span class="token operator">=</span> prep<span class="token pun
 </footer>
 
   </div>
-  <script src="/assets/js/site.js" defer></script>
+  <script src="/assets/js/site.js?v=6c55de86" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

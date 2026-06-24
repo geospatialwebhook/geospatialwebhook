@@ -18,6 +18,9 @@
         <h4>Site</h4>
         <ul>
           <li><a href="/">Home</a></li>
+          {%- for s in site.sections %}
+          <li><a href="/{{ s.slug }}/">{{ s.navTitle }}</a></li>
+          {%- endfor %}
         </ul>
       </div>
       {%- for s in site.sections %}

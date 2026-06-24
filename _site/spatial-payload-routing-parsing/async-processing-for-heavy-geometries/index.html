@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 
   <title>Async Processing for Heavy Geometries · Geo Webhook</title>
-  <meta name="description" content="Heavy spatial payloads routinely choke synchronous webhook endpoints. When a GIS backend receives a 50 MB GeoJSON feature collection containing complex…"/>
+  <meta name="description" content="Decouple CPU-bound spatial operations from I/O-bound webhook ingestion in Python: async dispatch, ProcessPoolExecutor, memory-safe parsing, and failure recovery."/>
   <link rel="canonical" href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/"/>
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
 
@@ -33,24 +33,24 @@
   <meta property="og:locale" content="en_US"/>
   <meta property="og:url" content="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/"/>
   <meta property="og:title" content="Async Processing for Heavy Geometries"/>
-  <meta property="og:description" content="Heavy spatial payloads routinely choke synchronous webhook endpoints. When a GIS backend receives a 50 MB GeoJSON feature collection containing complex…"/>
-  <meta property="og:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
-  <meta property="og:image:width" content="512"/>
-  <meta property="og:image:height" content="512"/>
-  <meta property="og:image:alt" content="Geospatial Webhook logo"/>
+  <meta property="og:description" content="Decouple CPU-bound spatial operations from I/O-bound webhook ingestion in Python: async dispatch, ProcessPoolExecutor, memory-safe parsing, and failure recovery."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
 
   
   <meta name="twitter:card" content="summary_large_image"/>
   <meta name="twitter:title" content="Async Processing for Heavy Geometries"/>
-  <meta name="twitter:description" content="Heavy spatial payloads routinely choke synchronous webhook endpoints. When a GIS backend receives a 50 MB GeoJSON feature collection containing complex…"/>
-  <meta name="twitter:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
-  <meta name="twitter:image:alt" content="Geospatial Webhook logo"/>
+  <meta name="twitter:description" content="Decouple CPU-bound spatial operations from I/O-bound webhook ingestion in Python: async dispatch, ProcessPoolExecutor, memory-safe parsing, and failure recovery."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
 
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/assets/css/site.css"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=8ef3d820"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -99,11 +99,11 @@
     "@id": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/#article",
     "mainEntityOfPage": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/",
     "headline": "Async Processing for Heavy Geometries",
-    "description": "Heavy spatial payloads routinely choke synchronous webhook endpoints. When a GIS backend receives a 50 MB GeoJSON feature collection containing complex…",
+    "description": "Decouple CPU-bound spatial operations from I/O-bound webhook ingestion in Python: async dispatch, ProcessPoolExecutor, memory-safe parsing, and failure recovery.",
     "inLanguage": "en",
     "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
     "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
-    "image": "https://www.geospatialwebhook.com/icon-512.png",
+    "image": "https://www.geospatialwebhook.com/og-image.png",
     "url": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/",
     "articleSection": "Spatial Payload Routing Parsing",
     "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
@@ -156,16 +156,17 @@
           <span aria-current="page">Async Processing For Heavy Geometries</span>
     </nav>
 
+    <h1 class="page__title">Async Processing for Heavy Geometries</h1>
+
     <div class="page__layout">
       <div class="markdown">
-        <h1 id="async-processing-for-heavy-geometries" tabindex="-1"><a class="heading-anchor" href="#async-processing-for-heavy-geometries">Async Processing for Heavy Geometries</a></h1>
-<p>Heavy spatial payloads routinely choke synchronous webhook endpoints. When a GIS backend receives a 50 MB GeoJSON feature collection containing complex multi-polygons, dense linestrings, or high-resolution point clouds, blocking the main event loop for parsing, validation, and coordinate transformation creates cascading latency across your entire architecture. <strong>Async Processing for Heavy Geometries</strong> decouples CPU-bound spatial operations from I/O-bound webhook ingestion, enabling event-driven systems to acknowledge requests in milliseconds while scaling computational workloads horizontally.</p>
+        <p>Heavy spatial payloads routinely choke synchronous webhook endpoints. When a GIS backend receives a 50 MB GeoJSON feature collection containing complex multi-polygons, dense linestrings, or high-resolution point clouds, blocking the main event loop for parsing, validation, and coordinate transformation creates cascading latency across your entire architecture. <strong>Async Processing for Heavy Geometries</strong> decouples CPU-bound spatial operations from I/O-bound webhook ingestion, enabling event-driven systems to acknowledge requests in milliseconds while scaling computational workloads horizontally.</p>
 <p>This guide outlines a production-ready workflow for offloading heavy geometry processing, complete with tested Python patterns, memory-safe execution strategies, and failure recovery mechanisms tailored for platform engineers and real-time spatial application builders.</p>
 <h2 id="prerequisites-environment-baseline" tabindex="-1"><a class="heading-anchor" href="#prerequisites-environment-baseline">Prerequisites &amp; Environment Baseline</a></h2>
 <p>Before implementing asynchronous spatial pipelines, ensure your environment meets the following baseline requirements:</p>
 <ul>
-<li><strong>Python 3.10+</strong>: Required for <code>asyncio.to_thread</code>, improved task group management, and native exception propagation.</li>
-<li><strong>Shapely 2.0+</strong>: Built on GEOS 3.10+, it provides thread-safe geometry operations and eliminates legacy GIL bottlenecks present in earlier releases. Review the <a href="https://shapely.readthedocs.io/en/stable/#multithreading">official Shapely multithreading documentation</a> to understand memory isolation guarantees.</li>
+<li><strong>Python 3.10+</strong>: Provides mature <code>asyncio</code> support (<code>asyncio.to_thread</code>, <code>loop.run_in_executor</code>) and structural pattern matching for clean payload dispatch.</li>
+<li><strong>Shapely 2.0+</strong>: Built on GEOS 3.10+, it provides thread-safe geometry operations. Review the <a href="https://shapely.readthedocs.io/en/stable/">official Shapely documentation</a> to understand memory isolation guarantees and multi-threading behavior.</li>
 <li><strong>Async Web Framework</strong>: <code>FastAPI</code> or <code>aiohttp</code> for non-blocking HTTP ingestion and streaming response handling.</li>
 <li><strong>Message Broker (Optional but Recommended)</strong>: Redis Streams or RabbitMQ for durable task queuing, backpressure management, and cross-service decoupling.</li>
 <li><strong>Spatial Routing Context</strong>: Understanding how payloads are classified, routed, and dispatched is essential before introducing asynchronous execution layers. Familiarity with <a href="/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a> will streamline your integration strategy.</li>
@@ -175,9 +176,9 @@
 <h3 id="1-asynchronous-ingestion-immediate-acknowledgment" tabindex="-1"><a class="heading-anchor" href="#1-asynchronous-ingestion-immediate-acknowledgment">1. Asynchronous Ingestion &amp; Immediate Acknowledgment</a></h3>
 <p>The webhook endpoint receives the payload, performs lightweight header validation (e.g., <code>Content-Type</code>, <code>Content-Length</code>, HMAC signatures), and immediately returns a <code>202 Accepted</code> response. Raw bytes are streamed directly to an in-memory queue or message broker without synchronous parsing. This prevents event loop starvation and guarantees sub-100ms acknowledgment times regardless of payload size.</p>
 <h3 id="2-task-dispatch-worker-pool-orchestration" tabindex="-1"><a class="heading-anchor" href="#2-task-dispatch-worker-pool-orchestration">2. Task Dispatch &amp; Worker Pool Orchestration</a></h3>
-<p>An async consumer pulls the serialized payload from the queue and dispatches it to a <code>concurrent.futures.ProcessPoolExecutor</code>. Spatial operations are inherently CPU-bound; offloading them to separate OS processes prevents the main event loop from blocking and safely bypasses Python’s Global Interpreter Lock. For deeper asyncio integration patterns, see <a href="/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/optimizing-async-geometry-parsing-with-asyncio/">Optimizing async geometry parsing with asyncio</a>.</p>
+<p>An async consumer pulls the serialized payload from the queue and dispatches it to a <code>concurrent.futures.ProcessPoolExecutor</code>. Spatial operations are inherently CPU-bound; offloading them to separate OS processes prevents the main event loop from blocking and safely bypasses Python’s Global Interpreter Lock (GIL). For deeper asyncio integration patterns, see <a href="/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/optimizing-async-geometry-parsing-with-asyncio/">Optimizing async geometry parsing with asyncio</a>.</p>
 <h3 id="3-topology-validation-crs-normalization" tabindex="-1"><a class="heading-anchor" href="#3-topology-validation-crs-normalization">3. Topology Validation &amp; CRS Normalization</a></h3>
-<p>Each worker runs a strict validation routine against the <a href="https://datatracker.ietf.org/doc/html/rfc7946">RFC 7946 GeoJSON specification</a>. Invalid topologies (self-intersections, unclosed rings, or malformed coordinate sequences) are flagged early, and coordinate reference systems are normalized to a target projection before downstream processing. Implementing a dedicated <a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a> ensures malformed data never reaches expensive transformation stages.</p>
+<p>Each worker runs a strict validation routine against the <a href="https://datatracker.ietf.org/doc/html/rfc7946">RFC 7946 GeoJSON specification</a>. Invalid topologies (self-intersections, unclosed rings, or malformed coordinate sequences) are flagged early, and coordinate reference systems are normalized to a target projection before downstream processing. Implementing a dedicated <a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a> stage ensures malformed data never reaches expensive transformation stages.</p>
 <h3 id="4-coordinate-transformation-serialization" tabindex="-1"><a class="heading-anchor" href="#4-coordinate-transformation-serialization">4. Coordinate Transformation &amp; Serialization</a></h3>
 <p>Validated features undergo projection shifts, topology simplification, or spatial indexing. For bandwidth-constrained microservices, consider converting heavy JSON structures into compact binary formats. The <a href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping</a> pattern significantly reduces serialization overhead and accelerates inter-service communication.</p>
 <h3 id="5-result-persistence-event-driven-callbacks" tabindex="-1"><a class="heading-anchor" href="#5-result-persistence-event-driven-callbacks">5. Result Persistence &amp; Event-Driven Callbacks</a></h3>
@@ -191,7 +192,7 @@
       <span class="code-block__copy-label">Copy</span>
     </button>
   </div>
-  <pre class="language-python"><code class="language-python"><span class="token keyword">import</span> asyncio
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
 <span class="token keyword">import</span> json
 <span class="token keyword">import</span> logging
 <span class="token keyword">from</span> concurrent<span class="token punctuation">.</span>futures <span class="token keyword">import</span> ProcessPoolExecutor
@@ -204,23 +205,26 @@
 app <span class="token operator">=</span> FastAPI<span class="token punctuation">(</span><span class="token punctuation">)</span>
 logger <span class="token operator">=</span> logging<span class="token punctuation">.</span>getLogger<span class="token punctuation">(</span>__name__<span class="token punctuation">)</span>
 
-<span class="token comment"># Pre-allocate worker pool to avoid cold-start overhead</span>
+<span class="token comment"># Pre-allocate worker pool to avoid cold-start overhead on each request</span>
 WORKER_POOL <span class="token operator">=</span> ProcessPoolExecutor<span class="token punctuation">(</span>max_workers<span class="token operator">=</span><span class="token number">4</span><span class="token punctuation">)</span>
 
 <span class="token keyword">def</span> <span class="token function">_process_geometry</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">:</span>
     <span class="token triple-quoted-string string">"""CPU-bound worker function executed in a separate process."""</span>
     <span class="token keyword">try</span><span class="token punctuation">:</span>
         data <span class="token operator">=</span> json<span class="token punctuation">.</span>loads<span class="token punctuation">(</span>payload<span class="token punctuation">)</span>
-        <span class="token comment"># Validate and normalize geometry</span>
         geom <span class="token operator">=</span> shape<span class="token punctuation">(</span>data<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"geometry"</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
         <span class="token keyword">if</span> <span class="token keyword">not</span> geom<span class="token punctuation">.</span>is_valid<span class="token punctuation">:</span>
             geom <span class="token operator">=</span> make_valid<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>
-        
-        <span class="token comment"># Example: compute area, buffer, or reproject</span>
+
+        <span class="token comment"># Example: compute area in square kilometres using geographic bounds</span>
         processed <span class="token operator">=</span> <span class="token punctuation">{</span>
             <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Feature"</span><span class="token punctuation">,</span>
             <span class="token string">"geometry"</span><span class="token punctuation">:</span> geom<span class="token punctuation">.</span>__geo_interface__<span class="token punctuation">,</span>
-            <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"area_sq_km"</span><span class="token punctuation">:</span> geom<span class="token punctuation">.</span>area <span class="token operator">/</span> <span class="token number">1e6</span><span class="token punctuation">}</span>
+            <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span>
+                <span class="token comment"># area using WGS84 degrees — project to equal-area CRS for real measurements</span>
+                <span class="token string">"bbox"</span><span class="token punctuation">:</span> geom<span class="token punctuation">.</span>bounds<span class="token punctuation">,</span>
+                <span class="token string">"is_valid"</span><span class="token punctuation">:</span> geom<span class="token punctuation">.</span>is_valid<span class="token punctuation">,</span>
+            <span class="token punctuation">}</span>
         <span class="token punctuation">}</span>
         <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"success"</span><span class="token punctuation">,</span> <span class="token string">"result"</span><span class="token punctuation">:</span> processed<span class="token punctuation">}</span>
     <span class="token keyword">except</span> Exception <span class="token keyword">as</span> e<span class="token punctuation">:</span>
@@ -237,10 +241,9 @@ WORKER_POOL <span class="token operator">=</span> ProcessPoolExecutor<span class
     <span class="token comment"># 1. Stream raw bytes without blocking the event loop</span>
     raw_bytes <span class="token operator">=</span> <span class="token keyword">await</span> request<span class="token punctuation">.</span>body<span class="token punctuation">(</span><span class="token punctuation">)</span>
 
-    <span class="token comment"># 2. Acknowledge immediately</span>
     logger<span class="token punctuation">.</span>info<span class="token punctuation">(</span><span class="token string">"Received %d bytes, returning 202 Accepted"</span><span class="token punctuation">,</span> <span class="token builtin">len</span><span class="token punctuation">(</span>raw_bytes<span class="token punctuation">)</span><span class="token punctuation">)</span>
 
-    <span class="token comment"># 3. Offload to background worker pool</span>
+    <span class="token comment"># 2. Offload to background worker pool and acknowledge immediately</span>
     background_tasks<span class="token punctuation">.</span>add_task<span class="token punctuation">(</span>_dispatch_to_pool<span class="token punctuation">,</span> raw_bytes<span class="token punctuation">)</span>
 
     <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"queued"</span><span class="token punctuation">,</span> <span class="token string">"message"</span><span class="token punctuation">:</span> <span class="token string">"Processing initiated"</span><span class="token punctuation">}</span>
@@ -249,16 +252,15 @@ WORKER_POOL <span class="token operator">=</span> ProcessPoolExecutor<span class
 <h2 id="memory-safety-concurrency-constraints" tabindex="-1"><a class="heading-anchor" href="#memory-safety-concurrency-constraints">Memory Safety &amp; Concurrency Constraints</a></h2>
 <p>Async geometry processing introduces unique memory pressure points. Deserializing multi-megabyte GeoJSON payloads into Python dictionaries can trigger sudden heap spikes. To maintain stability:</p>
 <ol>
-<li><strong>Stream Parsing</strong>: Use iterative JSON parsers (<code>ijson</code> or <code>orjson</code> streaming modes) to extract geometries without loading the entire document into RAM.</li>
-<li><strong>Process Isolation</strong>: <code>ProcessPoolExecutor</code> guarantees that a segmentation fault in GEOS or Shapely will not crash the main application process. Always wrap worker functions in explicit <code>try/except</code> blocks to capture C-level exceptions.</li>
+<li><strong>Stream Parsing</strong>: Use iterative JSON parsers (<code>ijson</code>) to extract geometries without loading the entire document into RAM.</li>
+<li><strong>Process Isolation</strong>: <code>ProcessPoolExecutor</code> guarantees that a segmentation fault in GEOS or Shapely will not crash the main application process. Always wrap worker functions in explicit <code>try/except</code> blocks to capture C-level exceptions that surface as Python exceptions.</li>
 <li><strong>Chunked Dispatch</strong>: For feature collections exceeding 100 MB, split payloads into coordinate-bounded batches before dispatch. This prevents worker timeouts and enables parallel processing across multiple nodes.</li>
 </ol>
 <h2 id="failure-recovery-batch-resilience" tabindex="-1"><a class="heading-anchor" href="#failure-recovery-batch-resilience">Failure Recovery &amp; Batch Resilience</a></h2>
-<p>Spatial workloads frequently encounter partial failures: a single invalid polygon in a 10,000-feature batch can halt an entire pipeline if error handling is naive. Implement idempotent retry logic with exponential backoff, and route unrecoverable payloads to a dead-letter queue (DLQ) for manual inspection. When processing large batches, isolate failures at the feature level rather than aborting the entire job. Detailed strategies for Handling partial geometry failures in batch processing cover checkpointing, partial success reporting, and DLQ reconciliation patterns.</p>
-<p>Always log the exact coordinate sequence or feature ID that triggered validation failures. This enables rapid debugging and prevents silent data corruption in downstream spatial indexes.</p>
+<p>Spatial workloads frequently encounter partial failures: a single invalid polygon in a 10,000-feature batch can halt an entire pipeline if error handling is naive. Implement idempotent retry logic with exponential backoff, and route unrecoverable payloads to a dead-letter queue (DLQ) for manual inspection. When processing large batches, isolate failures at the feature level rather than aborting the entire job. Log the exact coordinate sequence or feature ID that triggered validation failures to enable rapid debugging and prevent silent data corruption in downstream spatial indexes.</p>
 <h2 id="performance-optimization-at-scale" tabindex="-1"><a class="heading-anchor" href="#performance-optimization-at-scale">Performance Optimization at Scale</a></h2>
-<p>Once the async pipeline is stable, focus on computational efficiency. Python loops over coordinate arrays introduce significant overhead. Instead, leverage vectorized operations through NumPy-backed spatial libraries or GEOS C-API bindings. Batch coordinate transformations, topology checks, and spatial joins using array-oriented routines rather than iterative feature-by-feature processing. Implementing Using vectorized operations for payload transformation can reduce CPU time by 60–80% on dense linestring and point cloud workloads.</p>
-<p>Additionally, cache CRS transformation matrices and pre-compile spatial predicates (e.g., <code>shapely.prepared</code>) when applying the same operation across thousands of features. Monitor worker CPU utilization and memory fragmentation using <code>tracemalloc</code> and <code>psutil</code> to detect gradual degradation over sustained high-throughput periods.</p>
+<p>Once the async pipeline is stable, focus on computational efficiency. Python loops over coordinate arrays introduce significant overhead at scale. Instead, leverage vectorized operations through NumPy-backed spatial libraries or GEOS C-API bindings when available. Batch coordinate transformations, topology checks, and spatial joins using array-oriented routines rather than iterative feature-by-feature processing. This approach can reduce CPU time by 60–80% on dense linestring and point cloud workloads.</p>
+<p>Additionally, cache CRS transformation matrices and pre-compile spatial predicates using <code>shapely.prepared.prep()</code> when applying the same operation across thousands of features. Monitor worker CPU utilization and memory fragmentation using <code>tracemalloc</code> and <code>psutil</code> to detect gradual degradation over sustained high-throughput periods.</p>
 <h2 id="conclusion" tabindex="-1"><a class="heading-anchor" href="#conclusion">Conclusion</a></h2>
 <p>Async Processing for Heavy Geometries transforms spatial webhook ingestion from a latency bottleneck into a scalable, resilient pipeline. By decoupling I/O acknowledgment from CPU-bound computation, enforcing strict validation boundaries, and leveraging process isolation, platform teams can reliably handle multi-megabyte spatial payloads without compromising system stability. Combine this architecture with robust error routing, vectorized computation, and efficient serialization to build real-time spatial applications that scale predictably under load.</p>
 
@@ -266,7 +268,7 @@ WORKER_POOL <span class="token operator">=</span> ProcessPoolExecutor<span class
         <div class="children-grid">
           <a class="card " href="/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/optimizing-async-geometry-parsing-with-asyncio/">
             <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19c0-8 6-14 14-14 0 8-6 14-14 14z"/><path d="M5 19l6-6"/></svg></span>
-            <h3 class="card__title">Optimizing async geometry parsing with asyncio</h3>
+            <h3 class="card__title">Optimizing Async Geometry Parsing with asyncio</h3>
             <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
           </a>
         </div>
@@ -276,8 +278,8 @@ WORKER_POOL <span class="token operator">=</span> ProcessPoolExecutor<span class
         <div class="aside-card">
           <h3>Related in this section</h3>
           <ul>
-            <li><a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Event-Driven Geospatial Systems</a></li>
-            <li><a href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping: A Production-Ready Workflow for Event-Driven Spatial Systems</a></li>
+            <li><a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+            <li><a href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
             <li><a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
           </ul>
         </div>
@@ -315,6 +317,9 @@ WORKER_POOL <span class="token operator">=</span> ProcessPoolExecutor<span class
         <h4>Site</h4>
         <ul>
           <li><a href="/">Home</a></li>
+          <li><a href="/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
         </ul>
       </div>
       <div>
@@ -344,7 +349,7 @@ WORKER_POOL <span class="token operator">=</span> ProcessPoolExecutor<span class
 </footer>
 
   </div>
-  <script src="/assets/js/site.js" defer></script>
+  <script src="/assets/js/site.js?v=6c55de86" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

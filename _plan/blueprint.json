@@ -1,0 +1,69 @@
+{
+  "notes": "All code blocks must be syntax-highlighted Python; use mermaid for pipeline/architecture diagrams (flowchart LR or sequenceDiagram). The color scheme is peach-pink/minty-green/earthy-brown \u2014 mermaid theme variables should use these tones. Interactive checkboxes in prerequisites ([ ] rendered as toggleable). FAQ sections rendered as accordions. Tables must be horizontally scrollable on mobile. Inline code uses light background matching site palette. No external links in new pages beyond RFC 7946 and CloudEvents spec (already present in content). CRS references should always include the EPSG code. H3, S2, and Quadkey should be linked to their own pages when those pages exist.",
+  "schema": [
+    "Article",
+    "BreadcrumbList",
+    "HowTo",
+    "FAQPage"
+  ],
+  "customized": true,
+  "page_types": {
+    "pillar": {
+      "skeleton": [
+        "Lead paragraph: what problem this architectural domain solves and who it targets (platform engineers, GIS backend devs, real-time spatial app builders)",
+        "Anatomy of the core concept: labeled components of a spatial event / pipeline / system, with a structured list or mermaid diagram",
+        "Architectural patterns section: 2-3 named patterns (e.g., pub/sub with geographic partitioning, event sourcing for spatial state, stream processing), each with prose and inline code snippet",
+        "Python implementation & serialization: async patterns, broker integration, serialization format tradeoffs (JSON vs Protobuf vs MessagePack) with code example",
+        "Spatial-specific concerns: CRS normalization, spatial indexing strategies (H3/S2/Quadkey), geometry validation before dispatch",
+        "Production hardening: failure modes, idempotency, dead-letter queues with spatial context, monitoring metrics specific to geo workloads (partition skew, geometry validation failure rate)",
+        "FAQ accordion: 4-6 questions specific to this pillar's domain (e.g., 'When should I partition by H3 vs S2?', 'How do I handle mixed CRS in an event stream?')",
+        "Related block: 4-5 inline links to clusters and sibling pillars"
+      ],
+      "target_words": 4500
+    },
+    "cluster": {
+      "skeleton": [
+        "One-sentence answer / TL;DR at the very top (bold), plus up-link to parent pillar",
+        "Prerequisites checklist: Python version, libraries (shapely, pyproj, aiohttp, etc.), broker, spatial DB \u2014 rendered as interactive checkboxes",
+        "Architecture blueprint: numbered 3-4 layer breakdown with a mermaid flow diagram showing data path from spatial mutation to consumer",
+        "Step-by-step implementation: numbered steps, each with a purpose sentence followed by a runnable Python code block (FastAPI/aiohttp/asyncio patterns)",
+        "Spatial validation & error handling: geometry topology checks, CRS alignment code, schema validation with Pydantic, and what to do on failure",
+        "Retry, backoff & delivery guarantees: exponential backoff with jitter code, at-least-once vs exactly-once tradeoffs for spatial payloads",
+        "Verification: how to confirm the pipeline works end-to-end (test harness, log assertions, or integration test snippet)",
+        "Troubleshooting table: symptom | likely spatial cause | fix (responsive horizontal-scroll table)",
+        "FAQ accordion: 3-4 questions scoped to this cluster's specific implementation",
+        "Related block: 3-4 links (parent pillar + sibling clusters + relevant long-tails)"
+      ],
+      "target_words": 3500
+    },
+    "long_tail": {
+      "skeleton": [
+        "Direct answer sentence (bold, immediately actionable \u2014 no preamble), plus up-link to parent cluster and grandparent pillar",
+        "When to use this pattern: 2-3 bullet conditions that make this specific approach appropriate over alternatives",
+        "Complete runnable code block: self-contained Python example (no placeholder TODOs) with inline comments explaining spatial-specific choices",
+        "Parameter / option reference table: key arguments, types, spatial constraints, and defaults \u2014 horizontally scrollable",
+        "Gotchas & spatial edge cases: precision loss, coordinate ring orientation, CRS mismatch on merge, geometry validity after transformation \u2014 as a numbered list",
+        "Minimal verification snippet: a pytest or quick script the reader can run to confirm correctness",
+        "Related block: 2-3 links (parent cluster, one sibling long-tail, one pillar)"
+      ],
+      "target_words": 2000
+    }
+  },
+  "frontmatter": [
+    "title",
+    "description",
+    "slug",
+    "type",
+    "breadcrumb",
+    "datePublished",
+    "dateModified"
+  ],
+  "interlinking": "Every page must inline-link the first mention of any concept that has its own page, woven naturally into prose \u2014 not in a list. Examples: 'normalize geometries to a canonical CRS before serialization, as covered in [CRS Normalization Strategies](/spatial-payload-routing-parsing/crs-normalization-strategies/)'; 'apply an idempotency key derived from the feature hash, following the approach in [Event Key Generation for Spatial Data](/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/)'; 'trigger incremental tile invalidation via [Tile Update Event Pipelines](/core-event-fundamentals-architecture/tile-update-event-pipelines/)'. Cluster and long-tail pages must also include an up-link sentence in the opening paragraph referencing their parent pillar, e.g., 'This cluster is part of [Core Event Fundamentals & Architecture](/core-event-fundamentals-architecture/).' Every page ends with a compact 'Related' block (3-5 links) using descriptive anchor text drawn from this niche (no generic 'click here').",
+  "expansion_priorities": [
+    "Queue management & retry/backoff pillar: the site description calls this out explicitly but no pillar yet covers retry strategies, exponential backoff with jitter, or dead-letter queue design for spatial payloads \u2014 high-value gap",
+    "Monitoring & observability cluster: production metrics specific to geo workloads (partition skew, geometry validation failure rate, consumer lag per geographic shard) are mentioned in pillars but have no dedicated cluster or long-tail pages",
+    "Comparison long-tails: add 'H3 vs S2 vs Quadkey for spatial partitioning', 'Redis Streams vs Kafka for geospatial webhooks', and 'Protocol Buffers vs GeoJSON for high-frequency spatial events' \u2014 high search-intent, zero current coverage",
+    "Webhook security cluster: webhook-security-boundaries exists as a directory but may need long-tail depth on HMAC-SHA256 signing for spatial payloads, IP allowlisting patterns, and replay attack prevention"
+  ],
+  "page_anatomy_rationale": "This is a practitioner-grade engineering site where every concept needs runnable Python code, spatial data context, and production failure modes. Pillar pages establish the architectural contract; cluster pages deliver step-by-step implementation workflows with code; long-tail pages resolve a single precise how-to or gotcha with immediate, copy-paste-ready code."
+}

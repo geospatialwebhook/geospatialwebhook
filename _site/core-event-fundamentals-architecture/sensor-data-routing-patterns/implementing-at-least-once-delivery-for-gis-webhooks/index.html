@@ -4,8 +4,8 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 
-  <title>Implementing at-least-once delivery for GIS webhooks · Geo Webhook</title>
-  <meta name="description" content="Implementing at-least-once delivery for GIS webhooks requires a persistent ingestion layer, deterministic idempotency tracking, and exponential backoff…"/>
+  <title>Implementing At-Least-Once Delivery for GIS Webhooks · Geo Webhook</title>
+  <meta name="description" content="Implement at-least-once delivery for GIS webhooks: idempotency key derivation, Redis-backed deduplication, exponential backoff with jitter, and dead-letter routing."/>
   <link rel="canonical" href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/"/>
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
 
@@ -32,25 +32,25 @@
   <meta property="og:site_name" content="Geo Webhook"/>
   <meta property="og:locale" content="en_US"/>
   <meta property="og:url" content="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/"/>
-  <meta property="og:title" content="Implementing at-least-once delivery for GIS webhooks"/>
-  <meta property="og:description" content="Implementing at-least-once delivery for GIS webhooks requires a persistent ingestion layer, deterministic idempotency tracking, and exponential backoff…"/>
-  <meta property="og:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
-  <meta property="og:image:width" content="512"/>
-  <meta property="og:image:height" content="512"/>
-  <meta property="og:image:alt" content="Geospatial Webhook logo"/>
+  <meta property="og:title" content="Implementing At-Least-Once Delivery for GIS Webhooks"/>
+  <meta property="og:description" content="Implement at-least-once delivery for GIS webhooks: idempotency key derivation, Redis-backed deduplication, exponential backoff with jitter, and dead-letter routing."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
 
   
   <meta name="twitter:card" content="summary_large_image"/>
-  <meta name="twitter:title" content="Implementing at-least-once delivery for GIS webhooks"/>
-  <meta name="twitter:description" content="Implementing at-least-once delivery for GIS webhooks requires a persistent ingestion layer, deterministic idempotency tracking, and exponential backoff…"/>
-  <meta name="twitter:image" content="https://www.geospatialwebhook.com/icon-512.png"/>
-  <meta name="twitter:image:alt" content="Geospatial Webhook logo"/>
+  <meta name="twitter:title" content="Implementing At-Least-Once Delivery for GIS Webhooks"/>
+  <meta name="twitter:description" content="Implement at-least-once delivery for GIS webhooks: idempotency key derivation, Redis-backed deduplication, exponential backoff with jitter, and dead-letter routing."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
 
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/assets/css/site.css"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=8ef3d820"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -98,12 +98,12 @@
     "@type": "TechArticle",
     "@id": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/#article",
     "mainEntityOfPage": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/",
-    "headline": "Implementing at-least-once delivery for GIS webhooks",
-    "description": "Implementing at-least-once delivery for GIS webhooks requires a persistent ingestion layer, deterministic idempotency tracking, and exponential backoff…",
+    "headline": "Implementing At-Least-Once Delivery for GIS Webhooks",
+    "description": "Implement at-least-once delivery for GIS webhooks: idempotency key derivation, Redis-backed deduplication, exponential backoff with jitter, and dead-letter routing.",
     "inLanguage": "en",
     "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
     "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
-    "image": "https://www.geospatialwebhook.com/icon-512.png",
+    "image": "https://www.geospatialwebhook.com/og-image.png",
     "url": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/",
     "articleSection": "Core Event Fundamentals Architecture",
     "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
@@ -158,32 +158,127 @@
           <span aria-current="page">Implementing At Least Once Delivery For Gis Webhooks</span>
     </nav>
 
+    <h1 class="page__title">Implementing At-Least-Once Delivery for GIS Webhooks</h1>
+
     <div class="page__layout">
       <div class="markdown">
-        <h1 id="implementing-at-least-once-delivery-for-gis-webhooks" tabindex="-1"><a class="heading-anchor" href="#implementing-at-least-once-delivery-for-gis-webhooks">Implementing at-least-once delivery for GIS webhooks</a></h1>
-<p>Implementing at-least-once delivery for GIS webhooks requires a persistent ingestion layer, deterministic idempotency tracking, and exponential backoff retry logic. In production, this means immediately acknowledging the webhook with a <code>200 OK</code>, persisting the raw spatial payload alongside a unique event key, and delegating processing to a background worker that retries on <code>5xx</code> responses or network timeouts. Because at-least-once semantics guarantee duplicates, your spatial pipeline must enforce strict idempotency using sender-provided <code>event_id</code> headers or cryptographic payload hashes, backed by a low-latency state store. Decouple the receiver from the geospatial execution engine, apply bounded retry budgets, and route exhausted events to a dead-letter queue for manual reconciliation.</p>
-<h2 id="decouple-ingestion-from-spatial-execution" tabindex="-1"><a class="heading-anchor" href="#decouple-ingestion-from-spatial-execution">Decouple Ingestion from Spatial Execution</a></h2>
-<p>At-least-once delivery solves network partitioning and transient upstream failures, but it shifts the burden of consistency to your backend. For real-time spatial applications—whether ingesting IoT sensor coordinates, syncing drone telemetry, or routing feature updates from ArcGIS or Mapbox—duplicate processing corrupts spatial indexes, inflates metric counters, and triggers cascading routing errors.</p>
-<p>Your architecture must separate ingestion from execution. The HTTP endpoint validates the payload schema, logs the event signature, and pushes it to a durable queue. The consumer layer applies coordinate transformations, writes to PostGIS or GeoPackage, and updates routing caches. This decoupling aligns with established <a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns</a> where spatial payloads require deterministic ordering, strict schema validation, and fault-tolerant handoffs. Without this separation, synchronous webhook handlers will block on heavy geometry operations, causing upstream timeouts and triggering unnecessary retries.</p>
-<h2 id="enforce-deterministic-idempotency" tabindex="-1"><a class="heading-anchor" href="#enforce-deterministic-idempotency">Enforce Deterministic Idempotency</a></h2>
-<p>Underpinning this workflow are the <a href="/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a> principles: explicit acknowledgment windows, bounded retry budgets, and state reconciliation. Without persistent tracking, GIS webhooks will silently drop during database connection spikes or overwhelm downstream spatial services with redundant geometry updates.</p>
-<p>Idempotency must be enforced before any spatial computation begins:</p>
-<ol>
-<li><strong>Extract or derive a unique key:</strong> Prefer the <code>X-Event-ID</code> or <code>Idempotency-Key</code> header. If absent, generate a SHA-256 hash of the normalized payload (sorted keys, trimmed whitespace, consistent float precision).</li>
-<li><strong>Check-and-set in a low-latency store:</strong> Redis, PostgreSQL, or DynamoDB should track processed keys. Use <code>SETNX</code> (or equivalent) with a 24–72 hour TTL to bound storage growth.</li>
-<li><strong>Fail fast on duplicates:</strong> If the key exists, return <code>200 OK</code> immediately. Do not reprocess coordinates or update spatial indexes.</li>
-</ol>
-<p>Always validate incoming payloads against a strict GeoJSON or OGC-compliant schema before queuing. Malformed coordinates or invalid CRS declarations will poison spatial indexes and cause silent topology errors downstream.</p>
-<h2 id="bounded-retries-dead-letter-routing" tabindex="-1"><a class="heading-anchor" href="#bounded-retries-dead-letter-routing">Bounded Retries &amp; Dead-Letter Routing</a></h2>
-<p>Transient failures are inevitable. Your retry strategy must be predictable and resource-aware:</p>
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Implementing At-Least-Once Delivery for GIS Webhooks",
+      "description": "A complete implementation guide for at-least-once delivery in GIS webhook pipelines: idempotency key derivation, Redis-backed deduplication, exponential backoff with jitter, and dead-letter routing for spatial payloads.",
+      "datePublished": "2025-08-01",
+      "dateModified": "2026-06-24",
+      "author": { "@type": "Organization", "name": "GeoSpatialWebhook" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Core Event Fundamentals & Architecture", "item": "https://geospatialwebhook.com/core-event-fundamentals-architecture/" },
+        { "@type": "ListItem", "position": 2, "name": "Sensor Data Routing Patterns", "item": "https://geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/" },
+        { "@type": "ListItem", "position": 3, "name": "Implementing At-Least-Once Delivery for GIS Webhooks", "item": "https://geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/" }
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Implement At-Least-Once Delivery for GIS Webhooks",
+      "step": [
+        { "@type": "HowToStep", "position": 1, "name": "Acknowledge immediately", "text": "Return 200 OK before any spatial processing; push the raw payload to a durable queue." },
+        { "@type": "HowToStep", "position": 2, "name": "Derive an idempotency key", "text": "Prefer the X-Event-ID header; fall back to a SHA-256 hash of the coordinate-normalized payload." },
+        { "@type": "HowToStep", "position": 3, "name": "Atomic check-and-set", "text": "Use Redis SET NX EX to mark the key as in-flight before any geometry write." },
+        { "@type": "HowToStep", "position": 4, "name": "Process with bounded retries", "text": "Apply exponential backoff with full jitter; cap at 5–7 attempts." },
+        { "@type": "HowToStep", "position": 5, "name": "Route exhausted events to a dead-letter queue", "text": "Preserve the full payload and retry count for manual replay or alerting." }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is the difference between at-least-once and exactly-once delivery for GIS webhooks?",
+          "acceptedAnswer": { "@type": "Answer", "text": "At-least-once guarantees every spatial event arrives but may produce duplicates; your pipeline must deduplicate using idempotency keys. Exactly-once additionally prevents reprocessing at the broker level, but requires distributed transactions that most spatial stacks cannot support without significant latency cost." }
+        },
+        {
+          "@type": "Question",
+          "name": "Why must I normalize coordinates before hashing the payload?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Floating-point serialization varies by sender library: 40.7128 and 40.71280000000001 are the same coordinate but produce different hashes, causing the deduplication gate to miss duplicate events. Rounding to 6 decimal places (~11 cm precision) produces stable hashes without meaningful geographic loss." }
+        },
+        {
+          "@type": "Question",
+          "name": "How long should idempotency keys be retained?",
+          "acceptedAnswer": { "@type": "Answer", "text": "24–72 hours covers virtually all real-world retry windows. Retain dead-letter entries for 7 days to allow manual replay. Beyond that, keep only aggregated metrics — not raw payloads — to limit storage cost." }
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>Immediately return <code>200 OK</code> before touching any geometry, persist the raw spatial payload to a durable queue, and enforce Redis-backed idempotency before every write — that is the complete at-least-once contract for a GIS webhook pipeline.</strong></p>
+<p>This page is part of <a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns</a>, itself a section of <a href="/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a>. It focuses on the precise implementation mechanics: key derivation, atomic deduplication, retry budgets, and dead-letter routing — all adapted for the coordinate-precision and CRS constraints that spatial payloads introduce.</p>
+<hr>
+<svg viewBox="0 0 780 220" role="img" aria-label="At-least-once delivery flow for a GIS webhook" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:780px;height:auto;display:block;margin:1.5rem auto;">
+  <title>At-least-once delivery flow for a GIS webhook</title>
+  <desc>Sequence diagram showing: HTTP POST arrives at the webhook receiver, which immediately returns 200 OK, then enqueues the raw payload. A background worker checks Redis for a duplicate idempotency key; if new, it processes the spatial event and writes to PostGIS. If the key already exists, the duplicate is skipped. After MAX_RETRIES exhaustion, the event moves to a dead-letter queue.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <!-- Background lanes -->
+  <rect x="0" y="0" width="780" height="220" rx="8" fill="#fdf6f0" stroke="#d4a896" stroke-width="1.2"/>
+  <!-- Lane: Sender -->
+  <rect x="8" y="8" width="110" height="204" rx="6" fill="#ffe4d6" stroke="#d4a896" stroke-width="1"/>
+  <text x="63" y="28" text-anchor="middle" font-size="11" font-weight="600" fill="#7a3b1e">Sender</text>
+  <!-- Lane: Receiver -->
+  <rect x="126" y="8" width="130" height="204" rx="6" fill="#e6f7f0" stroke="#6abf9e" stroke-width="1"/>
+  <text x="191" y="28" text-anchor="middle" font-size="11" font-weight="600" fill="#1a5c3a">HTTP Receiver</text>
+  <!-- Lane: Worker -->
+  <rect x="264" y="8" width="160" height="204" rx="6" fill="#e8f0fd" stroke="#7a9fd4" stroke-width="1"/>
+  <text x="344" y="28" text-anchor="middle" font-size="11" font-weight="600" fill="#1c3a6e">Background Worker</text>
+  <!-- Lane: Redis -->
+  <rect x="432" y="8" width="130" height="204" rx="6" fill="#fff8e1" stroke="#c8a84b" stroke-width="1"/>
+  <text x="497" y="28" text-anchor="middle" font-size="11" font-weight="600" fill="#5c4400">Redis</text>
+  <!-- Lane: PostGIS / DLQ -->
+  <rect x="570" y="8" width="202" height="204" rx="6" fill="#f3e8ff" stroke="#9b6abf" stroke-width="1"/>
+  <text x="671" y="28" text-anchor="middle" font-size="11" font-weight="600" fill="#3d1266">PostGIS / DLQ</text>
+  <!-- Step 1: POST -->
+  <line x1="115" y1="55" x2="126" y2="55" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow)"/>
+  <text x="63" y="52" text-anchor="middle" font-size="10" fill="#7a3b1e">POST /webhooks/gis</text>
+  <!-- Step 2: 200 OK -->
+  <line x1="126" y1="72" x2="115" y2="72" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow)"/>
+  <text x="191" y="69" text-anchor="middle" font-size="10" fill="#1a5c3a">200 OK (immediate)</text>
+  <!-- Step 3: Enqueue -->
+  <line x1="253" y1="90" x2="264" y2="90" stroke="currentColor" stroke-width="1.4" stroke-dasharray="4,2" marker-end="url(#arrow)"/>
+  <text x="191" y="87" text-anchor="middle" font-size="10" fill="#1a5c3a">enqueue payload</text>
+  <!-- Step 4: SET NX -->
+  <line x1="422" y1="110" x2="432" y2="110" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow)"/>
+  <text x="344" y="107" text-anchor="middle" font-size="10" fill="#1c3a6e">SET NX EX (idemp key)</text>
+  <!-- Step 5a: key exists → skip -->
+  <line x1="432" y1="127" x2="422" y2="127" stroke="currentColor" stroke-width="1.4" stroke-dasharray="3,2" marker-end="url(#arrow)"/>
+  <text x="497" y="124" text-anchor="middle" font-size="10" fill="#5c4400">nil → skip duplicate</text>
+  <!-- Step 5b: key new → process -->
+  <line x1="432" y1="145" x2="422" y2="145" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow)"/>
+  <text x="497" y="142" text-anchor="middle" font-size="10" fill="#5c4400">OK → proceed</text>
+  <!-- Step 6: write to PostGIS -->
+  <line x1="422" y1="163" x2="570" y2="163" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow)"/>
+  <text x="344" y="160" text-anchor="middle" font-size="10" fill="#1c3a6e">write geometry</text>
+  <!-- Step 7: DLQ on exhaustion -->
+  <line x1="422" y1="183" x2="570" y2="183" stroke="currentColor" stroke-width="1.4" stroke-dasharray="4,2" marker-end="url(#arrow)"/>
+  <text x="344" y="198" text-anchor="middle" font-size="10" fill="#c0392b">→ DLQ after MAX_RETRIES</text>
+</svg>
+<h2 id="when-to-use-this-pattern" tabindex="-1"><a class="heading-anchor" href="#when-to-use-this-pattern">When to use this pattern</a></h2>
+<p>At-least-once delivery with explicit idempotency enforcement is the right choice when:</p>
 <ul>
-<li><strong>Exponential backoff with jitter:</strong> Prevents thundering herd problems when upstream services recover.</li>
-<li><strong>Bounded retry budgets:</strong> Cap attempts at 5–7 retries. Beyond that, the event is likely malformed or the downstream service is degraded.</li>
-<li><strong>Dead-letter queue (DLQ):</strong> Route exhausted events to a separate queue with full payload context for manual reconciliation or automated alerting.</li>
+<li><strong>Your upstream cannot guarantee deduplication.</strong> Third-party GIS platforms (ArcGIS Online, Mapbox, Felt) resend events on connection timeout without a built-in deduplication protocol, so your receiver owns the duplicate-suppression contract.</li>
+<li><strong>Spatial processing is expensive but not strictly transactional.</strong> Writing to PostGIS, updating routing graphs, or invalidating tile caches can tolerate an occasional redundant attempt, but silently processing the same coordinate update twice corrupts spatial indexes and inflates metric counters.</li>
+<li><strong>Network partitions are more likely than message loss.</strong> Ephemeral network errors cause retries; at-least-once matches that failure model and avoids the overhead of distributed transactions that exactly-once requires.</li>
 </ul>
-<p>For authoritative guidance on retry strategies and backoff algorithms, consult the <a href="https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/">AWS Well-Architected Reliability Pillar</a> or standard distributed systems literature.</p>
-<h2 id="production-ready-python-implementation" tabindex="-1"><a class="heading-anchor" href="#production-ready-python-implementation">Production-Ready Python Implementation</a></h2>
-<p>The following FastAPI receiver demonstrates production-ready at-least-once handling with async Redis-backed idempotency, exponential backoff with jitter, and explicit background processing.</p>
+<p>When you need true exactly-once semantics — for example, financial transactions tied to a geographic asset — pair this pattern with a two-phase commit or use a broker (Kafka with <code>enable.idempotence=true</code>) that provides exactly-once at the protocol level.</p>
+<h2 id="complete-runnable-implementation" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-implementation">Complete runnable implementation</a></h2>
+<p>The following self-contained FastAPI application implements every component: immediate acknowledgment, coordinate-normalized idempotency key derivation, atomic Redis deduplication, bounded exponential backoff with full jitter, and dead-letter routing. Swap the <code># SPATIAL PROCESSING</code> block for your actual PostGIS write, shapely validation, or tile cache invalidation call.</p>
 <div class="code-block" data-lang="python">
   <div class="code-block__header">
     <span class="code-block__lang">python</span>
@@ -191,84 +286,409 @@
       <span class="code-block__copy-label">Copy</span>
     </button>
   </div>
-  <pre class="language-python"><code class="language-python"><span class="token keyword">import</span> asyncio
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token triple-quoted-string string">"""
+at_least_once_gis.py — Production at-least-once GIS webhook receiver.
+
+Dependencies: fastapi, uvicorn, redis[asyncio], shapely, pyproj, pydantic
+"""</span>
+
+<span class="token keyword">import</span> asyncio
 <span class="token keyword">import</span> hashlib
+<span class="token keyword">import</span> json
 <span class="token keyword">import</span> logging
+<span class="token keyword">import</span> math
 <span class="token keyword">import</span> random
-<span class="token keyword">from</span> typing <span class="token keyword">import</span> Dict<span class="token punctuation">,</span> Any
-<span class="token keyword">from</span> fastapi <span class="token keyword">import</span> FastAPI<span class="token punctuation">,</span> Request<span class="token punctuation">,</span> HTTPException<span class="token punctuation">,</span> BackgroundTasks
-<span class="token keyword">import</span> redis<span class="token punctuation">.</span>asyncio <span class="token keyword">as</span> redis
+<span class="token keyword">from</span> typing <span class="token keyword">import</span> Any
 
-app <span class="token operator">=</span> FastAPI<span class="token punctuation">(</span><span class="token punctuation">)</span>
-redis_client <span class="token operator">=</span> redis<span class="token punctuation">.</span>Redis<span class="token punctuation">(</span>host<span class="token operator">=</span><span class="token string">"localhost"</span><span class="token punctuation">,</span> port<span class="token operator">=</span><span class="token number">6379</span><span class="token punctuation">,</span> db<span class="token operator">=</span><span class="token number">0</span><span class="token punctuation">,</span> decode_responses<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span>
-logger <span class="token operator">=</span> logging<span class="token punctuation">.</span>getLogger<span class="token punctuation">(</span><span class="token string">"gis_webhook"</span><span class="token punctuation">)</span>
+<span class="token keyword">import</span> redis<span class="token punctuation">.</span>asyncio <span class="token keyword">as</span> aioredis
+<span class="token keyword">from</span> fastapi <span class="token keyword">import</span> BackgroundTasks<span class="token punctuation">,</span> FastAPI<span class="token punctuation">,</span> HTTPException<span class="token punctuation">,</span> Request
+<span class="token keyword">from</span> pydantic <span class="token keyword">import</span> BaseModel<span class="token punctuation">,</span> field_validator
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>validation <span class="token keyword">import</span> explain_validity
 
-IDEMPOTENCY_TTL <span class="token operator">=</span> <span class="token number">86400</span>  <span class="token comment"># 24 hours</span>
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+<span class="token comment"># Configuration</span>
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+IDEMPOTENCY_TTL_SECONDS <span class="token operator">=</span> <span class="token number">86_400</span>        <span class="token comment"># 24-hour retention for processed keys</span>
+DLQ_TTL_SECONDS <span class="token operator">=</span> <span class="token number">604_800</span>              <span class="token comment"># 7-day retention for dead-letter entries</span>
 MAX_RETRIES <span class="token operator">=</span> <span class="token number">5</span>
-BASE_DELAY <span class="token operator">=</span> <span class="token number">2.0</span>
+BASE_BACKOFF_SECONDS <span class="token operator">=</span> <span class="token number">2.0</span>
+COORDINATE_PRECISION <span class="token operator">=</span> <span class="token number">6</span>               <span class="token comment"># ~11 cm; sufficient for all GIS use-cases</span>
 
-<span class="token keyword">def</span> <span class="token function">derive_idempotency_key</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">,</span> event_id<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
-    <span class="token triple-quoted-string string">"""Generate a deterministic idempotency key from header or payload hash."""</span>
+app <span class="token operator">=</span> FastAPI<span class="token punctuation">(</span>title<span class="token operator">=</span><span class="token string">"GIS Webhook Receiver"</span><span class="token punctuation">)</span>
+redis_client <span class="token operator">=</span> aioredis<span class="token punctuation">.</span>Redis<span class="token punctuation">(</span>host<span class="token operator">=</span><span class="token string">"localhost"</span><span class="token punctuation">,</span> port<span class="token operator">=</span><span class="token number">6379</span><span class="token punctuation">,</span> db<span class="token operator">=</span><span class="token number">0</span><span class="token punctuation">,</span> decode_responses<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span>
+logger <span class="token operator">=</span> logging<span class="token punctuation">.</span>getLogger<span class="token punctuation">(</span><span class="token string">"gis.at_least_once"</span><span class="token punctuation">)</span>
+
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+<span class="token comment"># Payload schema (GeoJSON Feature, strict)</span>
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+<span class="token keyword">class</span> <span class="token class-name">GeoJSONFeaturePayload</span><span class="token punctuation">(</span>BaseModel<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Minimal GeoJSON Feature schema for webhook ingestion."""</span>
+    <span class="token builtin">type</span><span class="token punctuation">:</span> <span class="token builtin">str</span>
+    geometry<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span>
+    properties<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span>
+
+    <span class="token decorator annotation punctuation">@field_validator</span><span class="token punctuation">(</span><span class="token string">"type"</span><span class="token punctuation">)</span>
+    <span class="token decorator annotation punctuation">@classmethod</span>
+    <span class="token keyword">def</span> <span class="token function">must_be_feature</span><span class="token punctuation">(</span>cls<span class="token punctuation">,</span> v<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+        <span class="token keyword">if</span> v <span class="token operator">!=</span> <span class="token string">"Feature"</span><span class="token punctuation">:</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Expected GeoJSON 'Feature', got '</span><span class="token interpolation"><span class="token punctuation">{</span>v<span class="token punctuation">}</span></span><span class="token string">'"</span></span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> v
+
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+<span class="token comment"># Idempotency key derivation</span>
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+<span class="token keyword">def</span> <span class="token function">_round_coordinates</span><span class="token punctuation">(</span>obj<span class="token punctuation">:</span> Any<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> Any<span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Recursively round all floats to COORDINATE_PRECISION decimal places.
+
+    Floating-point serialization varies across sender libraries — 40.7128 and
+    40.712800000001 are geographically identical but produce different SHA-256
+    hashes. Rounding before hashing ensures duplicate payloads yield the same key.
+    """</span>
+    <span class="token keyword">if</span> <span class="token builtin">isinstance</span><span class="token punctuation">(</span>obj<span class="token punctuation">,</span> <span class="token builtin">float</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token builtin">round</span><span class="token punctuation">(</span>obj<span class="token punctuation">,</span> COORDINATE_PRECISION<span class="token punctuation">)</span>
+    <span class="token keyword">if</span> <span class="token builtin">isinstance</span><span class="token punctuation">(</span>obj<span class="token punctuation">,</span> <span class="token builtin">list</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token punctuation">[</span>_round_coordinates<span class="token punctuation">(</span>v<span class="token punctuation">)</span> <span class="token keyword">for</span> v <span class="token keyword">in</span> obj<span class="token punctuation">]</span>
+    <span class="token keyword">if</span> <span class="token builtin">isinstance</span><span class="token punctuation">(</span>obj<span class="token punctuation">,</span> <span class="token builtin">dict</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token punctuation">{</span>k<span class="token punctuation">:</span> _round_coordinates<span class="token punctuation">(</span>v<span class="token punctuation">)</span> <span class="token keyword">for</span> k<span class="token punctuation">,</span> v <span class="token keyword">in</span> <span class="token builtin">sorted</span><span class="token punctuation">(</span>obj<span class="token punctuation">.</span>items<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">}</span>
+    <span class="token keyword">return</span> obj
+
+<span class="token keyword">def</span> <span class="token function">derive_idempotency_key</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">,</span> event_id<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">|</span> <span class="token boolean">None</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Return a Redis key that uniquely identifies this spatial event.
+
+    Priority:
+    1. X-Event-ID or Idempotency-Key header (sender-assigned, most reliable).
+    2. SHA-256 hash of the coordinate-normalized, key-sorted payload JSON
+       (used when the sender provides no event identifier).
+    """</span>
     <span class="token keyword">if</span> event_id<span class="token punctuation">:</span>
         <span class="token keyword">return</span> <span class="token string-interpolation"><span class="token string">f"idemp:</span><span class="token interpolation"><span class="token punctuation">{</span>event_id<span class="token punctuation">}</span></span><span class="token string">"</span></span>
-    normalized <span class="token operator">=</span> <span class="token builtin">str</span><span class="token punctuation">(</span><span class="token builtin">sorted</span><span class="token punctuation">(</span>payload<span class="token punctuation">.</span>items<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token string">"utf-8"</span><span class="token punctuation">)</span>
-    <span class="token keyword">return</span> <span class="token string-interpolation"><span class="token string">f"idemp:</span><span class="token interpolation"><span class="token punctuation">{</span>hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">(</span>normalized<span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">"</span></span>
 
-<span class="token keyword">def</span> <span class="token function">calculate_backoff</span><span class="token punctuation">(</span>attempt<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">float</span><span class="token punctuation">:</span>
-    <span class="token triple-quoted-string string">"""Exponential backoff with full jitter to prevent thundering herds."""</span>
-    delay <span class="token operator">=</span> BASE_DELAY <span class="token operator">*</span> <span class="token punctuation">(</span><span class="token number">2</span> <span class="token operator">**</span> attempt<span class="token punctuation">)</span>
-    jitter <span class="token operator">=</span> random<span class="token punctuation">.</span>uniform<span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> delay<span class="token punctuation">)</span>
-    <span class="token keyword">return</span> <span class="token builtin">min</span><span class="token punctuation">(</span>delay <span class="token operator">+</span> jitter<span class="token punctuation">,</span> <span class="token number">60.0</span><span class="token punctuation">)</span>  <span class="token comment"># Cap at 60s</span>
+    normalized <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>_round_coordinates<span class="token punctuation">(</span>payload<span class="token punctuation">)</span><span class="token punctuation">,</span> sort_keys<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span> separators<span class="token operator">=</span><span class="token punctuation">(</span><span class="token string">","</span><span class="token punctuation">,</span> <span class="token string">":"</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    digest <span class="token operator">=</span> hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">(</span>normalized<span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> <span class="token string-interpolation"><span class="token string">f"idemp:</span><span class="token interpolation"><span class="token punctuation">{</span>digest<span class="token punctuation">}</span></span><span class="token string">"</span></span>
 
-<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">process_spatial_event</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">,</span> event_id<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
-    <span class="token triple-quoted-string string">"""Background worker with bounded retries and idempotency enforcement."""</span>
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+<span class="token comment"># Backoff strategy</span>
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+<span class="token keyword">def</span> <span class="token function">full_jitter_backoff</span><span class="token punctuation">(</span>attempt<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">float</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Full jitter: uniform sample in [0, min(cap, base * 2^attempt)].
+
+    Full jitter outperforms equal-jitter and decorrelated jitter at preventing
+    thundering-herd problems when many retrying workers recover simultaneously
+    after a PostGIS or network outage.
+    """</span>
+    cap <span class="token operator">=</span> <span class="token number">60.0</span>
+    ceiling <span class="token operator">=</span> <span class="token builtin">min</span><span class="token punctuation">(</span>cap<span class="token punctuation">,</span> BASE_BACKOFF_SECONDS <span class="token operator">*</span> math<span class="token punctuation">.</span><span class="token builtin">pow</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">,</span> attempt<span class="token punctuation">)</span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> random<span class="token punctuation">.</span>uniform<span class="token punctuation">(</span><span class="token number">0.0</span><span class="token punctuation">,</span> ceiling<span class="token punctuation">)</span>
+
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+<span class="token comment"># Geometry validation</span>
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+<span class="token keyword">def</span> <span class="token function">validate_geometry</span><span class="token punctuation">(</span>geometry_dict<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Raise ValueError for invalid or degenerate geometries before any DB write.
+
+    Inserting an invalid polygon into PostGIS can corrupt spatial indexes and
+    cause ST_Intersects / ST_Contains queries to return wrong results indefinitely.
+    Validate with shapely before the geometry touches any spatial store.
+    """</span>
+    <span class="token keyword">try</span><span class="token punctuation">:</span>
+        geom <span class="token operator">=</span> shape<span class="token punctuation">(</span>geometry_dict<span class="token punctuation">)</span>
+    <span class="token keyword">except</span> Exception <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Cannot parse geometry: </span><span class="token interpolation"><span class="token punctuation">{</span>exc<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span> <span class="token keyword">from</span> exc
+
+    <span class="token keyword">if</span> <span class="token keyword">not</span> geom<span class="token punctuation">.</span>is_valid<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Invalid geometry: </span><span class="token interpolation"><span class="token punctuation">{</span>explain_validity<span class="token punctuation">(</span>geom<span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+
+    <span class="token keyword">if</span> geom<span class="token punctuation">.</span>is_empty<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"Geometry is empty — zero-area or zero-length feature rejected"</span><span class="token punctuation">)</span>
+
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+<span class="token comment"># Background worker</span>
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">process_spatial_event</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">,</span> event_id<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">|</span> <span class="token boolean">None</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Deduplication + bounded-retry spatial processor.
+
+    1. Derive the idempotency key.
+    2. Atomic SET NX EX — skip immediately if key already exists (duplicate).
+    3. Validate geometry before any spatial write.
+    4. Attempt processing with exponential backoff and full jitter.
+    5. On exhaustion, route to the dead-letter queue and release the key so
+       manual replay is possible.
+    """</span>
     key <span class="token operator">=</span> derive_idempotency_key<span class="token punctuation">(</span>payload<span class="token punctuation">,</span> event_id<span class="token punctuation">)</span>
-    
-    <span class="token comment"># Check if already processed</span>
-    <span class="token keyword">if</span> <span class="token keyword">await</span> redis_client<span class="token punctuation">.</span>exists<span class="token punctuation">(</span>key<span class="token punctuation">)</span><span class="token punctuation">:</span>
-        logger<span class="token punctuation">.</span>info<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Duplicate event skipped: </span><span class="token interpolation"><span class="token punctuation">{</span>key<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+
+    <span class="token comment"># Atomic check-and-set: only ONE worker proceeds per unique event</span>
+    acquired <span class="token operator">=</span> <span class="token keyword">await</span> redis_client<span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">(</span>key<span class="token punctuation">,</span> <span class="token string">"processing"</span><span class="token punctuation">,</span> nx<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span> ex<span class="token operator">=</span>IDEMPOTENCY_TTL_SECONDS<span class="token punctuation">)</span>
+    <span class="token keyword">if</span> <span class="token keyword">not</span> acquired<span class="token punctuation">:</span>
+        logger<span class="token punctuation">.</span>info<span class="token punctuation">(</span><span class="token string">"Duplicate spatial event skipped: %s"</span><span class="token punctuation">,</span> key<span class="token punctuation">)</span>
+        <span class="token keyword">return</span>
+
+    <span class="token comment"># Validate geometry once, outside the retry loop — malformed geometries</span>
+    <span class="token comment"># will not succeed on retry, so fail fast and route directly to DLQ.</span>
+    <span class="token keyword">try</span><span class="token punctuation">:</span>
+        validate_geometry<span class="token punctuation">(</span>payload<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"geometry"</span><span class="token punctuation">,</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    <span class="token keyword">except</span> ValueError <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+        logger<span class="token punctuation">.</span>error<span class="token punctuation">(</span><span class="token string">"Geometry validation failed for %s: %s — routing to DLQ"</span><span class="token punctuation">,</span> key<span class="token punctuation">,</span> exc<span class="token punctuation">)</span>
+        dlq_key <span class="token operator">=</span> <span class="token string-interpolation"><span class="token string">f"dlq:</span><span class="token interpolation"><span class="token punctuation">{</span>key<span class="token punctuation">}</span></span><span class="token string">"</span></span>
+        dlq_value <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token string">"payload"</span><span class="token punctuation">:</span> payload<span class="token punctuation">,</span> <span class="token string">"error"</span><span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">(</span>exc<span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token string">"retries"</span><span class="token punctuation">:</span> <span class="token number">0</span><span class="token punctuation">}</span><span class="token punctuation">)</span>
+        <span class="token keyword">await</span> redis_client<span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">(</span>dlq_key<span class="token punctuation">,</span> dlq_value<span class="token punctuation">,</span> ex<span class="token operator">=</span>DLQ_TTL_SECONDS<span class="token punctuation">)</span>
+        <span class="token keyword">await</span> redis_client<span class="token punctuation">.</span>delete<span class="token punctuation">(</span>key<span class="token punctuation">)</span>
         <span class="token keyword">return</span>
 
     <span class="token keyword">for</span> attempt <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span>MAX_RETRIES<span class="token punctuation">)</span><span class="token punctuation">:</span>
         <span class="token keyword">try</span><span class="token punctuation">:</span>
-            <span class="token comment"># TODO: Replace with actual GIS processing (e.g., PostGIS write, topology validation)</span>
-            <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span><span class="token number">0.1</span><span class="token punctuation">)</span>  <span class="token comment"># Simulate spatial computation</span>
-            
-            <span class="token comment"># Mark as processed</span>
-            <span class="token keyword">await</span> redis_client<span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">(</span>key<span class="token punctuation">,</span> <span class="token string">"processed"</span><span class="token punctuation">,</span> ex<span class="token operator">=</span>IDEMPOTENCY_TTL<span class="token punctuation">)</span>
-            logger<span class="token punctuation">.</span>info<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Successfully processed event: </span><span class="token interpolation"><span class="token punctuation">{</span>key<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
-            <span class="token keyword">return</span>
-        <span class="token keyword">except</span> Exception <span class="token keyword">as</span> e<span class="token punctuation">:</span>
-            wait <span class="token operator">=</span> calculate_backoff<span class="token punctuation">(</span>attempt<span class="token punctuation">)</span>
-            logger<span class="token punctuation">.</span>warning<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Attempt </span><span class="token interpolation"><span class="token punctuation">{</span>attempt <span class="token operator">+</span> <span class="token number">1</span><span class="token punctuation">}</span></span><span class="token string">/</span><span class="token interpolation"><span class="token punctuation">{</span>MAX_RETRIES<span class="token punctuation">}</span></span><span class="token string"> failed for </span><span class="token interpolation"><span class="token punctuation">{</span>key<span class="token punctuation">}</span></span><span class="token string">. Retrying in </span><span class="token interpolation"><span class="token punctuation">{</span>wait<span class="token punctuation">:</span><span class="token format-spec">.2f</span><span class="token punctuation">}</span></span><span class="token string">s. Error: </span><span class="token interpolation"><span class="token punctuation">{</span>e<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+            <span class="token comment"># -------------------------------------------------------------------</span>
+            <span class="token comment"># SPATIAL PROCESSING — replace with your actual implementation:</span>
+            <span class="token comment">#   - asyncpg INSERT to PostGIS with ST_GeomFromGeoJSON</span>
+            <span class="token comment">#   - Shapely-based topology merge</span>
+            <span class="token comment">#   - Tile cache invalidation via HTTP to your tile server</span>
+            <span class="token comment">#   - Routing graph update in Neo4j / pgRouting</span>
+            <span class="token comment"># -------------------------------------------------------------------</span>
+            <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span><span class="token number">0.0</span><span class="token punctuation">)</span>  <span class="token comment"># Remove; placeholder for real async call</span>
+            logger<span class="token punctuation">.</span>info<span class="token punctuation">(</span><span class="token string">"Spatial event processed successfully: %s"</span><span class="token punctuation">,</span> key<span class="token punctuation">)</span>
+            <span class="token keyword">return</span>  <span class="token comment"># Success — idempotency key remains set in Redis as proof</span>
+
+        <span class="token keyword">except</span> Exception <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+            wait <span class="token operator">=</span> full_jitter_backoff<span class="token punctuation">(</span>attempt<span class="token punctuation">)</span>
+            logger<span class="token punctuation">.</span>warning<span class="token punctuation">(</span>
+                <span class="token string">"Attempt %d/%d failed for %s — retrying in %.2fs. Error: %s"</span><span class="token punctuation">,</span>
+                attempt <span class="token operator">+</span> <span class="token number">1</span><span class="token punctuation">,</span> MAX_RETRIES<span class="token punctuation">,</span> key<span class="token punctuation">,</span> wait<span class="token punctuation">,</span> exc<span class="token punctuation">,</span>
+            <span class="token punctuation">)</span>
             <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span>wait<span class="token punctuation">)</span>
-    
-    <span class="token comment"># Exhausted retries -> route to DLQ</span>
-    logger<span class="token punctuation">.</span>error<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Event </span><span class="token interpolation"><span class="token punctuation">{</span>key<span class="token punctuation">}</span></span><span class="token string"> exhausted retries. Routing to DLQ."</span></span><span class="token punctuation">)</span>
-    <span class="token keyword">await</span> redis_client<span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"dlq:</span><span class="token interpolation"><span class="token punctuation">{</span>key<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">,</span> <span class="token builtin">str</span><span class="token punctuation">(</span>payload<span class="token punctuation">)</span><span class="token punctuation">,</span> ex<span class="token operator">=</span><span class="token number">604800</span><span class="token punctuation">)</span>  <span class="token comment"># 7-day retention</span>
 
-<span class="token decorator annotation punctuation">@app<span class="token punctuation">.</span>post</span><span class="token punctuation">(</span><span class="token string">"/webhooks/gis"</span><span class="token punctuation">)</span>
-<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">receive_gis_webhook</span><span class="token punctuation">(</span>request<span class="token punctuation">:</span> Request<span class="token punctuation">,</span> background_tasks<span class="token punctuation">:</span> BackgroundTasks<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token comment"># Retries exhausted — move to dead-letter queue</span>
+    logger<span class="token punctuation">.</span>error<span class="token punctuation">(</span><span class="token string">"Event %s exhausted %d retries. Routing to DLQ."</span><span class="token punctuation">,</span> key<span class="token punctuation">,</span> MAX_RETRIES<span class="token punctuation">)</span>
+    dlq_key <span class="token operator">=</span> <span class="token string-interpolation"><span class="token string">f"dlq:</span><span class="token interpolation"><span class="token punctuation">{</span>key<span class="token punctuation">}</span></span><span class="token string">"</span></span>
+    dlq_value <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token string">"payload"</span><span class="token punctuation">:</span> payload<span class="token punctuation">,</span> <span class="token string">"retries"</span><span class="token punctuation">:</span> MAX_RETRIES<span class="token punctuation">}</span><span class="token punctuation">)</span>
+    <span class="token keyword">await</span> redis_client<span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">(</span>dlq_key<span class="token punctuation">,</span> dlq_value<span class="token punctuation">,</span> ex<span class="token operator">=</span>DLQ_TTL_SECONDS<span class="token punctuation">)</span>
+
+    <span class="token comment"># Delete processing key so the event can be replayed manually via DLQ consumer</span>
+    <span class="token keyword">await</span> redis_client<span class="token punctuation">.</span>delete<span class="token punctuation">(</span>key<span class="token punctuation">)</span>
+
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+<span class="token comment"># HTTP endpoint</span>
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+<span class="token decorator annotation punctuation">@app<span class="token punctuation">.</span>post</span><span class="token punctuation">(</span><span class="token string">"/webhooks/gis"</span><span class="token punctuation">,</span> status_code<span class="token operator">=</span><span class="token number">200</span><span class="token punctuation">)</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">receive_gis_webhook</span><span class="token punctuation">(</span>
+    request<span class="token punctuation">:</span> Request<span class="token punctuation">,</span>
+    background_tasks<span class="token punctuation">:</span> BackgroundTasks<span class="token punctuation">,</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> <span class="token builtin">str</span><span class="token punctuation">]</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Accept a GeoJSON Feature webhook and acknowledge before processing.
+
+    The immediate 200 OK stops the sender's retry timer. All spatial work
+    happens in the background, decoupled from the HTTP response path.
+    """</span>
     <span class="token keyword">try</span><span class="token punctuation">:</span>
-        payload <span class="token operator">=</span> <span class="token keyword">await</span> request<span class="token punctuation">.</span>json<span class="token punctuation">(</span><span class="token punctuation">)</span>
-        event_id <span class="token operator">=</span> request<span class="token punctuation">.</span>headers<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"X-Event-ID"</span><span class="token punctuation">)</span> <span class="token keyword">or</span> request<span class="token punctuation">.</span>headers<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"Idempotency-Key"</span><span class="token punctuation">)</span>
-    <span class="token keyword">except</span> Exception<span class="token punctuation">:</span>
-        <span class="token keyword">raise</span> HTTPException<span class="token punctuation">(</span>status_code<span class="token operator">=</span><span class="token number">400</span><span class="token punctuation">,</span> detail<span class="token operator">=</span><span class="token string">"Invalid JSON payload"</span><span class="token punctuation">)</span>
+        raw <span class="token operator">=</span> <span class="token keyword">await</span> request<span class="token punctuation">.</span>json<span class="token punctuation">(</span><span class="token punctuation">)</span>
+        payload <span class="token operator">=</span> GeoJSONFeaturePayload<span class="token punctuation">(</span><span class="token operator">**</span>raw<span class="token punctuation">)</span><span class="token punctuation">.</span>model_dump<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">except</span> Exception <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> HTTPException<span class="token punctuation">(</span>status_code<span class="token operator">=</span><span class="token number">400</span><span class="token punctuation">,</span> detail<span class="token operator">=</span><span class="token string-interpolation"><span class="token string">f"Schema validation failed: </span><span class="token interpolation"><span class="token punctuation">{</span>exc<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
 
-    <span class="token comment"># Immediate 200 OK acknowledgment</span>
+    <span class="token comment"># Prefer sender-assigned event identifier for stable deduplication</span>
+    event_id <span class="token operator">=</span> <span class="token punctuation">(</span>
+        request<span class="token punctuation">.</span>headers<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"X-Event-ID"</span><span class="token punctuation">)</span>
+        <span class="token keyword">or</span> request<span class="token punctuation">.</span>headers<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"Idempotency-Key"</span><span class="token punctuation">)</span>
+    <span class="token punctuation">)</span>
+
     background_tasks<span class="token punctuation">.</span>add_task<span class="token punctuation">(</span>process_spatial_event<span class="token punctuation">,</span> payload<span class="token punctuation">,</span> event_id<span class="token punctuation">)</span>
     <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"accepted"</span><span class="token punctuation">}</span>
 </code></pre>
 </div>
-<h2 id="gis-specific-validation-index-safety" tabindex="-1"><a class="heading-anchor" href="#gis-specific-validation-index-safety">GIS-Specific Validation &amp; Index Safety</a></h2>
-<p>Spatial data introduces unique failure modes that standard webhook handlers ignore:</p>
+<h2 id="parameter-reference" tabindex="-1"><a class="heading-anchor" href="#parameter-reference">Parameter reference</a></h2>
+<div style="overflow-x:auto;">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Spatial constraint</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IDEMPOTENCY_TTL_SECONDS</code></td>
+<td><code>int</code></td>
+<td><code>86400</code> (24 h)</td>
+<td>Must exceed your sender’s maximum retry window. GIS platform SLAs are typically ≤ 4 h.</td>
+</tr>
+<tr>
+<td><code>DLQ_TTL_SECONDS</code></td>
+<td><code>int</code></td>
+<td><code>604800</code> (7 d)</td>
+<td>Long enough for manual replay; trim after audit to cap storage.</td>
+</tr>
+<tr>
+<td><code>MAX_RETRIES</code></td>
+<td><code>int</code></td>
+<td><code>5</code></td>
+<td>Beyond 7, downstream degradation is usually structural, not transient.</td>
+</tr>
+<tr>
+<td><code>BASE_BACKOFF_SECONDS</code></td>
+<td><code>float</code></td>
+<td><code>2.0</code></td>
+<td>Minimum mean wait on first retry. Set higher for PostGIS-heavy writes.</td>
+</tr>
+<tr>
+<td><code>COORDINATE_PRECISION</code></td>
+<td><code>int</code></td>
+<td><code>6</code></td>
+<td>6 decimal degrees ≈ 11 cm. Sufficient for all drone/IoT telemetry use-cases. Do not exceed 8 (float64 precision limit).</td>
+</tr>
+<tr>
+<td><code>X-Event-ID</code> header</td>
+<td><code>str</code></td>
+<td>None</td>
+<td>Sender-supplied stable UUID. Preferred over hash-based key; eliminates precision ambiguity entirely.</td>
+</tr>
+<tr>
+<td><code>Idempotency-Key</code> header</td>
+<td><code>str</code></td>
+<td>None</td>
+<td>Accepted as a fallback when <code>X-Event-ID</code> is absent. Same semantics.</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<h2 id="gotchas-and-spatial-edge-cases" tabindex="-1"><a class="heading-anchor" href="#gotchas-and-spatial-edge-cases">Gotchas and spatial edge cases</a></h2>
+<ol>
+<li>
+<p><strong>Coordinate precision drift causes missed duplicates.</strong> Two payloads representing the same sensor ping may serialize <code>longitude</code> as <code>13.404954</code> and <code>13.4049540000001</code> depending on the sender’s JSON library. Without <code>_round_coordinates()</code>, the SHA-256 hash differs and both events are processed, producing a duplicate PostGIS row. Always normalize to 6 decimal places before hashing.</p>
+</li>
+<li>
+<p><strong>CRS ambiguity poisons the idempotency key.</strong> If one delivery of an event declares <code>&quot;crs&quot;: {&quot;init&quot;: &quot;epsg:4326&quot;}</code> and a retry omits the CRS field entirely (a common GeoJSON spec violation), the hash will differ and the duplicate will slip through. Normalize the CRS field to a canonical EPSG:4326 declaration — or strip it, since GeoJSON RFC 7946 mandates WGS 84 — before hashing.</p>
+</li>
+<li>
+<p><strong>Ring orientation flips on re-serialization.</strong> Some spatial libraries (Turf.js, GDAL) may flip polygon exterior ring winding order between the original event and a retry. <code>_round_coordinates()</code> does not protect against this because the coordinate values are identical; the list order differs. Normalize ring orientation (right-hand rule per RFC 7946) with <code>shapely.geometry.mapping(orient(shape(geometry), sign=1.0))</code> before computing the hash, and apply this using <a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">geometry validation pipelines</a>.</p>
+</li>
+<li>
+<p><strong>Atomic <code>SET NX</code> is not cluster-safe without Redlock.</strong> A single Redis instance provides true atomic <code>SET NX EX</code>. Across a Redis Cluster or Sentinel setup, <code>SET NX</code> is node-local — two workers may simultaneously acquire the key on different shards and both proceed. If your Redis deployment is clustered, either hash-tag your idempotency keys to pin them to a single slot (<code>{idemp}:hash</code>) or use a Redlock implementation. See <a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/using-redis-to-cache-spatial-webhook-signatures/">using Redis to cache spatial webhook signatures</a> for a Redlock example.</p>
+</li>
+<li>
+<p><strong>Invalid geometries must bypass the retry loop.</strong> A self-intersecting polygon will fail <code>validate_geometry()</code> on every attempt. Retrying it wastes budget and delays DLQ routing. The implementation above validates once before entering the retry loop and routes directly to the DLQ on geometry failure — preserving retries for transient infrastructure errors only.</p>
+</li>
+<li>
+<p><strong>DLQ key deletion enables manual replay.</strong> Deleting the processing key after DLQ routing is intentional: if an operator fixes the downstream system and wants to replay the event, they must not be blocked by a stale <code>SET NX</code>. The DLQ entry itself carries full payload and retry count for forensic analysis.</p>
+</li>
+</ol>
+<h2 id="minimal-verification-snippet" tabindex="-1"><a class="heading-anchor" href="#minimal-verification-snippet">Minimal verification snippet</a></h2>
+<p>Run this against a local instance (<code>uvicorn at_least_once_gis:app --reload</code>) with Redis on <code>localhost:6379</code>.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token triple-quoted-string string">"""
+test_at_least_once.py — Verify idempotency and DLQ routing end-to-end.
+
+Run: pytest test_at_least_once.py -v
+"""</span>
+
+<span class="token keyword">import</span> asyncio
+<span class="token keyword">import</span> hashlib
+<span class="token keyword">import</span> json
+<span class="token keyword">import</span> pytest
+<span class="token keyword">import</span> redis<span class="token punctuation">.</span>asyncio <span class="token keyword">as</span> aioredis
+
+<span class="token keyword">from</span> at_least_once_gis <span class="token keyword">import</span> <span class="token punctuation">(</span>
+    COORDINATE_PRECISION<span class="token punctuation">,</span>
+    derive_idempotency_key<span class="token punctuation">,</span>
+    full_jitter_backoff<span class="token punctuation">,</span>
+    validate_geometry<span class="token punctuation">,</span>
+    _round_coordinates<span class="token punctuation">,</span>
+<span class="token punctuation">)</span>
+
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+<span class="token comment"># Unit: idempotency key stability</span>
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+<span class="token keyword">def</span> <span class="token function">test_coordinate_rounding_produces_stable_key</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Two payloads differing only in float noise must yield the same key."""</span>
+    payload_a <span class="token operator">=</span> <span class="token punctuation">{</span>
+        <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Feature"</span><span class="token punctuation">,</span>
+        <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token number">13.404954</span><span class="token punctuation">,</span> <span class="token number">52.520008</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+        <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token punctuation">}</span>
+    payload_b <span class="token operator">=</span> <span class="token punctuation">{</span>
+        <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Feature"</span><span class="token punctuation">,</span>
+        <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token number">13.4049540000001</span><span class="token punctuation">,</span> <span class="token number">52.5200080000001</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+        <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token punctuation">}</span>
+    key_a <span class="token operator">=</span> derive_idempotency_key<span class="token punctuation">(</span>payload_a<span class="token punctuation">,</span> <span class="token boolean">None</span><span class="token punctuation">)</span>
+    key_b <span class="token operator">=</span> derive_idempotency_key<span class="token punctuation">(</span>payload_b<span class="token punctuation">,</span> <span class="token boolean">None</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> key_a <span class="token operator">==</span> key_b<span class="token punctuation">,</span> <span class="token string">"Coordinate noise must not produce distinct idempotency keys"</span>
+
+<span class="token keyword">def</span> <span class="token function">test_event_id_header_takes_priority</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""When X-Event-ID is provided it overrides the hash-based key."""</span>
+    payload <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Feature"</span><span class="token punctuation">,</span> <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">}</span>
+    key <span class="token operator">=</span> derive_idempotency_key<span class="token punctuation">(</span>payload<span class="token punctuation">,</span> <span class="token string">"evt-abc-123"</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> key <span class="token operator">==</span> <span class="token string">"idemp:evt-abc-123"</span>
+
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+<span class="token comment"># Unit: geometry validation</span>
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+<span class="token keyword">def</span> <span class="token function">test_valid_point_passes</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    validate_geometry<span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token number">13.4050</span><span class="token punctuation">,</span> <span class="token number">52.5200</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">)</span>  <span class="token comment"># no exception</span>
+
+<span class="token keyword">def</span> <span class="token function">test_self_intersecting_polygon_rejected</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token comment"># Bowtie polygon — invalid topology</span>
+    bowtie <span class="token operator">=</span> <span class="token punctuation">{</span>
+        <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Polygon"</span><span class="token punctuation">,</span>
+        <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token punctuation">[</span><span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">2</span><span class="token punctuation">,</span> <span class="token number">2</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">2</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">2</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+    <span class="token punctuation">}</span>
+    <span class="token keyword">with</span> pytest<span class="token punctuation">.</span>raises<span class="token punctuation">(</span>ValueError<span class="token punctuation">,</span> <span class="token keyword">match</span><span class="token operator">=</span><span class="token string">"Invalid geometry"</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        validate_geometry<span class="token punctuation">(</span>bowtie<span class="token punctuation">)</span>
+
+<span class="token keyword">def</span> <span class="token function">test_empty_geometry_rejected</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">from</span> shapely<span class="token punctuation">.</span>wkt <span class="token keyword">import</span> loads
+    <span class="token comment"># Pass an empty geometry dict (missing type)</span>
+    <span class="token keyword">with</span> pytest<span class="token punctuation">.</span>raises<span class="token punctuation">(</span><span class="token punctuation">(</span>ValueError<span class="token punctuation">,</span> KeyError<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        validate_geometry<span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">)</span>
+
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+<span class="token comment"># Unit: backoff stays within bounds</span>
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+<span class="token keyword">def</span> <span class="token function">test_backoff_never_exceeds_cap</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">for</span> attempt <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span><span class="token number">20</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">assert</span> full_jitter_backoff<span class="token punctuation">(</span>attempt<span class="token punctuation">)</span> <span class="token operator">&lt;=</span> <span class="token number">60.0</span>
+
+<span class="token keyword">def</span> <span class="token function">test_backoff_is_non_negative</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">for</span> attempt <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span><span class="token number">10</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">assert</span> full_jitter_backoff<span class="token punctuation">(</span>attempt<span class="token punctuation">)</span> <span class="token operator">>=</span> <span class="token number">0.0</span>
+
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+<span class="token comment"># Integration: duplicate suppression via Redis</span>
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+<span class="token decorator annotation punctuation">@pytest<span class="token punctuation">.</span>mark<span class="token punctuation">.</span>asyncio</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">test_duplicate_event_suppressed</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Second call with the same key must be a no-op (key already set)."""</span>
+    r <span class="token operator">=</span> aioredis<span class="token punctuation">.</span>Redis<span class="token punctuation">(</span>host<span class="token operator">=</span><span class="token string">"localhost"</span><span class="token punctuation">,</span> port<span class="token operator">=</span><span class="token number">6379</span><span class="token punctuation">,</span> db<span class="token operator">=</span><span class="token number">15</span><span class="token punctuation">,</span> decode_responses<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span>
+    key <span class="token operator">=</span> <span class="token string">"idemp:test-dedup-001"</span>
+    <span class="token keyword">await</span> r<span class="token punctuation">.</span>delete<span class="token punctuation">(</span>key<span class="token punctuation">)</span>
+
+    first <span class="token operator">=</span> <span class="token keyword">await</span> r<span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">(</span>key<span class="token punctuation">,</span> <span class="token string">"processing"</span><span class="token punctuation">,</span> nx<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span> ex<span class="token operator">=</span><span class="token number">60</span><span class="token punctuation">)</span>
+    second <span class="token operator">=</span> <span class="token keyword">await</span> r<span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">(</span>key<span class="token punctuation">,</span> <span class="token string">"processing"</span><span class="token punctuation">,</span> nx<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span> ex<span class="token operator">=</span><span class="token number">60</span><span class="token punctuation">)</span>
+
+    <span class="token keyword">assert</span> first <span class="token keyword">is</span> <span class="token boolean">True</span><span class="token punctuation">,</span>  <span class="token string">"First acquisition must succeed"</span>
+    <span class="token keyword">assert</span> second <span class="token keyword">is</span> <span class="token boolean">None</span><span class="token punctuation">,</span> <span class="token string">"Duplicate acquisition must be rejected by SET NX"</span>
+
+    <span class="token keyword">await</span> r<span class="token punctuation">.</span>delete<span class="token punctuation">(</span>key<span class="token punctuation">)</span>
+    <span class="token keyword">await</span> r<span class="token punctuation">.</span>aclose<span class="token punctuation">(</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>The idempotency and geometry-validation unit tests run without a live Redis instance. Mark the integration test with <code>@pytest.mark.asyncio</code> and ensure <code>pytest-asyncio</code> is installed (<code>pip install pytest-asyncio</code>).</p>
+<hr>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
 <ul>
-<li><strong>Coordinate precision drift:</strong> Floating-point inconsistencies across retries can cause duplicate geometries to fail equality checks. Normalize coordinates to 6–8 decimal places before hashing or storing.</li>
-<li><strong>CRS mismatches:</strong> Ensure all payloads declare a consistent coordinate reference system (e.g., EPSG:4326). Reject or transform payloads with ambiguous projections before they hit your spatial index.</li>
-<li><strong>Topology validation:</strong> Use libraries like <code>shapely</code> or <code>geojson</code> to validate geometry validity before insertion. Invalid polygons will break PostGIS spatial indexes and cause query timeouts.</li>
+<li><a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns</a> — parent section covering queue topology, geographic partitioning, and fan-out strategies for IoT and drone telemetry</li>
+<li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a> — detailed treatment of hash strategies, H3-cell keying, and TTL selection for spatial idempotency stores</li>
+<li><a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/using-redis-to-cache-spatial-webhook-signatures/">Using Redis to Cache Spatial Webhook Signatures</a> — Redlock and cluster-safe patterns for high-availability deduplication</li>
+<li><a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a> — topology checks, ring orientation normalization, and CRS validation before spatial writes</li>
+<li><a href="/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a> — the architectural principles underpinning every spatial event pipeline on this site</li>
 </ul>
-<p>For the official specification governing GeoJSON structure and coordinate ordering, reference the <a href="https://datatracker.ietf.org/doc/html/rfc7946">IETF RFC 7946 standard</a>. Pair this with strict Pydantic models in your FastAPI layer to catch malformed geometries at the edge.</p>
-<p>By combining immediate HTTP acknowledgment, deterministic idempotency tracking, bounded exponential retries, and strict spatial validation, you can safely ingest high-volume GIS webhooks without corrupting downstream indexes or losing critical telemetry data.</p>
 
       </div>
 
@@ -307,6 +727,9 @@ BASE_DELAY <span class="token operator">=</span> <span class="token number">2.0<
         <h4>Site</h4>
         <ul>
           <li><a href="/">Home</a></li>
+          <li><a href="/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
         </ul>
       </div>
       <div>
@@ -336,7 +759,7 @@ BASE_DELAY <span class="token operator">=</span> <span class="token number">2.0<
 </footer>
 
   </div>
-  <script src="/assets/js/site.js" defer></script>
+  <script src="/assets/js/site.js?v=6c55de86" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

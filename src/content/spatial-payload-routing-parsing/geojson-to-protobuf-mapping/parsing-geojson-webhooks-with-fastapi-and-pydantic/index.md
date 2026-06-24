@@ -1,10 +1,13 @@
-# Parsing GeoJSON Webhooks with FastAPI and Pydantic
+---
+title: "Parsing GeoJSON Webhooks with FastAPI and Pydantic"
+description: "Enforce RFC 7946-compliant spatial schemas at the HTTP layer with Pydantic v2 models, rejecting malformed payloads before they reach event-driven pipeline logic."
+---
 
-Parsing GeoJSON webhooks with FastAPI and Pydantic requires strict schema enforcement, cryptographic verification, and idempotent processing. By defining [RFC 7946](https://datatracker.ietf.org/doc/html/rfc7946)-compliant Pydantic v2 models, you reject malformed spatial payloads at the HTTP layer before they reach your business logic. FastAPI’s native JSON deserialization handles this automatically, returning structured `422 Unprocessable Entity` responses when coordinates, geometry types, or required fields violate the spec. This eliminates boilerplate validation and guarantees that your event-driven pipeline only receives spatially valid payloads.
+Parsing GeoJSON webhooks with FastAPI and Pydantic requires strict schema enforcement, cryptographic verification, and idempotent processing. By defining [RFC 7946](https://datatracker.ietf.org/doc/html/rfc7946)-compliant Pydantic v2 models, you reject malformed spatial payloads at the HTTP layer before they reach your business logic. FastAPI's native JSON deserialization handles this automatically, returning structured `422 Unprocessable Entity` responses when coordinates, geometry types, or required fields violate the spec. This eliminates boilerplate validation and guarantees that your event-driven pipeline only receives spatially valid payloads.
 
 ## Core Implementation: Strict Validation & Routing
 
-The implementation below uses modern Pydantic v2 syntax, explicit type hints, and FastAPI’s dependency injection to ingest, verify, and route webhooks securely. It validates geometry structure, verifies HMAC signatures, and enforces idempotency keys.
+The implementation below uses modern Pydantic v2 syntax, explicit type hints, and FastAPI's dependency injection to ingest, verify, and route webhooks securely. It validates geometry structure, verifies HMAC signatures, and enforces idempotency keys.
 
 ```python
 import hashlib
@@ -12,12 +15,12 @@ import hmac
 import json
 import time
 from typing import Any, Literal, Optional
-from fastapi import FastAPI, Request, HTTPException, Header, Depends, status
+from fastapi import FastAPI, Request, HTTPException, Header, status
 from pydantic import BaseModel, Field, model_validator, ConfigDict
 
 app = FastAPI(title="GeoJSON Webhook Ingestor")
 
-# --- In-memory idempotency store (replace with Redis/DB in production) ---
+# --- In-memory idempotency store (replace with Redis in production) ---
 IDEMPOTENCY_STORE: dict[str, float] = {}
 REPLAY_WINDOW_SECONDS = 300  # 5 minutes
 
@@ -57,15 +60,21 @@ class WebhookPayload(BaseModel):
     timestamp: float
     data: GeoJSONFeature | GeoJSONFeatureCollection
 
-# --- Security & Validation Dependencies ---
+# --- Security & Validation Helpers ---
 def verify_signature(payload_bytes: bytes, signature: str, secret: str) -> bool:
     expected = hmac.new(secret.encode(), payload_bytes, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, signature)
 
 def check_idempotency(idempotency_key: str) -> None:
+    now = time.time()
+    # Purge expired keys on each check (acceptable for low-volume in-memory store)
+    expired = [k for k, ts in IDEMPOTENCY_STORE.items() if now - ts > REPLAY_WINDOW_SECONDS]
+    for k in expired:
+        del IDEMPOTENCY_STORE[k]
+
     if idempotency_key in IDEMPOTENCY_STORE:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Duplicate request")
-    IDEMPOTENCY_STORE[idempotency_key] = time.time()
+    IDEMPOTENCY_STORE[idempotency_key] = now
 
 # --- Route Handler ---
 @app.post("/webhooks/geojson", status_code=status.HTTP_202_ACCEPTED)
@@ -104,21 +113,21 @@ Webhook ingestion is inherently untrusted. Relying solely on JSON parsing leaves
 
 1. **HMAC-SHA256 Verification**: The raw request body is hashed using a shared secret and compared against the `X-Webhook-Signature` header. Using `hmac.compare_digest()` prevents timing attacks that could leak secret material.
 2. **Idempotency Keys**: Every webhook delivery should include a unique `X-Idempotency-Key`. Checking this key against a short-lived store prevents duplicate processing if the sender retries due to network timeouts.
-3. **Strict Schema Boundaries**: Pydantic’s `extra="forbid"` configuration drops unexpected fields immediately. Combined with `@model_validator(mode="after")`, you catch structural violations (empty coordinate arrays, missing features) before they propagate downstream.
+3. **Strict Schema Boundaries**: Pydantic's `extra="forbid"` configuration rejects unexpected fields immediately. Combined with `@model_validator(mode="after")`, you catch structural violations (empty coordinate arrays, missing features) before they propagate downstream.
 
-For production deployments, replace the in-memory `IDEMPOTENCY_STORE` with Redis or a relational database with TTL expiration. Store webhook secrets in a secrets manager, never in plaintext configuration.
+For production deployments, replace the in-memory `IDEMPOTENCY_STORE` with Redis using atomic `SET NX EX` to handle concurrent duplicates safely. Store webhook secrets in a secrets manager (AWS Secrets Manager, HashiCorp Vault), never in plaintext configuration or environment variables checked into source control.
 
 ## Routing to Spatial Pipelines
 
-Once validated, GeoJSON payloads can be safely routed to downstream services. FastAPI’s async architecture pairs naturally with message brokers like RabbitMQ or Kafka, allowing you to decouple ingestion from heavy spatial operations. Validated payloads can be indexed in PostGIS, streamed to real-time map renderers, or transformed into compact binary formats for low-latency transmission.
+Once validated, GeoJSON payloads can be safely routed to downstream services. FastAPI's async architecture pairs naturally with message brokers like RabbitMQ or Kafka, allowing you to decouple ingestion from heavy spatial operations. Validated payloads can be indexed in PostGIS, streamed to real-time map renderers, or transformed into compact binary formats for low-latency transmission.
 
 When designing event-driven spatial architectures, consider how payload validation feeds into broader [Spatial Payload Routing & Parsing](/spatial-payload-routing-parsing/) strategies. Routing decisions often depend on geometry type, bounding box, or custom properties. By enforcing schema compliance at the ingress layer, you guarantee that downstream consumers never handle malformed coordinate sequences or missing type declarations.
 
 ## Production Considerations & Next Steps
 
-- **Coordinate Precision & Validation**: Pydantic validates structure, not mathematical correctness. For strict RFC compliance, integrate libraries like `shapely` or `geojson` to verify closed polygons, correct coordinate ordering (longitude, latitude), and valid CRS references.
+- **Coordinate Precision & Validation**: Pydantic validates structure, not mathematical correctness. For strict RFC compliance, integrate `shapely` or `geojson` to verify closed polygons, correct coordinate ordering (longitude, latitude), and valid geometry bounds (`-180 ≤ lon ≤ 180`, `-90 ≤ lat ≤ 90`).
 - **Binary Serialization**: Large GeoJSON payloads consume bandwidth and increase JSON parsing latency. Converting validated features to Protocol Buffers reduces payload size by 40–70% and enables strongly typed streaming. See [GeoJSON to Protobuf Mapping](/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/) for schema translation patterns that preserve spatial semantics while optimizing throughput.
 - **Observability**: Instrument webhook routes with structured logging. Capture `event_type`, validation errors, and processing latency. Use OpenTelemetry to trace payloads from ingestion through spatial indexing or protobuf conversion.
-- **Rate Limiting**: Apply FastAPI’s `SlowAPI` or API gateway rate limits to prevent abuse. Webhook endpoints are common targets for credential stuffing or payload flooding.
+- **Rate Limiting**: Apply rate limits at the API gateway or using a FastAPI middleware (e.g., `slowapi`) to prevent abuse. Webhook endpoints are common targets for payload flooding and credential stuffing.
 
-By combining FastAPI’s request lifecycle with Pydantic v2’s declarative validation, you build a resilient ingress layer that guarantees spatial correctness, cryptographic integrity, and exactly-once processing semantics.
+By combining FastAPI's request lifecycle with Pydantic v2's declarative validation, you build a resilient ingress layer that guarantees spatial correctness, cryptographic integrity, and exactly-once processing semantics.
