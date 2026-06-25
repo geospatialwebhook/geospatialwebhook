@@ -49,8 +49,8 @@
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ef3d820"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=9f5ca540"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -258,14 +258,14 @@
   <line x1="345" y1="160" x2="372" y2="160" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arrow)"/>
   <line x1="525" y1="160" x2="552" y2="160" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arrow)"/>
   <!-- Layer labels at bottom -->
-<p><text x="90" y="228" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.5">Layer 1</text>
-<text x="270" y="228" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.5">Layer 2</text>
-<text x="450" y="228" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.5">Layer 3</text>
-<text x="627" y="228" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.5">Layer 4</text></p>
+  <text x="90" y="228" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.5">Layer 1</text>
+  <text x="270" y="228" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.5">Layer 2</text>
+  <text x="450" y="228" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.5">Layer 3</text>
+  <text x="627" y="228" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.5">Layer 4</text>
   <!-- Payload label at top -->
-<p><text x="20" y="95" font-size="10" fill="currentColor" opacity="0.6">Incoming GeoJSON payload</text>
-<text x="580" y="95" font-size="10" fill="currentColor" opacity="0.6">Idempotent processing</text>
-</svg></p>
+  <text x="20" y="95" font-size="10" fill="currentColor" opacity="0.6">Incoming GeoJSON payload</text>
+  <text x="580" y="95" font-size="10" fill="currentColor" opacity="0.6">Idempotent processing</text>
+</svg>
 <p><strong>Layer 1 — Webhook Receiver:</strong> validates the incoming GeoJSON payload against a strict schema and returns <code>400 Bad Request</code> for malformed geometry before any key logic runs.</p>
 <p><strong>Layer 2 — Normalizer:</strong> strips all non-deterministic metadata (timestamps, delivery headers, request IDs), rounds coordinates to your documented precision policy, enforces CRS alignment to EPSG:4326 (WGS84), closes polygon rings, and repairs topology using Shapely.</p>
 <p><strong>Layer 3 — Hasher:</strong> serializes the normalized payload to a byte-identical canonical string and applies SHA-256. The first 16 bytes encode as a 32-character hex key.</p>
@@ -663,7 +663,7 @@ BASE_PAYLOAD <span class="token operator">=</span> <span class="token punctuatio
 <h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
 <ul>
 <li><a href="/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a> — parent section covering the full deduplication strategy for geospatial event streams</li>
-<li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/">Generating Deterministic Idempotency Keys for GeoJSON Events</a> — deep-dive long-tail on GeoJSON-specific canonicalization patterns</li>
+<li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/">Generating Deterministic Idempotency Keys for GeoJSON Events</a> — focused walkthrough of GeoJSON-specific canonicalization patterns</li>
 <li><a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks</a> — Redis architecture for key storage, TTL strategy, and cache stampede prevention</li>
 <li><a href="/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication</a> — topology-aware deduplication for geometries that are equivalent but not coordinate-identical</li>
 <li><a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a> — handling mixed-CRS payloads before they reach your key generation pipeline</li>
@@ -731,18 +731,30 @@ BASE_PAYLOAD <span class="token operator">=</span> <span class="token punctuatio
         <h4>Architecture</h4>
         <ul>
           <li><a href="/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
         </ul>
       </div>
       <div>
         <h4>Idempotency</h4>
         <ul>
           <li><a href="/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
         </ul>
       </div>
       <div>
         <h4>Routing &amp; Parsing</h4>
         <ul>
           <li><a href="/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
         </ul>
       </div>
     </div>

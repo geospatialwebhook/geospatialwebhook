@@ -24,18 +24,14 @@
         </ul>
       </div>
       {%- for s in site.sections %}
+      {%- set sectionUrl = "/" + s.slug + "/" %}
+      {%- set subsections = collections.content | childrenOf(sectionUrl) %}
       <div>
         <h4>{{ s.navTitle }}</h4>
         <ul>
-          <li><a href="/{{ s.slug }}/">Overview</a></li>
-          {%- for item in collections.content -%}
-            {%- set parts = item.url | replace("^/", "") | replace("/$", "") -%}
-            {%- if item.data.section == s.slug -%}
-              {%- set depth = (item.url | replace("^/", "") | replace("/$", "")).split("/") | length -%}
-              {%- if depth == 2 %}
-          <li><a href="{{ item.url }}">{{ item.data.title }}</a></li>
-              {%- endif -%}
-            {%- endif -%}
+          <li><a href="{{ sectionUrl }}">Overview</a></li>
+          {%- for sub in subsections %}
+          <li><a href="{{ sub.url }}">{{ sub.data.title }}</a></li>
           {%- endfor %}
         </ul>
       </div>

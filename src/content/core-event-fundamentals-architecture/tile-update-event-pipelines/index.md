@@ -81,7 +81,7 @@ This topic is part of [Core Event Fundamentals & Architecture](/core-event-funda
 - [ ] Redis (or equivalent) for idempotency guards and consumer-lag metrics
 - [ ] Familiarity with how upstream GIS services emit spatial mutations, as described in [Feature Change Triggers](/core-event-fundamentals-architecture/feature-change-triggers/)
 
-## Architecture Blueprint
+## Pipeline Architecture
 
 The pipeline has four sequential layers. Each layer has a single responsibility and a defined failure exit so that a bad payload cannot travel further than one stage.
 
@@ -94,58 +94,47 @@ The pipeline has four sequential layers. Each layer has a single responsibility 
 >
   <title>Four-stage tile update event pipeline</title>
   <desc>A left-to-right flow diagram showing: Webhook Source → Stage 1 Ingestion and Verification → Stage 2 Validation and Enrichment → Stage 3 Partition Router → Stage 4 Tile Worker and Broadcast. A Dead-Letter Queue branches off Stage 2.</desc>
-
   <!-- Source box -->
   <rect x="4" y="80" width="100" height="60" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
   <text x="54" y="106" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif">Webhook</text>
   <text x="54" y="121" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif">Source</text>
-
   <!-- Arrow 1 -->
   <line x1="104" y1="110" x2="134" y2="110" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
-
   <!-- Stage 1 -->
   <rect x="136" y="66" width="120" height="88" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 2"/>
   <text x="196" y="90" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Stage 1</text>
   <text x="196" y="108" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">Ingestion &amp;</text>
   <text x="196" y="122" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">Verification</text>
   <text x="196" y="143" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">(HMAC-SHA256)</text>
-
   <!-- Arrow 2 -->
   <line x1="256" y1="110" x2="286" y2="110" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
-
   <!-- Stage 2 -->
   <rect x="288" y="66" width="120" height="88" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 2"/>
   <text x="348" y="90" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Stage 2</text>
   <text x="348" y="108" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">Validation &amp;</text>
   <text x="348" y="122" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">Enrichment</text>
   <text x="348" y="143" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">(Pydantic + Shapely)</text>
-
   <!-- DLQ branch -->
   <line x1="348" y1="154" x2="348" y2="178" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 2" marker-end="url(#arr)"/>
   <rect x="290" y="180" width="116" height="34" rx="4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 2"/>
   <text x="348" y="198" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">Dead-Letter Queue</text>
   <text x="348" y="210" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">(invalid payloads)</text>
-
   <!-- Arrow 3 -->
   <line x1="408" y1="110" x2="438" y2="110" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
-
   <!-- Stage 3 -->
   <rect x="440" y="66" width="120" height="88" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 2"/>
   <text x="500" y="90" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Stage 3</text>
   <text x="500" y="108" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">Partition</text>
   <text x="500" y="122" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">Router</text>
   <text x="500" y="143" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">(zoom:quadkey)</text>
-
   <!-- Arrow 4 -->
   <line x1="560" y1="110" x2="590" y2="110" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
-
   <!-- Stage 4 -->
   <rect x="592" y="66" width="160" height="88" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 2"/>
   <text x="672" y="90" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Stage 4</text>
   <text x="672" y="108" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">Tile Worker</text>
   <text x="672" y="122" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">&amp; Broadcast</text>
   <text x="672" y="143" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">(render → SSE/WS)</text>
-
   <!-- Arrowhead marker -->
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
@@ -227,6 +216,63 @@ Pair this check with the approach in [Geometry Validation Pipelines](/spatial-pa
 ### Step 3 — Compute the Partition Key
 
 Tile events must be partitioned so that all mutations to the same tile region land on the same consumer in order. A composite `zoom:quadkey` string is deterministic, human-readable in logs, and maps directly to the cache path your tile server uses.
+
+The routing guarantee is two-sided: events sharing a `zoom:quadkey` are pinned to one partition and processed strictly in arrival order, while events for disjoint regions fan out across partitions and run fully in parallel.
+
+<svg
+  viewBox="0 0 720 300"
+  xmlns="http://www.w3.org/2000/svg"
+  role="img"
+  aria-label="Diagram showing quadkey-based partition routing: same-region events stay ordered on one partition while disjoint regions run in parallel"
+  style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;"
+>
+  <title>Quadkey partition routing preserves per-region order and cross-region parallelism</title>
+  <desc>Incoming tile events are hashed by their zoom:quadkey key. Three events for quadkey 0231 are routed to the same partition and processed in order; an event for quadkey 1200 is routed to a different partition that runs concurrently.</desc>
+  <!-- Incoming events column -->
+  <text x="80" y="24" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" font-family="system-ui,sans-serif">Incoming events</text>
+  <rect x="14" y="40" width="132" height="30" rx="5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+  <text x="80" y="59" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">12:0231  v=1</text>
+  <rect x="14" y="78" width="132" height="30" rx="5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+  <text x="80" y="97" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">12:1200  v=1</text>
+  <rect x="14" y="116" width="132" height="30" rx="5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+  <text x="80" y="135" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">12:0231  v=2</text>
+  <rect x="14" y="154" width="132" height="30" rx="5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+  <text x="80" y="173" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">12:0231  v=3</text>
+  <!-- Router node -->
+  <rect x="250" y="86" width="110" height="92" rx="6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="4 2"/>
+  <text x="305" y="124" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" font-family="system-ui,sans-serif">Partition</text>
+  <text x="305" y="140" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" font-family="system-ui,sans-serif">Router</text>
+  <text x="305" y="158" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">hash(zoom:quadkey)</text>
+  <!-- Arrows from events into router -->
+  <line x1="146" y1="55" x2="248" y2="110" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr2)"/>
+  <line x1="146" y1="93" x2="248" y2="124" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr2)"/>
+  <line x1="146" y1="131" x2="248" y2="138" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr2)"/>
+  <line x1="146" y1="169" x2="248" y2="152" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr2)"/>
+  <!-- Partition A (ordered, same region) -->
+  <text x="560" y="24" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" font-family="system-ui,sans-serif">Partitions (consumers)</text>
+  <rect x="430" y="44" width="276" height="78" rx="6" fill="none" stroke="currentColor" stroke-width="1.6"/>
+  <text x="446" y="62" font-size="10" font-weight="600" fill="currentColor" font-family="system-ui,sans-serif">Partition A — key 12:0231 (ordered)</text>
+  <rect x="446" y="74" width="74" height="30" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"/>
+  <text x="483" y="93" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">v=1</text>
+  <rect x="528" y="74" width="74" height="30" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"/>
+  <text x="565" y="93" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">v=2</text>
+  <rect x="610" y="74" width="74" height="30" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"/>
+  <text x="647" y="93" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">v=3</text>
+  <!-- Partition B (parallel, disjoint region) -->
+  <rect x="430" y="150" width="276" height="58" rx="6" fill="none" stroke="currentColor" stroke-width="1.6"/>
+  <text x="446" y="168" font-size="10" font-weight="600" fill="currentColor" font-family="system-ui,sans-serif">Partition B — key 12:1200 (parallel)</text>
+  <rect x="446" y="178" width="74" height="22" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"/>
+  <text x="483" y="193" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">v=1</text>
+  <!-- Router to partitions -->
+  <line x1="360" y1="118" x2="428" y2="83" stroke="currentColor" stroke-width="1.4" marker-end="url(#arr2)"/>
+  <line x1="360" y1="146" x2="428" y2="179" stroke="currentColor" stroke-width="1.4" marker-end="url(#arr2)"/>
+  <text x="360" y="250" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">Same key → same partition, strict order.  Different key → different partition, concurrent.</text>
+  <defs>
+    <marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="currentColor"/>
+    </marker>
+  </defs>
+</svg>
 
 ```python
 def quadkey(zoom: int, x: int, y: int) -> str:

@@ -49,8 +49,8 @@
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ef3d820"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=9f5ca540"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -169,7 +169,7 @@
       "headline": "Feature Change Triggers for Geospatial Webhooks",
       "description": "Step-by-step guide to detecting, validating, and dispatching spatial feature change events in Python — from database CDC interception to HMAC-signed webhook delivery with retry guarantees.",
       "datePublished": "2024-11-01",
-      "dateModified": "2026-06-24",
+      "dateModified": "2026-06-25",
       "author": { "@type": "Organization", "name": "geospatialwebhook.com" }
     },
     {
@@ -220,8 +220,7 @@
   ]
 }
 </script>
-<p><strong>Feature change triggers are the mechanism that converts a spatial database write — a parcel edit, a route update, a sensor footprint move — into a reliable, signed webhook event delivered to downstream consumers.</strong> This guide walks through every production layer, from CDC interception to exponential-backoff retry, with runnable Python at each step.</p>
-<p>This topic is part of <a href="/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a>, which covers the full event pipeline from spatial mutation to consumer acknowledgement.</p>
+<p><strong>Feature change triggers convert a spatial database write — a parcel edit, a route update, a sensor footprint move — into a reliable, signed webhook event delivered to downstream consumers.</strong> This topic is part of <a href="/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a>, which covers the full event pipeline from spatial mutation to consumer acknowledgement.</p>
 <h2 id="prerequisites" tabindex="-1"><a class="heading-anchor" href="#prerequisites">Prerequisites</a></h2>
 <p>Before implementing, confirm your stack meets these baselines:</p>
 <ul class="contains-task-list">
@@ -229,51 +228,59 @@
 <li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> Asynchronous web framework: FastAPI, Starlette, or aiohttp</label></li>
 <li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> PostgreSQL/PostGIS with logical replication enabled, or a CDC connector (Debezium, pg_logical)</label></li>
 <li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> Message broker: Redis Streams, Apache Kafka, or AWS SQS/SNS</label></li>
-<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <code>shapely</code> 2.x for geometry validation and repair</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <code>shapely</code> 2.x for geometry validation, repair, and precision snapping</label></li>
 <li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <code>pyproj</code> 3.x for CRS transformation</label></li>
 <li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <code>httpx</code> for async outbound HTTP with timeout and retry control</label></li>
 <li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <code>pydantic</code> v2 for event envelope schema enforcement</label></li>
 </ul>
-<h2 id="architecture-overview" tabindex="-1"><a class="heading-anchor" href="#architecture-overview">Architecture overview</a></h2>
+<h2 id="architecture-blueprint" tabindex="-1"><a class="heading-anchor" href="#architecture-blueprint">Architecture blueprint</a></h2>
 <p>A spatial feature change moves through four layers before a consumer acknowledges receipt:</p>
-<svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Feature change trigger pipeline: PostGIS → CDC stream → validation & envelope → broker → webhook dispatcher → consumer" style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;">
+<svg viewBox="0 0 760 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Feature change trigger pipeline: PostGIS CDC stream flows through geometry validation and CloudEvents enveloping, into a message broker, then through an async webhook dispatcher to a downstream consumer" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
   <title>Feature change trigger pipeline</title>
-  <desc>Four-layer pipeline showing a spatial mutation flowing from PostGIS logical replication through geometry validation and CloudEvents enveloping, into a message broker, then out through an async webhook dispatcher to a downstream consumer.</desc>
+  <desc>Four-stage pipeline diagram. Stage 1 Source: PostGIS logical replication (CDC / WAL). Stage 2 Normalise: CRS to EPSG:4326, topology check, CloudEvents wrap, idempotency key. Stage 3 Route: Kafka or Redis broker with spatial partition key. Stage 4 Deliver: dispatcher with HMAC-SHA256 signing, exponential backoff, DLQ on failure, then consumer endpoint.</desc>
   <defs>
-    <marker id="arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
-      <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.6"/>
+    <marker id="fct-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.55"/>
     </marker>
   </defs>
-  <!-- Layer boxes -->
-  <rect x="10" y="70" width="120" height="80" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
-  <text x="70" y="104" text-anchor="middle" font-size="12" fill="currentColor" font-family="sans-serif">PostGIS</text>
-  <text x="70" y="120" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.75">logical replication</text>
-  <text x="70" y="136" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.6">(CDC / WAL)</text>
-  <line x1="130" y1="110" x2="158" y2="110" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arr)"/>
-  <rect x="160" y="55" width="140" height="110" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
-  <text x="230" y="89" text-anchor="middle" font-size="12" fill="currentColor" font-family="sans-serif">Validate &amp; Envelop</text>
-  <text x="230" y="107" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.75">CRS → EPSG:4326</text>
-  <text x="230" y="122" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.75">topology check</text>
-  <text x="230" y="137" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.75">CloudEvents wrap</text>
-  <text x="230" y="152" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.6">idempotency key</text>
-  <line x1="300" y1="110" x2="328" y2="110" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arr)"/>
-  <rect x="330" y="70" width="120" height="80" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
-  <text x="390" y="104" text-anchor="middle" font-size="12" fill="currentColor" font-family="sans-serif">Broker</text>
-  <text x="390" y="120" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.75">Kafka / Redis</text>
-  <text x="390" y="136" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.6">spatial partition key</text>
-  <line x1="450" y1="110" x2="478" y2="110" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arr)"/>
-  <rect x="480" y="55" width="130" height="110" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
-  <text x="545" y="89" text-anchor="middle" font-size="12" fill="currentColor" font-family="sans-serif">Dispatcher</text>
-  <text x="545" y="107" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.75">HMAC-SHA256 sign</text>
-  <text x="545" y="122" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.75">exponential backoff</text>
-  <text x="545" y="137" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.75">DLQ on failure</text>
-  <text x="545" y="152" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.6">→ consumer endpoint</text>
-  <!-- Stage labels at top -->
-<p><text x="70"  y="48" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.5">1. Source</text>
-<text x="230" y="40" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.5">2. Normalise</text>
-<text x="390" y="48" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.5">3. Route</text>
-<text x="545" y="40" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.5">4. Deliver</text>
-</svg></p>
+  <!-- Stage labels -->
+  <text x="85"  y="28" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.5">1. Source</text>
+  <text x="258" y="28" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.5">2. Normalise</text>
+  <text x="462" y="28" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.5">3. Route</text>
+  <text x="648" y="28" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.5">4. Deliver</text>
+  <!-- Box 1: Source -->
+  <rect x="20" y="44" width="130" height="90" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+  <text x="85" y="76" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor" font-family="sans-serif">PostGIS</text>
+  <text x="85" y="95" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.75">logical replication</text>
+  <text x="85" y="112" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.6">CDC / WAL</text>
+  <!-- Arrow 1→2 -->
+  <line x1="150" y1="89" x2="176" y2="89" stroke="currentColor" stroke-width="1.5" opacity="0.45" marker-end="url(#fct-arr)"/>
+  <!-- Box 2: Normalise -->
+  <rect x="178" y="30" width="160" height="130" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+  <text x="258" y="58" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor" font-family="sans-serif">Validate &amp; Wrap</text>
+  <text x="258" y="77" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.75">CRS → EPSG:4326</text>
+  <text x="258" y="94" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.75">topology check</text>
+  <text x="258" y="111" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.75">CloudEvents wrap</text>
+  <text x="258" y="128" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.6">idempotency key</text>
+  <!-- Arrow 2→3 -->
+  <line x1="338" y1="95" x2="364" y2="95" stroke="currentColor" stroke-width="1.5" opacity="0.45" marker-end="url(#fct-arr)"/>
+  <!-- Box 3: Route -->
+  <rect x="366" y="44" width="152" height="102" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+  <text x="442" y="76" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor" font-family="sans-serif">Broker</text>
+  <text x="442" y="95" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.75">Kafka / Redis Streams</text>
+  <text x="442" y="113" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.6">spatial partition key</text>
+  <!-- Arrow 3→4 -->
+  <line x1="518" y1="95" x2="544" y2="95" stroke="currentColor" stroke-width="1.5" opacity="0.45" marker-end="url(#fct-arr)"/>
+  <!-- Box 4: Deliver -->
+  <rect x="546" y="30" width="180" height="148" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+  <text x="636" y="58" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor" font-family="sans-serif">Dispatcher</text>
+  <text x="636" y="77" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.75">HMAC-SHA256 sign</text>
+  <text x="636" y="94" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.75">exponential backoff</text>
+  <text x="636" y="111" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.75">DLQ on failure</text>
+  <text x="636" y="130" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.6">→ consumer endpoint</text>
+  <!-- Delivery guarantee note -->
+  <text x="380" y="195" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.45">at-least-once · idempotency key carried in envelope id field</text>
+</svg>
 <h2 id="step-by-step-implementation" tabindex="-1"><a class="heading-anchor" href="#step-by-step-implementation">Step-by-step implementation</a></h2>
 <h3 id="1-intercept-spatial-mutations-at-the-data-layer" tabindex="-1"><a class="heading-anchor" href="#1-intercept-spatial-mutations-at-the-data-layer">1. Intercept spatial mutations at the data layer</a></h3>
 <p>Spatial databases rarely emit events in a webhook-ready format. Use PostgreSQL logical replication with the <code>pgoutput</code> plugin, or a Debezium CDC connector, to stream committed <code>INSERT</code>, <code>UPDATE</code>, and <code>DELETE</code> operations from your feature tables without polling.</p>
@@ -295,14 +302,14 @@ REPLICATION_DSN <span class="token operator">=</span> <span class="token string"
         <span class="token string">"SELECT pg_create_logical_replication_slot($1, 'pgoutput')"</span><span class="token punctuation">,</span> slot_name
     <span class="token punctuation">)</span>
     <span class="token keyword">async</span> <span class="token keyword">with</span> conn<span class="token punctuation">.</span>replication<span class="token punctuation">(</span>slot_name<span class="token punctuation">,</span> output_plugin<span class="token operator">=</span><span class="token string">"pgoutput"</span><span class="token punctuation">,</span>
-                                 options<span class="token operator">=</span><span class="token punctuation">{</span><span class="token string">"publication_names"</span><span class="token punctuation">:</span> publication<span class="token punctuation">}</span><span class="token punctuation">)</span> <span class="token keyword">as</span> stream<span class="token punctuation">:</span>
+                                options<span class="token operator">=</span><span class="token punctuation">{</span><span class="token string">"publication_names"</span><span class="token punctuation">:</span> publication<span class="token punctuation">}</span><span class="token punctuation">)</span> <span class="token keyword">as</span> stream<span class="token punctuation">:</span>
         <span class="token keyword">async</span> <span class="token keyword">for</span> message <span class="token keyword">in</span> stream<span class="token punctuation">:</span>
             <span class="token keyword">yield</span> parse_wal_message<span class="token punctuation">(</span>message<span class="token punctuation">)</span>  <span class="token comment"># returns dict with op, pk, old_geom, new_geom</span>
 </code></pre>
 </div>
 <p>For a complete walkthrough of how this feeds into a full webhook architecture, see <a href="/core-event-fundamentals-architecture/feature-change-triggers/how-to-design-a-geospatial-webhook-architecture-in-python/">How to design a geospatial webhook architecture in Python</a>.</p>
 <h3 id="2-normalize-and-validate-geometry" tabindex="-1"><a class="heading-anchor" href="#2-normalize-and-validate-geometry">2. Normalize and validate geometry</a></h3>
-<p>Raw database geometries contain topology errors, mismatched coordinate reference systems, and floating-point noise that break downstream consumers. Enforce spatial integrity before packaging any event, using <a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a> as the authoritative reference for reprojection patterns.</p>
+<p>Raw database geometries contain topology errors, mismatched coordinate reference systems, and floating-point noise that break downstream consumers. Enforce spatial integrity before packaging any event, using <a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a> as the authoritative reference for reprojection patterns and the staged checks in <a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a> for repairing malformed input before it reaches the broker.</p>
 <p>The three mandatory checks are:</p>
 <ol>
 <li><strong>CRS alignment</strong> — reproject all geometries to <code>EPSG:4326</code> for web delivery (or <code>EPSG:3857</code> for tile-based systems). Always include the EPSG code in the event envelope so consumers do not have to guess.</li>
@@ -318,13 +325,9 @@ REPLICATION_DSN <span class="token operator">=</span> <span class="token string"
   </div>
   <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape<span class="token punctuation">,</span> mapping
 <span class="token keyword">from</span> shapely<span class="token punctuation">.</span>validation <span class="token keyword">import</span> explain_validity<span class="token punctuation">,</span> make_valid
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>ops <span class="token keyword">import</span> transform <span class="token keyword">as</span> shapely_transform
 <span class="token keyword">from</span> shapely <span class="token keyword">import</span> set_precision
 <span class="token keyword">import</span> pyproj
-<span class="token keyword">from</span> functools <span class="token keyword">import</span> partial
-
-_transformer_to_4326 <span class="token operator">=</span> pyproj<span class="token punctuation">.</span>Transformer<span class="token punctuation">.</span>from_crs<span class="token punctuation">(</span>
-    <span class="token string">"EPSG:3857"</span><span class="token punctuation">,</span> <span class="token string">"EPSG:4326"</span><span class="token punctuation">,</span> always_xy<span class="token operator">=</span><span class="token boolean">True</span>
-<span class="token punctuation">)</span>
 
 <span class="token keyword">def</span> <span class="token function">normalize_geometry</span><span class="token punctuation">(</span>geojson_geometry<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">,</span> source_epsg<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">4326</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">:</span>
     <span class="token triple-quoted-string string">"""Validate, repair, reproject, and reduce precision of a GeoJSON geometry."""</span>
@@ -339,7 +342,8 @@ _transformer_to_4326 <span class="token operator">=</span> pyproj<span class="to
         transformer <span class="token operator">=</span> pyproj<span class="token punctuation">.</span>Transformer<span class="token punctuation">.</span>from_crs<span class="token punctuation">(</span>
             <span class="token string-interpolation"><span class="token string">f"EPSG:</span><span class="token interpolation"><span class="token punctuation">{</span>source_epsg<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">,</span> <span class="token string">"EPSG:4326"</span><span class="token punctuation">,</span> always_xy<span class="token operator">=</span><span class="token boolean">True</span>
         <span class="token punctuation">)</span>
-        geom <span class="token operator">=</span> pyproj<span class="token punctuation">.</span>transform<span class="token punctuation">(</span>transformer<span class="token punctuation">.</span>transform<span class="token punctuation">,</span> geom<span class="token punctuation">)</span>
+        <span class="token comment"># Use shapely.ops.transform, not the deprecated pyproj.transform</span>
+        geom <span class="token operator">=</span> shapely_transform<span class="token punctuation">(</span>transformer<span class="token punctuation">.</span>transform<span class="token punctuation">,</span> geom<span class="token punctuation">)</span>
 
     <span class="token comment"># Snap coordinates to 7 decimal places (~1 cm precision at equator)</span>
     geom <span class="token operator">=</span> set_precision<span class="token punctuation">(</span>geom<span class="token punctuation">,</span> grid_size<span class="token operator">=</span><span class="token number">1e-7</span><span class="token punctuation">)</span>
@@ -400,10 +404,12 @@ _transformer_to_4326 <span class="token operator">=</span> pyproj<span class="to
     geom_hash <span class="token operator">=</span> hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">(</span>
         json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>feature_event<span class="token punctuation">.</span>geometry<span class="token punctuation">.</span>model_dump<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> sort_keys<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
     <span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">[</span><span class="token punctuation">:</span><span class="token number">16</span><span class="token punctuation">]</span>
-    event_id <span class="token operator">=</span> <span class="token builtin">str</span><span class="token punctuation">(</span>uuid<span class="token punctuation">.</span>uuid5<span class="token punctuation">(</span>uuid<span class="token punctuation">.</span>NAMESPACE_URL<span class="token punctuation">,</span> <span class="token string-interpolation"><span class="token string">f"</span><span class="token interpolation"><span class="token punctuation">{</span>feature_event<span class="token punctuation">.</span>feature_id<span class="token punctuation">}</span></span><span class="token string">:</span><span class="token interpolation"><span class="token punctuation">{</span>feature_event<span class="token punctuation">.</span>operation<span class="token punctuation">}</span></span><span class="token string">:</span><span class="token interpolation"><span class="token punctuation">{</span>geom_hash<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    event_id <span class="token operator">=</span> <span class="token builtin">str</span><span class="token punctuation">(</span>uuid<span class="token punctuation">.</span>uuid5<span class="token punctuation">(</span>
+        uuid<span class="token punctuation">.</span>NAMESPACE_URL<span class="token punctuation">,</span>
+        <span class="token string-interpolation"><span class="token string">f"</span><span class="token interpolation"><span class="token punctuation">{</span>feature_event<span class="token punctuation">.</span>feature_id<span class="token punctuation">}</span></span><span class="token string">:</span><span class="token interpolation"><span class="token punctuation">{</span>feature_event<span class="token punctuation">.</span>operation<span class="token punctuation">}</span></span><span class="token string">:</span><span class="token interpolation"><span class="token punctuation">{</span>geom_hash<span class="token punctuation">}</span></span><span class="token string">"</span></span>
+    <span class="token punctuation">)</span><span class="token punctuation">)</span>
 
     geom_dict <span class="token operator">=</span> feature_event<span class="token punctuation">.</span>geometry<span class="token punctuation">.</span>model_dump<span class="token punctuation">(</span><span class="token punctuation">)</span>
-    coords <span class="token operator">=</span> geom_dict<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"coordinates"</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
 
     <span class="token keyword">return</span> <span class="token punctuation">{</span>
         <span class="token string">"specversion"</span><span class="token punctuation">:</span> <span class="token string">"1.0"</span><span class="token punctuation">,</span>
@@ -412,7 +418,7 @@ _transformer_to_4326 <span class="token operator">=</span> pyproj<span class="to
         <span class="token string">"id"</span><span class="token punctuation">:</span> event_id<span class="token punctuation">,</span>
         <span class="token string">"time"</span><span class="token punctuation">:</span> datetime<span class="token punctuation">.</span>now<span class="token punctuation">(</span>timezone<span class="token punctuation">.</span>utc<span class="token punctuation">)</span><span class="token punctuation">.</span>isoformat<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
         <span class="token string">"datacontenttype"</span><span class="token punctuation">:</span> <span class="token string">"application/geo+json"</span><span class="token punctuation">,</span>
-        <span class="token comment"># Spatial extensions</span>
+        <span class="token comment"># Spatial CloudEvents extensions</span>
         <span class="token string">"crs"</span><span class="token punctuation">:</span> feature_event<span class="token punctuation">.</span>crs<span class="token punctuation">,</span>
         <span class="token string">"spatialoperation"</span><span class="token punctuation">:</span> feature_event<span class="token punctuation">.</span>operation<span class="token punctuation">,</span>
         <span class="token string">"data"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span>
@@ -524,7 +530,7 @@ _transformer_to_4326 <span class="token operator">=</span> pyproj<span class="to
 <li><strong>Empty or null geometry on <code>UPDATE</code>:</strong> Treat as a <code>DELETE</code> — the feature has been blanked. Log the anomaly and emit a deletion event with the last known geometry as context.</li>
 <li><strong>Coordinate ring orientation:</strong> GeoJSON exterior rings must be counter-clockwise (RFC 7946 §3.1.6). Shapely’s <code>orient()</code> corrects this silently; PostGIS may not.</li>
 <li><strong>Geometry type change:</strong> A polygon becoming a multipolygon on <code>UPDATE</code> is a legal mutation but can break consumers that cast the geometry type. Include both the old and new geometry types in the event envelope’s <code>spatialoperation</code> context.</li>
-<li><strong>Oversized payloads:</strong> Complex boundaries often exceed broker message limits. Simplify with <code>shapely.simplify(tolerance=0.00001, preserve_topology=True)</code> and include an <code>simplified: true</code> flag in the envelope properties so consumers can request the full geometry from the source API if needed.</li>
+<li><strong>Oversized payloads:</strong> Complex boundaries often exceed broker message limits. Simplify with <code>shapely.simplify(tolerance=0.00001, preserve_topology=True)</code> and include a <code>simplified: true</code> flag in the envelope properties so consumers can request the full geometry from the source API if needed.</li>
 </ul>
 <h2 id="retry-backoff-and-delivery-guarantees" tabindex="-1"><a class="heading-anchor" href="#retry-backoff-and-delivery-guarantees">Retry, backoff and delivery guarantees</a></h2>
 <div class="table-wrap"><table>
@@ -601,10 +607,10 @@ received<span class="token punctuation">:</span> <span class="token builtin">lis
     <span class="token keyword">assert</span> env<span class="token punctuation">[</span><span class="token string">"type"</span><span class="token punctuation">]</span><span class="token punctuation">.</span>startswith<span class="token punctuation">(</span><span class="token string">"com.geospatialwebhook.feature."</span><span class="token punctuation">)</span>
     <span class="token keyword">assert</span> env<span class="token punctuation">[</span><span class="token string">"specversion"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token string">"1.0"</span>
     <span class="token keyword">assert</span> env<span class="token punctuation">[</span><span class="token string">"crs"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token string">"EPSG:4326"</span>
-    sig <span class="token operator">=</span> env<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"_headers"</span><span class="token punctuation">,</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"X-Webhook-Signature"</span><span class="token punctuation">,</span> <span class="token string">""</span><span class="token punctuation">)</span>
-    <span class="token comment"># Verify HMAC (re-sign with known secret and compare)</span>
+
+    <span class="token comment"># Verify HMAC — re-sign with known secret and compare</span>
     expected <span class="token operator">=</span> sign_payload<span class="token punctuation">(</span>env<span class="token punctuation">,</span> secret<span class="token operator">=</span><span class="token string">"test-secret"</span><span class="token punctuation">)</span>
-    <span class="token keyword">assert</span> sig <span class="token operator">==</span> expected
+    <span class="token keyword">assert</span> env<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"_headers"</span><span class="token punctuation">,</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"X-Webhook-Signature"</span><span class="token punctuation">,</span> <span class="token string">""</span><span class="token punctuation">)</span> <span class="token operator">==</span> expected
 
     <span class="token keyword">await</span> runner<span class="token punctuation">.</span>cleanup<span class="token punctuation">(</span><span class="token punctuation">)</span>
 </code></pre>
@@ -671,7 +677,7 @@ received<span class="token punctuation">:</span> <span class="token builtin">lis
 <hr>
 <h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
 <ul>
-<li><a href="/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a> — the parent domain covering the full event-driven spatial pipeline</li>
+<li><a href="/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a> — parent domain covering the full event-driven spatial pipeline</li>
 <li><a href="/core-event-fundamentals-architecture/feature-change-triggers/how-to-design-a-geospatial-webhook-architecture-in-python/">How to Design a Geospatial Webhook Architecture in Python</a> — end-to-end architecture walkthrough for this trigger pattern</li>
 <li><a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns</a> — handling high-frequency IoT streams alongside discrete feature change events</li>
 <li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a> — generating deterministic idempotency keys from feature geometry hashes</li>
@@ -692,8 +698,8 @@ received<span class="token punctuation">:</span> <span class="token builtin">lis
         <div class="aside-card">
           <h3>Related in this section</h3>
           <ul>
-            <li><a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
             <li><a href="/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+            <li><a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
             <li><a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
           </ul>
         </div>
@@ -740,18 +746,30 @@ received<span class="token punctuation">:</span> <span class="token builtin">lis
         <h4>Architecture</h4>
         <ul>
           <li><a href="/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
         </ul>
       </div>
       <div>
         <h4>Idempotency</h4>
         <ul>
           <li><a href="/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
         </ul>
       </div>
       <div>
         <h4>Routing &amp; Parsing</h4>
         <ul>
           <li><a href="/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
         </ul>
       </div>
     </div>

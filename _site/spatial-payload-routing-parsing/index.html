@@ -49,8 +49,8 @@
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ef3d820"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=9f5ca540"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -249,46 +249,46 @@
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.55"/>
     </marker>
   </defs>
-  <!-- Layer boxes -->
-  <rect x="20"  y="60" width="160" height="180" rx="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
-  <rect x="280" y="60" width="160" height="180" rx="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
-  <rect x="540" y="60" width="160" height="180" rx="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
-  <!-- Layer fills -->
-  <rect x="20"  y="60" width="160" height="180" rx="10" fill="#e8f5e9" opacity="0.18"/>
-  <rect x="280" y="60" width="160" height="180" rx="10" fill="#fce4ec" opacity="0.18"/>
-  <rect x="540" y="60" width="160" height="180" rx="10" fill="#fff3e0" opacity="0.18"/>
+  <!-- Layer fills (theme-aware: currentColor at low opacity) -->
+  <rect x="20"  y="60" width="160" height="180" rx="10" fill="currentColor" opacity="0.05"/>
+  <rect x="280" y="60" width="160" height="180" rx="10" fill="currentColor" opacity="0.05"/>
+  <rect x="540" y="60" width="160" height="180" rx="10" fill="currentColor" opacity="0.05"/>
+  <!-- Layer box outlines -->
+  <rect x="20"  y="60" width="160" height="180" rx="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
+  <rect x="280" y="60" width="160" height="180" rx="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
+  <rect x="540" y="60" width="160" height="180" rx="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
   <!-- Layer headings -->
-<p><text x="100" y="90" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.85">Ingestion Gateway</text>
-<text x="360" y="90" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.85">Routing Engine</text>
-<text x="620" y="90" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.85">Parse &amp; Normalise</text></p>
+  <text x="100" y="90" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.85">Ingestion Gateway</text>
+  <text x="360" y="90" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.85">Routing Engine</text>
+  <text x="620" y="90" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.85">Parse &amp; Normalise</text>
   <!-- Bullets layer 1 -->
-<p><text x="35" y="118" font-size="10" fill="currentColor" opacity="0.7">• TLS termination</text>
-<text x="35" y="136" font-size="10" fill="currentColor" opacity="0.7">• Rate limiting</text>
-<text x="35" y="154" font-size="10" fill="currentColor" opacity="0.7">• Auth + HMAC</text>
-<text x="35" y="172" font-size="10" fill="currentColor" opacity="0.7">• Push to broker</text>
-<text x="35" y="190" font-size="10" fill="currentColor" opacity="0.7">• Ack immediately</text></p>
+  <text x="35" y="118" font-size="10" fill="currentColor" opacity="0.7">• TLS termination</text>
+  <text x="35" y="136" font-size="10" fill="currentColor" opacity="0.7">• Rate limiting</text>
+  <text x="35" y="154" font-size="10" fill="currentColor" opacity="0.7">• Auth + HMAC</text>
+  <text x="35" y="172" font-size="10" fill="currentColor" opacity="0.7">• Push to broker</text>
+  <text x="35" y="190" font-size="10" fill="currentColor" opacity="0.7">• Ack immediately</text>
   <!-- Bullets layer 2 -->
-<p><text x="295" y="118" font-size="10" fill="currentColor" opacity="0.7">• Feature type check</text>
-<text x="295" y="136" font-size="10" fill="currentColor" opacity="0.7">• Spatial extent hash</text>
-<text x="295" y="154" font-size="10" fill="currentColor" opacity="0.7">• Priority assignment</text>
-<text x="295" y="172" font-size="10" fill="currentColor" opacity="0.7">• Partition key (H3/S2)</text>
-<text x="295" y="190" font-size="10" fill="currentColor" opacity="0.7">• Idempotency filter</text></p>
+  <text x="295" y="118" font-size="10" fill="currentColor" opacity="0.7">• Feature type check</text>
+  <text x="295" y="136" font-size="10" fill="currentColor" opacity="0.7">• Spatial extent hash</text>
+  <text x="295" y="154" font-size="10" fill="currentColor" opacity="0.7">• Priority assignment</text>
+  <text x="295" y="172" font-size="10" fill="currentColor" opacity="0.7">• Partition key (H3/S2)</text>
+  <text x="295" y="190" font-size="10" fill="currentColor" opacity="0.7">• Idempotency filter</text>
   <!-- Bullets layer 3 -->
-<p><text x="555" y="118" font-size="10" fill="currentColor" opacity="0.7">• Schema validation</text>
-<text x="555" y="136" font-size="10" fill="currentColor" opacity="0.7">• Topology check</text>
-<text x="555" y="154" font-size="10" fill="currentColor" opacity="0.7">• CRS transform</text>
-<text x="555" y="172" font-size="10" fill="currentColor" opacity="0.7">• Serialise output</text>
-<text x="555" y="190" font-size="10" fill="currentColor" opacity="0.7">• Enrich + emit</text></p>
+  <text x="555" y="118" font-size="10" fill="currentColor" opacity="0.7">• Schema validation</text>
+  <text x="555" y="136" font-size="10" fill="currentColor" opacity="0.7">• Topology check</text>
+  <text x="555" y="154" font-size="10" fill="currentColor" opacity="0.7">• CRS transform</text>
+  <text x="555" y="172" font-size="10" fill="currentColor" opacity="0.7">• Serialise output</text>
+  <text x="555" y="190" font-size="10" fill="currentColor" opacity="0.7">• Enrich + emit</text>
   <!-- Arrows between layers -->
   <line x1="182" y1="150" x2="278" y2="150" stroke="currentColor" stroke-width="1.5" opacity="0.45" marker-end="url(#arr)"/>
   <line x1="442" y1="150" x2="538" y2="150" stroke="currentColor" stroke-width="1.5" opacity="0.45" marker-end="url(#arr)"/>
   <!-- Webhook source label -->
-<p><text x="100" y="268" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.55">Webhook / IoT source</text>
-<line x1="100" y1="242" x2="100" y2="255" stroke="currentColor" stroke-width="1" opacity="0.35" stroke-dasharray="3,2"/></p>
+  <text x="100" y="268" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.55">Webhook / IoT source</text>
+  <line x1="100" y1="242" x2="100" y2="255" stroke="currentColor" stroke-width="1" opacity="0.35" stroke-dasharray="3,2"/>
   <!-- Consumer label -->
-<p><text x="620" y="268" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.55">Downstream consumers</text>
-<line x1="620" y1="242" x2="620" y2="255" stroke="currentColor" stroke-width="1" opacity="0.35" stroke-dasharray="3,2"/>
-</svg></p>
+  <text x="620" y="268" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.55">Downstream consumers</text>
+  <line x1="620" y1="242" x2="620" y2="255" stroke="currentColor" stroke-width="1" opacity="0.35" stroke-dasharray="3,2"/>
+</svg>
 <p><strong>Layer 1 — Ingestion Gateway.</strong> Accepts HTTP webhook payloads, applies rate limiting, validates HMAC signatures (as detailed in <a href="/core-event-fundamentals-architecture/webhook-security-boundaries/securing-webhook-endpoints-with-spatial-token-validation/">Securing Webhook Endpoints with Spatial Token Validation</a>), and pushes raw messages to a message broker — Apache Kafka, RabbitMQ, AWS Kinesis, or Redis Streams. The gateway acknowledges immediately and never blocks on parsing.</p>
 <p><strong>Layer 2 — Routing Engine.</strong> Inspects payload metadata and spatial attributes to determine destination queues, processing priority, and transformation requirements. This is where geographic partitioning, feature-type classification, and idempotency filtering occur.</p>
 <p><strong>Layer 3 — Parsing &amp; Normalisation.</strong> Validates geometry, resolves coordinate reference systems (CRS), enforces schema contracts, and emits clean, standardised events to downstream services.</p>
@@ -831,18 +831,30 @@ _redis<span class="token punctuation">:</span> aioredis<span class="token punctu
         <h4>Architecture</h4>
         <ul>
           <li><a href="/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
         </ul>
       </div>
       <div>
         <h4>Idempotency</h4>
         <ul>
           <li><a href="/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
         </ul>
       </div>
       <div>
         <h4>Routing &amp; Parsing</h4>
         <ul>
           <li><a href="/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
         </ul>
       </div>
     </div>

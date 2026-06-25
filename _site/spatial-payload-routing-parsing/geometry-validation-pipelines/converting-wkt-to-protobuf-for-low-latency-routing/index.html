@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 
   <title>Converting WKT to Protobuf for Low-Latency Routing · Geo Webhook</title>
-  <meta name="description" content="Replace verbose WKT geometry strings with compact Protobuf binary payloads: reduce payload size 60–85% and drop deserialization to sub-millisecond ranges."/>
+  <meta name="description" content="Replace verbose WKT geometry strings with compact Protobuf binary payloads in Python: cut payload size 60-85% and drop deserialization to sub-millisecond ranges."/>
   <link rel="canonical" href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/converting-wkt-to-protobuf-for-low-latency-routing/"/>
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
 
@@ -33,7 +33,7 @@
   <meta property="og:locale" content="en_US"/>
   <meta property="og:url" content="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/converting-wkt-to-protobuf-for-low-latency-routing/"/>
   <meta property="og:title" content="Converting WKT to Protobuf for Low-Latency Routing"/>
-  <meta property="og:description" content="Replace verbose WKT geometry strings with compact Protobuf binary payloads: reduce payload size 60–85% and drop deserialization to sub-millisecond ranges."/>
+  <meta property="og:description" content="Replace verbose WKT geometry strings with compact Protobuf binary payloads in Python: cut payload size 60-85% and drop deserialization to sub-millisecond ranges."/>
   <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
   <meta property="og:image:width" content="1200"/>
   <meta property="og:image:height" content="630"/>
@@ -42,15 +42,15 @@
   
   <meta name="twitter:card" content="summary_large_image"/>
   <meta name="twitter:title" content="Converting WKT to Protobuf for Low-Latency Routing"/>
-  <meta name="twitter:description" content="Replace verbose WKT geometry strings with compact Protobuf binary payloads: reduce payload size 60–85% and drop deserialization to sub-millisecond ranges."/>
+  <meta name="twitter:description" content="Replace verbose WKT geometry strings with compact Protobuf binary payloads in Python: cut payload size 60-85% and drop deserialization to sub-millisecond ranges."/>
   <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
   <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
 
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ef3d820"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=9f5ca540"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -99,7 +99,7 @@
     "@id": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/converting-wkt-to-protobuf-for-low-latency-routing/#article",
     "mainEntityOfPage": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/converting-wkt-to-protobuf-for-low-latency-routing/",
     "headline": "Converting WKT to Protobuf for Low-Latency Routing",
-    "description": "Replace verbose WKT geometry strings with compact Protobuf binary payloads: reduce payload size 60–85% and drop deserialization to sub-millisecond ranges.",
+    "description": "Replace verbose WKT geometry strings with compact Protobuf binary payloads in Python: cut payload size 60-85% and drop deserialization to sub-millisecond ranges.",
     "inLanguage": "en",
     "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
     "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
@@ -162,12 +162,122 @@
 
     <div class="page__layout">
       <div class="markdown">
-        <p>Converting WKT to Protobuf for low-latency routing replaces verbose, human-readable geometry strings with compact, typed binary payloads. The pipeline parses Well-Known Text into validated coordinate arrays, then serializes them into Protocol Buffers. In production, this typically cuts payload size by 60–85% and drops deserialization to sub-millisecond ranges, preventing queue backlogs in webhook-driven dispatch engines.</p>
-<h2 id="why-protobuf-outperforms-wkt-in-routing-pipelines" tabindex="-1"><a class="heading-anchor" href="#why-protobuf-outperforms-wkt-in-routing-pipelines">Why Protobuf Outperforms WKT in Routing Pipelines</a></h2>
-<p>WKT’s string-heavy format forces token-based parsing at every network hop, adding CPU overhead, memory allocation spikes, and unpredictable latency. Protobuf bypasses this with fixed-width binary fields and schema-driven decoding. Because routing decisions rely on spatial predicates like <code>intersects</code>, <code>contains</code>, or nearest-neighbor lookups, flattening coordinates into a typed <code>repeated double</code> array lets downstream consumers skip geometry reconstruction until a predicate actually requires it. This aligns directly with modern <a href="/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a> architectures that prioritize binary efficiency over text readability.</p>
-<p>The <a href="https://www.ogc.org/standards/wkt-crs/">OGC WKT-CRS standard</a> was designed for interoperability and human inspection, not high-throughput dispatch. When routing engines ingest thousands of geometry updates per second, string parsing becomes the bottleneck. Protobuf’s wire format eliminates regex overhead, enforces strict typing, and enables zero-copy deserialization in languages that support it.</p>
-<h2 id="protocol-schema-design" tabindex="-1"><a class="heading-anchor" href="#protocol-schema-design">Protocol Schema Design</a></h2>
-<p>Keep the schema flat. Routing engines rarely need full topology trees; they need bounding boxes, segment checks, and SRID context. Nesting complex geometry objects adds decoding latency and complicates schema evolution.</p>
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Converting WKT to Protobuf for Low-Latency Routing",
+      "description": "Replace verbose WKT geometry strings with compact Protobuf binary payloads in Python: cut payload size 60-85% and drop deserialization to sub-millisecond ranges.",
+      "datePublished": "2025-02-18",
+      "dateModified": "2026-06-25",
+      "author": { "@type": "Organization", "name": "Geospatial Webhook" },
+      "publisher": { "@type": "Organization", "name": "Geospatial Webhook" },
+      "mainEntityOfPage": "https://geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/converting-wkt-to-protobuf-for-low-latency-routing/"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatialwebhook.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Spatial Payload Routing & Parsing", "item": "https://geospatialwebhook.com/spatial-payload-routing-parsing/" },
+        { "@type": "ListItem", "position": 3, "name": "Geometry Validation Pipelines", "item": "https://geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/" },
+        { "@type": "ListItem", "position": 4, "name": "WKT to Protobuf for Low-Latency Routing", "item": "https://geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/converting-wkt-to-protobuf-for-low-latency-routing/" }
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Convert WKT geometries to Protobuf for low-latency routing",
+      "description": "Parse Well-Known Text into validated coordinates, flatten them, and serialize to a Protocol Buffers message for sub-millisecond routing decisions.",
+      "step": [
+        { "@type": "HowToStep", "name": "Define a flat schema", "text": "Declare a proto3 message that stores geometry type, a flattened repeated double coordinate array, and the EPSG SRID." },
+        { "@type": "HowToStep", "name": "Parse and validate WKT", "text": "Load the WKT with shapely, run is_valid, and repair topology with make_valid before serializing." },
+        { "@type": "HowToStep", "name": "Flatten coordinates", "text": "Walk the geometry into a single [x, y, x, y, ...] array to remove pointer chasing at decode time." },
+        { "@type": "HowToStep", "name": "Serialize and dispatch", "text": "Call SerializeToString() and publish the compact binary payload to the routing broker." }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Does flattening coordinates lose the SRID or CRS?",
+          "acceptedText": "No.",
+          "acceptedAnswer": { "@type": "Answer", "text": "The flattened array only holds ordinates. The CRS is carried separately in the srid field (always an EPSG code such as 4326). Never assume a default CRS on the consumer side; read the srid field explicitly before any spatial predicate." }
+        },
+        {
+          "@type": "Question",
+          "name": "Why store coordinates as a flat repeated double instead of nested messages?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Nested geometry messages force pointer chasing and per-element framing during decode. A single repeated double packs tightly on the wire and deserializes into a contiguous buffer you can scan with NumPy or a memoryview in O(N), which is what makes the bounding-box fast path cheap." }
+        },
+        {
+          "@type": "Question",
+          "name": "Should I quantize coordinates before serializing?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Optional. Rounding to 6 decimal places gives roughly 10 cm accuracy in EPSG:4326 and trims bytes, but it is lossy. Quantize only when 10 cm is acceptable for routing decisions and never re-quantize an already-rounded value on a later hop." }
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>To convert WKT to Protobuf for low-latency routing, parse the Well-Known Text with <code>shapely</code>, repair its topology with <code>make_valid</code>, flatten the coordinates into a single <code>repeated double</code> array, and serialize that into a flat proto3 message — this drops payload size 60-85% and pushes deserialization into sub-millisecond ranges.</strong> This page sits under <a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a>, part of the broader <a href="/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a> architecture.</p>
+<p>WKT’s string-heavy format forces token-based parsing at every network hop, adding CPU overhead, memory-allocation spikes, and unpredictable tail latency. Protobuf replaces that with fixed-width binary fields and schema-driven decoding, so downstream consumers skip geometry reconstruction until a spatial predicate actually requires it.</p>
+<h2 id="when-to-use-this-pattern" tabindex="-1"><a class="heading-anchor" href="#when-to-use-this-pattern">When to use this pattern</a></h2>
+<ul>
+<li><strong>High-frequency dispatch:</strong> You route thousands of geometry updates per second and text parsing has become the measurable bottleneck in your webhook fan-out.</li>
+<li><strong>Predicate-light fast paths:</strong> Most incoming geometries are filtered by a cheap bounding-box check, so you want coordinates available as a contiguous buffer before any topology reconstruction.</li>
+<li><strong>Cross-language consumers:</strong> Producers and consumers run in different languages and you need a strict, versioned wire contract instead of relying on every service parsing WKT identically.</li>
+</ul>
+<p>If your consumers stay in one language and need full topology on every message, the conversion overhead may not pay off — a <code>shapely</code> object passed in-process is simpler. For mapping a richer GeoJSON document to a typed message instead of bare WKT, see <a href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping</a>.</p>
+<h2 id="conversion-data-flow" tabindex="-1"><a class="heading-anchor" href="#conversion-data-flow">Conversion data flow</a></h2>
+<svg viewBox="0 0 720 240" role="img" aria-label="Data flow converting a WKT string through shapely validation and coordinate flattening into a Protobuf binary payload published to the routing broker" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;font-family:inherit;color:currentColor">
+  <title>WKT to Protobuf conversion pipeline</title>
+  <desc>A WKT string is parsed and validated by shapely, flattened into a single coordinate array, serialized into a flat proto3 SpatialRoute message, and published to the routing broker where a bounding-box fast path filters most messages before full reconstruction.</desc>
+  <defs>
+    <marker id="wkt2pb-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="currentColor"></path>
+    </marker>
+  </defs>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="8" y="84" width="118" height="56" rx="8" opacity="0.9"></rect>
+    <rect x="166" y="84" width="124" height="56" rx="8" opacity="0.9"></rect>
+    <rect x="330" y="84" width="124" height="56" rx="8" opacity="0.9"></rect>
+    <rect x="494" y="84" width="124" height="56" rx="8" opacity="0.9"></rect>
+  </g>
+  <g fill="currentColor" text-anchor="middle" font-size="13">
+    <text x="67" y="108">WKT string</text>
+    <text x="67" y="126" font-size="11" opacity="0.7">"POLYGON(( ... ))"</text>
+    <text x="228" y="108">Parse + validate</text>
+    <text x="228" y="126" font-size="11" opacity="0.7">make_valid()</text>
+    <text x="392" y="108">Flatten coords</text>
+    <text x="392" y="126" font-size="11" opacity="0.7">[x, y, x, y, ...]</text>
+    <text x="556" y="108">Serialize</text>
+    <text x="556" y="126" font-size="11" opacity="0.7">SpatialRoute msg</text>
+  </g>
+  <g stroke="currentColor" stroke-width="1.5" marker-end="url(#wkt2pb-arrow)">
+    <line x1="126" y1="112" x2="162" y2="112"></line>
+    <line x1="290" y1="112" x2="326" y2="112"></line>
+    <line x1="454" y1="112" x2="490" y2="112"></line>
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="494" y="178" width="124" height="48" rx="8" opacity="0.9"></rect>
+  </g>
+  <g stroke="currentColor" stroke-width="1.5" marker-end="url(#wkt2pb-arrow)">
+    <line x1="556" y1="140" x2="556" y2="174"></line>
+  </g>
+  <g fill="currentColor" text-anchor="middle" font-size="13">
+    <text x="556" y="200">Routing broker</text>
+    <text x="556" y="216" font-size="11" opacity="0.7">AABB fast path</text>
+  </g>
+  <g fill="currentColor" font-size="11" opacity="0.7">
+    <text x="8" y="40">Text on the wire</text>
+    <text x="8" y="56" font-size="10">~12 KB / 500 verts</text>
+    <text x="494" y="40" text-anchor="start">Binary on the wire</text>
+    <text x="494" y="56" font-size="10">~4 KB / 500 verts</text>
+  </g>
+</svg>
+<h2 id="complete-runnable-conversion" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-conversion">Complete runnable conversion</a></h2>
+<p>The schema stays deliberately flat. Routing engines need bounding boxes, segment checks, and CRS context — not a full topology tree. Nesting geometry objects only adds decode latency and complicates schema evolution.</p>
 <div class="code-block" data-lang="proto">
   <div class="code-block__header">
     <span class="code-block__lang">proto</span>
@@ -175,30 +285,19 @@
       <span class="code-block__copy-label">Copy</span>
     </button>
   </div>
-  <pre class="language-proto" tabindex="0"><code class="language-proto">syntax = &quot;proto3&quot;;
+  <pre class="language-proto" tabindex="0"><code class="language-proto">// spatial_route.proto — compile with: protoc --python_out=. spatial_route.proto
+syntax = &quot;proto3&quot;;
 
 message SpatialRoute {
   string route_id = 1;
-  string geometry_type = 2; // LINESTRING, POLYGON, POINT, MULTIPOLYGON
+  string geometry_type = 2;       // POINT, LINESTRING, POLYGON, MULTIPOLYGON
   repeated double coordinates = 3; // Flattened [x, y, x, y, ...]
-  int32 srid = 4;
+  int32 srid = 4;                 // EPSG code, e.g. 4326 (WGS84)
   uint64 timestamp_ms = 5;
 }
 </code></pre>
 </div>
-<p>Compile with the official compiler:</p>
-<div class="code-block" data-lang="bash">
-  <div class="code-block__header">
-    <span class="code-block__lang">bash</span>
-    <button type="button" class="code-block__copy" aria-label="Copy code">
-      <span class="code-block__copy-label">Copy</span>
-    </button>
-  </div>
-  <pre class="language-bash" tabindex="0"><code class="language-bash">protoc <span class="token parameter variable">--python_out</span><span class="token operator">=</span>. spatial_route.proto
-</code></pre>
-</div>
-<h2 id="python-conversion-pipeline" tabindex="-1"><a class="heading-anchor" href="#python-conversion-pipeline">Python Conversion Pipeline</a></h2>
-<p>The implementation below uses <code>shapely</code> for robust WKT parsing and topology validation, then flattens coordinates before Protobuf serialization. It handles single geometries and multi-part collections uniformly.</p>
+<p>The Python pipeline below parses WKT with <code>shapely</code>, enforces valid topology before anything touches the wire, flattens coordinates, and serializes. It handles single geometries and multi-part collections uniformly with no placeholder branches.</p>
 <div class="code-block" data-lang="python">
   <div class="code-block__header">
     <span class="code-block__lang">python</span>
@@ -213,68 +312,200 @@ message SpatialRoute {
 <span class="token keyword">from</span> shapely<span class="token punctuation">.</span>validation <span class="token keyword">import</span> make_valid
 <span class="token keyword">import</span> spatial_route_pb2  <span class="token comment"># Generated from protoc</span>
 
+
 <span class="token keyword">def</span> <span class="token function">_flatten_coords</span><span class="token punctuation">(</span>geom<span class="token punctuation">:</span> BaseGeometry<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> List<span class="token punctuation">[</span><span class="token builtin">float</span><span class="token punctuation">]</span><span class="token punctuation">:</span>
-    <span class="token triple-quoted-string string">"""Extract all (x, y) pairs from a geometry into a flat list."""</span>
-    geom_type <span class="token operator">=</span> geom<span class="token punctuation">.</span>geom_type<span class="token punctuation">.</span>upper<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token triple-quoted-string string">"""Walk any geometry into a single [x, y, x, y, ...] list.
+
+    We deliberately drop Z/M ordinates ([:2]) because routing predicates
+    here are planar; keep them only if your fast path is 3D-aware.
+    """</span>
+    gtype <span class="token operator">=</span> geom<span class="token punctuation">.</span>geom_type<span class="token punctuation">.</span>upper<span class="token punctuation">(</span><span class="token punctuation">)</span>
     coords<span class="token punctuation">:</span> List<span class="token punctuation">[</span><span class="token builtin">float</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
 
-    <span class="token keyword">if</span> geom_type <span class="token operator">==</span> <span class="token string">"POINT"</span><span class="token punctuation">:</span>
+    <span class="token keyword">if</span> gtype <span class="token operator">==</span> <span class="token string">"POINT"</span><span class="token punctuation">:</span>
         coords <span class="token operator">=</span> <span class="token builtin">list</span><span class="token punctuation">(</span>geom<span class="token punctuation">.</span>coords<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">[</span><span class="token punctuation">:</span><span class="token number">2</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
-    <span class="token keyword">elif</span> geom_type <span class="token keyword">in</span> <span class="token punctuation">(</span><span class="token string">"LINESTRING"</span><span class="token punctuation">,</span> <span class="token string">"MULTIPOINT"</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">elif</span> gtype <span class="token keyword">in</span> <span class="token punctuation">(</span><span class="token string">"LINESTRING"</span><span class="token punctuation">,</span> <span class="token string">"MULTIPOINT"</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
         <span class="token keyword">for</span> pt <span class="token keyword">in</span> geom<span class="token punctuation">.</span>coords<span class="token punctuation">:</span>
             coords<span class="token punctuation">.</span>extend<span class="token punctuation">(</span>pt<span class="token punctuation">[</span><span class="token punctuation">:</span><span class="token number">2</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
-    <span class="token keyword">elif</span> geom_type <span class="token operator">==</span> <span class="token string">"POLYGON"</span><span class="token punctuation">:</span>
+    <span class="token keyword">elif</span> gtype <span class="token operator">==</span> <span class="token string">"POLYGON"</span><span class="token punctuation">:</span>
+        <span class="token comment"># Exterior ring only — interior holes are irrelevant to an</span>
+        <span class="token comment"># axis-aligned bounding box, which is all the fast path needs.</span>
         <span class="token keyword">for</span> pt <span class="token keyword">in</span> geom<span class="token punctuation">.</span>exterior<span class="token punctuation">.</span>coords<span class="token punctuation">:</span>
             coords<span class="token punctuation">.</span>extend<span class="token punctuation">(</span>pt<span class="token punctuation">[</span><span class="token punctuation">:</span><span class="token number">2</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
-    <span class="token keyword">elif</span> geom_type <span class="token keyword">in</span> <span class="token punctuation">(</span><span class="token string">"MULTILINESTRING"</span><span class="token punctuation">,</span> <span class="token string">"MULTIPOLYGON"</span><span class="token punctuation">,</span> <span class="token string">"GEOMETRYCOLLECTION"</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">elif</span> gtype <span class="token keyword">in</span> <span class="token punctuation">(</span><span class="token string">"MULTILINESTRING"</span><span class="token punctuation">,</span> <span class="token string">"MULTIPOLYGON"</span><span class="token punctuation">,</span> <span class="token string">"GEOMETRYCOLLECTION"</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
         <span class="token keyword">for</span> part <span class="token keyword">in</span> geom<span class="token punctuation">.</span>geoms<span class="token punctuation">:</span>
             coords<span class="token punctuation">.</span>extend<span class="token punctuation">(</span>_flatten_coords<span class="token punctuation">(</span>part<span class="token punctuation">)</span><span class="token punctuation">)</span>
     <span class="token keyword">return</span> coords
 
+
 <span class="token keyword">def</span> <span class="token function">wkt_to_protobuf</span><span class="token punctuation">(</span>wkt_string<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> route_id<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> srid<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">4326</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bytes</span><span class="token punctuation">:</span>
-    <span class="token triple-quoted-string string">"""Parse WKT, validate, flatten coordinates, and serialize to Protobuf."""</span>
+    <span class="token triple-quoted-string string">"""Parse WKT, repair topology, flatten, and serialize to Protobuf bytes."""</span>
     <span class="token keyword">try</span><span class="token punctuation">:</span>
         geom <span class="token operator">=</span> wkt<span class="token punctuation">.</span>loads<span class="token punctuation">(</span>wkt_string<span class="token punctuation">)</span>
-    <span class="token keyword">except</span> Exception <span class="token keyword">as</span> e<span class="token punctuation">:</span>
-        <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Invalid WKT syntax: </span><span class="token interpolation"><span class="token punctuation">{</span>e<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span> <span class="token keyword">from</span> e
+    <span class="token keyword">except</span> Exception <span class="token keyword">as</span> exc<span class="token punctuation">:</span>  <span class="token comment"># shapely raises GEOSException / ValueError</span>
+        <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Invalid WKT syntax: </span><span class="token interpolation"><span class="token punctuation">{</span>exc<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span> <span class="token keyword">from</span> exc
 
-    <span class="token comment"># Enforce valid topology before serialization</span>
+    <span class="token comment"># Enforce valid topology BEFORE serialization. A bowtie polygon that</span>
+    <span class="token comment"># slips onto the wire fails silently in the consumer's predicate stage.</span>
     <span class="token keyword">if</span> <span class="token keyword">not</span> geom<span class="token punctuation">.</span>is_valid<span class="token punctuation">:</span>
         geom <span class="token operator">=</span> make_valid<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>
-
-    coords <span class="token operator">=</span> _flatten_coords<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>
 
     msg <span class="token operator">=</span> spatial_route_pb2<span class="token punctuation">.</span>SpatialRoute<span class="token punctuation">(</span>
         route_id<span class="token operator">=</span>route_id<span class="token punctuation">,</span>
         geometry_type<span class="token operator">=</span>geom<span class="token punctuation">.</span>geom_type<span class="token punctuation">.</span>upper<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
-        coordinates<span class="token operator">=</span>coords<span class="token punctuation">,</span>
-        srid<span class="token operator">=</span>srid<span class="token punctuation">,</span>
-        timestamp_ms<span class="token operator">=</span><span class="token builtin">int</span><span class="token punctuation">(</span>time<span class="token punctuation">.</span>time<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">*</span> <span class="token number">1000</span><span class="token punctuation">)</span>
+        coordinates<span class="token operator">=</span>_flatten_coords<span class="token punctuation">(</span>geom<span class="token punctuation">)</span><span class="token punctuation">,</span>
+        srid<span class="token operator">=</span>srid<span class="token punctuation">,</span>  <span class="token comment"># EPSG:4326 by default — carry it, never assume it</span>
+        timestamp_ms<span class="token operator">=</span><span class="token builtin">int</span><span class="token punctuation">(</span>time<span class="token punctuation">.</span>time<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">*</span> <span class="token number">1000</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
     <span class="token punctuation">)</span>
     <span class="token keyword">return</span> msg<span class="token punctuation">.</span>SerializeToString<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">if</span> __name__ <span class="token operator">==</span> <span class="token string">"__main__"</span><span class="token punctuation">:</span>
+    payload <span class="token operator">=</span> wkt_to_protobuf<span class="token punctuation">(</span>
+        <span class="token string">"POLYGON((-122.5 37.7, -122.4 37.7, -122.4 37.8, -122.5 37.8, -122.5 37.7))"</span><span class="token punctuation">,</span>
+        route_id<span class="token operator">=</span><span class="token string">"zone-sf-001"</span><span class="token punctuation">,</span>
+    <span class="token punctuation">)</span>
+    <span class="token keyword">print</span><span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"serialized </span><span class="token interpolation"><span class="token punctuation">{</span><span class="token builtin">len</span><span class="token punctuation">(</span>payload<span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string"> bytes"</span></span><span class="token punctuation">)</span>
 </code></pre>
 </div>
-<h2 id="coordinate-flattening-validation-logic" tabindex="-1"><a class="heading-anchor" href="#coordinate-flattening-validation-logic">Coordinate Flattening &amp; Validation Logic</a></h2>
-<p>Raw WKT frequently contains self-intersections, unclosed rings, or mixed dimensionality (2D vs. 3D coordinates). Passing invalid geometries into a routing engine causes silent failures or expensive fallback computations. Integrating a dedicated <a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a> step ensures <code>make_valid</code> runs before serialization, catching topological defects early.</p>
-<p>The flattening strategy converts nested coordinate sequences into a single <code>[x, y, x, y, ...]</code> array. This design choice eliminates pointer chasing during deserialization. For routing, precision matters: Protobuf stores <code>double</code> values natively, but you can optionally quantize coordinates to 6 decimal places (~10 cm accuracy) before flattening to shave additional bytes without impacting dispatch accuracy.</p>
-<h2 id="deserialization-fast-path-routing" tabindex="-1"><a class="heading-anchor" href="#deserialization-fast-path-routing">Deserialization &amp; Fast-Path Routing</a></h2>
-<p>Downstream consumers should decode only the <code>coordinates</code> and <code>geometry_type</code> fields for initial bounding-box filtering. Full geometry reconstruction via <a href="https://shapely.readthedocs.io/en/stable/manual.html">Shapely</a> should occur only when spatial predicates fail the fast-path check.</p>
-<p>A typical fast-path workflow:</p>
+<p>On the consumer side, decode only <code>coordinates</code> and <code>geometry_type</code> for an initial bounding-box filter, and reconstruct the full <code>shapely</code> geometry <strong>only</strong> when the cheap check passes:</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> numpy <span class="token keyword">as</span> np
+<span class="token keyword">import</span> spatial_route_pb2
+
+
+<span class="token keyword">def</span> <span class="token function">aabb_overlaps</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">,</span> zone_minx<span class="token punctuation">,</span> zone_miny<span class="token punctuation">,</span> zone_maxx<span class="token punctuation">,</span> zone_maxy<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Cheap O(N) axis-aligned bounding-box test before any topology work."""</span>
+    msg <span class="token operator">=</span> spatial_route_pb2<span class="token punctuation">.</span>SpatialRoute<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    msg<span class="token punctuation">.</span>ParseFromString<span class="token punctuation">(</span>payload<span class="token punctuation">)</span>
+
+    xy <span class="token operator">=</span> np<span class="token punctuation">.</span>frombuffer<span class="token punctuation">(</span><span class="token builtin">bytes</span><span class="token punctuation">(</span><span class="token builtin">bytearray</span><span class="token punctuation">(</span>  <span class="token comment"># contiguous buffer, no per-point objects</span>
+        np<span class="token punctuation">.</span>asarray<span class="token punctuation">(</span>msg<span class="token punctuation">.</span>coordinates<span class="token punctuation">,</span> dtype<span class="token operator">=</span>np<span class="token punctuation">.</span>float64<span class="token punctuation">)</span><span class="token punctuation">.</span>tobytes<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">,</span> dtype<span class="token operator">=</span>np<span class="token punctuation">.</span>float64<span class="token punctuation">)</span>
+    xs<span class="token punctuation">,</span> ys <span class="token operator">=</span> xy<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token number">2</span><span class="token punctuation">]</span><span class="token punctuation">,</span> xy<span class="token punctuation">[</span><span class="token number">1</span><span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token number">2</span><span class="token punctuation">]</span>
+    <span class="token keyword">return</span> <span class="token keyword">not</span> <span class="token punctuation">(</span>xs<span class="token punctuation">.</span><span class="token builtin">max</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">&lt;</span> zone_minx <span class="token keyword">or</span> xs<span class="token punctuation">.</span><span class="token builtin">min</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">></span> zone_maxx
+                <span class="token keyword">or</span> ys<span class="token punctuation">.</span><span class="token builtin">max</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">&lt;</span> zone_miny <span class="token keyword">or</span> ys<span class="token punctuation">.</span><span class="token builtin">min</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">></span> zone_maxy<span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>Most incoming geometries are rejected by this math before any expensive <code>intersects</code>/<code>contains</code> evaluation begins, which is where the 70-90% CPU saving in high-traffic dispatch comes from. When the WKT arrives from an async webhook handler, keep the parse off the event loop using the offload pattern in <a href="/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/optimizing-async-geometry-parsing-with-asyncio/">Optimizing Async Geometry Parsing with asyncio</a>.</p>
+<h2 id="parameter-reference" tabindex="-1"><a class="heading-anchor" href="#parameter-reference">Parameter reference</a></h2>
+<div style="overflow-x:auto">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Argument / field</th>
+<th>Type</th>
+<th>Spatial constraint</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>wkt_string</code></td>
+<td><code>str</code></td>
+<td>Must be syntactically valid WKT; repaired if topology is invalid</td>
+<td>— (required)</td>
+</tr>
+<tr>
+<td><code>route_id</code></td>
+<td><code>str</code></td>
+<td>Stable per-geometry key for downstream idempotency</td>
+<td>— (required)</td>
+</tr>
+<tr>
+<td><code>srid</code></td>
+<td><code>int</code></td>
+<td>EPSG code; routing assumes planar math, so use a metric CRS for distance</td>
+<td><code>4326</code> (WGS84)</td>
+</tr>
+<tr>
+<td><code>coordinates</code> (field 3)</td>
+<td><code>repeated double</code></td>
+<td>Flattened <code>[x, y, ...]</code>; pairs must be even-length</td>
+<td>empty</td>
+</tr>
+<tr>
+<td><code>geometry_type</code> (field 2)</td>
+<td><code>str</code></td>
+<td>One of POINT/LINESTRING/POLYGON/MULTIPOLYGON</td>
+<td>parsed value</td>
+</tr>
+<tr>
+<td><code>timestamp_ms</code> (field 5)</td>
+<td><code>uint64</code></td>
+<td>Epoch milliseconds, used for ordering and TTL</td>
+<td><code>now()</code></td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<h2 id="gotchas-spatial-edge-cases" tabindex="-1"><a class="heading-anchor" href="#gotchas-spatial-edge-cases">Gotchas &amp; spatial edge cases</a></h2>
 <ol>
-<li>Decode <code>coordinates</code> into a flat NumPy array or memoryview.</li>
-<li>Compute axis-aligned bounding box (AABB) in O(N) time.</li>
-<li>Run AABB intersection against active route zones.</li>
-<li>Only if the AABB overlaps, reconstruct the full <code>shapely</code> geometry for precise <code>intersects</code> or <code>contains</code> checks.</li>
+<li><strong>Precision loss on quantization.</strong> Rounding to 6 decimal places (~10 cm in EPSG:4326) saves bytes but is lossy. Never re-round an already-quantized value on a later hop — errors compound across the routing graph.</li>
+<li><strong>Ring orientation is not preserved by flattening.</strong> A flat array discards exterior/interior winding. The fast path only needs the exterior ring for its bounding box, but if a consumer rebuilds a <code>Polygon</code> from the array it must re-impose right-hand-rule orientation per the <a href="https://datatracker.ietf.org/doc/html/rfc7946">RFC 7946 GeoJSON specification</a> before any <code>contains</code> test.</li>
+<li><strong>CRS mismatch on merge.</strong> If two producers emit different <code>srid</code> values, a consumer that merges geometries without reading the field will compute garbage bounding boxes. Normalize first, following <a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a>, and treat a missing <code>srid</code> as a hard reject, not a 4326 default.</li>
+<li><strong>Validity after <code>make_valid</code>.</strong> <code>make_valid</code> can change the geometry type (a self-intersecting <code>Polygon</code> may become a <code>MultiPolygon</code> or <code>GeometryCollection</code>). Always re-read <code>geom.geom_type</code> after repair — that is why the example sets <code>geometry_type</code> from the repaired object, not the input string.</li>
+<li><strong>Mixed dimensionality.</strong> WKT with Z/M ordinates (<code>POINT Z (...)</code>) breaks an even-pair assumption if you forget the <code>[:2]</code> slice. Decide explicitly whether the fast path is 2D or 3D and keep the slice consistent on both ends.</li>
+<li><strong>Field-number stability.</strong> Protobuf backward compatibility relies on stable field numbers. Use <code>reserved</code> for deprecated tags and never reuse a number — a renumbered <code>srid</code> silently mis-decodes every in-flight message.</li>
 </ol>
-<p>This lazy-reconstruction pattern reduces CPU cycles by 70–90% in high-traffic dispatch systems, as most incoming geometries are filtered out by cheap bounding-box math before expensive topology evaluation begins.</p>
-<h2 id="production-tuning-benchmarks" tabindex="-1"><a class="heading-anchor" href="#production-tuning-benchmarks">Production Tuning &amp; Benchmarks</a></h2>
+<h2 id="minimal-verification" tabindex="-1"><a class="heading-anchor" href="#minimal-verification">Minimal verification</a></h2>
+<p>Run this <code>pytest</code> to confirm a round trip survives serialization and that an invalid polygon is repaired before it reaches the wire:</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> pytest
+<span class="token keyword">from</span> shapely <span class="token keyword">import</span> wkt
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape
+<span class="token keyword">import</span> spatial_route_pb2
+<span class="token keyword">from</span> converter <span class="token keyword">import</span> wkt_to_protobuf  <span class="token comment"># the module above</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_roundtrip_preserves_bounds</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    src <span class="token operator">=</span> <span class="token string">"LINESTRING(0 0, 1 1, 2 0)"</span>
+    payload <span class="token operator">=</span> wkt_to_protobuf<span class="token punctuation">(</span>src<span class="token punctuation">,</span> route_id<span class="token operator">=</span><span class="token string">"t1"</span><span class="token punctuation">,</span> srid<span class="token operator">=</span><span class="token number">4326</span><span class="token punctuation">)</span>
+
+    msg <span class="token operator">=</span> spatial_route_pb2<span class="token punctuation">.</span>SpatialRoute<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    msg<span class="token punctuation">.</span>ParseFromString<span class="token punctuation">(</span>payload<span class="token punctuation">)</span>
+
+    <span class="token keyword">assert</span> msg<span class="token punctuation">.</span>srid <span class="token operator">==</span> <span class="token number">4326</span>
+    <span class="token keyword">assert</span> msg<span class="token punctuation">.</span>geometry_type <span class="token operator">==</span> <span class="token string">"LINESTRING"</span>
+    <span class="token comment"># Flattened pairs must round-trip exactly (no quantization here)</span>
+    <span class="token keyword">assert</span> <span class="token builtin">list</span><span class="token punctuation">(</span>msg<span class="token punctuation">.</span>coordinates<span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token punctuation">[</span><span class="token number">0.0</span><span class="token punctuation">,</span> <span class="token number">0.0</span><span class="token punctuation">,</span> <span class="token number">1.0</span><span class="token punctuation">,</span> <span class="token number">1.0</span><span class="token punctuation">,</span> <span class="token number">2.0</span><span class="token punctuation">,</span> <span class="token number">0.0</span><span class="token punctuation">]</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_invalid_polygon_is_repaired</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    bowtie <span class="token operator">=</span> <span class="token string">"POLYGON((0 0, 1 1, 1 0, 0 1, 0 0))"</span>  <span class="token comment"># self-intersecting</span>
+    payload <span class="token operator">=</span> wkt_to_protobuf<span class="token punctuation">(</span>bowtie<span class="token punctuation">,</span> route_id<span class="token operator">=</span><span class="token string">"t2"</span><span class="token punctuation">)</span>
+
+    msg <span class="token operator">=</span> spatial_route_pb2<span class="token punctuation">.</span>SpatialRoute<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    msg<span class="token punctuation">.</span>ParseFromString<span class="token punctuation">(</span>payload<span class="token punctuation">)</span>
+    <span class="token comment"># make_valid may promote POLYGON -> MULTIPOLYGON; both are acceptable</span>
+    <span class="token keyword">assert</span> <span class="token string">"POLYGON"</span> <span class="token keyword">in</span> msg<span class="token punctuation">.</span>geometry_type
+    <span class="token keyword">assert</span> <span class="token builtin">len</span><span class="token punctuation">(</span>msg<span class="token punctuation">.</span>coordinates<span class="token punctuation">)</span> <span class="token operator">%</span> <span class="token number">2</span> <span class="token operator">==</span> <span class="token number">0</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_bad_wkt_raises</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">with</span> pytest<span class="token punctuation">.</span>raises<span class="token punctuation">(</span>ValueError<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        wkt_to_protobuf<span class="token punctuation">(</span><span class="token string">"NOT WKT"</span><span class="token punctuation">,</span> route_id<span class="token operator">=</span><span class="token string">"t3"</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
 <ul>
-<li><strong>Batch Serialization:</strong> Route updates often arrive in bursts. Wrap multiple <code>SpatialRoute</code> messages in a <code>repeated SpatialRoute</code> container message to amortize network overhead and reduce per-message framing costs.</li>
-<li><strong>Schema Evolution:</strong> Avoid renaming fields or changing types in production. Use <code>reserved</code> tags for deprecated fields and document SRID assumptions explicitly. Protobuf’s backward compatibility relies on stable field numbers — never reuse them.</li>
-<li><strong>Monitoring:</strong> Track serialization latency, payload size distribution, and invalid-WKT rejection rates. Alert on sudden spikes in <code>make_valid</code> invocations, which indicate upstream data degradation.</li>
-<li><strong>Benchmark Expectations:</strong> On standard x86 cloud instances, expect approximately 0.4–0.8 ms serialization for a 500-vertex LINESTRING, with payload sizes dropping from ~12 KB (WKT) to ~4 KB (Protobuf). Deserialization typically runs at 0.1–0.3 ms when using memoryview-backed parsers.</li>
+<li><a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a> — the parent workflow this conversion plugs into, after topology checks and before dispatch.</li>
+<li><a href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping</a> — map a full GeoJSON document to a typed binary message when WKT is too thin.</li>
+<li><a href="/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a> — the architecture that makes binary efficiency over text readability the default.
+</content>
+</invoke></li>
 </ul>
-<p>Converting WKT to Protobuf for low-latency routing is a straightforward but high-impact optimization. By flattening coordinates, enforcing topology early, and leveraging binary serialization, teams eliminate parsing bottlenecks and scale spatial dispatch without adding infrastructure. The pattern integrates cleanly into event-driven architectures and pairs naturally with modern routing stacks that demand deterministic latency.</p>
 
       </div>
 
@@ -322,18 +553,30 @@ message SpatialRoute {
         <h4>Architecture</h4>
         <ul>
           <li><a href="/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
         </ul>
       </div>
       <div>
         <h4>Idempotency</h4>
         <ul>
           <li><a href="/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
         </ul>
       </div>
       <div>
         <h4>Routing &amp; Parsing</h4>
         <ul>
           <li><a href="/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
         </ul>
       </div>
     </div>

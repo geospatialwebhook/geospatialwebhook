@@ -68,7 +68,7 @@ dateModified: "2026-06-24"
 }
 </script>
 
-**Compute an HMAC-SHA256 signature of the canonicalized GeoJSON payload, call `SET key 1 NX EX <ttl>` in Redis, and skip processing if the command returns `nil` — the entire duplicate check completes in one atomic round-trip at under 5 ms.** This page is part of [Cache-Backed Idempotency Checks](/idempotency-spatial-deduplication/cache-backed-idempotency-checks/), which sits within the broader [Idempotency & Spatial Deduplication](/idempotency-spatial-deduplication/) discipline.
+**Compute an HMAC-SHA256 signature of the canonicalized GeoJSON payload, call `SET key 1 NX EX <ttl>` in Redis, and skip processing if the command returns `nil` — the entire duplicate check completes in one atomic round-trip at under 5 ms.** This how-to belongs to [Cache-Backed Idempotency Checks](/idempotency-spatial-deduplication/cache-backed-idempotency-checks/), which is part of the wider [Idempotency & Spatial Deduplication](/idempotency-spatial-deduplication/) work on exactly-once semantics for geospatial event streams.
 
 ## When to Use This Pattern
 
@@ -292,6 +292,20 @@ def test_redis_unavailable_fails_open():
         # Fail-open: event must be processed even when Redis is down.
         assert is_new_spatial_event(SAMPLE_PAYLOAD) is True
 ```
+
+## Frequently Asked Questions
+
+### What TTL should I set for Redis webhook signature keys?
+
+Set `SIGNATURE_TTL` to 20–30% longer than your provider's maximum redelivery window. Most spatial webhook providers retry for 24–72 hours, so a 90,000-second (25-hour) to 259,200-second (72-hour) TTL covers the redelivery gap without holding signatures longer than necessary. Anything shorter risks the key expiring while the provider is still retrying, which lets a duplicate slip through.
+
+### Does `SET NX EX` guarantee exactly-once processing under concurrent delivery?
+
+Yes, for a single Redis node or a single Cluster slot. The `SET ... NX EX` operation is atomic in Redis — when N concurrent receivers race with the same signature, exactly one receives `OK` and the rest receive `nil`. The losers must discard their copy of the event. This is what makes the pattern safe even when several webhook receiver pods process the same retry storm simultaneously.
+
+### Should I fail open or fail closed when Redis is unavailable?
+
+Fail open (proceed with processing) for most spatial telemetry pipelines, and rely on downstream PostGIS unique constraints to absorb the rare duplicate that gets through during a cache outage. Fail closed (reject the delivery) only when duplicate writes carry financial or regulatory weight — and in that case, queue the rejected payload for later reconciliation rather than dropping it.
 
 ---
 

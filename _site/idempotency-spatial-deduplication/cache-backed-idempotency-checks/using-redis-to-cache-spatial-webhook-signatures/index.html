@@ -49,8 +49,8 @@
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ef3d820"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=9f5ca540"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -215,7 +215,7 @@
   ]
 }
 </script>
-<p><strong>Compute an HMAC-SHA256 signature of the canonicalized GeoJSON payload, call <code>SET key 1 NX EX &lt;ttl&gt;</code> in Redis, and skip processing if the command returns <code>nil</code> — the entire duplicate check completes in one atomic round-trip at under 5 ms.</strong> This page is part of <a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks</a>, which sits within the broader <a href="/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a> discipline.</p>
+<p><strong>Compute an HMAC-SHA256 signature of the canonicalized GeoJSON payload, call <code>SET key 1 NX EX &lt;ttl&gt;</code> in Redis, and skip processing if the command returns <code>nil</code> — the entire duplicate check completes in one atomic round-trip at under 5 ms.</strong> This how-to belongs to <a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks</a>, which is part of the wider <a href="/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a> work on exactly-once semantics for geospatial event streams.</p>
 <h2 id="when-to-use-this-pattern" tabindex="-1"><a class="heading-anchor" href="#when-to-use-this-pattern">When to Use This Pattern</a></h2>
 <p>Use Redis signature caching specifically when:</p>
 <ul>
@@ -487,6 +487,13 @@ SAMPLE_PAYLOAD <span class="token operator">=</span> <span class="token punctuat
         <span class="token keyword">assert</span> is_new_spatial_event<span class="token punctuation">(</span>SAMPLE_PAYLOAD<span class="token punctuation">)</span> <span class="token keyword">is</span> <span class="token boolean">True</span>
 </code></pre>
 </div>
+<h2 id="frequently-asked-questions" tabindex="-1"><a class="heading-anchor" href="#frequently-asked-questions">Frequently Asked Questions</a></h2>
+<h3 id="what-ttl-should-i-set-for-redis-webhook-signature-keys" tabindex="-1"><a class="heading-anchor" href="#what-ttl-should-i-set-for-redis-webhook-signature-keys">What TTL should I set for Redis webhook signature keys?</a></h3>
+<p>Set <code>SIGNATURE_TTL</code> to 20–30% longer than your provider’s maximum redelivery window. Most spatial webhook providers retry for 24–72 hours, so a 90,000-second (25-hour) to 259,200-second (72-hour) TTL covers the redelivery gap without holding signatures longer than necessary. Anything shorter risks the key expiring while the provider is still retrying, which lets a duplicate slip through.</p>
+<h3 id="does-set-nx-ex-guarantee-exactly-once-processing-under-concurrent-delivery" tabindex="-1"><a class="heading-anchor" href="#does-set-nx-ex-guarantee-exactly-once-processing-under-concurrent-delivery">Does <code>SET NX EX</code> guarantee exactly-once processing under concurrent delivery?</a></h3>
+<p>Yes, for a single Redis node or a single Cluster slot. The <code>SET ... NX EX</code> operation is atomic in Redis — when N concurrent receivers race with the same signature, exactly one receives <code>OK</code> and the rest receive <code>nil</code>. The losers must discard their copy of the event. This is what makes the pattern safe even when several webhook receiver pods process the same retry storm simultaneously.</p>
+<h3 id="should-i-fail-open-or-fail-closed-when-redis-is-unavailable" tabindex="-1"><a class="heading-anchor" href="#should-i-fail-open-or-fail-closed-when-redis-is-unavailable">Should I fail open or fail closed when Redis is unavailable?</a></h3>
+<p>Fail open (proceed with processing) for most spatial telemetry pipelines, and rely on downstream PostGIS unique constraints to absorb the rare duplicate that gets through during a cache outage. Fail closed (reject the delivery) only when duplicate writes carry financial or regulatory weight — and in that case, queue the rejected payload for later reconciliation rather than dropping it.</p>
 <hr>
 <h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
 <ul>
@@ -541,18 +548,30 @@ SAMPLE_PAYLOAD <span class="token operator">=</span> <span class="token punctuat
         <h4>Architecture</h4>
         <ul>
           <li><a href="/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
         </ul>
       </div>
       <div>
         <h4>Idempotency</h4>
         <ul>
           <li><a href="/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
         </ul>
       </div>
       <div>
         <h4>Routing &amp; Parsing</h4>
         <ul>
           <li><a href="/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
         </ul>
       </div>
     </div>

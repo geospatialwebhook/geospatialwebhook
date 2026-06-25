@@ -11,7 +11,7 @@ breadcrumb:
   - label: "Securing Webhook Endpoints with Spatial Token Validation"
     url: "/core-event-fundamentals-architecture/webhook-security-boundaries/securing-webhook-endpoints-with-spatial-token-validation/"
 datePublished: "2024-03-15"
-dateModified: "2026-06-24"
+dateModified: "2026-06-25"
 ---
 
 <script type="application/ld+json">
@@ -23,7 +23,7 @@ dateModified: "2026-06-24"
       "headline": "Securing Webhook Endpoints with Spatial Token Validation",
       "description": "Step-by-step guide to validating spatial tokens on webhook endpoints: embed a signed geohash or bounding-box digest into an HMAC or JWT, then reject events that fail cryptographic or geographic checks.",
       "datePublished": "2024-03-15",
-      "dateModified": "2026-06-24",
+      "dateModified": "2026-06-25",
       "author": { "@type": "Organization", "name": "geospatialwebhook.com" }
     },
     {
@@ -69,7 +69,7 @@ dateModified: "2026-06-24"
 }
 </script>
 
-**Embed a signed spatial claim — a geohash or bounding-box digest — into every webhook token, then validate the cryptographic signature *and* geographic containment before accepting the event.** This page is part of [Webhook Security Boundaries](/core-event-fundamentals-architecture/webhook-security-boundaries/), which in turn sits within [Core Event Fundamentals & Architecture](/core-event-fundamentals-architecture/).
+**Embed a signed spatial claim — a geohash or bounding-box digest — into every webhook token, then validate the cryptographic signature *and* geographic containment before accepting the event.** This how-to sits under [Webhook Security Boundaries](/core-event-fundamentals-architecture/webhook-security-boundaries/), part of [Core Event Fundamentals & Architecture](/core-event-fundamentals-architecture/).
 
 ## When to use this pattern
 
@@ -85,75 +85,81 @@ For general-purpose event ingestion where location is metadata, standard HMAC/JW
 
 The diagram below shows the fail-fast sequence. Each gate is ordered to minimize compute: cheapest checks (TTL, decode) run first; the most expensive check (spatial containment) runs last.
 
-<svg viewBox="0 0 720 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Spatial token validation sequence diagram" style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;">
+<svg viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Spatial token validation sequence diagram" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
   <title>Spatial token validation sequence</title>
-  <desc>A flowchart showing five sequential validation gates: decode token, TTL check, HMAC verify, spatial containment check, and accept or quarantine. Failure at any gate routes the event to a dead-letter queue.</desc>
+  <desc>A flowchart showing five sequential validation gates arranged left-to-right then wrapping to a second row: decode token, TTL check, HMAC verify, spatial containment check, and finally accept or route to dead-letter queue. Failure at any gate sends the event to the dead-letter queue shown at the bottom.</desc>
   <defs>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+    <marker id="arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor"/>
     </marker>
+    <marker id="arr-dash" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
+    </marker>
   </defs>
-  <!-- Incoming request box -->
-  <rect x="10" y="30" width="140" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
-  <text x="80" y="57" text-anchor="middle" font-size="13" fill="currentColor">Incoming POST</text>
+  <!-- Row 1: Incoming → Decode → TTL → HMAC -->
+  <!-- Incoming POST -->
+  <rect x="8" y="30" width="120" height="48" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="68" y="52" text-anchor="middle" font-size="12" fill="currentColor" font-family="sans-serif">Incoming</text>
+  <text x="68" y="68" text-anchor="middle" font-size="12" fill="currentColor" font-family="sans-serif">POST</text>
   <!-- Arrow 1 -->
-  <line x1="150" y1="52" x2="188" y2="52" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <!-- Decode box -->
-  <rect x="190" y="30" width="130" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
-  <text x="255" y="50" text-anchor="middle" font-size="13" fill="currentColor">1. Decode</text>
-  <text x="255" y="66" text-anchor="middle" font-size="11" fill="currentColor">&amp; parse token</text>
-  <!-- Fail arrow down from decode -->
-  <line x1="255" y1="74" x2="255" y2="112" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
-  <text x="262" y="97" font-size="10" fill="currentColor">invalid format</text>
+  <line x1="128" y1="54" x2="153" y2="54" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- 1. Decode -->
+  <rect x="155" y="30" width="120" height="48" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="215" y="52" text-anchor="middle" font-size="12" fill="currentColor" font-family="sans-serif">1. Decode</text>
+  <text x="215" y="68" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif">&amp; parse token</text>
   <!-- Arrow 2 -->
-  <line x1="320" y1="52" x2="358" y2="52" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <!-- TTL box -->
-  <rect x="360" y="30" width="130" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
-  <text x="425" y="50" text-anchor="middle" font-size="13" fill="currentColor">2. TTL check</text>
-  <text x="425" y="66" text-anchor="middle" font-size="11" fill="currentColor">|now − ts| ≤ window</text>
-  <!-- Fail arrow down from TTL -->
-  <line x1="425" y1="74" x2="425" y2="112" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
-  <text x="432" y="97" font-size="10" fill="currentColor">expired</text>
+  <line x1="275" y1="54" x2="300" y2="54" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- 2. TTL check -->
+  <rect x="302" y="30" width="130" height="48" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="367" y="52" text-anchor="middle" font-size="12" fill="currentColor" font-family="sans-serif">2. TTL check</text>
+  <text x="367" y="68" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif">|now − ts| ≤ window</text>
   <!-- Arrow 3 -->
-  <line x1="490" y1="52" x2="528" y2="52" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <!-- HMAC box -->
-  <rect x="530" y="30" width="130" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
-  <text x="595" y="50" text-anchor="middle" font-size="13" fill="currentColor">3. HMAC verify</text>
-  <text x="595" y="66" text-anchor="middle" font-size="11" fill="currentColor">constant-time compare</text>
-  <!-- Fail arrow down from HMAC -->
-  <line x1="595" y1="74" x2="595" y2="112" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
-  <text x="602" y="97" font-size="10" fill="currentColor">bad signature</text>
-  <!-- Row 2: spatial check and accept -->
-  <!-- Wrap-around arrow from HMAC to Spatial -->
-  <line x1="595" y1="74" x2="595" y2="155" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <!-- Spatial box -->
-  <rect x="530" y="157" width="130" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
-  <text x="595" y="177" text-anchor="middle" font-size="13" fill="currentColor">4. Spatial</text>
-  <text x="595" y="193" text-anchor="middle" font-size="11" fill="currentColor">containment check</text>
-  <!-- Fail arrow left from Spatial -->
-  <line x1="530" y1="179" x2="492" y2="179" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
-  <text x="497" y="170" font-size="10" fill="currentColor">outside zone</text>
-  <!-- Accept arrow left -->
-  <line x1="530" y1="179" x2="350" y2="179" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <text x="420" y="170" text-anchor="middle" font-size="11" fill="currentColor">inside zone ✓</text>
-  <!-- Accept box -->
-  <rect x="200" y="157" width="148" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
-  <text x="274" y="177" text-anchor="middle" font-size="13" fill="currentColor">5. Accept event</text>
-  <text x="274" y="193" text-anchor="middle" font-size="11" fill="currentColor">200 OK → processor</text>
-  <!-- DLQ box -->
-  <rect x="170" y="112" width="148" height="40" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="5,3"/>
-  <text x="244" y="136" text-anchor="middle" font-size="12" fill="currentColor">Dead-letter queue (DLQ)</text>
-  <!-- Arrows from fail paths converge at DLQ -->
-  <line x1="255" y1="112" x2="244" y2="112" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3"/>
-  <line x1="425" y1="112" x2="318" y2="112" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
-  <line x1="492" y1="179" x2="393" y2="179" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3"/>
-  <line x1="393" y1="179" x2="393" y2="132" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3"/>
-  <line x1="393" y1="132" x2="318" y2="132" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+  <line x1="432" y1="54" x2="457" y2="54" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- 3. HMAC verify -->
+  <rect x="459" y="30" width="130" height="48" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="524" y="52" text-anchor="middle" font-size="12" fill="currentColor" font-family="sans-serif">3. HMAC verify</text>
+  <text x="524" y="68" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif">constant-time compare</text>
+  <!-- Arrow 4: HMAC → Spatial (down then across) -->
+  <line x1="524" y1="78" x2="524" y2="104" stroke="currentColor" stroke-width="1.5"/>
+  <line x1="524" y1="104" x2="659" y2="104" stroke="currentColor" stroke-width="1.5"/>
+  <line x1="659" y1="104" x2="659" y2="143" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Row 2: Spatial → Accept -->
+  <!-- 4. Spatial containment -->
+  <rect x="594" y="145" width="150" height="48" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="669" y="167" text-anchor="middle" font-size="12" fill="currentColor" font-family="sans-serif">4. Spatial</text>
+  <text x="669" y="183" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif">containment check</text>
+  <!-- Arrow pass: Spatial → Accept (left) -->
+  <line x1="594" y1="169" x2="440" y2="169" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="516" y="162" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif">inside zone ✓</text>
+  <!-- 5. Accept -->
+  <rect x="310" y="145" width="128" height="48" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="374" y="167" text-anchor="middle" font-size="12" fill="currentColor" font-family="sans-serif">5. Accept event</text>
+  <text x="374" y="183" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif">200 OK → processor</text>
+  <!-- DLQ box at bottom -->
+  <rect x="155" y="248" width="430" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="370" y="266" text-anchor="middle" font-size="12" fill="currentColor" font-family="sans-serif">Dead-letter queue (DLQ)</text>
+  <text x="370" y="282" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif">forensic analysis · SIEM ingestion · 403 response</text>
+  <!-- Failure paths to DLQ -->
+  <!-- Decode fail -->
+  <line x1="215" y1="78" x2="215" y2="240" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-dash)" opacity="0.7"/>
+  <text x="220" y="160" font-size="9" fill="currentColor" font-family="sans-serif" opacity="0.8">bad format</text>
+  <!-- TTL fail -->
+  <line x1="367" y1="78" x2="367" y2="240" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-dash)" opacity="0.7"/>
+  <text x="372" y="135" font-size="9" fill="currentColor" font-family="sans-serif" opacity="0.8">expired</text>
+  <!-- HMAC fail -->
+  <line x1="524" y1="104" x2="524" y2="248" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-dash)" opacity="0.7"/>
+  <text x="529" y="200" font-size="9" fill="currentColor" font-family="sans-serif" opacity="0.8">bad sig</text>
+  <!-- Spatial fail: down from spatial box -->
+  <line x1="669" y1="193" x2="669" y2="240" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3"/>
+  <line x1="669" y1="240" x2="585" y2="248" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-dash)" opacity="0.7"/>
+  <text x="669" y="218" text-anchor="middle" font-size="9" fill="currentColor" font-family="sans-serif" opacity="0.8">outside zone</text>
 </svg>
 
 ## Complete runnable implementation
 
 The FastAPI endpoint below is self-contained: paste it into a project that has `fastapi`, `shapely`, and `python-multipart` installed and run it with `uvicorn app:app`. Every spatial-specific choice is annotated inline.
+
+If your devices report coordinates in a projected CRS such as EPSG:3857, reproject them to WGS 84 (EPSG:4326) before computing the HMAC — the approach for this is covered in [CRS Normalization Strategies](/spatial-payload-routing-parsing/crs-normalization-strategies/).
 
 ```python
 import base64
@@ -177,15 +183,17 @@ ALLOWED_TTL_SECONDS: int = 315
 # Authorized operational zone in WGS 84 (EPSG:4326): (longitude, latitude).
 # prep() builds a spatial index for repeated containment queries — do this
 # once at import time, not per request.
-AUTHORIZED_ZONE = prep(
-    Polygon([
-        (-122.5, 37.70), (-122.30, 37.70),
-        (-122.30, 37.90), (-122.50, 37.90),
-        (-122.5, 37.70),  # closed exterior ring
-    ])
-)
+_RAW_ZONE = Polygon([
+    (-122.5, 37.70), (-122.30, 37.70),
+    (-122.30, 37.90), (-122.50, 37.90),
+    (-122.5, 37.70),  # closed exterior ring
+])
 # Buffer radius in degrees (≈ 50 m at mid-latitudes) to absorb GPS variance.
 GPS_TOLERANCE_DEG: float = 0.0005
+# Build prepared geometry once, including the GPS tolerance buffer.
+# PreparedGeometry does not expose .buffer() directly, so buffer the raw
+# polygon first, then wrap with prep() for fast repeated containment tests.
+AUTHORIZED_ZONE = prep(_RAW_ZONE.buffer(GPS_TOLERANCE_DEG))
 
 
 def verify_spatial_token(
@@ -226,11 +234,10 @@ def verify_spatial_token(
     if not hmac.compare_digest(sig_hex, expected_sig):
         return False
 
-    # Gate 3 — spatial containment. Buffer by GPS_TOLERANCE_DEG to accept
-    # events from devices reporting within the expected hardware error radius.
+    # Gate 3 — spatial containment. AUTHORIZED_ZONE already includes the GPS
+    # tolerance buffer (built at module load time above).
     point = Point(lon, lat)
-    buffered_zone = AUTHORIZED_ZONE.context.buffer(GPS_TOLERANCE_DEG)
-    if not buffered_zone.contains(point):
+    if not AUTHORIZED_ZONE.contains(point):
         return False
 
     return True
@@ -239,10 +246,15 @@ def verify_spatial_token(
 def _enqueue_dlq(payload_bytes: bytes, reason: str) -> None:
     """
     In production: push to a Kafka topic, SQS dead-letter queue, or Redis
-    stream for forensic analysis. Here we just log for illustration.
+    stream for forensic analysis. Here we log for illustration.
+
+    For sensor-data routing, see:
+    /core-event-fundamentals-architecture/sensor-data-routing-patterns/
     """
     import logging
-    logging.warning("DLQ: spatial validation failed — %s — %d bytes", reason, len(payload_bytes))
+    logging.warning(
+        "DLQ: spatial validation failed — %s — %d bytes", reason, len(payload_bytes)
+    )
 
 
 @app.post("/webhook/spatial", status_code=200)
@@ -283,7 +295,7 @@ async def handle_spatial_webhook(
     return {"status": "accepted"}
 ```
 
-The `_enqueue_dlq` stub is where you wire in a [sensor-data routing pattern](/core-event-fundamentals-architecture/sensor-data-routing-patterns/) to persist rejected payloads — doing so turns security rejections into auditable forensic data rather than silent drops. To generate deterministic idempotency keys for accepted events before handing them downstream, follow the approach in [Event Key Generation for Spatial Data](/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/).
+Rejected payloads routed to `_enqueue_dlq` follow the same [sensor data routing patterns](/core-event-fundamentals-architecture/sensor-data-routing-patterns/) used for accepted events — this turns security rejections into auditable forensic records rather than silent drops. Before handing accepted events downstream, generate a deterministic idempotency key using the approach described in [Event Key Generation for Spatial Data](/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/).
 
 ## Parameter reference
 
@@ -293,8 +305,9 @@ The `_enqueue_dlq` stub is where you wire in a [sensor-data routing pattern](/co
 |---|---|---|---|
 | `WEBHOOK_SECRET` | `bytes` | Min 32 bytes; load from env var | — (must be set) |
 | `ALLOWED_TTL_SECONDS` | `int` | Include ±15 s NTP skew; max 900 s recommended | `315` |
-| `AUTHORIZED_ZONE` | `shapely.prepared.PreparedGeometry` | Must be a valid, closed exterior ring in EPSG:4326 | Bay Area demo polygon |
+| `_RAW_ZONE` | `shapely.geometry.Polygon` | Must be a valid, closed exterior ring in EPSG:4326 | Bay Area demo polygon |
 | `GPS_TOLERANCE_DEG` | `float` | ~0.0001° ≈ 10 m; ~0.0005° ≈ 50 m at equatorial latitudes | `0.0005` |
+| `AUTHORIZED_ZONE` | `shapely.prepared.PreparedGeometry` | Built from `_RAW_ZONE.buffer(GPS_TOLERANCE_DEG)` at import time | buffered Bay Area polygon |
 | `lon` / `lat` | `float` | WGS 84 (EPSG:4326); lon ∈ [−180, 180], lat ∈ [−90, 90] | from payload |
 | `sig_hex` | `str` | 64-char lowercase hex (HMAC-SHA256 output) | from token |
 | `_spatial_claim` | `str` | Geohash or bounding-box digest (informational; not re-verified here) | from token |
@@ -304,19 +317,19 @@ The `_enqueue_dlq` stub is where you wire in a [sensor-data routing pattern](/co
 
 ## Gotchas and spatial edge cases
 
-1. **Coordinate order mismatch (EPSG:4326).** GeoJSON specifies coordinates as `[longitude, latitude]`, but many mapping libraries and some device SDKs emit `[latitude, longitude]`. Sign and verify with a consistent order, and document it in your API contract. A coordinate-swapped token will produce a valid HMAC but fail the containment check in confusing ways.
+1. **Coordinate order mismatch (EPSG:4326).** GeoJSON specifies coordinates as `[longitude, latitude]`, but many mapping libraries and some device SDKs emit `[latitude, longitude]`. Sign and verify with a consistent order, and document it in your API contract. A coordinate-swapped token produces a valid HMAC but fails the containment check in confusing ways.
 
-2. **Coordinate precision drift.** Consumer GPS (u-blox, SiRF) reports 6–7 decimal places but has hardware accuracy of ±3–15 m. Cellular and Wi-Fi triangulation degrades to ±50–200 m. Use `GPS_TOLERANCE_DEG` to buffer your zone rather than requiring exact point matching. Review [CRS Normalization Strategies](/spatial-payload-routing-parsing/crs-normalization-strategies/) if your devices report in projected CRS (e.g., EPSG:3857) — reproject to EPSG:4326 *before* computing the HMAC.
+2. **Coordinate precision drift.** Consumer GPS (u-blox, SiRF) reports 6–7 decimal places but has hardware accuracy of ±3–15 m. Cellular and Wi-Fi triangulation degrades to ±50–200 m. Use `GPS_TOLERANCE_DEG` to buffer your zone rather than requiring exact point matching. If your devices report in a projected CRS (e.g., EPSG:3857), handling mixed-CRS payloads before signing is covered in [handling mixed-CRS payloads in Python event handlers](/spatial-payload-routing-parsing/crs-normalization-strategies/handling-mixed-crs-payloads-in-python-event-handlers/).
 
 3. **Polygon exterior ring orientation.** Shapely accepts both clockwise and counter-clockwise rings for `Polygon()`, but ensure your ring is closed (first and last points identical). An unclosed ring creates a `TopologicalError` at `prep()` time, which surfaces only when the first request arrives — not at startup.
 
 4. **Prepared geometry is not thread-safe for mutation.** Call `prep()` once at module load and treat the result as read-only. If you need to reload zones (e.g., from a database), build the new `PreparedGeometry` object in a separate variable and swap the reference atomically.
 
-5. **Buffering a prepared geometry.** `PreparedGeometry` does not expose `.buffer()` directly. Call `.buffer()` on the underlying `Polygon` first, then wrap with `prep()`: `prep(raw_polygon.buffer(GPS_TOLERANCE_DEG))`. The implementation above deliberately keeps this explicit to avoid the silent `AttributeError`.
+5. **Buffering must happen before `prep()`.** `PreparedGeometry` does not expose `.buffer()` directly. Call `.buffer()` on the underlying `Polygon` first, then wrap with `prep()`: `prep(raw_polygon.buffer(GPS_TOLERANCE_DEG))`. The implementation above makes this explicit by defining `_RAW_ZONE` separately from `AUTHORIZED_ZONE`.
 
 6. **Token format versioning.** When you rotate your HMAC secret, you need a transition window where both the old and new secrets are valid. Prefix the token with a version string (e.g., `v2:base64url(...)`) and maintain a dict of `{version: secret}`. This prevents downtime during key rotation and lets you audit which devices are still sending v1 tokens.
 
-7. **Replay from a different spatial context.** An attacker can capture a valid token emitted from within the authorized zone and replay it from outside. The TTL window limits the replay window, but for high-security contexts consider binding the token to a per-request nonce (a UUID the server issues and the client echoes back), as described in the idempotency pattern at [Cache-Backed Idempotency Checks](/idempotency-spatial-deduplication/cache-backed-idempotency-checks/).
+7. **Replay from a different spatial context.** An attacker can capture a valid token emitted from within the authorized zone and replay it from outside. The TTL window limits the replay window, but for high-security contexts consider binding the token to a per-request nonce (a UUID the server issues and the client echoes back). This composes directly with [using Redis to cache spatial webhook signatures](/idempotency-spatial-deduplication/cache-backed-idempotency-checks/using-redis-to-cache-spatial-webhook-signatures/) for nonce deduplication within the TTL window.
 
 ## Minimal verification snippet
 
@@ -329,7 +342,6 @@ import hmac
 import json
 import time
 
-import pytest
 from fastapi.testclient import TestClient
 
 # Import the app defined in the implementation section above.
@@ -337,12 +349,13 @@ from app import app, WEBHOOK_SECRET
 
 client = TestClient(app)
 
+
 def _make_token(lon: float, lat: float, payload_bytes: bytes, offset: int = 0) -> str:
     """Build a valid spatial token for the given coordinates and payload."""
     ts = int(time.time()) + offset
     coord_bytes = f"{lon:.6f}:{lat:.6f}".encode()
     sig = hmac.new(WEBHOOK_SECRET, payload_bytes + coord_bytes, hashlib.sha256).hexdigest()
-    # spatial_claim field: a placeholder geohash (not validated by this endpoint)
+    # _spatial_claim field: a placeholder geohash (informational only)
     raw = f"{sig}:9q8y:{ts}"
     return base64.urlsafe_b64encode(raw.encode()).rstrip(b"=").decode()
 
@@ -420,6 +433,6 @@ def test_missing_token_returns_400():
 ## Related
 
 - [Webhook Security Boundaries](/core-event-fundamentals-architecture/webhook-security-boundaries/) — parent overview covering the full trust model for geospatial event ingress
-- [Sensor Data Routing Patterns](/core-event-fundamentals-architecture/sensor-data-routing-patterns/) — routing validated events to the correct downstream consumers based on geographic partitioning
-- [Cache-Backed Idempotency Checks](/idempotency-spatial-deduplication/cache-backed-idempotency-checks/) — combining spatial token validation with Redis-backed nonce caching to prevent replay within the TTL window
+- [Using Redis to Cache Spatial Webhook Signatures](/idempotency-spatial-deduplication/cache-backed-idempotency-checks/using-redis-to-cache-spatial-webhook-signatures/) — combine spatial token validation with Redis-backed nonce caching to prevent replay within the TTL window
+- [Sensor Data Routing Patterns](/core-event-fundamentals-architecture/sensor-data-routing-patterns/) — route validated events to downstream consumers based on geographic partitioning
 - [Core Event Fundamentals & Architecture](/core-event-fundamentals-architecture/) — the broader architectural context for secure, location-aware event pipelines

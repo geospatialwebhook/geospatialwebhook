@@ -74,7 +74,7 @@ dateModified: "2026-06-24"
 }
 </script>
 
-**Spatial event payload schemas for tile update pipelines must enforce explicit CRS declarations (`EPSG:4326`), pre-computed bounding boxes, isolated routing metadata, and CloudEvents-wrapped envelopes — validated by Pydantic v2 at the ingress layer before any event reaches a message broker.** This page is part of [Tile Update Event Pipelines](/core-event-fundamentals-architecture/tile-update-event-pipelines/), which sits under [Core Event Fundamentals & Architecture](/core-event-fundamentals-architecture/).
+**Spatial event payload schemas for tile update pipelines must enforce explicit CRS declarations (`EPSG:4326`), pre-computed bounding boxes, isolated routing metadata, and CloudEvents-wrapped envelopes — validated by Pydantic v2 at the ingress layer before any event reaches a message broker.** This page is part of [Tile Update Event Pipelines](/core-event-fundamentals-architecture/tile-update-event-pipelines/) within [Core Event Fundamentals & Architecture](/core-event-fundamentals-architecture/).
 
 ## When to apply this schema pattern
 
@@ -400,9 +400,42 @@ def test_event_time_is_utc():
 
 ---
 
+## FAQ
+
+<details class="faq">
+<summary><strong>Why must I include a CRS field even when using the WGS84 default?</strong></summary>
+
+Implicit CRS assumptions break the moment a second data source enters the pipeline with a different projection. An explicit `crs: "EPSG:4326"` on every event eliminates axis-ordering ambiguity and makes payloads self-describing for consumers that apply a transformation before geometry comparison. The cost is a few bytes; the alternative is silent coordinate corruption when a producer in `EPSG:3857` joins the topic. When mixed projections are unavoidable, normalize them at ingress per [CRS Normalization Strategies](/spatial-payload-routing-parsing/crs-normalization-strategies/).
+
+</details>
+
+<details class="faq">
+<summary><strong>How many decimal places should I use for GeoJSON coordinates?</strong></summary>
+
+Cap at 6–8 decimal places. Six decimals gives roughly 0.11 m horizontal accuracy on WGS84 (`EPSG:4326`), which is more than enough for tile invalidation. Excess precision inflates payload size, raises network latency, and triggers false cache invalidations when IEEE-754 noise shifts a coordinate by sub-millimeter amounts. The `round_coordinates()` method in the model above enforces this before serialization.
+
+</details>
+
+<details class="faq">
+<summary><strong>When should I send delta geometries instead of full feature state?</strong></summary>
+
+Use delta encoding for `update` operations on large polygons or multipolygons where only one ring changes — it keeps payloads small and brokers fast. Prefer full-state payloads for `insert` and `delete`, where consumers need the complete geometry to rebuild spatial indexes. Whichever you choose, set `update_operation` explicitly so each consumer can branch correctly rather than inferring intent from the geometry.
+
+</details>
+
+<details class="faq">
+<summary><strong>How do I detect duplicate spatial events from broker retries?</strong></summary>
+
+Derive a deterministic idempotency key from `correlation_id` + `update_operation` + a SHA-256 hash of the canonicalized geometry, then store it in Redis or DynamoDB with a TTL matching your retry window. Consumers skip processing if the key already exists. The canonicalization (coordinate rounding plus ring normalization) is what makes the hash stable across retries — see [Generating Deterministic Idempotency Keys for GeoJSON Events](/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/).
+
+</details>
+
+---
+
 ## Related
 
-- [Tile Update Event Pipelines](/core-event-fundamentals-architecture/tile-update-event-pipelines/) — parent: architecture and orchestration of the full tile invalidation workflow
-- [Event Key Generation for Spatial Data](/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/) — sibling: derive deterministic idempotency keys from the canonicalized geometry in these payloads
+- [Tile Update Event Pipelines](/core-event-fundamentals-architecture/tile-update-event-pipelines/) — architecture and orchestration of the full tile invalidation workflow
+- [Event Key Generation for Spatial Data](/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/) — derive deterministic idempotency keys from the canonicalized geometry in these payloads
+- [Generating Deterministic Idempotency Keys for GeoJSON Events](/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/) — step-by-step implementation of SHA-256-based spatial idempotency keys
 - [CRS Normalization Strategies](/spatial-payload-routing-parsing/crs-normalization-strategies/) — normalize mixed-projection inputs before they reach the ingress validator
-- [Core Event Fundamentals & Architecture](/core-event-fundamentals-architecture/) — grandparent pillar covering the full spatial event architecture
+- [Core Event Fundamentals & Architecture](/core-event-fundamentals-architecture/) — spatial event architecture from ingestion to consumer delivery

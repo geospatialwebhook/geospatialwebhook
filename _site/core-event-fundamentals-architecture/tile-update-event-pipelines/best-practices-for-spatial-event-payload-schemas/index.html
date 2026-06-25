@@ -49,8 +49,8 @@
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ef3d820"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=9f5ca540"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -221,7 +221,7 @@
   ]
 }
 </script>
-<p><strong>Spatial event payload schemas for tile update pipelines must enforce explicit CRS declarations (<code>EPSG:4326</code>), pre-computed bounding boxes, isolated routing metadata, and CloudEvents-wrapped envelopes — validated by Pydantic v2 at the ingress layer before any event reaches a message broker.</strong> This page is part of <a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a>, which sits under <a href="/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a>.</p>
+<p><strong>Spatial event payload schemas for tile update pipelines must enforce explicit CRS declarations (<code>EPSG:4326</code>), pre-computed bounding boxes, isolated routing metadata, and CloudEvents-wrapped envelopes — validated by Pydantic v2 at the ingress layer before any event reaches a message broker.</strong> This page is part of <a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a> within <a href="/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a>.</p>
 <h2 id="when-to-apply-this-schema-pattern" tabindex="-1"><a class="heading-anchor" href="#when-to-apply-this-schema-pattern">When to apply this schema pattern</a></h2>
 <p>This approach is appropriate over a minimal ad-hoc JSON structure in three situations:</p>
 <ul>
@@ -625,12 +625,31 @@ POLYGON_PAYLOAD <span class="token operator">=</span> <span class="token punctua
 </code></pre>
 </div>
 <hr>
+<h2 id="faq" tabindex="-1"><a class="heading-anchor" href="#faq">FAQ</a></h2>
+<details class="faq">
+<summary><strong>Why must I include a CRS field even when using the WGS84 default?</strong></summary>
+<p>Implicit CRS assumptions break the moment a second data source enters the pipeline with a different projection. An explicit <code>crs: &quot;EPSG:4326&quot;</code> on every event eliminates axis-ordering ambiguity and makes payloads self-describing for consumers that apply a transformation before geometry comparison. The cost is a few bytes; the alternative is silent coordinate corruption when a producer in <code>EPSG:3857</code> joins the topic. When mixed projections are unavoidable, normalize them at ingress per <a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a>.</p>
+</details>
+<details class="faq">
+<summary><strong>How many decimal places should I use for GeoJSON coordinates?</strong></summary>
+<p>Cap at 6–8 decimal places. Six decimals gives roughly 0.11 m horizontal accuracy on WGS84 (<code>EPSG:4326</code>), which is more than enough for tile invalidation. Excess precision inflates payload size, raises network latency, and triggers false cache invalidations when IEEE-754 noise shifts a coordinate by sub-millimeter amounts. The <code>round_coordinates()</code> method in the model above enforces this before serialization.</p>
+</details>
+<details class="faq">
+<summary><strong>When should I send delta geometries instead of full feature state?</strong></summary>
+<p>Use delta encoding for <code>update</code> operations on large polygons or multipolygons where only one ring changes — it keeps payloads small and brokers fast. Prefer full-state payloads for <code>insert</code> and <code>delete</code>, where consumers need the complete geometry to rebuild spatial indexes. Whichever you choose, set <code>update_operation</code> explicitly so each consumer can branch correctly rather than inferring intent from the geometry.</p>
+</details>
+<details class="faq">
+<summary><strong>How do I detect duplicate spatial events from broker retries?</strong></summary>
+<p>Derive a deterministic idempotency key from <code>correlation_id</code> + <code>update_operation</code> + a SHA-256 hash of the canonicalized geometry, then store it in Redis or DynamoDB with a TTL matching your retry window. Consumers skip processing if the key already exists. The canonicalization (coordinate rounding plus ring normalization) is what makes the hash stable across retries — see <a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/">Generating Deterministic Idempotency Keys for GeoJSON Events</a>.</p>
+</details>
+<hr>
 <h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
 <ul>
-<li><a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a> — parent: architecture and orchestration of the full tile invalidation workflow</li>
-<li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a> — sibling: derive deterministic idempotency keys from the canonicalized geometry in these payloads</li>
+<li><a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a> — architecture and orchestration of the full tile invalidation workflow</li>
+<li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a> — derive deterministic idempotency keys from the canonicalized geometry in these payloads</li>
+<li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/">Generating Deterministic Idempotency Keys for GeoJSON Events</a> — step-by-step implementation of SHA-256-based spatial idempotency keys</li>
 <li><a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a> — normalize mixed-projection inputs before they reach the ingress validator</li>
-<li><a href="/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a> — grandparent pillar covering the full spatial event architecture</li>
+<li><a href="/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a> — spatial event architecture from ingestion to consumer delivery</li>
 </ul>
 
       </div>
@@ -679,18 +698,30 @@ POLYGON_PAYLOAD <span class="token operator">=</span> <span class="token punctua
         <h4>Architecture</h4>
         <ul>
           <li><a href="/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
         </ul>
       </div>
       <div>
         <h4>Idempotency</h4>
         <ul>
           <li><a href="/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
         </ul>
       </div>
       <div>
         <h4>Routing &amp; Parsing</h4>
         <ul>
           <li><a href="/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
         </ul>
       </div>
     </div>

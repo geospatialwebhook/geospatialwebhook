@@ -97,36 +97,30 @@ The key generation pipeline sits between your webhook receiver and your processi
   <text x="90" y="164" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Receiver</text>
   <text x="90" y="184" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">Schema validation</text>
   <text x="90" y="198" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">400 on bad geom</text>
-
   <rect x="195" y="110" width="150" height="100" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
   <text x="270" y="148" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Normalizer</text>
   <text x="270" y="168" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">Strip metadata</text>
   <text x="270" y="182" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">Round coords</text>
   <text x="270" y="196" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">Close rings · CRS→4326</text>
-
   <rect x="375" y="110" width="150" height="100" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
   <text x="450" y="148" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Hasher</text>
   <text x="450" y="168" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">sort_keys=True</text>
   <text x="450" y="182" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">UTF-8 canonical</text>
   <text x="450" y="196" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">SHA-256 → 32-char hex</text>
-
   <rect x="555" y="110" width="145" height="100" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
   <text x="627" y="148" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Redis Key Store</text>
   <text x="627" y="168" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">SET NX EX (atomic)</text>
   <text x="627" y="182" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">Hit → discard event</text>
   <text x="627" y="196" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">Miss → process + store</text>
-
   <!-- Arrows -->
   <line x1="160" y1="160" x2="192" y2="160" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arrow)"/>
   <line x1="345" y1="160" x2="372" y2="160" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arrow)"/>
   <line x1="525" y1="160" x2="552" y2="160" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arrow)"/>
-
   <!-- Layer labels at bottom -->
   <text x="90" y="228" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.5">Layer 1</text>
   <text x="270" y="228" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.5">Layer 2</text>
   <text x="450" y="228" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.5">Layer 3</text>
   <text x="627" y="228" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.5">Layer 4</text>
-
   <!-- Payload label at top -->
   <text x="20" y="95" font-size="10" fill="currentColor" opacity="0.6">Incoming GeoJSON payload</text>
   <text x="580" y="95" font-size="10" fill="currentColor" opacity="0.6">Idempotent processing</text>
@@ -507,7 +501,7 @@ Align the TTL with the maximum retry window of your upstream broker, then add a 
 ## Related
 
 - [Idempotency & Spatial Deduplication](/idempotency-spatial-deduplication/) — parent section covering the full deduplication strategy for geospatial event streams
-- [Generating Deterministic Idempotency Keys for GeoJSON Events](/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/) — deep-dive long-tail on GeoJSON-specific canonicalization patterns
+- [Generating Deterministic Idempotency Keys for GeoJSON Events](/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/) — focused walkthrough of GeoJSON-specific canonicalization patterns
 - [Cache-Backed Idempotency Checks](/idempotency-spatial-deduplication/cache-backed-idempotency-checks/) — Redis architecture for key storage, TTL strategy, and cache stampede prevention
 - [Spatial Overlap Deduplication](/idempotency-spatial-deduplication/spatial-overlap-deduplication/) — topology-aware deduplication for geometries that are equivalent but not coordinate-identical
 - [CRS Normalization Strategies](/spatial-payload-routing-parsing/crs-normalization-strategies/) — handling mixed-CRS payloads before they reach your key generation pipeline

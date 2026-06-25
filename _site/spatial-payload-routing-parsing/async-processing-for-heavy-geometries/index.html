@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 
   <title>Async Processing for Heavy Geometries · Geo Webhook</title>
-  <meta name="description" content="Decouple CPU-bound spatial operations from I/O-bound webhook ingestion in Python: async dispatch, ProcessPoolExecutor, memory-safe parsing, and failure recovery."/>
+  <meta name="description" content="Decouple CPU-bound spatial operations from I/O-bound webhook ingestion in Python: async dispatch, ProcessPoolExecutor, memory-safe parsing, Pydantic validation, and failure recovery."/>
   <link rel="canonical" href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/"/>
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
 
@@ -33,7 +33,7 @@
   <meta property="og:locale" content="en_US"/>
   <meta property="og:url" content="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/"/>
   <meta property="og:title" content="Async Processing for Heavy Geometries"/>
-  <meta property="og:description" content="Decouple CPU-bound spatial operations from I/O-bound webhook ingestion in Python: async dispatch, ProcessPoolExecutor, memory-safe parsing, and failure recovery."/>
+  <meta property="og:description" content="Decouple CPU-bound spatial operations from I/O-bound webhook ingestion in Python: async dispatch, ProcessPoolExecutor, memory-safe parsing, Pydantic validation, and failure recovery."/>
   <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
   <meta property="og:image:width" content="1200"/>
   <meta property="og:image:height" content="630"/>
@@ -42,15 +42,15 @@
   
   <meta name="twitter:card" content="summary_large_image"/>
   <meta name="twitter:title" content="Async Processing for Heavy Geometries"/>
-  <meta name="twitter:description" content="Decouple CPU-bound spatial operations from I/O-bound webhook ingestion in Python: async dispatch, ProcessPoolExecutor, memory-safe parsing, and failure recovery."/>
+  <meta name="twitter:description" content="Decouple CPU-bound spatial operations from I/O-bound webhook ingestion in Python: async dispatch, ProcessPoolExecutor, memory-safe parsing, Pydantic validation, and failure recovery."/>
   <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
   <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
 
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ef3d820"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=9f5ca540"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -99,7 +99,7 @@
     "@id": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/#article",
     "mainEntityOfPage": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/",
     "headline": "Async Processing for Heavy Geometries",
-    "description": "Decouple CPU-bound spatial operations from I/O-bound webhook ingestion in Python: async dispatch, ProcessPoolExecutor, memory-safe parsing, and failure recovery.",
+    "description": "Decouple CPU-bound spatial operations from I/O-bound webhook ingestion in Python: async dispatch, ProcessPoolExecutor, memory-safe parsing, Pydantic validation, and failure recovery.",
     "inLanguage": "en",
     "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
     "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
@@ -160,31 +160,156 @@
 
     <div class="page__layout">
       <div class="markdown">
-        <p>Heavy spatial payloads routinely choke synchronous webhook endpoints. When a GIS backend receives a 50 MB GeoJSON feature collection containing complex multi-polygons, dense linestrings, or high-resolution point clouds, blocking the main event loop for parsing, validation, and coordinate transformation creates cascading latency across your entire architecture. <strong>Async Processing for Heavy Geometries</strong> decouples CPU-bound spatial operations from I/O-bound webhook ingestion, enabling event-driven systems to acknowledge requests in milliseconds while scaling computational workloads horizontally.</p>
-<p>This guide outlines a production-ready workflow for offloading heavy geometry processing, complete with tested Python patterns, memory-safe execution strategies, and failure recovery mechanisms tailored for platform engineers and real-time spatial application builders.</p>
-<h2 id="prerequisites-environment-baseline" tabindex="-1"><a class="heading-anchor" href="#prerequisites-environment-baseline">Prerequisites &amp; Environment Baseline</a></h2>
-<p>Before implementing asynchronous spatial pipelines, ensure your environment meets the following baseline requirements:</p>
-<ul>
-<li><strong>Python 3.10+</strong>: Provides mature <code>asyncio</code> support (<code>asyncio.to_thread</code>, <code>loop.run_in_executor</code>) and structural pattern matching for clean payload dispatch.</li>
-<li><strong>Shapely 2.0+</strong>: Built on GEOS 3.10+, it provides thread-safe geometry operations. Review the <a href="https://shapely.readthedocs.io/en/stable/">official Shapely documentation</a> to understand memory isolation guarantees and multi-threading behavior.</li>
-<li><strong>Async Web Framework</strong>: <code>FastAPI</code> or <code>aiohttp</code> for non-blocking HTTP ingestion and streaming response handling.</li>
-<li><strong>Message Broker (Optional but Recommended)</strong>: Redis Streams or RabbitMQ for durable task queuing, backpressure management, and cross-service decoupling.</li>
-<li><strong>Spatial Routing Context</strong>: Understanding how payloads are classified, routed, and dispatched is essential before introducing asynchronous execution layers. Familiarity with <a href="/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a> will streamline your integration strategy.</li>
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Async Processing for Heavy Geometries",
+      "description": "Decouple CPU-bound spatial operations from I/O-bound webhook ingestion in Python: async dispatch, ProcessPoolExecutor, memory-safe parsing, Pydantic validation, and failure recovery.",
+      "datePublished": "2025-11-12",
+      "dateModified": "2026-06-25",
+      "author": { "@type": "Organization", "name": "geospatialwebhook.com" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatialwebhook.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Spatial Payload Routing & Parsing", "item": "https://geospatialwebhook.com/spatial-payload-routing-parsing/" },
+        { "@type": "ListItem", "position": 3, "name": "Async Processing for Heavy Geometries", "item": "https://geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/" }
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Async Processing for Heavy Geometries",
+      "step": [
+        { "@type": "HowToStep", "position": 1, "name": "Async ingestion and immediate acknowledgment" },
+        { "@type": "HowToStep", "position": 2, "name": "Task dispatch to a process pool" },
+        { "@type": "HowToStep", "position": 3, "name": "Topology validation and CRS normalization" },
+        { "@type": "HowToStep", "position": 4, "name": "Coordinate transformation and serialization" },
+        { "@type": "HowToStep", "position": 5, "name": "Result persistence and event-driven callbacks" }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "When should I use ProcessPoolExecutor instead of ThreadPoolExecutor for geometry work?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Use ProcessPoolExecutor whenever geometry operations are CPU-bound — topology repair with make_valid, coordinate projection loops, or spatial joins over thousands of features. These operations are blocked by Python's GIL and need true OS-level parallelism. ThreadPoolExecutor is suitable only for I/O-bound steps like writing results to PostGIS or publishing to Redis." }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I prevent memory spikes when deserializing large GeoJSON payloads?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Use ijson for iterative streaming deserialization — it emits geometry objects one at a time without loading the full document into RAM. Pair this with chunked dispatch: split feature collections into coordinate-bounded batches before sending to the worker pool." }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I handle mixed CRS payloads in an async pipeline?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Detect the source CRS from the payload's crs property or a vendor-specific header, then normalize to EPSG:4326 (WGS 84) inside the worker function before any topology checks. Refusing to dispatch until CRS is resolved prevents silent coordinate corruption in downstream spatial indexes." }
+        },
+        {
+          "@type": "Question",
+          "name": "What is a safe timeout for a geometry worker process?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Set a per-task timeout via asyncio.wait_for wrapping run_in_executor. A ceiling of 30 seconds works for most polygon simplification and validation workloads; complex union/intersection operations over dense point clouds may need up to 120 seconds. Route timed-out tasks to a dead-letter queue rather than retrying synchronously." }
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>Use async dispatch to a <code>ProcessPoolExecutor</code> to acknowledge a spatial webhook in milliseconds while heavy geometry parsing, validation, and projection happen off the event loop in a separate OS process.</strong></p>
+<p>This implementation guide is part of <a href="/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a>, the section covering how GeoJSON and binary geometry payloads are ingested, classified, validated, and forwarded to spatial consumers.</p>
+<hr>
+<h2 id="prerequisites" tabindex="-1"><a class="heading-anchor" href="#prerequisites">Prerequisites</a></h2>
+<p>Before building an asynchronous geometry pipeline, confirm your environment meets these baseline requirements:</p>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Python 3.10+</strong> — required for <code>asyncio.to_thread</code>, structural pattern matching, and stable <code>ExceptionGroup</code> handling.</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Shapely 2.0+</strong> — built on GEOS 3.10+, which provides thread-safe geometry objects and the <code>make_valid</code> function for topology repair.</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>pyproj 3.4+</strong> — for CRS detection and coordinate transformation via the PROJ 9 bindings.</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>FastAPI 0.100+ or aiohttp 3.9+</strong> — non-blocking HTTP framework for the ingestion endpoint.</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Pydantic v2</strong> — for schema-validated payload parsing before dispatch.</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>ijson 3.2+</strong> — for streaming JSON deserialization of large feature collections without loading the full document into RAM.</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Redis 7+ or RabbitMQ 3.12+</strong> — optional but recommended for durable task queuing and backpressure management between the HTTP layer and the worker pool.</label></li>
 </ul>
-<h2 id="architecture-step-by-step-workflow" tabindex="-1"><a class="heading-anchor" href="#architecture-step-by-step-workflow">Architecture &amp; Step-by-Step Workflow</a></h2>
-<p>A robust async geometry pipeline follows a strict separation between I/O and compute phases. The workflow below is engineered for high-throughput webhook ingestion and deterministic spatial processing:</p>
-<h3 id="1-asynchronous-ingestion-immediate-acknowledgment" tabindex="-1"><a class="heading-anchor" href="#1-asynchronous-ingestion-immediate-acknowledgment">1. Asynchronous Ingestion &amp; Immediate Acknowledgment</a></h3>
-<p>The webhook endpoint receives the payload, performs lightweight header validation (e.g., <code>Content-Type</code>, <code>Content-Length</code>, HMAC signatures), and immediately returns a <code>202 Accepted</code> response. Raw bytes are streamed directly to an in-memory queue or message broker without synchronous parsing. This prevents event loop starvation and guarantees sub-100ms acknowledgment times regardless of payload size.</p>
-<h3 id="2-task-dispatch-worker-pool-orchestration" tabindex="-1"><a class="heading-anchor" href="#2-task-dispatch-worker-pool-orchestration">2. Task Dispatch &amp; Worker Pool Orchestration</a></h3>
-<p>An async consumer pulls the serialized payload from the queue and dispatches it to a <code>concurrent.futures.ProcessPoolExecutor</code>. Spatial operations are inherently CPU-bound; offloading them to separate OS processes prevents the main event loop from blocking and safely bypasses Python’s Global Interpreter Lock (GIL). For deeper asyncio integration patterns, see <a href="/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/optimizing-async-geometry-parsing-with-asyncio/">Optimizing async geometry parsing with asyncio</a>.</p>
-<h3 id="3-topology-validation-crs-normalization" tabindex="-1"><a class="heading-anchor" href="#3-topology-validation-crs-normalization">3. Topology Validation &amp; CRS Normalization</a></h3>
-<p>Each worker runs a strict validation routine against the <a href="https://datatracker.ietf.org/doc/html/rfc7946">RFC 7946 GeoJSON specification</a>. Invalid topologies (self-intersections, unclosed rings, or malformed coordinate sequences) are flagged early, and coordinate reference systems are normalized to a target projection before downstream processing. Implementing a dedicated <a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a> stage ensures malformed data never reaches expensive transformation stages.</p>
-<h3 id="4-coordinate-transformation-serialization" tabindex="-1"><a class="heading-anchor" href="#4-coordinate-transformation-serialization">4. Coordinate Transformation &amp; Serialization</a></h3>
-<p>Validated features undergo projection shifts, topology simplification, or spatial indexing. For bandwidth-constrained microservices, consider converting heavy JSON structures into compact binary formats. The <a href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping</a> pattern significantly reduces serialization overhead and accelerates inter-service communication.</p>
-<h3 id="5-result-persistence-event-driven-callbacks" tabindex="-1"><a class="heading-anchor" href="#5-result-persistence-event-driven-callbacks">5. Result Persistence &amp; Event-Driven Callbacks</a></h3>
-<p>Processed geometries are written to object storage or a spatially indexed database (PostGIS, MongoDB). A completion event is published to a notification channel, triggering downstream consumers or returning a status webhook to the original client.</p>
-<h2 id="production-ready-implementation-pattern" tabindex="-1"><a class="heading-anchor" href="#production-ready-implementation-pattern">Production-Ready Implementation Pattern</a></h2>
-<p>The following pattern demonstrates a memory-safe, non-blocking webhook handler that delegates heavy computation to a process pool while maintaining async responsiveness:</p>
+<hr>
+<h2 id="architecture-overview" tabindex="-1"><a class="heading-anchor" href="#architecture-overview">Architecture Overview</a></h2>
+<p>The pipeline separates concerns into four layers. The webhook endpoint only performs lightweight I/O; all CPU work happens downstream in isolated processes.</p>
+<svg viewBox="0 0 720 340" role="img" aria-label="Four-layer async geometry pipeline: HTTP ingestion, queue, worker pool, and persistence" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;">
+  <title>Async Geometry Pipeline Architecture</title>
+  <desc>Four-layer pipeline showing data flow from webhook HTTP ingestion through a message queue, into a ProcessPoolExecutor worker pool for spatial validation and projection, then to a PostGIS database and event callback.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
+    </marker>
+  </defs>
+  <!-- Layer boxes -->
+  <rect x="20" y="30" width="140" height="280" rx="8" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.25"/>
+  <rect x="190" y="30" width="140" height="280" rx="8" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.25"/>
+  <rect x="360" y="30" width="175" height="280" rx="8" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.25"/>
+  <rect x="555" y="30" width="145" height="280" rx="8" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.25"/>
+  <!-- Layer headings -->
+  <text x="90" y="22" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" opacity="0.7">1 · Ingestion</text>
+  <text x="260" y="22" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" opacity="0.7">2 · Queue</text>
+  <text x="447" y="22" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" opacity="0.7">3 · Worker Pool</text>
+  <text x="627" y="22" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" opacity="0.7">4 · Persistence</text>
+  <!-- Ingestion layer items -->
+  <rect x="35" y="60" width="110" height="40" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="90" y="76" text-anchor="middle" font-size="10" fill="currentColor">POST /webhook</text>
+  <text x="90" y="90" text-anchor="middle" font-size="10" fill="currentColor">/spatial</text>
+  <rect x="35" y="118" width="110" height="38" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="90" y="133" text-anchor="middle" font-size="10" fill="currentColor">Header validate</text>
+  <text x="90" y="147" text-anchor="middle" font-size="10" fill="currentColor">HMAC · size guard</text>
+  <rect x="35" y="174" width="110" height="36" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="90" y="189" text-anchor="middle" font-size="10" fill="currentColor">202 Accepted</text>
+  <text x="90" y="203" text-anchor="middle" font-size="10" fill="currentColor">&lt;100 ms</text>
+  <!-- Queue layer items -->
+  <rect x="205" y="60" width="110" height="40" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="260" y="76" text-anchor="middle" font-size="10" fill="currentColor">Redis Stream</text>
+  <text x="260" y="90" text-anchor="middle" font-size="10" fill="currentColor">or RabbitMQ</text>
+  <rect x="205" y="118" width="110" height="38" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="260" y="133" text-anchor="middle" font-size="10" fill="currentColor">Async consumer</text>
+  <text x="260" y="147" text-anchor="middle" font-size="10" fill="currentColor">pulls raw bytes</text>
+  <rect x="205" y="174" width="110" height="36" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="260" y="189" text-anchor="middle" font-size="10" fill="currentColor">Dead-letter queue</text>
+  <text x="260" y="203" text-anchor="middle" font-size="10" fill="currentColor">on max retries</text>
+  <!-- Worker layer items -->
+  <rect x="375" y="60" width="145" height="40" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="447" y="76" text-anchor="middle" font-size="10" fill="currentColor">ProcessPoolExecutor</text>
+  <text x="447" y="90" text-anchor="middle" font-size="10" fill="currentColor">max_workers = CPU count</text>
+  <rect x="375" y="118" width="145" height="38" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="447" y="133" text-anchor="middle" font-size="10" fill="currentColor">Shapely topology repair</text>
+  <text x="447" y="147" text-anchor="middle" font-size="10" fill="currentColor">+ pyproj CRS transform</text>
+  <rect x="375" y="174" width="145" height="36" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="447" y="189" text-anchor="middle" font-size="10" fill="currentColor">Pydantic schema</text>
+  <text x="447" y="203" text-anchor="middle" font-size="10" fill="currentColor">validation</text>
+  <rect x="375" y="228" width="145" height="36" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="447" y="243" text-anchor="middle" font-size="10" fill="currentColor">ijson streaming</text>
+  <text x="447" y="257" text-anchor="middle" font-size="10" fill="currentColor">for large payloads</text>
+  <!-- Persistence layer items -->
+  <rect x="570" y="60" width="115" height="40" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="627" y="76" text-anchor="middle" font-size="10" fill="currentColor">PostGIS / MongoDB</text>
+  <text x="627" y="90" text-anchor="middle" font-size="10" fill="currentColor">spatial index write</text>
+  <rect x="570" y="118" width="115" height="38" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="627" y="133" text-anchor="middle" font-size="10" fill="currentColor">Completion event</text>
+  <text x="627" y="147" text-anchor="middle" font-size="10" fill="currentColor">to consumers</text>
+  <rect x="570" y="174" width="115" height="36" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="627" y="189" text-anchor="middle" font-size="10" fill="currentColor">Status callback</text>
+  <text x="627" y="203" text-anchor="middle" font-size="10" fill="currentColor">to client</text>
+  <!-- Connecting arrows -->
+  <line x1="160" y1="155" x2="189" y2="155" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow)" opacity="0.55"/>
+  <line x1="330" y1="155" x2="359" y2="155" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow)" opacity="0.55"/>
+  <line x1="535" y1="155" x2="554" y2="155" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow)" opacity="0.55"/>
+</svg>
+<p><strong>Layer 1 — Ingestion:</strong> The FastAPI endpoint receives raw bytes, validates the HMAC signature and <code>Content-Length</code>, publishes the payload to the queue, and responds <code>202 Accepted</code> in under 100 ms.</p>
+<p><strong>Layer 2 — Queue:</strong> An async consumer reads from Redis Streams or RabbitMQ. This buffer absorbs traffic spikes and decouples ingestion throughput from worker capacity. Tasks that exceed the retry ceiling move to a dead-letter queue for inspection.</p>
+<p><strong>Layer 3 — Worker Pool:</strong> A <code>ProcessPoolExecutor</code> runs topology repair (<code>make_valid</code>), CRS normalization to EPSG:4326 (WGS 84), Pydantic schema validation, and coordinate transformation in separate OS processes, bypassing the GIL entirely.</p>
+<p><strong>Layer 4 — Persistence:</strong> Validated geometries are written to a spatially indexed store. A completion event notifies downstream consumers and can trigger a status callback to the originating client.</p>
+<hr>
+<h2 id="step-by-step-implementation" tabindex="-1"><a class="heading-anchor" href="#step-by-step-implementation">Step-by-Step Implementation</a></h2>
+<h3 id="step-1-non-blocking-ingestion-and-immediate-acknowledgment" tabindex="-1"><a class="heading-anchor" href="#step-1-non-blocking-ingestion-and-immediate-acknowledgment">Step 1 — Non-Blocking Ingestion and Immediate Acknowledgment</a></h3>
+<p>The endpoint streams raw bytes without deserializing them. Validation is limited to the HTTP layer: check the <code>Content-Type</code>, enforce a <code>Content-Length</code> ceiling, and verify the HMAC-SHA256 signature. For details on constructing the signature check, see <a href="/core-event-fundamentals-architecture/webhook-security-boundaries/securing-webhook-endpoints-with-spatial-token-validation/">Securing Webhook Endpoints with Spatial Token Validation</a>.</p>
 <div class="code-block" data-lang="python">
   <div class="code-block__header">
     <span class="code-block__lang">python</span>
@@ -193,76 +318,444 @@
     </button>
   </div>
   <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
-<span class="token keyword">import</span> json
+<span class="token keyword">import</span> hashlib
+<span class="token keyword">import</span> hmac
 <span class="token keyword">import</span> logging
+<span class="token keyword">import</span> os
 <span class="token keyword">from</span> concurrent<span class="token punctuation">.</span>futures <span class="token keyword">import</span> ProcessPoolExecutor
-<span class="token keyword">from</span> typing <span class="token keyword">import</span> Dict<span class="token punctuation">,</span> Any
 
-<span class="token keyword">from</span> fastapi <span class="token keyword">import</span> FastAPI<span class="token punctuation">,</span> Request<span class="token punctuation">,</span> BackgroundTasks
-<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape
-<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>validation <span class="token keyword">import</span> make_valid
+<span class="token keyword">from</span> fastapi <span class="token keyword">import</span> FastAPI<span class="token punctuation">,</span> HTTPException<span class="token punctuation">,</span> Request<span class="token punctuation">,</span> BackgroundTasks
 
 app <span class="token operator">=</span> FastAPI<span class="token punctuation">(</span><span class="token punctuation">)</span>
 logger <span class="token operator">=</span> logging<span class="token punctuation">.</span>getLogger<span class="token punctuation">(</span>__name__<span class="token punctuation">)</span>
 
-<span class="token comment"># Pre-allocate worker pool to avoid cold-start overhead on each request</span>
-WORKER_POOL <span class="token operator">=</span> ProcessPoolExecutor<span class="token punctuation">(</span>max_workers<span class="token operator">=</span><span class="token number">4</span><span class="token punctuation">)</span>
+WEBHOOK_SECRET <span class="token operator">=</span> os<span class="token punctuation">.</span>environ<span class="token punctuation">[</span><span class="token string">"WEBHOOK_SECRET"</span><span class="token punctuation">]</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+MAX_PAYLOAD_BYTES <span class="token operator">=</span> <span class="token number">100</span> <span class="token operator">*</span> <span class="token number">1024</span> <span class="token operator">*</span> <span class="token number">1024</span>  <span class="token comment"># 100 MB ceiling</span>
 
-<span class="token keyword">def</span> <span class="token function">_process_geometry</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">:</span>
-    <span class="token triple-quoted-string string">"""CPU-bound worker function executed in a separate process."""</span>
+<span class="token comment"># Pre-allocate the pool at startup to avoid cold-start latency per request.</span>
+WORKER_POOL <span class="token operator">=</span> ProcessPoolExecutor<span class="token punctuation">(</span>max_workers<span class="token operator">=</span>os<span class="token punctuation">.</span>cpu_count<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token keyword">or</span> <span class="token number">4</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">_verify_hmac</span><span class="token punctuation">(</span>body<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">,</span> signature_header<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">|</span> <span class="token boolean">None</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Raise HTTP 401 if the HMAC-SHA256 signature does not match."""</span>
+    <span class="token keyword">if</span> <span class="token keyword">not</span> signature_header<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> HTTPException<span class="token punctuation">(</span>status_code<span class="token operator">=</span><span class="token number">401</span><span class="token punctuation">,</span> detail<span class="token operator">=</span><span class="token string">"Missing X-Signature header"</span><span class="token punctuation">)</span>
+    expected <span class="token operator">=</span> <span class="token string">"sha256="</span> <span class="token operator">+</span> hmac<span class="token punctuation">.</span>new<span class="token punctuation">(</span>WEBHOOK_SECRET<span class="token punctuation">,</span> body<span class="token punctuation">,</span> hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">if</span> <span class="token keyword">not</span> hmac<span class="token punctuation">.</span>compare_digest<span class="token punctuation">(</span>expected<span class="token punctuation">,</span> signature_header<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> HTTPException<span class="token punctuation">(</span>status_code<span class="token operator">=</span><span class="token number">401</span><span class="token punctuation">,</span> detail<span class="token operator">=</span><span class="token string">"Invalid signature"</span><span class="token punctuation">)</span>
+
+
+<span class="token decorator annotation punctuation">@app<span class="token punctuation">.</span>post</span><span class="token punctuation">(</span><span class="token string">"/webhook/spatial"</span><span class="token punctuation">)</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">receive_spatial_payload</span><span class="token punctuation">(</span>
+    request<span class="token punctuation">:</span> Request<span class="token punctuation">,</span>
+    background_tasks<span class="token punctuation">:</span> BackgroundTasks<span class="token punctuation">,</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">:</span>
+    content_length <span class="token operator">=</span> <span class="token builtin">int</span><span class="token punctuation">(</span>request<span class="token punctuation">.</span>headers<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"content-length"</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    <span class="token keyword">if</span> content_length <span class="token operator">></span> MAX_PAYLOAD_BYTES<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> HTTPException<span class="token punctuation">(</span>status_code<span class="token operator">=</span><span class="token number">413</span><span class="token punctuation">,</span> detail<span class="token operator">=</span><span class="token string">"Payload exceeds 100 MB limit"</span><span class="token punctuation">)</span>
+
+    raw_bytes <span class="token operator">=</span> <span class="token keyword">await</span> request<span class="token punctuation">.</span>body<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    _verify_hmac<span class="token punctuation">(</span>raw_bytes<span class="token punctuation">,</span> request<span class="token punctuation">.</span>headers<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"x-signature"</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+    <span class="token comment"># Offload heavy geometry work; respond immediately.</span>
+    background_tasks<span class="token punctuation">.</span>add_task<span class="token punctuation">(</span>_dispatch_to_pool<span class="token punctuation">,</span> raw_bytes<span class="token punctuation">)</span>
+    <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"queued"</span><span class="token punctuation">}</span>
+</code></pre>
+</div>
+<h3 id="step-2-dispatch-to-the-process-pool" tabindex="-1"><a class="heading-anchor" href="#step-2-dispatch-to-the-process-pool">Step 2 — Dispatch to the Process Pool</a></h3>
+<p><code>loop.run_in_executor</code> submits the CPU-bound worker to the pre-allocated <code>ProcessPoolExecutor</code>. The <code>await</code> suspends only this coroutine — the event loop remains free to handle other incoming requests.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">_dispatch_to_pool</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Submit geometry processing to a separate OS process."""</span>
+    loop <span class="token operator">=</span> asyncio<span class="token punctuation">.</span>get_running_loop<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">try</span><span class="token punctuation">:</span>
+        result <span class="token operator">=</span> <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>wait_for<span class="token punctuation">(</span>
+            loop<span class="token punctuation">.</span>run_in_executor<span class="token punctuation">(</span>WORKER_POOL<span class="token punctuation">,</span> _process_geometry<span class="token punctuation">,</span> payload<span class="token punctuation">)</span><span class="token punctuation">,</span>
+            timeout<span class="token operator">=</span><span class="token number">30.0</span><span class="token punctuation">,</span>  <span class="token comment"># seconds; adjust for expected geometry complexity</span>
+        <span class="token punctuation">)</span>
+        logger<span class="token punctuation">.</span>info<span class="token punctuation">(</span><span class="token string">"Worker finished: status=%s"</span><span class="token punctuation">,</span> result<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"status"</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    <span class="token keyword">except</span> TimeoutError<span class="token punctuation">:</span>
+        logger<span class="token punctuation">.</span>error<span class="token punctuation">(</span><span class="token string">"Worker timed out — routing to dead-letter queue"</span><span class="token punctuation">)</span>
+        <span class="token keyword">await</span> _send_to_dlq<span class="token punctuation">(</span>payload<span class="token punctuation">)</span>
+    <span class="token keyword">except</span> Exception <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+        logger<span class="token punctuation">.</span>exception<span class="token punctuation">(</span><span class="token string">"Worker raised unexpected exception: %s"</span><span class="token punctuation">,</span> exc<span class="token punctuation">)</span>
+        <span class="token keyword">await</span> _send_to_dlq<span class="token punctuation">(</span>payload<span class="token punctuation">)</span>
+</code></pre>
+</div>
+<h3 id="step-3-topology-validation-and-crs-normalization" tabindex="-1"><a class="heading-anchor" href="#step-3-topology-validation-and-crs-normalization">Step 3 — Topology Validation and CRS Normalization</a></h3>
+<p>Each worker function is a plain top-level function (required by <code>pickle</code> serialization between processes). It validates the GeoJSON structure against <a href="https://datatracker.ietf.org/doc/html/rfc7946">RFC 7946</a>, repairs invalid topologies, and normalizes coordinates to EPSG:4326 (WGS 84) using pyproj. This mirrors the <a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a> pattern for enforcing a canonical projection before any downstream operation.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> json
+<span class="token keyword">from</span> typing <span class="token keyword">import</span> Any
+
+<span class="token keyword">from</span> pyproj <span class="token keyword">import</span> CRS<span class="token punctuation">,</span> Transformer
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> mapping<span class="token punctuation">,</span> shape
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>ops <span class="token keyword">import</span> transform <span class="token keyword">as</span> shapely_transform
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>validation <span class="token keyword">import</span> make_valid
+
+
+<span class="token keyword">def</span> <span class="token function">_reproject</span><span class="token punctuation">(</span>geom<span class="token punctuation">,</span> source_epsg<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Reproject a whole Shapely geometry to EPSG:4326 (WGS 84)."""</span>
+    transformer <span class="token operator">=</span> Transformer<span class="token punctuation">.</span>from_crs<span class="token punctuation">(</span>
+        CRS<span class="token punctuation">.</span>from_epsg<span class="token punctuation">(</span>source_epsg<span class="token punctuation">)</span><span class="token punctuation">,</span>
+        CRS<span class="token punctuation">.</span>from_epsg<span class="token punctuation">(</span><span class="token number">4326</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+        always_xy<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span>  <span class="token comment"># GeoJSON is lon/lat, so force x=lon, y=lat ordering</span>
+    <span class="token punctuation">)</span>
+    <span class="token comment"># shapely.ops.transform walks every coordinate ring for us, so MultiPolygons</span>
+    <span class="token comment"># and GeometryCollections are reprojected in full — not just the bounds.</span>
+    <span class="token keyword">return</span> shapely_transform<span class="token punctuation">(</span>transformer<span class="token punctuation">.</span>transform<span class="token punctuation">,</span> geom<span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">_process_geometry</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""CPU-bound worker: validate, repair, and normalize a GeoJSON feature."""</span>
     <span class="token keyword">try</span><span class="token punctuation">:</span>
         data <span class="token operator">=</span> json<span class="token punctuation">.</span>loads<span class="token punctuation">(</span>payload<span class="token punctuation">)</span>
-        geom <span class="token operator">=</span> shape<span class="token punctuation">(</span>data<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"geometry"</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+        <span class="token keyword">if</span> data<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"type"</span><span class="token punctuation">)</span> <span class="token operator">!=</span> <span class="token string">"Feature"</span> <span class="token keyword">or</span> <span class="token string">"geometry"</span> <span class="token keyword">not</span> <span class="token keyword">in</span> data<span class="token punctuation">:</span>
+            <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"error"</span><span class="token punctuation">,</span> <span class="token string">"message"</span><span class="token punctuation">:</span> <span class="token string">"Payload is not a GeoJSON Feature"</span><span class="token punctuation">}</span>
+
+        geom <span class="token operator">=</span> shape<span class="token punctuation">(</span>data<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+
+        <span class="token comment"># Topology repair — make_valid returns a valid geometry without data loss.</span>
         <span class="token keyword">if</span> <span class="token keyword">not</span> geom<span class="token punctuation">.</span>is_valid<span class="token punctuation">:</span>
             geom <span class="token operator">=</span> make_valid<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>
 
-        <span class="token comment"># Example: compute area in square kilometres using geographic bounds</span>
-        processed <span class="token operator">=</span> <span class="token punctuation">{</span>
-            <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Feature"</span><span class="token punctuation">,</span>
-            <span class="token string">"geometry"</span><span class="token punctuation">:</span> geom<span class="token punctuation">.</span>__geo_interface__<span class="token punctuation">,</span>
-            <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span>
-                <span class="token comment"># area using WGS84 degrees — project to equal-area CRS for real measurements</span>
-                <span class="token string">"bbox"</span><span class="token punctuation">:</span> geom<span class="token punctuation">.</span>bounds<span class="token punctuation">,</span>
-                <span class="token string">"is_valid"</span><span class="token punctuation">:</span> geom<span class="token punctuation">.</span>is_valid<span class="token punctuation">,</span>
-            <span class="token punctuation">}</span>
+        <span class="token comment"># Detect a non-WGS84 source CRS from an optional vendor property and</span>
+        <span class="token comment"># reproject before persistence so every downstream index is EPSG:4326.</span>
+        source_epsg <span class="token operator">=</span> data<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"properties"</span><span class="token punctuation">,</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"source_epsg"</span><span class="token punctuation">,</span> <span class="token number">4326</span><span class="token punctuation">)</span>
+        <span class="token keyword">if</span> source_epsg <span class="token operator">!=</span> <span class="token number">4326</span><span class="token punctuation">:</span>
+            geom <span class="token operator">=</span> _reproject<span class="token punctuation">(</span>geom<span class="token punctuation">,</span> source_epsg<span class="token punctuation">)</span>
+
+        <span class="token keyword">return</span> <span class="token punctuation">{</span>
+            <span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"success"</span><span class="token punctuation">,</span>
+            <span class="token string">"result"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span>
+                <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Feature"</span><span class="token punctuation">,</span>
+                <span class="token string">"geometry"</span><span class="token punctuation">:</span> mapping<span class="token punctuation">(</span>geom<span class="token punctuation">)</span><span class="token punctuation">,</span>
+                <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span>
+                    <span class="token operator">**</span>data<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"properties"</span><span class="token punctuation">,</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+                    <span class="token string">"crs"</span><span class="token punctuation">:</span> <span class="token string">"EPSG:4326"</span><span class="token punctuation">,</span>
+                    <span class="token string">"bbox"</span><span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">(</span>geom<span class="token punctuation">.</span>bounds<span class="token punctuation">)</span><span class="token punctuation">,</span>
+                    <span class="token string">"is_valid"</span><span class="token punctuation">:</span> geom<span class="token punctuation">.</span>is_valid<span class="token punctuation">,</span>
+                <span class="token punctuation">}</span><span class="token punctuation">,</span>
+            <span class="token punctuation">}</span><span class="token punctuation">,</span>
         <span class="token punctuation">}</span>
-        <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"success"</span><span class="token punctuation">,</span> <span class="token string">"result"</span><span class="token punctuation">:</span> processed<span class="token punctuation">}</span>
-    <span class="token keyword">except</span> Exception <span class="token keyword">as</span> e<span class="token punctuation">:</span>
-        <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"error"</span><span class="token punctuation">,</span> <span class="token string">"message"</span><span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">(</span>e<span class="token punctuation">)</span><span class="token punctuation">}</span>
-
-<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">_dispatch_to_pool</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
-    <span class="token triple-quoted-string string">"""Run the CPU-bound worker in the process pool without blocking the loop."""</span>
-    loop <span class="token operator">=</span> asyncio<span class="token punctuation">.</span>get_running_loop<span class="token punctuation">(</span><span class="token punctuation">)</span>
-    result <span class="token operator">=</span> <span class="token keyword">await</span> loop<span class="token punctuation">.</span>run_in_executor<span class="token punctuation">(</span>WORKER_POOL<span class="token punctuation">,</span> _process_geometry<span class="token punctuation">,</span> payload<span class="token punctuation">)</span>
-    logger<span class="token punctuation">.</span>info<span class="token punctuation">(</span><span class="token string">"Worker completed: %s"</span><span class="token punctuation">,</span> result<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"status"</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
-
-<span class="token decorator annotation punctuation">@app<span class="token punctuation">.</span>post</span><span class="token punctuation">(</span><span class="token string">"/webhook/spatial"</span><span class="token punctuation">)</span>
-<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">receive_spatial_payload</span><span class="token punctuation">(</span>request<span class="token punctuation">:</span> Request<span class="token punctuation">,</span> background_tasks<span class="token punctuation">:</span> BackgroundTasks<span class="token punctuation">)</span><span class="token punctuation">:</span>
-    <span class="token comment"># 1. Stream raw bytes without blocking the event loop</span>
-    raw_bytes <span class="token operator">=</span> <span class="token keyword">await</span> request<span class="token punctuation">.</span>body<span class="token punctuation">(</span><span class="token punctuation">)</span>
-
-    logger<span class="token punctuation">.</span>info<span class="token punctuation">(</span><span class="token string">"Received %d bytes, returning 202 Accepted"</span><span class="token punctuation">,</span> <span class="token builtin">len</span><span class="token punctuation">(</span>raw_bytes<span class="token punctuation">)</span><span class="token punctuation">)</span>
-
-    <span class="token comment"># 2. Offload to background worker pool and acknowledge immediately</span>
-    background_tasks<span class="token punctuation">.</span>add_task<span class="token punctuation">(</span>_dispatch_to_pool<span class="token punctuation">,</span> raw_bytes<span class="token punctuation">)</span>
-
-    <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"queued"</span><span class="token punctuation">,</span> <span class="token string">"message"</span><span class="token punctuation">:</span> <span class="token string">"Processing initiated"</span><span class="token punctuation">}</span>
+    <span class="token keyword">except</span> Exception <span class="token keyword">as</span> exc<span class="token punctuation">:</span>  <span class="token comment"># noqa: BLE001</span>
+        <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"error"</span><span class="token punctuation">,</span> <span class="token string">"message"</span><span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">(</span>exc<span class="token punctuation">)</span><span class="token punctuation">}</span>
 </code></pre>
 </div>
-<h2 id="memory-safety-concurrency-constraints" tabindex="-1"><a class="heading-anchor" href="#memory-safety-concurrency-constraints">Memory Safety &amp; Concurrency Constraints</a></h2>
-<p>Async geometry processing introduces unique memory pressure points. Deserializing multi-megabyte GeoJSON payloads into Python dictionaries can trigger sudden heap spikes. To maintain stability:</p>
-<ol>
-<li><strong>Stream Parsing</strong>: Use iterative JSON parsers (<code>ijson</code>) to extract geometries without loading the entire document into RAM.</li>
-<li><strong>Process Isolation</strong>: <code>ProcessPoolExecutor</code> guarantees that a segmentation fault in GEOS or Shapely will not crash the main application process. Always wrap worker functions in explicit <code>try/except</code> blocks to capture C-level exceptions that surface as Python exceptions.</li>
-<li><strong>Chunked Dispatch</strong>: For feature collections exceeding 100 MB, split payloads into coordinate-bounded batches before dispatch. This prevents worker timeouts and enables parallel processing across multiple nodes.</li>
-</ol>
-<h2 id="failure-recovery-batch-resilience" tabindex="-1"><a class="heading-anchor" href="#failure-recovery-batch-resilience">Failure Recovery &amp; Batch Resilience</a></h2>
-<p>Spatial workloads frequently encounter partial failures: a single invalid polygon in a 10,000-feature batch can halt an entire pipeline if error handling is naive. Implement idempotent retry logic with exponential backoff, and route unrecoverable payloads to a dead-letter queue (DLQ) for manual inspection. When processing large batches, isolate failures at the feature level rather than aborting the entire job. Log the exact coordinate sequence or feature ID that triggered validation failures to enable rapid debugging and prevent silent data corruption in downstream spatial indexes.</p>
-<h2 id="performance-optimization-at-scale" tabindex="-1"><a class="heading-anchor" href="#performance-optimization-at-scale">Performance Optimization at Scale</a></h2>
-<p>Once the async pipeline is stable, focus on computational efficiency. Python loops over coordinate arrays introduce significant overhead at scale. Instead, leverage vectorized operations through NumPy-backed spatial libraries or GEOS C-API bindings when available. Batch coordinate transformations, topology checks, and spatial joins using array-oriented routines rather than iterative feature-by-feature processing. This approach can reduce CPU time by 60–80% on dense linestring and point cloud workloads.</p>
-<p>Additionally, cache CRS transformation matrices and pre-compile spatial predicates using <code>shapely.prepared.prep()</code> when applying the same operation across thousands of features. Monitor worker CPU utilization and memory fragmentation using <code>tracemalloc</code> and <code>psutil</code> to detect gradual degradation over sustained high-throughput periods.</p>
-<h2 id="conclusion" tabindex="-1"><a class="heading-anchor" href="#conclusion">Conclusion</a></h2>
-<p>Async Processing for Heavy Geometries transforms spatial webhook ingestion from a latency bottleneck into a scalable, resilient pipeline. By decoupling I/O acknowledgment from CPU-bound computation, enforcing strict validation boundaries, and leveraging process isolation, platform teams can reliably handle multi-megabyte spatial payloads without compromising system stability. Combine this architecture with robust error routing, vectorized computation, and efficient serialization to build real-time spatial applications that scale predictably under load.</p>
+<h3 id="step-4-pydantic-schema-validation" tabindex="-1"><a class="heading-anchor" href="#step-4-pydantic-schema-validation">Step 4 — Pydantic Schema Validation</a></h3>
+<p>Before the worker passes results to the persistence layer, validate the output schema with Pydantic v2. This catches malformed geometry objects that passed Shapely’s topology check but violate the application-level contract — for example, <code>MultiPolygon</code> features that should have been split, or missing required property fields. This pairs naturally with <a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a> for a defense-in-depth validation strategy.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> pydantic <span class="token keyword">import</span> BaseModel<span class="token punctuation">,</span> Field<span class="token punctuation">,</span> model_validator
+
+
+<span class="token keyword">class</span> <span class="token class-name">SpatialFeatureOut</span><span class="token punctuation">(</span>BaseModel<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token builtin">type</span><span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">=</span> Field<span class="token punctuation">(</span>pattern<span class="token operator">=</span><span class="token string">"^Feature$"</span><span class="token punctuation">)</span>
+    geometry<span class="token punctuation">:</span> <span class="token builtin">dict</span>
+    properties<span class="token punctuation">:</span> <span class="token builtin">dict</span>
+
+    <span class="token decorator annotation punctuation">@model_validator</span><span class="token punctuation">(</span>mode<span class="token operator">=</span><span class="token string">"after"</span><span class="token punctuation">)</span>
+    <span class="token keyword">def</span> <span class="token function">check_geometry_type</span><span class="token punctuation">(</span>self<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token string">"SpatialFeatureOut"</span><span class="token punctuation">:</span>
+        allowed <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"LineString"</span><span class="token punctuation">,</span> <span class="token string">"Polygon"</span><span class="token punctuation">,</span> <span class="token string">"MultiPoint"</span><span class="token punctuation">,</span>
+                   <span class="token string">"MultiLineString"</span><span class="token punctuation">,</span> <span class="token string">"MultiPolygon"</span><span class="token punctuation">,</span> <span class="token string">"GeometryCollection"</span><span class="token punctuation">}</span>
+        <span class="token keyword">if</span> self<span class="token punctuation">.</span>geometry<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"type"</span><span class="token punctuation">)</span> <span class="token keyword">not</span> <span class="token keyword">in</span> allowed<span class="token punctuation">:</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Unsupported geometry type: </span><span class="token interpolation"><span class="token punctuation">{</span>self<span class="token punctuation">.</span>geometry<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">'type'</span><span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> self
+
+
+<span class="token keyword">def</span> <span class="token function">validate_output</span><span class="token punctuation">(</span>result<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> SpatialFeatureOut<span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Raise ValidationError if the processed feature does not meet schema."""</span>
+    <span class="token keyword">return</span> SpatialFeatureOut<span class="token punctuation">.</span>model_validate<span class="token punctuation">(</span>result<span class="token punctuation">[</span><span class="token string">"result"</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<h3 id="step-5-streaming-deserialization-for-large-feature-collections" tabindex="-1"><a class="heading-anchor" href="#step-5-streaming-deserialization-for-large-feature-collections">Step 5 — Streaming Deserialization for Large Feature Collections</a></h3>
+<p>For payloads exceeding 10 MB, replace <code>json.loads</code> with <code>ijson</code> to avoid heap spikes. The iterator emits one feature at a time, letting the worker dispatch each feature to a separate sub-task rather than holding the entire collection in memory.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> io
+<span class="token keyword">import</span> ijson
+
+
+<span class="token keyword">def</span> <span class="token function">_iter_features</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Yield individual GeoJSON features without loading the full collection."""</span>
+    f <span class="token operator">=</span> io<span class="token punctuation">.</span>BytesIO<span class="token punctuation">(</span>payload<span class="token punctuation">)</span>
+    parser <span class="token operator">=</span> ijson<span class="token punctuation">.</span>items<span class="token punctuation">(</span>f<span class="token punctuation">,</span> <span class="token string">"features.item"</span><span class="token punctuation">)</span>
+    <span class="token keyword">for</span> feature <span class="token keyword">in</span> parser<span class="token punctuation">:</span>
+        <span class="token keyword">yield</span> feature
+
+
+<span class="token keyword">def</span> <span class="token function">_process_feature_collection</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">dict</span><span class="token punctuation">]</span><span class="token punctuation">:</span>
+    results <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+    <span class="token keyword">for</span> feature <span class="token keyword">in</span> _iter_features<span class="token punctuation">(</span>payload<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        feature_bytes <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>feature<span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+        results<span class="token punctuation">.</span>append<span class="token punctuation">(</span>_process_geometry<span class="token punctuation">(</span>feature_bytes<span class="token punctuation">)</span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> results
+</code></pre>
+</div>
+<hr>
+<h2 id="spatial-validation-and-error-handling" tabindex="-1"><a class="heading-anchor" href="#spatial-validation-and-error-handling">Spatial Validation and Error Handling</a></h2>
+<p>Shapely’s <code>is_valid</code> flag catches self-intersections, unclosed rings, and duplicate vertices — but it does not validate coordinate range or ring orientation under <a href="https://datatracker.ietf.org/doc/html/rfc7946">RFC 7946</a>. Add explicit guards:</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>validation <span class="token keyword">import</span> explain_validity
+
+
+<span class="token keyword">def</span> <span class="token function">full_validation_report</span><span class="token punctuation">(</span>raw_geometry<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Return a structured validity report for a GeoJSON geometry object."""</span>
+    geom <span class="token operator">=</span> shape<span class="token punctuation">(</span>raw_geometry<span class="token punctuation">)</span>
+    coords <span class="token operator">=</span> <span class="token builtin">list</span><span class="token punctuation">(</span>geom<span class="token punctuation">.</span>geoms<span class="token punctuation">)</span> <span class="token keyword">if</span> <span class="token builtin">hasattr</span><span class="token punctuation">(</span>geom<span class="token punctuation">,</span> <span class="token string">"geoms"</span><span class="token punctuation">)</span> <span class="token keyword">else</span> <span class="token punctuation">[</span>geom<span class="token punctuation">]</span>
+
+    min_x<span class="token punctuation">,</span> min_y<span class="token punctuation">,</span> max_x<span class="token punctuation">,</span> max_y <span class="token operator">=</span> geom<span class="token punctuation">.</span>bounds
+    bbox_valid <span class="token operator">=</span> <span class="token punctuation">(</span>
+        <span class="token operator">-</span><span class="token number">180</span> <span class="token operator">&lt;=</span> min_x <span class="token operator">&lt;=</span> max_x <span class="token operator">&lt;=</span> <span class="token number">180</span>  <span class="token comment"># longitude range, west &lt;= east</span>
+        <span class="token keyword">and</span> <span class="token operator">-</span><span class="token number">90</span> <span class="token operator">&lt;=</span> min_y <span class="token operator">&lt;=</span> max_y <span class="token operator">&lt;=</span> <span class="token number">90</span>  <span class="token comment"># latitude range, south &lt;= north</span>
+    <span class="token punctuation">)</span>
+
+    report <span class="token operator">=</span> <span class="token punctuation">{</span>
+        <span class="token string">"is_valid"</span><span class="token punctuation">:</span> geom<span class="token punctuation">.</span>is_valid<span class="token punctuation">,</span>
+        <span class="token string">"explanation"</span><span class="token punctuation">:</span> explain_validity<span class="token punctuation">(</span>geom<span class="token punctuation">)</span> <span class="token keyword">if</span> <span class="token keyword">not</span> geom<span class="token punctuation">.</span>is_valid <span class="token keyword">else</span> <span class="token boolean">None</span><span class="token punctuation">,</span>
+        <span class="token string">"bbox_valid"</span><span class="token punctuation">:</span> bbox_valid<span class="token punctuation">,</span>
+        <span class="token string">"geometry_type"</span><span class="token punctuation">:</span> geom<span class="token punctuation">.</span>geom_type<span class="token punctuation">,</span>
+        <span class="token string">"coordinate_count"</span><span class="token punctuation">:</span> <span class="token builtin">sum</span><span class="token punctuation">(</span>
+            <span class="token builtin">len</span><span class="token punctuation">(</span><span class="token builtin">list</span><span class="token punctuation">(</span>g<span class="token punctuation">.</span>exterior<span class="token punctuation">.</span>coords<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token keyword">if</span> <span class="token builtin">hasattr</span><span class="token punctuation">(</span>g<span class="token punctuation">,</span> <span class="token string">"exterior"</span><span class="token punctuation">)</span> <span class="token keyword">else</span> <span class="token number">0</span>
+            <span class="token keyword">for</span> g <span class="token keyword">in</span> coords
+        <span class="token punctuation">)</span><span class="token punctuation">,</span>
+    <span class="token punctuation">}</span>
+    <span class="token keyword">return</span> report
+</code></pre>
+</div>
+<p>Route features that fail <code>bbox_valid</code> directly to the dead-letter queue — they indicate corrupt coordinate data that topology repair cannot fix. Log the <code>explanation</code> field for every invalid geometry to enable rapid root-cause analysis without replaying the entire payload. This complements the <a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/">at-least-once delivery pattern</a> where retries must not reprocess already-persisted features.</p>
+<hr>
+<h2 id="retry-backoff-and-delivery-guarantees" tabindex="-1"><a class="heading-anchor" href="#retry-backoff-and-delivery-guarantees">Retry, Backoff, and Delivery Guarantees</a></h2>
+<p>Spatial workloads fail transiently (GEOS internal errors, database timeouts) and permanently (corrupt coordinate rings). Distinguish between these cases in the retry policy:</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> random
+<span class="token keyword">import</span> asyncio
+
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">retry_with_backoff</span><span class="token punctuation">(</span>
+    payload<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">,</span>
+    max_attempts<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">4</span><span class="token punctuation">,</span>
+    base_delay<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> <span class="token number">1.0</span><span class="token punctuation">,</span>
+    max_delay<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> <span class="token number">30.0</span><span class="token punctuation">,</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span> <span class="token operator">|</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Retry geometry processing with exponential backoff and jitter.
+    Returns None and routes to DLQ after max_attempts.
+    """</span>
+    <span class="token keyword">for</span> attempt <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">,</span> max_attempts <span class="token operator">+</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        result <span class="token operator">=</span> <span class="token keyword">await</span> _dispatch_to_pool<span class="token punctuation">(</span>payload<span class="token punctuation">)</span>
+        <span class="token keyword">if</span> result <span class="token keyword">and</span> result<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"status"</span><span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token string">"success"</span><span class="token punctuation">:</span>
+            <span class="token keyword">return</span> result
+
+        <span class="token keyword">if</span> attempt <span class="token operator">==</span> max_attempts<span class="token punctuation">:</span>
+            logger<span class="token punctuation">.</span>error<span class="token punctuation">(</span>
+                <span class="token string">"Max retries reached after %d attempts — sending to DLQ"</span><span class="token punctuation">,</span> attempt
+            <span class="token punctuation">)</span>
+            <span class="token keyword">await</span> _send_to_dlq<span class="token punctuation">(</span>payload<span class="token punctuation">)</span>
+            <span class="token keyword">return</span> <span class="token boolean">None</span>
+
+        delay <span class="token operator">=</span> <span class="token builtin">min</span><span class="token punctuation">(</span>base_delay <span class="token operator">*</span> <span class="token punctuation">(</span><span class="token number">2</span> <span class="token operator">**</span> <span class="token punctuation">(</span>attempt <span class="token operator">-</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">,</span> max_delay<span class="token punctuation">)</span>
+        jitter <span class="token operator">=</span> random<span class="token punctuation">.</span>uniform<span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> delay <span class="token operator">*</span> <span class="token number">0.2</span><span class="token punctuation">)</span>
+        logger<span class="token punctuation">.</span>warning<span class="token punctuation">(</span>
+            <span class="token string">"Attempt %d failed, retrying in %.2f s"</span><span class="token punctuation">,</span> attempt<span class="token punctuation">,</span> delay <span class="token operator">+</span> jitter
+        <span class="token punctuation">)</span>
+        <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span>delay <span class="token operator">+</span> jitter<span class="token punctuation">)</span>
+
+    <span class="token keyword">return</span> <span class="token boolean">None</span>
+</code></pre>
+</div>
+<p><strong>At-least-once vs exactly-once:</strong> The async pipeline above is at-least-once by default — a worker crash after processing but before acknowledgment will cause a re-delivery. To upgrade to effectively-once semantics, assign each payload a deterministic idempotency key (based on a hash of the raw bytes or a vendor-supplied event ID) and store it in Redis before writing to PostGIS. The <a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a> and <a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks</a> pages cover this in detail.</p>
+<hr>
+<h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
+<p>Run this integration test against a local FastAPI instance to confirm the end-to-end pipeline behaves correctly:</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> json
+<span class="token keyword">import</span> time
+<span class="token keyword">import</span> httpx
+<span class="token keyword">import</span> pytest
+
+SAMPLE_FEATURE <span class="token operator">=</span> <span class="token punctuation">{</span>
+    <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Feature"</span><span class="token punctuation">,</span>
+    <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span>
+        <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Polygon"</span><span class="token punctuation">,</span>
+        <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token punctuation">[</span>
+            <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">122.4194</span><span class="token punctuation">,</span> <span class="token number">37.7749</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+            <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">122.4094</span><span class="token punctuation">,</span> <span class="token number">37.7749</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+            <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">122.4094</span><span class="token punctuation">,</span> <span class="token number">37.7849</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+            <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">122.4194</span><span class="token punctuation">,</span> <span class="token number">37.7849</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+            <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">122.4194</span><span class="token punctuation">,</span> <span class="token number">37.7749</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+        <span class="token punctuation">]</span><span class="token punctuation">]</span>
+    <span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"source_epsg"</span><span class="token punctuation">:</span> <span class="token number">4326</span><span class="token punctuation">,</span> <span class="token string">"name"</span><span class="token punctuation">:</span> <span class="token string">"test-polygon"</span><span class="token punctuation">}</span>
+<span class="token punctuation">}</span>
+
+
+<span class="token decorator annotation punctuation">@pytest<span class="token punctuation">.</span>mark<span class="token punctuation">.</span>asyncio</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">test_webhook_returns_202_immediately</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    payload <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>SAMPLE_FEATURE<span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">async</span> <span class="token keyword">with</span> httpx<span class="token punctuation">.</span>AsyncClient<span class="token punctuation">(</span>base_url<span class="token operator">=</span><span class="token string">"http://localhost:8000"</span><span class="token punctuation">)</span> <span class="token keyword">as</span> client<span class="token punctuation">:</span>
+        t0 <span class="token operator">=</span> time<span class="token punctuation">.</span>monotonic<span class="token punctuation">(</span><span class="token punctuation">)</span>
+        resp <span class="token operator">=</span> <span class="token keyword">await</span> client<span class="token punctuation">.</span>post<span class="token punctuation">(</span>
+            <span class="token string">"/webhook/spatial"</span><span class="token punctuation">,</span>
+            content<span class="token operator">=</span>payload<span class="token punctuation">,</span>
+            headers<span class="token operator">=</span><span class="token punctuation">{</span>
+                <span class="token string">"content-type"</span><span class="token punctuation">:</span> <span class="token string">"application/json"</span><span class="token punctuation">,</span>
+                <span class="token string">"x-signature"</span><span class="token punctuation">:</span> _compute_test_hmac<span class="token punctuation">(</span>payload<span class="token punctuation">)</span><span class="token punctuation">,</span>
+            <span class="token punctuation">}</span><span class="token punctuation">,</span>
+        <span class="token punctuation">)</span>
+        elapsed <span class="token operator">=</span> time<span class="token punctuation">.</span>monotonic<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span> t0
+
+    <span class="token keyword">assert</span> resp<span class="token punctuation">.</span>status_code <span class="token operator">==</span> <span class="token number">202</span>
+    <span class="token keyword">assert</span> resp<span class="token punctuation">.</span>json<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">[</span><span class="token string">"status"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token string">"queued"</span>
+    <span class="token comment"># Endpoint must acknowledge before any geometry processing begins.</span>
+    <span class="token keyword">assert</span> elapsed <span class="token operator">&lt;</span> <span class="token number">0.5</span><span class="token punctuation">,</span> <span class="token string-interpolation"><span class="token string">f"Acknowledgment too slow: </span><span class="token interpolation"><span class="token punctuation">{</span>elapsed<span class="token punctuation">:</span><span class="token format-spec">.3f</span><span class="token punctuation">}</span></span><span class="token string"> s"</span></span>
+
+
+<span class="token keyword">def</span> <span class="token function">_compute_test_hmac</span><span class="token punctuation">(</span>body<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+    <span class="token keyword">import</span> hashlib<span class="token punctuation">,</span> hmac<span class="token punctuation">,</span> os
+    secret <span class="token operator">=</span> os<span class="token punctuation">.</span>environ<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"WEBHOOK_SECRET"</span><span class="token punctuation">,</span> <span class="token string">"test-secret"</span><span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    digest <span class="token operator">=</span> hmac<span class="token punctuation">.</span>new<span class="token punctuation">(</span>secret<span class="token punctuation">,</span> body<span class="token punctuation">,</span> hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> <span class="token string-interpolation"><span class="token string">f"sha256=</span><span class="token interpolation"><span class="token punctuation">{</span>digest<span class="token punctuation">}</span></span><span class="token string">"</span></span>
+</code></pre>
+</div>
+<p>Check the application logs after sending a test payload to confirm the worker completed successfully:</p>
+<div class="code-block" data-lang="text">
+  <div class="code-block__header">
+    <span class="code-block__lang">text</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-text" tabindex="0"><code class="language-text">INFO     Worker finished: status=success
+</code></pre>
+</div>
+<p>If you see <code>Worker timed out</code>, reduce <code>max_workers</code> or lower the <code>Content-Length</code> ceiling — a flooded process pool starves individual workers of CPU time.</p>
+<hr>
+<h2 id="troubleshooting" tabindex="-1"><a class="heading-anchor" href="#troubleshooting">Troubleshooting</a></h2>
+<div style="overflow-x:auto">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely spatial cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Endpoint latency spikes above 500 ms</td>
+<td>Synchronous JSON parsing blocking the event loop</td>
+<td>Replace <code>json.loads</code> in the handler with <code>await request.body()</code> only; defer all parsing to the worker</td>
+</tr>
+<tr>
+<td>Worker returns <code>TopologicalError</code></td>
+<td>Self-intersecting polygon rings in source data</td>
+<td>Call <code>make_valid(geom)</code> before any spatial operation; log <code>explain_validity(geom)</code> to identify the ring</td>
+</tr>
+<tr>
+<td>CRS mismatch after transformation</td>
+<td>Source payload uses EPSG:3857 (Web Mercator) but worker assumes EPSG:4326</td>
+<td>Read the <code>source_epsg</code> property or a <code>X-Source-CRS</code> vendor header; reject payloads without explicit CRS declaration</td>
+</tr>
+<tr>
+<td><code>PicklingError</code> in ProcessPoolExecutor</td>
+<td>Lambda or closure passed as worker function</td>
+<td>Worker function must be a module-level <code>def</code>; closures cannot be serialized across process boundaries</td>
+</tr>
+<tr>
+<td>Memory grows unbounded under load</td>
+<td>Full feature collection loaded into RAM per request</td>
+<td>Switch to <code>ijson</code> streaming deserialization; enforce the <code>MAX_PAYLOAD_BYTES</code> ceiling in the handler</td>
+</tr>
+<tr>
+<td>Dead-letter queue fills faster than expected</td>
+<td>Retry policy not distinguishing transient from permanent errors</td>
+<td>Inspect the <code>message</code> field in failed results; route <code>ValidationError</code> outcomes directly to DLQ without retry</td>
+</tr>
+<tr>
+<td>Worker pool exhausted under burst traffic</td>
+<td><code>max_workers</code> set too low for concurrent payload volume</td>
+<td>Scale <code>max_workers</code> to <code>os.cpu_count()</code> and add a semaphore to cap concurrent in-flight dispatch calls</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<hr>
+<h2 id="faq" tabindex="-1"><a class="heading-anchor" href="#faq">FAQ</a></h2>
+<details class="faq">
+<summary><strong>When should I use ProcessPoolExecutor instead of ThreadPoolExecutor for geometry work?</strong></summary>
+<div class="faq__body">
+<p>Use <code>ProcessPoolExecutor</code> whenever geometry operations are CPU-bound — topology repair with <code>make_valid</code>, coordinate projection loops, or spatial joins over thousands of features. These operations are blocked by Python’s GIL and need true OS-level parallelism. <code>ThreadPoolExecutor</code> is suitable only for I/O-bound steps like writing results to PostGIS or publishing to Redis Streams.</p>
+</div>
+</details>
+<details class="faq">
+<summary><strong>How do I prevent memory spikes when deserializing large GeoJSON payloads?</strong></summary>
+<div class="faq__body">
+<p>Use <code>ijson</code> for iterative streaming deserialization — it emits geometry objects one at a time without loading the full document into RAM. Pair this with chunked dispatch: split feature collections into coordinate-bounded batches before sending to the worker pool. For the <a href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON-to-Protobuf mapping</a> path, binary serialization also shrinks wire payload size by 60–80% before it reaches the ingestion endpoint.</p>
+</div>
+</details>
+<details class="faq">
+<summary><strong>How do I handle mixed CRS payloads in an async pipeline?</strong></summary>
+<div class="faq__body">
+<p>Detect the source CRS from the payload’s <code>crs</code> property or a <code>X-Source-CRS</code> vendor header, then normalize to EPSG:4326 (WGS 84) inside the worker function before any topology checks. Refusing to dispatch until CRS is resolved prevents silent coordinate corruption in downstream spatial indexes. The full normalization workflow is covered in <a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a>.</p>
+</div>
+</details>
+<details class="faq">
+<summary><strong>What is a safe timeout for a geometry worker process?</strong></summary>
+<div class="faq__body">
+<p>Set a per-task timeout via <code>asyncio.wait_for</code> wrapping <code>run_in_executor</code>. A ceiling of 30 seconds works for most polygon simplification and validation workloads; complex union/intersection operations over dense point clouds may need up to 120 seconds. Route timed-out tasks to a dead-letter queue rather than retrying synchronously — a timeout usually signals a data pathology, not a transient failure.</p>
+</div>
+</details>
+<hr>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
+<ul>
+<li><a href="/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a> — parent section covering the full ingestion and routing architecture</li>
+<li><a href="/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/optimizing-async-geometry-parsing-with-asyncio/">Optimizing Async Geometry Parsing with asyncio</a> — deep dive into asyncio integration patterns for this pipeline</li>
+<li><a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a> — enforcing a canonical projection across mixed-CRS spatial event streams</li>
+<li><a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a> — defense-in-depth topology and schema checks before spatial indexing</li>
+<li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a> — deriving deterministic idempotency keys from GeoJSON feature hashes to prevent duplicate writes</li>
+</ul>
 
         <h2 id="explore-this-section">Explore this section</h2>
         <div class="children-grid">
@@ -278,9 +771,9 @@ WORKER_POOL <span class="token operator">=</span> ProcessPoolExecutor<span class
         <div class="aside-card">
           <h3>Related in this section</h3>
           <ul>
-            <li><a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
             <li><a href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
             <li><a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
+            <li><a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
           </ul>
         </div>
         <div class="aside-card">
@@ -326,18 +819,30 @@ WORKER_POOL <span class="token operator">=</span> ProcessPoolExecutor<span class
         <h4>Architecture</h4>
         <ul>
           <li><a href="/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
         </ul>
       </div>
       <div>
         <h4>Idempotency</h4>
         <ul>
           <li><a href="/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
         </ul>
       </div>
       <div>
         <h4>Routing &amp; Parsing</h4>
         <ul>
           <li><a href="/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
         </ul>
       </div>
     </div>

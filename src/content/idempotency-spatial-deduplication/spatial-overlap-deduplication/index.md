@@ -9,7 +9,7 @@ breadcrumb:
   - label: "Spatial Overlap Deduplication"
     url: "/idempotency-spatial-deduplication/spatial-overlap-deduplication/"
 datePublished: "2025-08-01"
-dateModified: "2026-06-24"
+dateModified: "2026-06-25"
 schema:
   - Article
   - BreadcrumbList
@@ -26,7 +26,7 @@ schema:
       "headline": "Spatial Overlap Deduplication for Geospatial Webhooks",
       "description": "Implement spatial overlap deduplication in Python to suppress redundant geospatial webhook events using Shapely predicates, Redis caching, and configurable area thresholds.",
       "datePublished": "2025-08-01",
-      "dateModified": "2026-06-24",
+      "dateModified": "2026-06-25",
       "author": {"@type": "Organization", "name": "geospatialwebhook.com"}
     },
     {
@@ -117,79 +117,60 @@ Hash-based filters either drop legitimate updates or let duplicates through. Spa
 
 The pipeline separates concerns across four layers to keep expensive spatial computation off the hot path.
 
-<svg viewBox="0 0 720 380" role="img" aria-label="Four-layer spatial overlap deduplication pipeline diagram" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;">
+<svg viewBox="0 0 740 400" role="img" aria-label="Four-layer spatial overlap deduplication pipeline diagram" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:740px;height:auto;font-family:inherit;display:block;margin:1.5rem auto;">
   <title>Spatial Overlap Deduplication Pipeline</title>
-  <desc>Data flows from webhook ingress through payload normalisation, cache lookup, spatial predicate evaluation, and finally to the downstream event processor or duplicate suppressor.</desc>
-
-  <!-- Background -->
-  <rect width="720" height="380" fill="none"/>
-
-  <!-- Layer boxes -->
-  <!-- Layer 1: Ingress -->
-  <rect x="20" y="30" width="140" height="64" rx="8" fill="#f9c8b0" stroke="#c07050" stroke-width="1.5"/>
-  <text x="90" y="55" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#5a3020">Layer 1</text>
-  <text x="90" y="71" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" fill="#5a3020">Webhook Ingress</text>
-  <text x="90" y="85" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="#7a4030">(FastAPI endpoint)</text>
-
-  <!-- Arrow 1→2 -->
-  <line x1="160" y1="62" x2="196" y2="62" stroke="#888" stroke-width="1.5" marker-end="url(#arr)"/>
-
-  <!-- Layer 2: Normalisation -->
-  <rect x="196" y="30" width="148" height="64" rx="8" fill="#b8e8d0" stroke="#4a9a70" stroke-width="1.5"/>
-  <text x="270" y="55" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#1a5a38">Layer 2</text>
-  <text x="270" y="71" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" fill="#1a5a38">Payload Normalisation</text>
-  <text x="270" y="85" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="#2a7a50">(CRS → EPSG:4326)</text>
-
-  <!-- Arrow 2→3 -->
-  <line x1="344" y1="62" x2="380" y2="62" stroke="#888" stroke-width="1.5" marker-end="url(#arr)"/>
-
-  <!-- Layer 3: Cache check -->
-  <rect x="380" y="30" width="148" height="64" rx="8" fill="#e8d8b0" stroke="#9a7830" stroke-width="1.5"/>
-  <text x="454" y="55" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#5a3a10">Layer 3</text>
-  <text x="454" y="71" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" fill="#5a3a10">Cache Lookup</text>
-  <text x="454" y="85" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="#7a5a20">(Redis SET NX)</text>
-
-  <!-- Arrow 3→4 -->
-  <line x1="528" y1="62" x2="564" y2="62" stroke="#888" stroke-width="1.5" marker-end="url(#arr)"/>
-
-  <!-- Layer 4: Predicate -->
-  <rect x="564" y="30" width="136" height="64" rx="8" fill="#f9c8b0" stroke="#c07050" stroke-width="1.5"/>
-  <text x="632" y="55" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#5a3020">Layer 4</text>
-  <text x="632" y="71" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" fill="#5a3020">Spatial Predicate</text>
-  <text x="632" y="85" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="#7a4030">(Shapely STRtree)</text>
-
-  <!-- Outcome lines from Layer 3 -->
-  <!-- Cache HIT → suppress -->
-  <line x1="454" y1="94" x2="454" y2="160" stroke="#c07050" stroke-width="1.5" stroke-dasharray="5,3"/>
-  <rect x="374" y="160" width="160" height="40" rx="6" fill="#fce8e0" stroke="#c07050" stroke-width="1.2"/>
-  <text x="454" y="176" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" fill="#c07050">Cache HIT → suppress</text>
-  <text x="454" y="191" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="#c07050">return 200 (idempotent)</text>
-
-  <!-- Outcome lines from Layer 4 -->
-  <!-- Overlap above threshold → suppress -->
-  <line x1="632" y1="94" x2="632" y2="160" stroke="#9a7830" stroke-width="1.5" stroke-dasharray="5,3"/>
-  <rect x="552" y="160" width="160" height="40" rx="6" fill="#faf0d8" stroke="#9a7830" stroke-width="1.2"/>
-  <text x="632" y="176" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" fill="#9a7830">Overlap ≥ threshold</text>
-  <text x="632" y="191" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="#9a7830">→ suppress + log audit</text>
-
-  <!-- Downstream: new event -->
-  <rect x="196" y="280" width="340" height="48" rx="8" fill="#b8e8d0" stroke="#4a9a70" stroke-width="1.5"/>
-  <text x="366" y="300" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#1a5a38">Downstream Processor</text>
-  <text x="366" y="317" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" fill="#2a7a50">Cache MISS + overlap below threshold → publish unique event</text>
-
-  <!-- Arrows to downstream -->
-  <line x1="454" y1="200" x2="366" y2="280" stroke="#4a9a70" stroke-width="1.5" marker-end="url(#arr2)"/>
-  <line x1="632" y1="200" x2="460" y2="280" stroke="#4a9a70" stroke-width="1.5" marker-end="url(#arr2)"/>
-
-  <!-- Arrow markers -->
+  <desc>Data flows left to right through four layers: Webhook Ingress, Payload Normalisation, Cache Lookup, and Spatial Predicate. A cache hit suppresses the event immediately. An overlap above threshold suppresses and logs. A cache miss combined with overlap below threshold forwards the event to the downstream processor.</desc>
   <defs>
-    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L8,3 z" fill="#888"/>
-    </marker>
-    <marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L8,3 z" fill="#4a9a70"/>
+    <marker id="sodp-arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
     </marker>
   </defs>
+  <!-- Layer 1: Ingress -->
+  <rect x="10" y="30" width="148" height="70" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+  <text x="84" y="54" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Layer 1</text>
+  <text x="84" y="72" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Webhook Ingress</text>
+  <text x="84" y="89" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">FastAPI endpoint</text>
+  <!-- Arrow 1→2 -->
+  <line x1="158" y1="65" x2="186" y2="65" stroke="currentColor" stroke-width="1.5" opacity="0.6" marker-end="url(#sodp-arr)"/>
+  <!-- Layer 2: Normalisation -->
+  <rect x="186" y="30" width="148" height="70" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+  <text x="260" y="54" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Layer 2</text>
+  <text x="260" y="72" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Payload Normalise</text>
+  <text x="260" y="89" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">CRS → EPSG:4326</text>
+  <!-- Arrow 2→3 -->
+  <line x1="334" y1="65" x2="362" y2="65" stroke="currentColor" stroke-width="1.5" opacity="0.6" marker-end="url(#sodp-arr)"/>
+  <!-- Layer 3: Cache -->
+  <rect x="362" y="30" width="148" height="70" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+  <text x="436" y="54" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Layer 3</text>
+  <text x="436" y="72" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Cache Lookup</text>
+  <text x="436" y="89" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">Redis SET NX</text>
+  <!-- Arrow 3→4 -->
+  <line x1="510" y1="65" x2="538" y2="65" stroke="currentColor" stroke-width="1.5" opacity="0.6" marker-end="url(#sodp-arr)"/>
+  <!-- Layer 4: Predicate -->
+  <rect x="538" y="30" width="190" height="70" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+  <text x="633" y="54" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Layer 4</text>
+  <text x="633" y="72" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Spatial Predicate</text>
+  <text x="633" y="89" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">Shapely STRtree</text>
+  <!-- Cache HIT → suppress (down from Layer 3) -->
+  <line x1="436" y1="100" x2="436" y2="166" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" opacity="0.5" marker-end="url(#sodp-arr)"/>
+  <rect x="356" y="166" width="160" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3"/>
+  <text x="436" y="184" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" opacity="0.8">Cache HIT</text>
+  <text x="436" y="200" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">suppress · return 200</text>
+  <!-- Overlap ≥ threshold → suppress (down from Layer 4) -->
+  <line x1="633" y1="100" x2="633" y2="166" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" opacity="0.5" marker-end="url(#sodp-arr)"/>
+  <rect x="545" y="166" width="176" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3"/>
+  <text x="633" y="184" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" opacity="0.8">Overlap &#8805; threshold</text>
+  <text x="633" y="200" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">suppress · log audit</text>
+  <!-- Downstream: novel event (bottom) -->
+  <rect x="186" y="312" width="368" height="52" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+  <text x="370" y="334" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Downstream Processor</text>
+  <text x="370" y="352" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">Cache MISS + overlap below threshold &#8594; publish unique event</text>
+  <!-- Arrows to downstream -->
+  <line x1="436" y1="210" x2="352" y2="312" stroke="currentColor" stroke-width="1.5" opacity="0.6" marker-end="url(#sodp-arr)"/>
+  <line x1="633" y1="210" x2="500" y2="312" stroke="currentColor" stroke-width="1.5" opacity="0.6" marker-end="url(#sodp-arr)"/>
+  <!-- MISS label on first arrow -->
+  <text x="372" y="268" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">MISS</text>
+  <text x="582" y="268" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">below threshold</text>
 </svg>
 
 **Layer 1 — Webhook ingress:** FastAPI or aiohttp receives the raw POST and immediately validates the HTTP signature (see [Securing Webhook Endpoints with Spatial Token Validation](/core-event-fundamentals-architecture/webhook-security-boundaries/securing-webhook-endpoints-with-spatial-token-validation/)). The raw body is enqueued for async processing without blocking the HTTP response.
@@ -320,6 +301,34 @@ Use `nx=True` (SET NX) rather than a GET + SET sequence to prevent a TOCTOU race
 ### 4. Spatial Predicate Evaluation with Area Threshold
 
 For cache misses, retrieve candidate geometries from the recent event store and evaluate overlap with Shapely. Use an R-tree (`STRtree`) to avoid pairwise O(n²) comparisons — the R-tree filters candidates to those whose bounding boxes intersect before the exact predicate runs.
+
+The decision itself is a single ratio: project both shapes to an equal-area CRS, divide the intersection area by the incoming geometry's area, and compare against the threshold. The diagram below shows why a near-identical retry is suppressed while a genuinely shifted footprint passes through.
+
+<svg viewBox="0 0 720 250" role="img" aria-label="Equal-area overlap ratio comparison: a near-duplicate geometry above threshold is suppressed, a shifted geometry below threshold passes" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;height:auto;font-family:inherit;display:block;margin:1.5rem auto;">
+  <title>Overlap Ratio Decides Suppression</title>
+  <desc>Two scenarios. On the left, an incoming polygon overlaps a stored polygon by 0.91 of its area, exceeding the 0.85 threshold, so the event is suppressed. On the right, the incoming polygon overlaps by only 0.42, below the threshold, so the event is forwarded as a novel spatial update.</desc>
+  <!-- Left scenario: high overlap, suppressed -->
+  <text x="170" y="28" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Near-duplicate retry</text>
+  <!-- stored polygon -->
+  <rect x="70" y="48" width="150" height="110" rx="4" fill="currentColor" opacity="0.12" stroke="currentColor" stroke-width="1.4"/>
+  <!-- incoming polygon, slightly shifted -->
+  <rect x="84" y="58" width="150" height="110" rx="4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="5,3" opacity="0.85"/>
+  <text x="170" y="192" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">overlap ratio = 0.91</text>
+  <text x="170" y="210" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor">&#8805; 0.85 &#8594; suppress</text>
+  <!-- divider -->
+  <line x1="360" y1="40" x2="360" y2="220" stroke="currentColor" stroke-width="1" opacity="0.2"/>
+  <!-- Right scenario: low overlap, forwarded -->
+  <text x="540" y="28" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Shifted footprint</text>
+  <rect x="430" y="48" width="130" height="110" rx="4" fill="currentColor" opacity="0.12" stroke="currentColor" stroke-width="1.4"/>
+  <rect x="520" y="58" width="130" height="110" rx="4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="5,3" opacity="0.85"/>
+  <text x="540" y="192" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">overlap ratio = 0.42</text>
+  <text x="540" y="210" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor">&lt; 0.85 &#8594; forward</text>
+  <!-- legend -->
+  <rect x="70" y="232" width="16" height="10" fill="currentColor" opacity="0.12" stroke="currentColor" stroke-width="1"/>
+  <text x="94" y="241" font-size="10" fill="currentColor" opacity="0.7">stored geometry</text>
+  <rect x="240" y="232" width="16" height="10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="4,2"/>
+  <text x="264" y="241" font-size="10" fill="currentColor" opacity="0.7">incoming geometry</text>
+</svg>
 
 ```python
 from shapely.strtree import STRtree
@@ -458,7 +467,7 @@ async def safe_normalize(payload: SpatialWebhookPayload):
 
 Apply Pydantic validation at the HTTP boundary (as shown in `SpatialWebhookPayload`) and a second topology check inside the worker after normalisation. This two-stage approach catches both malformed JSON and geometrically invalid shapes that pass JSON schema validation.
 
-For [async processing of heavy geometries](/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/), offload normalisation of complex multi-polygon payloads to a dedicated worker pool to prevent a large geometry from monopolising the async event loop.
+For [async processing of heavy geometries](/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/), offload normalisation of complex multi-polygon payloads to a dedicated worker pool to prevent a large geometry from monopolising the async event loop. When upstream sources send conflicting representations of the same region, consult the [Conflict Resolution Strategies](/idempotency-spatial-deduplication/conflict-resolution-strategies/) patterns for merge and escalation policies.
 
 ---
 
@@ -503,7 +512,7 @@ async def send_to_dlq(event_id: str, payload: dict, reason: str) -> None:
     pass
 ```
 
-**At-least-once vs. exactly-once tradeoffs:** The Redis SET NX provides exactly-once semantics within the cache TTL window. Events that arrive after TTL expiry are treated as novel — intentional, because a geometry change 25 hours later likely represents a genuine spatial update. For stricter exactly-once guarantees across longer windows, persist the spatial key to a durable store (PostgreSQL with a GiST index on the geometry column) rather than relying solely on Redis TTL.
+**At-least-once vs. exactly-once tradeoffs:** The Redis SET NX provides exactly-once semantics within the cache TTL window. Events that arrive after TTL expiry are treated as novel — intentional, because a geometry change 25 hours later likely represents a genuine spatial update. For stricter exactly-once guarantees across longer windows, persist the spatial key to a durable store (PostgreSQL with a GiST index on the geometry column) rather than relying solely on Redis TTL. The broader delivery guarantee patterns are covered in [Implementing At-Least-Once Delivery for GIS Webhooks](/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/).
 
 ---
 
@@ -599,7 +608,7 @@ async def test_cache_deduplication(monkeypatch):
 <details class="faq">
 <summary><strong>Why does exact-hash deduplication fail for geospatial payloads?</strong></summary>
 
-Coordinate precision drift, CRS transformations, and automatic topology normalization by GIS libraries all change the raw bytes of a geometry without changing its spatial footprint. A polygon serialised at 6-decimal precision by one source may arrive at 8 decimal places after a reprojection step in a middleware layer, producing a completely different SHA-256 hash despite representing the same physical boundary. Hash-based filters therefore treat functionally identical shapes as distinct events, either duplicating processing or (if used as deduplication keys for suppression) blocking legitimate updates.
+Coordinate precision drift, CRS transformations, and automatic topology normalization by GIS libraries all change the raw bytes of a geometry without changing its spatial footprint. A polygon serialised at 6-decimal precision by one source may arrive at 8 decimal places after a reprojection step in a middleware layer, producing a completely different SHA-256 hash despite representing the same physical boundary. Hash-based filters therefore treat functionally identical shapes as distinct events, either duplicating processing or blocking legitimate updates.
 
 </details>
 
@@ -631,5 +640,6 @@ Yes. `ST_Intersects(geom_a, geom_b)` combined with `ST_Area(ST_Intersection(geom
 - [Idempotency & Spatial Deduplication](/idempotency-spatial-deduplication/) — parent section covering the full idempotency strategy for geospatial event pipelines
 - [Event Key Generation for Spatial Data](/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/) — deterministic idempotency key derivation from GeoJSON feature hashes
 - [Cache-Backed Idempotency Checks](/idempotency-spatial-deduplication/cache-backed-idempotency-checks/) — Redis data structures, atomic SET NX patterns, and cache invalidation strategies
+- [Conflict Resolution Strategies](/idempotency-spatial-deduplication/conflict-resolution-strategies/) — merge and escalation policies when overlapping events represent genuine spatial state changes
 - [CRS Normalization Strategies](/spatial-payload-routing-parsing/crs-normalization-strategies/) — normalising mixed-CRS payloads to a canonical projection before comparison
 - [Geometry Validation Pipelines](/spatial-payload-routing-parsing/geometry-validation-pipelines/) — topology checks, ring orientation enforcement, and GeoJSON schema validation

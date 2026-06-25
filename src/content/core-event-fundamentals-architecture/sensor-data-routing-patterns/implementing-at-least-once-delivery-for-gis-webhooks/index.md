@@ -75,69 +75,53 @@ This page is part of [Sensor Data Routing Patterns](/core-event-fundamentals-arc
 
 ---
 
-<svg viewBox="0 0 780 220" role="img" aria-label="At-least-once delivery flow for a GIS webhook" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:780px;height:auto;display:block;margin:1.5rem auto;">
+<svg viewBox="0 0 760 380" role="img" aria-label="At-least-once delivery flow for a GIS webhook" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
   <title>At-least-once delivery flow for a GIS webhook</title>
-  <desc>Sequence diagram showing: HTTP POST arrives at the webhook receiver, which immediately returns 200 OK, then enqueues the raw payload. A background worker checks Redis for a duplicate idempotency key; if new, it processes the spatial event and writes to PostGIS. If the key already exists, the duplicate is skipped. After MAX_RETRIES exhaustion, the event moves to a dead-letter queue.</desc>
+  <desc>Five-lane flow: the Sender POSTs a spatial payload to the HTTP Receiver, which returns 200 OK immediately and enqueues the raw payload. A Background Worker derives an idempotency key and runs an atomic SET NX EX against Redis. If the key already exists the duplicate is skipped; if it is new the worker validates and writes the geometry to PostGIS. After MAX_RETRIES are exhausted the event is routed to a dead-letter queue.</desc>
   <defs>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L8,3 z" fill="currentColor"/>
+    <marker id="alo-arr" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
     </marker>
   </defs>
-
-  <!-- Background lanes -->
-  <rect x="0" y="0" width="780" height="220" rx="8" fill="#fdf6f0" stroke="#d4a896" stroke-width="1.2"/>
-
-  <!-- Lane: Sender -->
-  <rect x="8" y="8" width="110" height="204" rx="6" fill="#ffe4d6" stroke="#d4a896" stroke-width="1"/>
-  <text x="63" y="28" text-anchor="middle" font-size="11" font-weight="600" fill="#7a3b1e">Sender</text>
-
-  <!-- Lane: Receiver -->
-  <rect x="126" y="8" width="130" height="204" rx="6" fill="#e6f7f0" stroke="#6abf9e" stroke-width="1"/>
-  <text x="191" y="28" text-anchor="middle" font-size="11" font-weight="600" fill="#1a5c3a">HTTP Receiver</text>
-
-  <!-- Lane: Worker -->
-  <rect x="264" y="8" width="160" height="204" rx="6" fill="#e8f0fd" stroke="#7a9fd4" stroke-width="1"/>
-  <text x="344" y="28" text-anchor="middle" font-size="11" font-weight="600" fill="#1c3a6e">Background Worker</text>
-
-  <!-- Lane: Redis -->
-  <rect x="432" y="8" width="130" height="204" rx="6" fill="#fff8e1" stroke="#c8a84b" stroke-width="1"/>
-  <text x="497" y="28" text-anchor="middle" font-size="11" font-weight="600" fill="#5c4400">Redis</text>
-
-  <!-- Lane: PostGIS / DLQ -->
-  <rect x="570" y="8" width="202" height="204" rx="6" fill="#f3e8ff" stroke="#9b6abf" stroke-width="1"/>
-  <text x="671" y="28" text-anchor="middle" font-size="11" font-weight="600" fill="#3d1266">PostGIS / DLQ</text>
-
-  <!-- Step 1: POST -->
-  <line x1="115" y1="55" x2="126" y2="55" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow)"/>
-  <text x="63" y="52" text-anchor="middle" font-size="10" fill="#7a3b1e">POST /webhooks/gis</text>
-
-  <!-- Step 2: 200 OK -->
-  <line x1="126" y1="72" x2="115" y2="72" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow)"/>
-  <text x="191" y="69" text-anchor="middle" font-size="10" fill="#1a5c3a">200 OK (immediate)</text>
-
-  <!-- Step 3: Enqueue -->
-  <line x1="253" y1="90" x2="264" y2="90" stroke="currentColor" stroke-width="1.4" stroke-dasharray="4,2" marker-end="url(#arrow)"/>
-  <text x="191" y="87" text-anchor="middle" font-size="10" fill="#1a5c3a">enqueue payload</text>
-
-  <!-- Step 4: SET NX -->
-  <line x1="422" y1="110" x2="432" y2="110" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow)"/>
-  <text x="344" y="107" text-anchor="middle" font-size="10" fill="#1c3a6e">SET NX EX (idemp key)</text>
-
-  <!-- Step 5a: key exists → skip -->
-  <line x1="432" y1="127" x2="422" y2="127" stroke="currentColor" stroke-width="1.4" stroke-dasharray="3,2" marker-end="url(#arrow)"/>
-  <text x="497" y="124" text-anchor="middle" font-size="10" fill="#5c4400">nil → skip duplicate</text>
-
-  <!-- Step 5b: key new → process -->
-  <line x1="432" y1="145" x2="422" y2="145" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow)"/>
-  <text x="497" y="142" text-anchor="middle" font-size="10" fill="#5c4400">OK → proceed</text>
-
-  <!-- Step 6: write to PostGIS -->
-  <line x1="422" y1="163" x2="570" y2="163" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow)"/>
-  <text x="344" y="160" text-anchor="middle" font-size="10" fill="#1c3a6e">write geometry</text>
-
-  <!-- Step 7: DLQ on exhaustion -->
-  <line x1="422" y1="183" x2="570" y2="183" stroke="currentColor" stroke-width="1.4" stroke-dasharray="4,2" marker-end="url(#arrow)"/>
-  <text x="344" y="198" text-anchor="middle" font-size="10" fill="#c0392b">→ DLQ after MAX_RETRIES</text>
+  <!-- Lane headers -->
+  <text x="75"  y="26" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.75">Sender</text>
+  <text x="235" y="26" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.75">HTTP Receiver</text>
+  <text x="395" y="26" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.75">Worker</text>
+  <text x="545" y="26" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.75">Redis</text>
+  <text x="685" y="26" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.75">PostGIS / DLQ</text>
+  <!-- Lane lifelines -->
+  <line x1="75"  y1="36" x2="75"  y2="360" stroke="currentColor" stroke-width="1.2" opacity="0.2"/>
+  <line x1="235" y1="36" x2="235" y2="360" stroke="currentColor" stroke-width="1.2" opacity="0.2"/>
+  <line x1="395" y1="36" x2="395" y2="360" stroke="currentColor" stroke-width="1.2" opacity="0.2"/>
+  <line x1="545" y1="36" x2="545" y2="360" stroke="currentColor" stroke-width="1.2" opacity="0.2"/>
+  <line x1="685" y1="36" x2="685" y2="360" stroke="currentColor" stroke-width="1.2" opacity="0.2"/>
+  <!-- 1: POST -->
+  <line x1="75"  y1="64" x2="231" y2="64" stroke="currentColor" stroke-width="1.5" opacity="0.6" marker-end="url(#alo-arr)"/>
+  <text x="153" y="58" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">POST /webhooks/gis</text>
+  <!-- 2: 200 OK -->
+  <line x1="235" y1="92" x2="79" y2="92" stroke="currentColor" stroke-width="1.5" opacity="0.6" marker-end="url(#alo-arr)"/>
+  <text x="153" y="86" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">200 OK (immediate)</text>
+  <!-- 3: enqueue -->
+  <line x1="235" y1="120" x2="391" y2="120" stroke="currentColor" stroke-width="1.5" opacity="0.6" stroke-dasharray="5,3" marker-end="url(#alo-arr)"/>
+  <text x="315" y="114" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">enqueue raw payload</text>
+  <!-- 4: SET NX EX -->
+  <line x1="395" y1="156" x2="541" y2="156" stroke="currentColor" stroke-width="1.5" opacity="0.6" marker-end="url(#alo-arr)"/>
+  <text x="470" y="150" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">SET NX EX (idemp key)</text>
+  <!-- 5a: duplicate skip -->
+  <line x1="545" y1="186" x2="399" y2="186" stroke="currentColor" stroke-width="1.5" opacity="0.55" stroke-dasharray="3,3" marker-end="url(#alo-arr)"/>
+  <text x="470" y="180" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7">nil → skip duplicate</text>
+  <!-- 5b: new key proceed -->
+  <line x1="545" y1="216" x2="399" y2="216" stroke="currentColor" stroke-width="1.5" opacity="0.6" marker-end="url(#alo-arr)"/>
+  <text x="470" y="210" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">OK → proceed</text>
+  <!-- 6: validate + write geometry -->
+  <line x1="395" y1="252" x2="681" y2="252" stroke="currentColor" stroke-width="1.5" opacity="0.6" marker-end="url(#alo-arr)"/>
+  <text x="538" y="246" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">validate + write geometry</text>
+  <!-- 7: DLQ on exhaustion -->
+  <line x1="395" y1="300" x2="681" y2="300" stroke="currentColor" stroke-width="1.5" opacity="0.6" stroke-dasharray="5,3" marker-end="url(#alo-arr)"/>
+  <text x="538" y="294" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">route to DLQ after MAX_RETRIES</text>
+  <!-- 8: delete key for replay -->
+  <line x1="395" y1="334" x2="541" y2="334" stroke="currentColor" stroke-width="1.5" opacity="0.55" stroke-dasharray="3,3" marker-end="url(#alo-arr)"/>
+  <text x="470" y="328" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7">DEL key → allow replay</text>
 </svg>
 
 ## When to use this pattern

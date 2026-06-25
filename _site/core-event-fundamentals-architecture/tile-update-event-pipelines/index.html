@@ -49,8 +49,8 @@
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ef3d820"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=9f5ca540"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -230,7 +230,7 @@
 <li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> Redis (or equivalent) for idempotency guards and consumer-lag metrics</label></li>
 <li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> Familiarity with how upstream GIS services emit spatial mutations, as described in <a href="/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers</a></label></li>
 </ul>
-<h2 id="architecture-blueprint" tabindex="-1"><a class="heading-anchor" href="#architecture-blueprint">Architecture Blueprint</a></h2>
+<h2 id="pipeline-architecture" tabindex="-1"><a class="heading-anchor" href="#pipeline-architecture">Pipeline Architecture</a></h2>
 <p>The pipeline has four sequential layers. Each layer has a single responsibility and a defined failure exit so that a bad payload cannot travel further than one stage.</p>
 <p>&lt;svg
 viewBox=“0 0 760 220”
@@ -362,6 +362,61 @@ style=“width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto
 <p>Pair this check with the approach in <a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a> when your pipeline receives raw WKT alongside GeoJSON, as different serialization formats have distinct validity edge cases.</p>
 <h3 id="step-3-compute-the-partition-key" tabindex="-1"><a class="heading-anchor" href="#step-3-compute-the-partition-key">Step 3 — Compute the Partition Key</a></h3>
 <p>Tile events must be partitioned so that all mutations to the same tile region land on the same consumer in order. A composite <code>zoom:quadkey</code> string is deterministic, human-readable in logs, and maps directly to the cache path your tile server uses.</p>
+<p>The routing guarantee is two-sided: events sharing a <code>zoom:quadkey</code> are pinned to one partition and processed strictly in arrival order, while events for disjoint regions fan out across partitions and run fully in parallel.</p>
+<p>&lt;svg
+viewBox=“0 0 720 300”
+xmlns=“<a href="http://www.w3.org/2000/svg">http://www.w3.org/2000/svg</a>”
+role=“img”
+aria-label=“Diagram showing quadkey-based partition routing: same-region events stay ordered on one partition while disjoint regions run in parallel”
+style=“width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;”</p>
+<blockquote></blockquote>
+  <title>Quadkey partition routing preserves per-region order and cross-region parallelism</title>
+  <desc>Incoming tile events are hashed by their zoom:quadkey key. Three events for quadkey 0231 are routed to the same partition and processed in order; an event for quadkey 1200 is routed to a different partition that runs concurrently.</desc>
+  <!-- Incoming events column -->
+  <text x="80" y="24" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" font-family="system-ui,sans-serif">Incoming events</text>
+  <rect x="14" y="40" width="132" height="30" rx="5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+  <text x="80" y="59" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">12:0231  v=1</text>
+  <rect x="14" y="78" width="132" height="30" rx="5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+  <text x="80" y="97" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">12:1200  v=1</text>
+  <rect x="14" y="116" width="132" height="30" rx="5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+  <text x="80" y="135" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">12:0231  v=2</text>
+  <rect x="14" y="154" width="132" height="30" rx="5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+  <text x="80" y="173" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">12:0231  v=3</text>
+  <!-- Router node -->
+  <rect x="250" y="86" width="110" height="92" rx="6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="4 2"/>
+  <text x="305" y="124" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" font-family="system-ui,sans-serif">Partition</text>
+  <text x="305" y="140" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" font-family="system-ui,sans-serif">Router</text>
+  <text x="305" y="158" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">hash(zoom:quadkey)</text>
+  <!-- Arrows from events into router -->
+  <line x1="146" y1="55" x2="248" y2="110" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr2)"/>
+  <line x1="146" y1="93" x2="248" y2="124" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr2)"/>
+  <line x1="146" y1="131" x2="248" y2="138" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr2)"/>
+  <line x1="146" y1="169" x2="248" y2="152" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr2)"/>
+  <!-- Partition A (ordered, same region) -->
+  <text x="560" y="24" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" font-family="system-ui,sans-serif">Partitions (consumers)</text>
+  <rect x="430" y="44" width="276" height="78" rx="6" fill="none" stroke="currentColor" stroke-width="1.6"/>
+  <text x="446" y="62" font-size="10" font-weight="600" fill="currentColor" font-family="system-ui,sans-serif">Partition A — key 12:0231 (ordered)</text>
+  <rect x="446" y="74" width="74" height="30" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"/>
+  <text x="483" y="93" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">v=1</text>
+  <rect x="528" y="74" width="74" height="30" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"/>
+  <text x="565" y="93" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">v=2</text>
+  <rect x="610" y="74" width="74" height="30" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"/>
+  <text x="647" y="93" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">v=3</text>
+  <!-- Partition B (parallel, disjoint region) -->
+  <rect x="430" y="150" width="276" height="58" rx="6" fill="none" stroke="currentColor" stroke-width="1.6"/>
+  <text x="446" y="168" font-size="10" font-weight="600" fill="currentColor" font-family="system-ui,sans-serif">Partition B — key 12:1200 (parallel)</text>
+  <rect x="446" y="178" width="74" height="22" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"/>
+  <text x="483" y="193" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">v=1</text>
+  <!-- Router to partitions -->
+  <line x1="360" y1="118" x2="428" y2="83" stroke="currentColor" stroke-width="1.4" marker-end="url(#arr2)"/>
+  <line x1="360" y1="146" x2="428" y2="179" stroke="currentColor" stroke-width="1.4" marker-end="url(#arr2)"/>
+  <text x="360" y="250" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">Same key → same partition, strict order.  Different key → different partition, concurrent.</text>
+  <defs>
+    <marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="currentColor"/>
+    </marker>
+  </defs>
+</svg>
 <div class="code-block" data-lang="python">
   <div class="code-block__header">
     <span class="code-block__lang">python</span>
@@ -650,9 +705,9 @@ style=“width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto
         <div class="aside-card">
           <h3>Related in this section</h3>
           <ul>
-            <li><a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
-            <li><a href="/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
             <li><a href="/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+            <li><a href="/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+            <li><a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
           </ul>
         </div>
         <div class="aside-card">
@@ -698,18 +753,30 @@ style=“width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto
         <h4>Architecture</h4>
         <ul>
           <li><a href="/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
         </ul>
       </div>
       <div>
         <h4>Idempotency</h4>
         <ul>
           <li><a href="/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
         </ul>
       </div>
       <div>
         <h4>Routing &amp; Parsing</h4>
         <ul>
           <li><a href="/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
         </ul>
       </div>
     </div>

@@ -5,7 +5,7 @@ slug: "sensor-data-routing-patterns"
 type: "cluster"
 breadcrumb: "Sensor Data Routing Patterns"
 datePublished: "2024-03-15"
-dateModified: "2026-06-24"
+dateModified: "2026-06-25"
 ---
 
 <script type="application/ld+json">
@@ -17,7 +17,7 @@ dateModified: "2026-06-24"
       "headline": "Sensor Data Routing Patterns for Geospatial Webhooks",
       "description": "A step-by-step guide to building deterministic spatial routing pipelines in Python: schema validation, spatial classification, broker dispatch, and at-least-once delivery for IoT and GIS telemetry streams.",
       "datePublished": "2024-03-15",
-      "dateModified": "2026-06-24",
+      "dateModified": "2026-06-25",
       "author": { "@type": "Organization", "name": "geospatialwebhook.com" }
     },
     {
@@ -45,7 +45,7 @@ dateModified: "2026-06-24"
         {
           "@type": "Question",
           "name": "When should I partition by H3 cell instead of device ID?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Use H3 partitioning when downstream consumers are regionaly scoped — tile renderers, per-city alerting services, or geographic shards of a PostGIS database. Use device-ID partitioning when ordering guarantees per sensor matter more than spatial locality, such as time-series telemetry streams where out-of-order events corrupt state." }
+          "acceptedAnswer": { "@type": "Answer", "text": "Use H3 partitioning when downstream consumers are regionally scoped — tile renderers, per-city alerting services, or geographic shards of a PostGIS database. Use device-ID partitioning when ordering guarantees per sensor matter more than spatial locality, such as time-series telemetry streams where out-of-order events corrupt state." }
         },
         {
           "@type": "Question",
@@ -87,72 +87,69 @@ Before deploying a spatial routing pipeline, confirm your environment meets thes
 
 ---
 
-## Architecture Overview
+## Architecture Blueprint
 
 The routing pipeline is a five-stage, stage-isolated sequence. Each stage enforces strict contracts so individual phases can be scaled or replaced independently.
 
-<svg viewBox="0 0 760 320" role="img" aria-label="Five-stage sensor data routing pipeline diagram" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:760px;height:auto;font-family:inherit;display:block;margin:1.5rem auto;">
+<svg viewBox="0 0 780 310" role="img" aria-label="Five-stage sensor data routing pipeline diagram" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:780px;height:auto;font-family:inherit;display:block;margin:1.5rem auto;">
   <title>Sensor Data Routing Pipeline</title>
-  <desc>Data flows left-to-right through five stages: Ingestion, Classification, Route Resolution, Broker Dispatch, and Consumer Sync. Failed events are sent to a Dead-Letter Queue at the bottom.</desc>
+  <desc>Data flows left-to-right through five stages: Ingestion &amp; Validation, Spatial Classification, Route Resolution, Broker Dispatch, and Consumer Sync. Invalid events are sent to a Dead-Letter Queue below Stage 1. Suppression and deduplication occur at Stage 3.</desc>
   <defs>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
-      <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.6"/>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.55"/>
     </marker>
   </defs>
-  <!-- Stage boxes -->
-  <rect x="10" y="100" width="118" height="64" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
-  <text x="69" y="126" text-anchor="middle" font-size="11" fill="currentColor" font-weight="600">1. Ingestion</text>
-  <text x="69" y="142" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">&amp; Schema</text>
-  <text x="69" y="156" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">Validation</text>
-
-  <rect x="162" y="100" width="118" height="64" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
-  <text x="221" y="126" text-anchor="middle" font-size="11" fill="currentColor" font-weight="600">2. Spatial</text>
-  <text x="221" y="142" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">&amp; Attribute</text>
-  <text x="221" y="156" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">Classification</text>
-
-  <rect x="314" y="100" width="118" height="64" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
-  <text x="373" y="126" text-anchor="middle" font-size="11" fill="currentColor" font-weight="600">3. Route</text>
-  <text x="373" y="142" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">Resolution</text>
-  <text x="373" y="156" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">&amp; Fan-Out</text>
-
-  <rect x="466" y="100" width="118" height="64" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
-  <text x="525" y="126" text-anchor="middle" font-size="11" fill="currentColor" font-weight="600">4. Broker</text>
-  <text x="525" y="142" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">Dispatch</text>
-  <text x="525" y="156" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">(async)</text>
-
-  <rect x="618" y="100" width="132" height="64" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
-  <text x="684" y="126" text-anchor="middle" font-size="11" fill="currentColor" font-weight="600">5. Consumer</text>
-  <text x="684" y="142" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">&amp; State</text>
-  <text x="684" y="156" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">Sync</text>
-
-  <!-- Horizontal arrows -->
-  <line x1="128" y1="132" x2="160" y2="132" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.6"/>
-  <line x1="280" y1="132" x2="312" y2="132" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.6"/>
-  <line x1="432" y1="132" x2="464" y2="132" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.6"/>
-  <line x1="584" y1="132" x2="616" y2="132" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.6"/>
-
-  <!-- Sensor input -->
-  <rect x="10" y="30" width="118" height="36" rx="4" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3" stroke-dasharray="4,3"/>
-  <text x="69" y="52" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">HTTP POST / MQTT</text>
-  <line x1="69" y1="66" x2="69" y2="98" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.5"/>
-
-  <!-- Dead-letter queue -->
-  <rect x="10" y="218" width="118" height="36" rx="4" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3" stroke-dasharray="4,3"/>
-  <text x="69" y="240" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">Dead-Letter Queue</text>
-  <line x1="69" y1="164" x2="69" y2="216" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.4" stroke-dasharray="4,3"/>
-  <text x="78" y="195" font-size="9" fill="currentColor" opacity="0.55">invalid</text>
-
-  <!-- Suppression note under Route Resolution -->
-  <text x="373" y="195" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.55">suppression / dedup</text>
-  <line x1="373" y1="164" x2="373" y2="188" stroke="currentColor" stroke-width="1" opacity="0.35" stroke-dasharray="3,3"/>
-
-  <!-- Consumer outputs -->
-  <rect x="618" y="218" width="132" height="36" rx="4" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3" stroke-dasharray="4,3"/>
-  <text x="684" y="240" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">PostGIS / Tile Cache</text>
-  <line x1="684" y1="164" x2="684" y2="216" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.5"/>
-
-  <!-- Bottom label -->
-  <text x="380" y="300" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.45">Sensor Data Routing Pipeline — geospatialwebhook.com</text>
+  <!-- Source input -->
+  <rect x="12" y="20" width="120" height="32" rx="4" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3" stroke-dasharray="4,3"/>
+  <text x="72" y="40" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">HTTP POST / MQTT</text>
+  <line x1="72" y1="52" x2="72" y2="82" stroke="currentColor" stroke-width="1.4" marker-end="url(#arr)" opacity="0.5"/>
+  <!-- Stage 1 -->
+  <rect x="12" y="84" width="120" height="60" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.45"/>
+  <text x="72" y="106" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor">1. Ingestion</text>
+  <text x="72" y="122" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">&amp; Schema</text>
+  <text x="72" y="136" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">Validation</text>
+  <!-- Arrow 1→2 -->
+  <line x1="132" y1="114" x2="162" y2="114" stroke="currentColor" stroke-width="1.4" marker-end="url(#arr)" opacity="0.55"/>
+  <!-- Stage 2 -->
+  <rect x="164" y="84" width="120" height="60" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.45"/>
+  <text x="224" y="106" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor">2. Spatial</text>
+  <text x="224" y="122" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">&amp; Attribute</text>
+  <text x="224" y="136" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">Classification</text>
+  <!-- Arrow 2→3 -->
+  <line x1="284" y1="114" x2="314" y2="114" stroke="currentColor" stroke-width="1.4" marker-end="url(#arr)" opacity="0.55"/>
+  <!-- Stage 3 -->
+  <rect x="316" y="84" width="120" height="60" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.45"/>
+  <text x="376" y="106" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor">3. Route</text>
+  <text x="376" y="122" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">Resolution</text>
+  <text x="376" y="136" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">&amp; Fan-Out</text>
+  <!-- Arrow 3→4 -->
+  <line x1="436" y1="114" x2="466" y2="114" stroke="currentColor" stroke-width="1.4" marker-end="url(#arr)" opacity="0.55"/>
+  <!-- Stage 4 -->
+  <rect x="468" y="84" width="120" height="60" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.45"/>
+  <text x="528" y="106" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor">4. Broker</text>
+  <text x="528" y="122" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">Dispatch</text>
+  <text x="528" y="136" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">(async)</text>
+  <!-- Arrow 4→5 -->
+  <line x1="588" y1="114" x2="618" y2="114" stroke="currentColor" stroke-width="1.4" marker-end="url(#arr)" opacity="0.55"/>
+  <!-- Stage 5 -->
+  <rect x="620" y="84" width="148" height="60" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.45"/>
+  <text x="694" y="106" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor">5. Consumer</text>
+  <text x="694" y="122" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">&amp; State</text>
+  <text x="694" y="136" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">Sync</text>
+  <!-- Dead-letter queue (below Stage 1) -->
+  <rect x="12" y="210" width="120" height="34" rx="4" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3" stroke-dasharray="4,3"/>
+  <text x="72" y="231" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">Dead-Letter Queue</text>
+  <line x1="72" y1="144" x2="72" y2="208" stroke="currentColor" stroke-width="1.3" marker-end="url(#arr)" opacity="0.4" stroke-dasharray="4,3"/>
+  <text x="82" y="184" font-size="9" fill="currentColor" opacity="0.5">invalid</text>
+  <!-- Suppression note (below Stage 3) -->
+  <text x="376" y="192" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.5">suppression / dedup</text>
+  <line x1="376" y1="144" x2="376" y2="186" stroke="currentColor" stroke-width="1" opacity="0.32" stroke-dasharray="3,3"/>
+  <!-- Consumer outputs (below Stage 5) -->
+  <rect x="620" y="210" width="148" height="34" rx="4" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3" stroke-dasharray="4,3"/>
+  <text x="694" y="231" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">PostGIS / Tile Cache</text>
+  <line x1="694" y1="144" x2="694" y2="208" stroke="currentColor" stroke-width="1.4" marker-end="url(#arr)" opacity="0.5"/>
+  <!-- Footer label -->
+  <text x="390" y="284" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.4">Sensor Data Routing Pipeline — geospatialwebhook.com</text>
 </svg>
 
 ---
@@ -163,7 +160,7 @@ The routing pipeline is a five-stage, stage-isolated sequence. Each stage enforc
 
 **Purpose:** Reject malformed and tampered payloads before they consume any downstream compute.
 
-Raw sensor payloads arrive via HTTP POST or MQTT-to-HTTP bridge. The ingress layer validates JSON structure, verifies the cryptographic signature (`HMAC-SHA256` or `Ed25519`), and extracts routing metadata: `device_id`, epoch timestamp, coordinate reference system (CRS), and firmware version. Invalid payloads go straight to a dead-letter queue; spatial operations on corrupt geometries cause silent routing failures or broker poisoning.
+Raw sensor payloads arrive via HTTP POST or MQTT-to-HTTP bridge. The ingress layer validates JSON structure, verifies the cryptographic signature (`HMAC-SHA256` or `Ed25519` — the signing strategies are covered in detail at [Securing Webhook Endpoints with Spatial Token Validation](/core-event-fundamentals-architecture/webhook-security-boundaries/securing-webhook-endpoints-with-spatial-token-validation/)), and extracts routing metadata: `device_id`, epoch timestamp, coordinate reference system (CRS), and firmware version. Invalid payloads go straight to a dead-letter queue; spatial operations on corrupt geometries cause silent routing failures or broker poisoning.
 
 ```python
 import hashlib
@@ -226,7 +223,7 @@ async def ingest(request: Request):
 
 **Purpose:** Determine which registered zones and consumers the event belongs to.
 
-The router evaluates the reprojected point or polygon against registered spatial zones (geofences, administrative boundaries, wildfire risk polygons) and attribute filters (device type, state transitions, threshold crossings). This stage intersects with [Feature Change Triggers](/core-event-fundamentals-architecture/feature-change-triggers/) when routing decisions depend on delta detection rather than absolute state. Spatial indexing with an R-tree is mandatory; brute-force intersection testing degrades linearly with zone count and introduces unacceptable tail latency at production scale.
+The router evaluates the reprojected point or polygon against registered spatial zones (geofences, administrative boundaries, wildfire risk polygons) and attribute filters (device type, state transitions, threshold crossings). This stage intersects with [Feature Change Triggers](/core-event-fundamentals-architecture/feature-change-triggers/) when routing decisions depend on delta detection rather than absolute state. Spatial indexing with an R-tree is mandatory; brute-force intersection testing degrades linearly with zone count and introduces unacceptable tail latency at production scale. Topology checks and geometry repair belong here, following the same patterns described in [Geometry Validation Pipelines](/spatial-payload-routing-parsing/geometry-validation-pipelines/).
 
 ```python
 from shapely.strtree import STRtree
@@ -282,7 +279,7 @@ async def classify_payload(payload: SensorPayload, index: ZoneIndex) -> list[dic
 
 **Purpose:** Translate matched zones into a dispatch list with partition keys and TTL metadata.
 
-A single sensor event may route to multiple consumers (fan-out) or be suppressed entirely if it matches an exclusion rule or a deduplication window. Suppression prevents alert fatigue and cuts broker load during high-frequency telemetry bursts. For idempotency key generation — essential when a consumer group receives the same event more than once — follow the approach in [Event Key Generation for Spatial Data](/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/).
+A single sensor event may route to multiple consumers (fan-out) or be suppressed entirely if it matches an exclusion rule or a deduplication window. Suppression prevents alert fatigue and cuts broker load during high-frequency telemetry bursts — the overlap-based suppression approach is detailed in [Spatial Overlap Deduplication](/idempotency-spatial-deduplication/spatial-overlap-deduplication/). For idempotency key generation — essential when a consumer group receives the same event more than once — follow the approach in [Event Key Generation for Spatial Data](/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/).
 
 ```python
 import hashlib, json, time
@@ -337,7 +334,59 @@ def resolve_routes(
 
 **Purpose:** Push resolved routes to a durable message broker without blocking the ingress worker.
 
-Partitioning strategy directly impacts consumer scaling and spatial locality. Hash-based partitioning on `device_id` ensures ordered delivery per sensor. Spatial partitioning by H3 cell (resolution 5–7) optimizes downstream [Tile Update Event Pipelines](/core-event-fundamentals-architecture/tile-update-event-pipelines/) and regional analytics. Configure explicit retention policies, consumer group offsets, and backpressure thresholds; unbounded broker topics exhaust memory during telemetry spikes.
+Partitioning strategy directly impacts consumer scaling and spatial locality. Hash-based partitioning on `device_id` ensures ordered delivery per sensor. Spatial partitioning by H3 cell (resolution 5–7) optimizes downstream [Tile Update Event Pipelines](/core-event-fundamentals-architecture/tile-update-event-pipelines/) and regional analytics. Configure explicit retention policies, consumer group offsets, and backpressure thresholds; unbounded broker topics exhaust memory during telemetry spikes. For high-frequency streams where JSON serialization overhead is measurable, consider the payload format tradeoffs in [GeoJSON to Protobuf Mapping](/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/).
+
+The choice of partition key is a one-way door at production scale — it determines whether consumers can be scaled by sensor or by geography, and the two strategies move events to different partitions for the same input stream:
+
+<svg viewBox="0 0 760 320" role="img" aria-label="Comparison of device-ID hash partitioning versus H3 spatial partitioning" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:760px;height:auto;font-family:inherit;display:block;margin:1.5rem auto;">
+  <title>Partition Key Strategy: device_id Hash vs H3 Cell</title>
+  <desc>Two routing strategies for the same sensor stream. Hash partitioning on device_id sends every event from one sensor to the same partition, preserving per-sensor order. H3 cell partitioning sends events from the same geographic area to the same partition, preserving spatial locality regardless of which sensor produced them.</desc>
+  <defs>
+    <marker id="parr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.55"/>
+    </marker>
+  </defs>
+  <!-- Shared source -->
+  <rect x="320" y="14" width="120" height="34" rx="5" fill="none" stroke="currentColor" stroke-width="1.4" opacity="0.5"/>
+  <text x="380" y="30" text-anchor="middle" font-size="10.5" font-weight="600" fill="currentColor">Resolved routes</text>
+  <text x="380" y="42" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.7">events A, B, C…</text>
+  <line x1="380" y1="48" x2="200" y2="74" stroke="currentColor" stroke-width="1.2" marker-end="url(#parr)" opacity="0.45"/>
+  <line x1="380" y1="48" x2="560" y2="74" stroke="currentColor" stroke-width="1.2" marker-end="url(#parr)" opacity="0.45"/>
+  <!-- LEFT: device_id hash -->
+  <text x="200" y="90" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">Hash on device_id</text>
+  <text x="200" y="104" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.7">orders events per sensor</text>
+  <rect x="60" y="120" width="124" height="40" rx="5" fill="none" stroke="currentColor" stroke-width="1.3" opacity="0.45"/>
+  <text x="122" y="138" text-anchor="middle" font-size="9.5" fill="currentColor">partition P0</text>
+  <text x="122" y="152" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.7">sensor-001 only</text>
+  <rect x="216" y="120" width="124" height="40" rx="5" fill="none" stroke="currentColor" stroke-width="1.3" opacity="0.45"/>
+  <text x="278" y="138" text-anchor="middle" font-size="9.5" fill="currentColor">partition P1</text>
+  <text x="278" y="152" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.7">sensor-002 only</text>
+  <text x="200" y="186" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.6">✓ strict per-sensor order</text>
+  <text x="200" y="200" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.6">✗ hot sensor = skewed partition</text>
+  <!-- divider -->
+  <line x1="380" y1="84" x2="380" y2="232" stroke="currentColor" stroke-width="1" opacity="0.25" stroke-dasharray="4,4"/>
+  <!-- RIGHT: H3 cell -->
+  <text x="560" y="90" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">Hash on H3 cell</text>
+  <text x="560" y="104" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.7">groups events by region</text>
+  <rect x="420" y="120" width="124" height="40" rx="5" fill="none" stroke="currentColor" stroke-width="1.3" opacity="0.45"/>
+  <text x="482" y="138" text-anchor="middle" font-size="9.5" fill="currentColor">partition P0</text>
+  <text x="482" y="152" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.7">cell 8a2a… (city A)</text>
+  <rect x="576" y="120" width="124" height="40" rx="5" fill="none" stroke="currentColor" stroke-width="1.3" opacity="0.45"/>
+  <text x="638" y="138" text-anchor="middle" font-size="9.5" fill="currentColor">partition P1</text>
+  <text x="638" y="152" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.7">cell 8a3b… (city B)</text>
+  <text x="560" y="186" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.6">✓ regional consumer locality</text>
+  <text x="560" y="200" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.6">✗ per-sensor order not preserved</text>
+  <!-- consumers -->
+  <rect x="60" y="246" width="280" height="32" rx="5" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.35" stroke-dasharray="4,3"/>
+  <text x="200" y="266" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.7">time-series consumers (scale by sensor)</text>
+  <line x1="122" y1="160" x2="160" y2="244" stroke="currentColor" stroke-width="1.1" marker-end="url(#parr)" opacity="0.4"/>
+  <line x1="278" y1="160" x2="240" y2="244" stroke="currentColor" stroke-width="1.1" marker-end="url(#parr)" opacity="0.4"/>
+  <rect x="420" y="246" width="280" height="32" rx="5" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.35" stroke-dasharray="4,3"/>
+  <text x="560" y="266" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.7">tile / alerting consumers (scale by region)</text>
+  <line x1="482" y1="160" x2="520" y2="244" stroke="currentColor" stroke-width="1.1" marker-end="url(#parr)" opacity="0.4"/>
+  <line x1="638" y1="160" x2="600" y2="244" stroke="currentColor" stroke-width="1.1" marker-end="url(#parr)" opacity="0.4"/>
+  <text x="380" y="304" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.4">Partition Key Strategy — geospatialwebhook.com</text>
+</svg>
 
 ```python
 import asyncio
@@ -379,7 +428,7 @@ async def route_payload(payload: SensorPayload) -> dict:
 
 **Purpose:** Pull from broker partitions, apply idempotent writes, and update application state.
 
-Consumers pull from Redis Streams or Kafka partitions, deserialize payloads, and update PostGIS or an in-memory spatial cache. They must implement idempotent write patterns because network partitions or broker retries will deliver duplicate events. State synchronization should use optimistic concurrency control or version vectors rather than blind overwrites. For full implementation details on retry backoff, idempotency key tracking in Redis, and dead-letter routing, see [Implementing at-least-once delivery for GIS webhooks](/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/).
+Consumers pull from Redis Streams or Kafka partitions, deserialize payloads, and update PostGIS or an in-memory spatial cache. They must implement idempotent write patterns because network partitions or broker retries will deliver duplicate events. State synchronization should use optimistic concurrency control or version vectors rather than blind overwrites; when concurrent writes produce conflicting spatial state, the resolution strategies in [Conflict Resolution Strategies](/idempotency-spatial-deduplication/conflict-resolution-strategies/) apply. For full implementation details on retry backoff, idempotency key tracking in Redis, and dead-letter routing, see [Implementing at-least-once delivery for GIS webhooks](/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/).
 
 ```python
 import asyncio, json
@@ -442,7 +491,7 @@ Geometry topology checks must run inside the ingestion model validator (see Step
 
 When Pydantic rejects a payload, quarantine the raw bytes with a structured reason string, the originating `device_id`, and the wall-clock timestamp. This gives operators enough context to replay the event after a firmware fix without re-ingesting the entire stream.
 
-For mixed-CRS streams — common when a device fleet spans multiple manufacturers — normalize all incoming coordinates to EPSG:4326 at the ingestion boundary using `pyproj.Transformer` with `always_xy=True`. Storing EPSG codes in the event envelope rather than inferring them from coordinate magnitude prevents silent axis-order bugs. Full normalization strategies are covered in [CRS Normalization Strategies](/spatial-payload-routing-parsing/crs-normalization-strategies/).
+For mixed-CRS streams — common when a device fleet spans multiple manufacturers — normalize all incoming coordinates to EPSG:4326 at the ingestion boundary using `pyproj.Transformer` with `always_xy=True`. Storing EPSG codes in the event envelope rather than inferring them from coordinate magnitude prevents silent axis-order bugs. Full normalization strategies are covered in [CRS Normalization Strategies](/spatial-payload-routing-parsing/crs-normalization-strategies/), and the `asyncio`-native patterns for processing geometrically heavy payloads without blocking the event loop appear in [Async Processing for Heavy Geometries](/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/).
 
 ---
 

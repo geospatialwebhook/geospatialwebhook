@@ -49,8 +49,8 @@
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ef3d820"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=9f5ca540"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -192,8 +192,8 @@
           <!-- Payload badge -->
           <rect x="290" y="185" width="112" height="52" rx="8" fill="#ffffff" stroke="#ead7c0" stroke-width="1.2" opacity="0.95"/>
           <text x="346" y="204" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="9.5" fill="#6b5238" font-weight="600">GeoJSON</text>
-          <text x="346" y="218" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="8.5" fill="#3e9763">type: Feature</text>
-          <text x="346" y="231" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="8.5" fill="#d9744f">sig: HMAC ✓</text>
+          <text x="346" y="218" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="8.5" fill="#2c6e44">type: Feature</text>
+          <text x="346" y="231" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="8.5" fill="#b14d28">sig: HMAC ✓</text>
 
           <!-- H3 hexagons (sensor grid) -->
           <g opacity="0.35" fill="none" stroke="#5fb682" stroke-width="1.2">
@@ -250,7 +250,7 @@
     <div class="section__head">
       <h2 class="section__title">Start here</h2>
       <p class="section__sub">
-        Six articles that cover the most common problems engineers hit when wiring up
+        Eight articles that cover the most common problems engineers hit when wiring up
         geospatial webhooks for the first time. Read these before diving into a subsection.
       </p>
     </div>
@@ -291,6 +291,18 @@
         <p class="card__text">RFC 7946-compliant Pydantic v2 models enforce spatial schemas at the HTTP layer, rejecting malformed payloads before they reach business logic.</p>
         <span class="card__more">Read <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
       </a>
+      <a class="card card--mint" href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s7-7.5 7-13a7 7 0 1 0-14 0c0 5.5 7 13 7 13z"/><circle cx="12" cy="9" r="2.5"/></svg></span>
+        <h3 class="card__title">At-Least-Once Delivery for GIS Webhooks</h3>
+        <p class="card__text">Durable acknowledgement patterns, consumer-side deduplication, and re-delivery logic so spatial events survive broker restarts and network failures.</p>
+        <span class="card__more">Read <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card card--earth" href="/spatial-payload-routing-parsing/geometry-validation-pipelines/converting-wkt-to-protobuf-for-low-latency-routing/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></span>
+        <h3 class="card__title">Converting WKT to Protobuf for Low-Latency Routing</h3>
+        <p class="card__text">Serialise Well-Known Text geometries into compact Protobuf messages to cut payload size and parse overhead in high-throughput spatial event queues.</p>
+        <span class="card__more">Read <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
     </div>
   </div>
 </section>
@@ -303,40 +315,140 @@
       <p class="section__sub">
         Spatial data is messier than typical event payloads. CRS drift, topological
         equivalence, partition skew, and floating-point variance all conspire to break
-        naive pipelines. The content here walks through the patterns that hold up under
-        real production load.
+        naive pipelines. The content here walks through the subsections and patterns
+        that hold up under real production load.
       </p>
     </div>
     <div class="card-grid">
-      <div class="card card--mint">
+      <a class="card card--mint" href="/core-event-fundamentals-architecture/feature-change-triggers/">
         <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></span>
         <h3 class="card__title">Feature change triggers</h3>
-        <p class="card__text">Propagate cadastral edits, infrastructure updates, and field-collector mutations through async pipelines without race conditions.</p>
-      </div>
-      <div class="card card--earth">
+        <p class="card__text">Propagate cadastral edits, infrastructure updates, and field-collector mutations through async Python pipelines without race conditions.</p>
+        <span class="card__more">Explore <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card card--earth" href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">
         <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/><path d="M3 18l9 5 9-5"/></svg></span>
         <h3 class="card__title">Tile update pipelines</h3>
-        <p class="card__text">Incremental cache invalidation and targeted tile regeneration that keeps interactive maps fresh without reprocessing entire datasets.</p>
-      </div>
-      <div class="card card--rose">
+        <p class="card__text">Incremental cache invalidation and targeted tile regeneration triggered by spatial webhook events — keeps maps fresh without reprocessing entire datasets.</p>
+        <span class="card__more">Explore <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card card--rose" href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">
         <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s7-7.5 7-13a7 7 0 1 0-14 0c0 5.5 7 13 7 13z"/><circle cx="12" cy="9" r="2.5"/></svg></span>
         <h3 class="card__title">Sensor &amp; IoT routing</h3>
-        <p class="card__text">Spatial partitioning by H3, S2, or watershed boundary so downstream analytics receive coherent streams instead of a global firehose.</p>
-      </div>
-      <div class="card">
+        <p class="card__text">Spatial partitioning by H3, S2, or watershed boundary, plus at-least-once delivery guarantees so downstream analytics receive coherent streams.</p>
+        <span class="card__more">Explore <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card" href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">
         <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
-        <h3 class="card__title">Idempotent delivery</h3>
-        <p class="card__text">Composite keys, Redis-backed cache checks, tolerance-based topology matching, and explicit conflict resolution.</p>
-      </div>
-      <div class="card card--mint">
+        <h3 class="card__title">Idempotency key generation</h3>
+        <p class="card__text">Deterministic composite keys derived from geometry hashes, event type, and source ID — the foundation for deduplication across retries and replays.</p>
+        <span class="card__more">Explore <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card card--mint" href="/spatial-payload-routing-parsing/crs-normalization-strategies/">
         <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg></span>
-        <h3 class="card__title">Retries with backoff</h3>
-        <p class="card__text">Exponential backoff with jitter, circuit breakers, and dead-letter routing patterns that avoid thundering herds.</p>
-      </div>
-      <div class="card card--earth">
+        <h3 class="card__title">CRS normalization</h3>
+        <p class="card__text">Detect, validate, and reproject mixed coordinate reference systems on-the-fly so every downstream consumer receives clean WGS-84 payloads.</p>
+        <span class="card__more">Explore <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card card--earth" href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">
         <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.5 5.5l2.5 2.5M16 16l2.5 2.5M5.5 18.5L8 16M16 8l2.5-2.5"/></svg></span>
-        <h3 class="card__title">Production monitoring</h3>
-        <p class="card__text">Per-shard consumer lag, geometry validation failure rates, partition skew alerts, and DLQ replay strategies.</p>
+        <h3 class="card__title">Geometry validation pipelines</h3>
+        <p class="card__text">Shapely-based validity checks, self-intersection repair, and WKT-to-Protobuf conversion for low-latency spatial event routing.</p>
+        <span class="card__more">Explore <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+    </div>
+  </div>
+</section>
+
+
+<section class="section">
+  <div class="container container--wide">
+    <div class="section__head">
+      <h2 class="section__title">Browse all topics</h2>
+      <p class="section__sub">
+        Every subsection is self-contained — pick the one closest to the problem you're
+        solving right now.
+      </p>
+    </div>
+    <div style="margin-bottom: 2rem;">
+      <h3 style="font-family: var(--font-display); color: var(--earth-600); margin: 0 0 .75rem; font-size: 1.15rem;">
+        <a href="/core-event-fundamentals-architecture/" style="color: inherit; border: none;">Core Event Fundamentals &amp; Architecture</a>
+      </h3>
+      <div class="children-grid">
+        <a class="card " href="/core-event-fundamentals-architecture/feature-change-triggers/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></span>
+          <h4 class="card__title">Feature Change Triggers for Geospatial Webhooks</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+        <a class="card card--mint" href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></span>
+          <h4 class="card__title">Sensor Data Routing Patterns for Geospatial Webhooks</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+        <a class="card card--earth" href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></span>
+          <h4 class="card__title">Tile Update Event Pipelines</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+        <a class="card card--rose" href="/core-event-fundamentals-architecture/webhook-security-boundaries/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></span>
+          <h4 class="card__title">Webhook Security Boundaries for Spatial Event Pipelines</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+      </div>
+    </div>
+    <div style="margin-bottom: 2rem;">
+      <h3 style="font-family: var(--font-display); color: var(--earth-600); margin: 0 0 .75rem; font-size: 1.15rem;">
+        <a href="/idempotency-spatial-deduplication/" style="color: inherit; border: none;">Idempotency &amp; Spatial Deduplication</a>
+      </h3>
+      <div class="children-grid">
+        <a class="card " href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+          <h4 class="card__title">Cache-Backed Idempotency Checks for Geospatial Webhooks</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+        <a class="card card--mint" href="/idempotency-spatial-deduplication/conflict-resolution-strategies/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+          <h4 class="card__title">Conflict Resolution Strategies for Geospatial Webhooks</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+        <a class="card card--earth" href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+          <h4 class="card__title">Event Key Generation for Spatial Data</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+        <a class="card card--rose" href="/idempotency-spatial-deduplication/spatial-overlap-deduplication/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+          <h4 class="card__title">Spatial Overlap Deduplication for Geospatial Webhooks</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+      </div>
+    </div>
+    <div style="margin-bottom: 2rem;">
+      <h3 style="font-family: var(--font-display); color: var(--earth-600); margin: 0 0 .75rem; font-size: 1.15rem;">
+        <a href="/spatial-payload-routing-parsing/" style="color: inherit; border: none;">Spatial Payload Routing &amp; Parsing</a>
+      </h3>
+      <div class="children-grid">
+        <a class="card " href="/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg></span>
+          <h4 class="card__title">Async Processing for Heavy Geometries</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+        <a class="card card--mint" href="/spatial-payload-routing-parsing/crs-normalization-strategies/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg></span>
+          <h4 class="card__title">CRS Normalization Strategies for Geospatial Events</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+        <a class="card card--earth" href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg></span>
+          <h4 class="card__title">GeoJSON to Protobuf Mapping for Spatial Webhooks</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+        <a class="card card--rose" href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg></span>
+          <h4 class="card__title">Geometry Validation Pipelines</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
       </div>
     </div>
   </div>
@@ -372,18 +484,30 @@
         <h4>Architecture</h4>
         <ul>
           <li><a href="/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
         </ul>
       </div>
       <div>
         <h4>Idempotency</h4>
         <ul>
           <li><a href="/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
         </ul>
       </div>
       <div>
         <h4>Routing &amp; Parsing</h4>
         <ul>
           <li><a href="/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
         </ul>
       </div>
     </div>

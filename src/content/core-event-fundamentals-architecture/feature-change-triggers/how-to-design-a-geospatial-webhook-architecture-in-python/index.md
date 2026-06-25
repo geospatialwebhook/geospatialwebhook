@@ -101,19 +101,16 @@ The pipeline operates across four logical layers. Each isolates a single concern
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.55"/>
     </marker>
   </defs>
-
   <!-- Layer boxes -->
   <rect x="10"  y="60" width="160" height="200" rx="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
   <rect x="200" y="60" width="160" height="200" rx="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
   <rect x="390" y="60" width="160" height="200" rx="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
   <rect x="580" y="60" width="190" height="200" rx="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
-
   <!-- Layer labels -->
   <text x="90"  y="44" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.75">1. Ingestion</text>
   <text x="280" y="44" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.75">2. Validation</text>
   <text x="470" y="44" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.75">3. Broker</text>
   <text x="675" y="44" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.75">4. Dispatcher</text>
-
   <!-- Ingestion items -->
   <rect x="24"  y="82"  width="132" height="30" rx="5" fill="currentColor" opacity="0.08"/>
   <text x="90"  y="102" text-anchor="middle" font-size="11" fill="currentColor">PostGIS trigger</text>
@@ -123,10 +120,8 @@ The pipeline operates across four logical layers. Each isolates a single concern
   <text x="90"  y="182" text-anchor="middle" font-size="11" fill="currentColor">IoT sensor feed</text>
   <rect x="24"  y="202" width="132" height="30" rx="5" fill="currentColor" opacity="0.08"/>
   <text x="90"  y="222" text-anchor="middle" font-size="11" fill="currentColor">Client SDK event</text>
-
   <!-- Arrows ingestion → validation -->
   <line x1="170" y1="160" x2="196" y2="160" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arr)"/>
-
   <!-- Validation items -->
   <rect x="214" y="82"  width="132" height="30" rx="5" fill="currentColor" opacity="0.08"/>
   <text x="280" y="102" text-anchor="middle" font-size="11" fill="currentColor">Shapely topology</text>
@@ -136,10 +131,8 @@ The pipeline operates across four logical layers. Each isolates a single concern
   <text x="280" y="182" text-anchor="middle" font-size="11" fill="currentColor">Pydantic schema</text>
   <rect x="214" y="202" width="132" height="30" rx="5" fill="currentColor" opacity="0.08"/>
   <text x="280" y="222" text-anchor="middle" font-size="11" fill="currentColor">Delta threshold</text>
-
   <!-- Arrows validation → broker -->
   <line x1="360" y1="160" x2="386" y2="160" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arr)"/>
-
   <!-- Broker items -->
   <rect x="404" y="82"  width="132" height="30" rx="5" fill="currentColor" opacity="0.08"/>
   <text x="470" y="102" text-anchor="middle" font-size="11" fill="currentColor">Redis Streams</text>
@@ -149,10 +142,8 @@ The pipeline operates across four logical layers. Each isolates a single concern
   <text x="470" y="182" text-anchor="middle" font-size="11" fill="currentColor">Subscription index</text>
   <rect x="404" y="202" width="132" height="30" rx="5" fill="currentColor" opacity="0.08"/>
   <text x="470" y="222" text-anchor="middle" font-size="11" fill="currentColor">Ordered by feat. ID</text>
-
   <!-- Arrows broker → dispatcher -->
   <line x1="550" y1="160" x2="576" y2="160" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arr)"/>
-
   <!-- Dispatcher items -->
   <rect x="594" y="82"  width="162" height="30" rx="5" fill="currentColor" opacity="0.08"/>
   <text x="675" y="102" text-anchor="middle" font-size="11" fill="currentColor">HMAC-SHA256 sign</text>
@@ -162,7 +153,6 @@ The pipeline operates across four logical layers. Each isolates a single concern
   <text x="675" y="182" text-anchor="middle" font-size="11" fill="currentColor">Exponential backoff</text>
   <rect x="594" y="202" width="162" height="30" rx="5" fill="currentColor" opacity="0.08"/>
   <text x="675" y="222" text-anchor="middle" font-size="11" fill="currentColor">Dead-letter queue</text>
-
   <!-- DLQ loop arrow back -->
   <path d="M675,232 Q675,300 470,300 Q265,300 90,300 Q90,265 90,260" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.35" marker-end="url(#arr)"/>
   <text x="390" y="318" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.5">DLQ replay path</text>
@@ -198,6 +188,7 @@ import json
 import logging
 import random
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Literal
 
@@ -210,7 +201,26 @@ from shapely.validation import explain_validity
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
-app = FastAPI(title="Geospatial Webhook Dispatcher")
+# One shared aiohttp.ClientSession per worker process — created on startup,
+# closed on shutdown via the lifespan handler defined below.
+_session: aiohttp.ClientSession | None = None
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    # Reuse TCP connections + DNS cache across every POST so retries do not
+    # repeat the TLS handshake. on_event("startup"/"shutdown") is deprecated
+    # in modern FastAPI; the lifespan context manager is the supported path.
+    global _session
+    connector = aiohttp.TCPConnector(limit=50, ttl_dns_cache=300)
+    _session = aiohttp.ClientSession(connector=connector)
+    try:
+        yield
+    finally:
+        await _session.close()
+
+
+app = FastAPI(title="Geospatial Webhook Dispatcher", lifespan=lifespan)
 
 # ---------------------------------------------------------------------------
 # 1. Canonical GeoEvent schema
@@ -268,23 +278,9 @@ def sign_payload(payload: dict, secret: str) -> str:
 
 # ---------------------------------------------------------------------------
 # 3. Async dispatcher with exponential backoff + full jitter
-#    Create ONE ClientSession per worker process (not per request) so TCP
-#    connections are reused and TLS handshakes are not repeated on every POST.
+#    The ClientSession is created once per worker in the lifespan handler
+#    above — never one per request, and never one per retry attempt.
 # ---------------------------------------------------------------------------
-
-_session: aiohttp.ClientSession | None = None
-
-@app.on_event("startup")
-async def create_session() -> None:
-    global _session
-    connector = aiohttp.TCPConnector(limit=50, ttl_dns_cache=300)
-    _session = aiohttp.ClientSession(connector=connector)
-
-@app.on_event("shutdown")
-async def close_session() -> None:
-    if _session:
-        await _session.close()
-
 
 async def deliver_with_retry(
     url: str,
@@ -433,7 +429,7 @@ async def dispatch_event(
 
 5. **HMAC signature drift on large payloads.** If the consumer reconstructs the body from a different key ordering than the dispatcher's `sort_keys=True`, the HMAC will not match. Standardize on `sort_keys=True, separators=(",", ":")` on both sides, and document this contract in your API reference. Mismatches surface as 401s, not 5xxs, so they bypass retry logic — log them explicitly.
 
-6. **Session lifecycle in async frameworks.** Creating a new `aiohttp.ClientSession` inside `deliver_with_retry` (one per attempt) opens a new TCP connection and TLS handshake on every retry. The code above creates one session per worker process at startup. When using Celery workers instead of FastAPI, create the session in a `celery.signals.worker_process_init` handler and close it in `worker_process_shutdown`.
+6. **Session lifecycle in async frameworks.** Creating a new `aiohttp.ClientSession` inside `deliver_with_retry` (one per attempt) opens a new TCP connection and TLS handshake on every retry. The code above creates one session per worker process via the `lifespan` context manager — the deprecated `@app.on_event("startup")` hook still works but is being phased out, so prefer `lifespan` on new services. When using Celery workers instead of FastAPI, create the session in a `celery.signals.worker_process_init` handler and close it in `worker_process_shutdown`.
 
 ---
 
@@ -529,6 +525,22 @@ async def test_dispatch_rejects_missing_geometry_type():
         )
     assert resp.status_code == 422
 ```
+
+---
+
+## Frequently asked questions
+
+### Why use async dispatch instead of synchronous HTTP for geospatial webhooks?
+
+Spatial payloads — especially polygon and multipolygon geometries — can be large, and topology validation is CPU-bound. Blocking on synchronous `requests.post` calls ties up workers and pushes backpressure into the ingestion layer, so a slow consumer slows down the database trigger that produced the event. Async delivery with `aiohttp` decouples validation from delivery: the ingestion path stays write-optimized while a fixed pool of connections fans out POSTs concurrently.
+
+### How do I handle CRS mismatches before dispatching a webhook payload?
+
+Normalize every incoming geometry to WGS 84 (EPSG:4326) at the validation layer using `pyproj.Transformer` before serializing to GeoJSON, since RFC 7946 mandates EPSG:4326. Reject or reproject any geometry whose source CRS differs, and log the original SRID so consumers can audit the transformation. The full reprojection workflow is covered in [Handling Mixed CRS Payloads in Python Event Handlers](/spatial-payload-routing-parsing/crs-normalization-strategies/handling-mixed-crs-payloads-in-python-event-handlers/).
+
+### When should events go to a dead-letter queue versus be retried?
+
+Retry on transient failures — 5xx responses, timeouts, and connection resets — using the capped exponential backoff with full jitter shown above. Send straight to the dead-letter queue on 4xx client errors (bad endpoint, auth failure, malformed signature), because retrying those only wastes connections, and after `max_retries` is exhausted for transient errors. Always preserve the full original payload plus failure metadata in the DLQ so the event can be replayed without data loss.
 
 ---
 

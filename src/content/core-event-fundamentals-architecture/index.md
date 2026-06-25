@@ -82,103 +82,92 @@ In modern geospatial platforms, the shift from synchronous polling to event-driv
 
 Event-driven architecture (EDA) decouples producers from consumers through message brokers or streaming platforms, enabling systems to react to geographic changes as they happen. When applied to Python-based geospatial workloads, this paradigm requires deliberate attention to coordinate reference systems, spatial indexing, payload standardization, and delivery semantics — concerns that generic event-system tutorials entirely ignore.
 
-<svg viewBox="0 0 820 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Geospatial event pipeline overview: from spatial mutation through broker to downstream consumers" style="width:100%;max-width:820px;height:auto;display:block;margin:2rem auto;">
+<svg viewBox="0 0 840 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Geospatial event pipeline overview: from spatial mutation through a normalise-and-validate layer into a partitioned broker and out to downstream consumers" style="width:100%;max-width:840px;height:auto;display:block;margin:2rem auto;color:inherit;">
   <title>Geospatial Event Pipeline Overview</title>
-  <desc>Data flow from a spatial mutation (feature edit, sensor reading, tile change) through a normalisation and validation layer, into a partitioned message broker, and out to downstream consumers: tile servers, analytics engines, and webhook receivers.</desc>
+  <desc>Data flow from a spatial mutation — feature edit, sensor reading, tile state change, or webhook POST — through a normalisation and validation layer, into a partitioned message broker keyed by spatial index, and out to downstream consumers: tile server, analytics engine, webhook receiver, and spatial database writer. A dead-letter queue captures malformed events.</desc>
   <defs>
-    <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-      <polygon points="0 0, 8 3, 0 6" fill="currentColor" opacity="0.55"/>
+    <marker id="gw-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="currentColor" opacity="0.55"/>
     </marker>
   </defs>
-
-  <!-- Background panels -->
-  <rect x="10" y="20" width="160" height="300" rx="10" fill="#f4ede8" stroke="#c9a898" stroke-width="1.5"/>
-  <rect x="210" y="20" width="180" height="300" rx="10" fill="#e8f4ee" stroke="#7db89a" stroke-width="1.5"/>
-  <rect x="430" y="20" width="160" height="300" rx="10" fill="#fdf6e3" stroke="#c9a898" stroke-width="1.5"/>
-  <rect x="630" y="20" width="160" height="300" rx="10" fill="#e8f4ee" stroke="#7db89a" stroke-width="1.5"/>
-
-  <!-- Panel labels -->
-  <text x="90" y="44" text-anchor="middle" font-size="11" font-weight="700" fill="#8b5e52" font-family="system-ui,sans-serif">PRODUCERS</text>
-  <text x="300" y="44" text-anchor="middle" font-size="11" font-weight="700" fill="#3d7a5a" font-family="system-ui,sans-serif">NORMALISE &amp; VALIDATE</text>
-  <text x="510" y="44" text-anchor="middle" font-size="11" font-weight="700" fill="#8b5e52" font-family="system-ui,sans-serif">BROKER</text>
-  <text x="710" y="44" text-anchor="middle" font-size="11" font-weight="700" fill="#3d7a5a" font-family="system-ui,sans-serif">CONSUMERS</text>
-
-  <!-- Producer boxes -->
-  <rect x="25" y="60" width="130" height="38" rx="6" fill="#fff" stroke="#c9a898" stroke-width="1.2"/>
-  <text x="90" y="83" text-anchor="middle" font-size="11" fill="#5a3828" font-family="system-ui,sans-serif">Feature Edit (GIS)</text>
-
-  <rect x="25" y="112" width="130" height="38" rx="6" fill="#fff" stroke="#c9a898" stroke-width="1.2"/>
-  <text x="90" y="135" text-anchor="middle" font-size="11" fill="#5a3828" font-family="system-ui,sans-serif">Sensor Reading (IoT)</text>
-
-  <rect x="25" y="164" width="130" height="38" rx="6" fill="#fff" stroke="#c9a898" stroke-width="1.2"/>
-  <text x="90" y="187" text-anchor="middle" font-size="11" fill="#5a3828" font-family="system-ui,sans-serif">Tile State Change</text>
-
-  <rect x="25" y="216" width="130" height="38" rx="6" fill="#fff" stroke="#c9a898" stroke-width="1.2"/>
-  <text x="90" y="239" text-anchor="middle" font-size="11" fill="#5a3828" font-family="system-ui,sans-serif">Webhook POST</text>
-
-  <!-- Normalise boxes -->
-  <rect x="225" y="60" width="150" height="38" rx="6" fill="#fff" stroke="#7db89a" stroke-width="1.2"/>
-  <text x="300" y="78" text-anchor="middle" font-size="11" fill="#2e5c42" font-family="system-ui,sans-serif">CRS → EPSG:4326</text>
-  <text x="300" y="92" text-anchor="middle" font-size="10" fill="#4a7a60" font-family="system-ui,sans-serif">(pyproj reproject)</text>
-
-  <rect x="225" y="112" width="150" height="38" rx="6" fill="#fff" stroke="#7db89a" stroke-width="1.2"/>
-  <text x="300" y="130" text-anchor="middle" font-size="11" fill="#2e5c42" font-family="system-ui,sans-serif">Geometry Validation</text>
-  <text x="300" y="144" text-anchor="middle" font-size="10" fill="#4a7a60" font-family="system-ui,sans-serif">(Shapely is_valid)</text>
-
-  <rect x="225" y="164" width="150" height="38" rx="6" fill="#fff" stroke="#7db89a" stroke-width="1.2"/>
-  <text x="300" y="182" text-anchor="middle" font-size="11" fill="#2e5c42" font-family="system-ui,sans-serif">Spatial Index Keys</text>
-  <text x="300" y="196" text-anchor="middle" font-size="10" fill="#4a7a60" font-family="system-ui,sans-serif">(H3 / S2 / Quadkey)</text>
-
-  <rect x="225" y="216" width="150" height="38" rx="6" fill="#fff" stroke="#7db89a" stroke-width="1.2"/>
-  <text x="300" y="234" text-anchor="middle" font-size="11" fill="#2e5c42" font-family="system-ui,sans-serif">Schema Validation</text>
-  <text x="300" y="248" text-anchor="middle" font-size="10" fill="#4a7a60" font-family="system-ui,sans-serif">(Pydantic + CloudEvents)</text>
-
-  <!-- Broker box -->
-  <rect x="448" y="80" width="124" height="220" rx="8" fill="#fff" stroke="#c9a898" stroke-width="1.5"/>
-  <text x="510" y="103" text-anchor="middle" font-size="11" font-weight="600" fill="#5a3828" font-family="system-ui,sans-serif">Partitioned</text>
-  <text x="510" y="118" text-anchor="middle" font-size="11" font-weight="600" fill="#5a3828" font-family="system-ui,sans-serif">Topic</text>
-  <rect x="462" y="128" width="96" height="22" rx="4" fill="#f4ede8" stroke="#c9a898" stroke-width="1"/>
-  <text x="510" y="143" text-anchor="middle" font-size="10" fill="#5a3828" font-family="system-ui,sans-serif">partition: H3-cell-A</text>
-  <rect x="462" y="156" width="96" height="22" rx="4" fill="#f4ede8" stroke="#c9a898" stroke-width="1"/>
-  <text x="510" y="171" text-anchor="middle" font-size="10" fill="#5a3828" font-family="system-ui,sans-serif">partition: H3-cell-B</text>
-  <rect x="462" y="184" width="96" height="22" rx="4" fill="#f4ede8" stroke="#c9a898" stroke-width="1"/>
-  <text x="510" y="199" text-anchor="middle" font-size="10" fill="#5a3828" font-family="system-ui,sans-serif">partition: H3-cell-C</text>
-  <rect x="462" y="212" width="96" height="22" rx="4" fill="#e8f4ee" stroke="#7db89a" stroke-width="1"/>
-  <text x="510" y="227" text-anchor="middle" font-size="10" fill="#2e5c42" font-family="system-ui,sans-serif">DLQ (malformed)</text>
-  <text x="510" y="270" text-anchor="middle" font-size="10" fill="#7db89a" font-family="system-ui,sans-serif">Kafka / Redis Streams</text>
-  <text x="510" y="284" text-anchor="middle" font-size="10" fill="#7db89a" font-family="system-ui,sans-serif">/ Pub/Sub</text>
-
-  <!-- Consumer boxes -->
-  <rect x="645" y="60" width="130" height="38" rx="6" fill="#fff" stroke="#7db89a" stroke-width="1.2"/>
-  <text x="710" y="83" text-anchor="middle" font-size="11" fill="#2e5c42" font-family="system-ui,sans-serif">Tile Server</text>
-
-  <rect x="645" y="112" width="130" height="38" rx="6" fill="#fff" stroke="#7db89a" stroke-width="1.2"/>
-  <text x="710" y="135" text-anchor="middle" font-size="11" fill="#2e5c42" font-family="system-ui,sans-serif">Analytics Engine</text>
-
-  <rect x="645" y="164" width="130" height="38" rx="6" fill="#fff" stroke="#7db89a" stroke-width="1.2"/>
-  <text x="710" y="182" text-anchor="middle" font-size="11" fill="#2e5c42" font-family="system-ui,sans-serif">Webhook Receiver</text>
-  <text x="710" y="196" text-anchor="middle" font-size="10" fill="#4a7a60" font-family="system-ui,sans-serif">(HMAC-verified)</text>
-
-  <rect x="645" y="216" width="130" height="38" rx="6" fill="#fff" stroke="#7db89a" stroke-width="1.2"/>
-  <text x="710" y="239" text-anchor="middle" font-size="11" fill="#2e5c42" font-family="system-ui,sans-serif">Spatial DB Writer</text>
-
-  <!-- Arrows: producers → normalise -->
-  <line x1="155" y1="79" x2="223" y2="79" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.5"/>
-  <line x1="155" y1="131" x2="223" y2="131" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.5"/>
-  <line x1="155" y1="183" x2="223" y2="183" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.5"/>
-  <line x1="155" y1="235" x2="223" y2="235" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.5"/>
-
-  <!-- Arrows: normalise → broker (fan-in) -->
-  <line x1="375" y1="79" x2="446" y2="150" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.5"/>
-  <line x1="375" y1="131" x2="446" y2="170" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.5"/>
-  <line x1="375" y1="183" x2="446" y2="190" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.5"/>
-  <line x1="375" y1="235" x2="446" y2="222" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.5"/>
-
-  <!-- Arrows: broker → consumers (fan-out) -->
-  <line x1="572" y1="150" x2="643" y2="79" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.5"/>
-  <line x1="572" y1="170" x2="643" y2="131" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.5"/>
-  <line x1="572" y1="190" x2="643" y2="183" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.5"/>
-  <line x1="572" y1="210" x2="643" y2="235" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.5"/>
+  <!-- Stage tint panels (faint, theme-safe) -->
+  <rect x="14" y="40" width="170" height="300" rx="10" fill="#fce4ec" opacity="0.16"/>
+  <rect x="232" y="40" width="190" height="300" rx="10" fill="#e8f5e9" opacity="0.16"/>
+  <rect x="470" y="40" width="150" height="300" rx="10" fill="#fff3e0" opacity="0.18"/>
+  <rect x="668" y="40" width="158" height="300" rx="10" fill="#e6f7f0" opacity="0.16"/>
+  <rect x="14" y="40" width="170" height="300" rx="10" fill="none" stroke="currentColor" stroke-width="1.3" opacity="0.25"/>
+  <rect x="232" y="40" width="190" height="300" rx="10" fill="none" stroke="currentColor" stroke-width="1.3" opacity="0.25"/>
+  <rect x="470" y="40" width="150" height="300" rx="10" fill="none" stroke="currentColor" stroke-width="1.3" opacity="0.25"/>
+  <rect x="668" y="40" width="158" height="300" rx="10" fill="none" stroke="currentColor" stroke-width="1.3" opacity="0.25"/>
+  <!-- Stage labels -->
+  <text x="99"  y="62" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.85">PRODUCERS</text>
+  <text x="327" y="62" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.85">NORMALISE &amp; VALIDATE</text>
+  <text x="545" y="62" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.85">BROKER</text>
+  <text x="747" y="62" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.85">CONSUMERS</text>
+  <!-- Producer nodes -->
+  <rect x="28" y="78"  width="142" height="40" rx="6" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.55"/>
+  <text x="99" y="102" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">Feature Edit (GIS)</text>
+  <rect x="28" y="130" width="142" height="40" rx="6" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.55"/>
+  <text x="99" y="154" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">Sensor Reading (IoT)</text>
+  <rect x="28" y="182" width="142" height="40" rx="6" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.55"/>
+  <text x="99" y="206" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">Tile State Change</text>
+  <rect x="28" y="234" width="142" height="40" rx="6" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.55"/>
+  <text x="99" y="258" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">Webhook POST</text>
+  <!-- Normalise nodes -->
+  <rect x="246" y="78"  width="162" height="40" rx="6" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.55"/>
+  <text x="327" y="96"  text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">CRS to EPSG:4326</text>
+  <text x="327" y="110" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.6">pyproj reproject</text>
+  <rect x="246" y="130" width="162" height="40" rx="6" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.55"/>
+  <text x="327" y="148" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">Geometry Validation</text>
+  <text x="327" y="162" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.6">Shapely is_valid</text>
+  <rect x="246" y="182" width="162" height="40" rx="6" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.55"/>
+  <text x="327" y="200" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">Spatial Index Keys</text>
+  <text x="327" y="214" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.6">H3 / S2 / Quadkey</text>
+  <rect x="246" y="234" width="162" height="40" rx="6" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.55"/>
+  <text x="327" y="252" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">Schema Validation</text>
+  <text x="327" y="266" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.6">Pydantic + CloudEvents</text>
+  <!-- Broker node -->
+  <rect x="484" y="78" width="122" height="224" rx="8" fill="none" stroke="currentColor" stroke-width="1.4" opacity="0.6"/>
+  <text x="545" y="98" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" opacity="0.9">Partitioned Topic</text>
+  <rect x="496" y="110" width="98" height="22" rx="4" fill="#fff3e0" opacity="0.22"/>
+  <rect x="496" y="110" width="98" height="22" rx="4" fill="none" stroke="currentColor" stroke-width="0.9" opacity="0.4"/>
+  <text x="545" y="125" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">partition H3-cell-A</text>
+  <rect x="496" y="138" width="98" height="22" rx="4" fill="#fff3e0" opacity="0.22"/>
+  <rect x="496" y="138" width="98" height="22" rx="4" fill="none" stroke="currentColor" stroke-width="0.9" opacity="0.4"/>
+  <text x="545" y="153" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">partition H3-cell-B</text>
+  <rect x="496" y="166" width="98" height="22" rx="4" fill="#fff3e0" opacity="0.22"/>
+  <rect x="496" y="166" width="98" height="22" rx="4" fill="none" stroke="currentColor" stroke-width="0.9" opacity="0.4"/>
+  <text x="545" y="181" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">partition H3-cell-C</text>
+  <rect x="496" y="200" width="98" height="22" rx="4" fill="#fce4ec" opacity="0.3"/>
+  <rect x="496" y="200" width="98" height="22" rx="4" fill="none" stroke="currentColor" stroke-width="0.9" opacity="0.5" stroke-dasharray="3,2"/>
+  <text x="545" y="215" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">DLQ (malformed)</text>
+  <text x="545" y="262" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.6">Kafka / Redis</text>
+  <text x="545" y="276" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.6">Streams / Pub/Sub</text>
+  <!-- Consumer nodes -->
+  <rect x="682" y="78"  width="130" height="40" rx="6" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.55"/>
+  <text x="747" y="102" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">Tile Server</text>
+  <rect x="682" y="130" width="130" height="40" rx="6" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.55"/>
+  <text x="747" y="154" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">Analytics Engine</text>
+  <rect x="682" y="182" width="130" height="40" rx="6" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.55"/>
+  <text x="747" y="200" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">Webhook Receiver</text>
+  <text x="747" y="214" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.6">HMAC-verified</text>
+  <rect x="682" y="234" width="130" height="40" rx="6" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.55"/>
+  <text x="747" y="258" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">Spatial DB Writer</text>
+  <!-- Arrows: producers to normalise -->
+  <line x1="170" y1="98"  x2="244" y2="98"  stroke="currentColor" stroke-width="1.4" marker-end="url(#gw-arrow)" opacity="0.5"/>
+  <line x1="170" y1="150" x2="244" y2="150" stroke="currentColor" stroke-width="1.4" marker-end="url(#gw-arrow)" opacity="0.5"/>
+  <line x1="170" y1="202" x2="244" y2="202" stroke="currentColor" stroke-width="1.4" marker-end="url(#gw-arrow)" opacity="0.5"/>
+  <line x1="170" y1="254" x2="244" y2="254" stroke="currentColor" stroke-width="1.4" marker-end="url(#gw-arrow)" opacity="0.5"/>
+  <!-- Arrows: normalise to broker (fan-in) -->
+  <line x1="408" y1="98"  x2="482" y2="150" stroke="currentColor" stroke-width="1.4" marker-end="url(#gw-arrow)" opacity="0.5"/>
+  <line x1="408" y1="150" x2="482" y2="170" stroke="currentColor" stroke-width="1.4" marker-end="url(#gw-arrow)" opacity="0.5"/>
+  <line x1="408" y1="202" x2="482" y2="190" stroke="currentColor" stroke-width="1.4" marker-end="url(#gw-arrow)" opacity="0.5"/>
+  <line x1="408" y1="254" x2="482" y2="210" stroke="currentColor" stroke-width="1.4" marker-end="url(#gw-arrow)" opacity="0.5"/>
+  <!-- Arrows: broker to consumers (fan-out) -->
+  <line x1="606" y1="150" x2="680" y2="98"  stroke="currentColor" stroke-width="1.4" marker-end="url(#gw-arrow)" opacity="0.5"/>
+  <line x1="606" y1="170" x2="680" y2="150" stroke="currentColor" stroke-width="1.4" marker-end="url(#gw-arrow)" opacity="0.5"/>
+  <line x1="606" y1="180" x2="680" y2="202" stroke="currentColor" stroke-width="1.4" marker-end="url(#gw-arrow)" opacity="0.5"/>
+  <line x1="606" y1="190" x2="680" y2="254" stroke="currentColor" stroke-width="1.4" marker-end="url(#gw-arrow)" opacity="0.5"/>
 </svg>
 
 ## The Anatomy of a Geospatial Event

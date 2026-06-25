@@ -495,8 +495,9 @@ h1, h2, h3, h4, h5 {
   text-decoration-thickness: 2px;
 }
 
-/* Inline code: no box, no background — blends with prose text. */
-.markdown :not(pre) > code {
+/* Inline code: no box, no background — blends with prose text everywhere on the page.
+   :not(pre) > code only matches code NOT inside a <pre>, so code-block fences are unaffected. */
+:not(pre) > code {
   background: none;
   color: var(--ink);
   padding: 0;

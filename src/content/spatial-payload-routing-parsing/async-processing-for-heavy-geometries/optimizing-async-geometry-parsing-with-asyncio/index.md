@@ -1,111 +1,324 @@
 ---
 title: "Optimizing Async Geometry Parsing with asyncio"
-description: "Offload CPU-intensive spatial operations to a ProcessPoolExecutor in Python, keeping webhook ingestion non-blocking while geometry validation runs in isolation."
+description: "Offload CPU-bound spatial parsing to a ProcessPoolExecutor with loop.run_in_executor so webhook ingestion stays non-blocking while Shapely topology checks run in isolated processes."
+slug: "optimizing-async-geometry-parsing-with-asyncio"
+type: "long_tail"
+breadcrumb: "Spatial Payload Routing & Parsing › Async Processing for Heavy Geometries › Optimizing Async Geometry Parsing with asyncio"
+datePublished: "2025-11-18"
+dateModified: "2026-06-25"
 ---
 
-Optimizing async geometry parsing with asyncio requires decoupling CPU-intensive coordinate validation from the event loop using `loop.run_in_executor()`. Python's Global Interpreter Lock (GIL) prevents true parallelism in the main thread, so heavy GeoJSON, WKB, or WKT payloads must be offloaded to a `ProcessPoolExecutor`. This hybrid architecture keeps webhook ingestion, routing, and database writes strictly asynchronous while isolating spatial computations. The result is high concurrency for I/O-bound delivery without event loop starvation during topology checks.
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Optimizing Async Geometry Parsing with asyncio",
+      "description": "Offload CPU-bound spatial parsing to a ProcessPoolExecutor with loop.run_in_executor so webhook ingestion stays non-blocking while Shapely topology checks run in isolated processes.",
+      "datePublished": "2025-11-18",
+      "dateModified": "2026-06-25",
+      "author": { "@type": "Organization", "name": "geospatialwebhook.com" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatialwebhook.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Spatial Payload Routing & Parsing", "item": "https://geospatialwebhook.com/spatial-payload-routing-parsing/" },
+        { "@type": "ListItem", "position": 3, "name": "Async Processing for Heavy Geometries", "item": "https://geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/" },
+        { "@type": "ListItem", "position": 4, "name": "Optimizing Async Geometry Parsing with asyncio", "item": "https://geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/optimizing-async-geometry-parsing-with-asyncio/" }
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Optimize async geometry parsing with asyncio",
+      "step": [
+        { "@type": "HowToStep", "position": 1, "name": "Define a stateless, picklable CPU-bound worker that validates and normalizes the geometry" },
+        { "@type": "HowToStep", "position": 2, "name": "Offload the worker to a ProcessPoolExecutor via loop.run_in_executor" },
+        { "@type": "HowToStep", "position": 3, "name": "Wrap the future in asyncio.wait_for to enforce a per-task timeout" },
+        { "@type": "HowToStep", "position": 4, "name": "Route validated geometry downstream while the event loop stays free" }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Why does asyncio block when parsing heavy geometries?",
+          "acceptedAnswer": { "@type": "Answer", "text": "asyncio is an I/O multiplexing framework, not a parallel execution engine. Shapely and pyproj run GEOS/PROJ C extensions that are CPU-bound. Calling them directly inside a coroutine holds the single event-loop thread, so all other in-flight webhooks stall until parsing finishes. Offload the work to a ProcessPoolExecutor via loop.run_in_executor so the loop only awaits a future." }
+        },
+        {
+          "@type": "Question",
+          "name": "Should I use run_in_executor with a thread pool or a process pool?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Use a ProcessPoolExecutor for CPU-bound geometry math — coordinate transforms, topology repair, spatial joins — because threads share the GIL and serialize under load. Use a ThreadPoolExecutor (or asyncio.to_thread) only for I/O-bound steps like fetching remote tiles or writing to PostGIS." }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I stop a malformed geometry from hanging a worker?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Wrap loop.run_in_executor in asyncio.wait_for with an explicit timeout. A timed-out task usually signals a pathological geometry, not a transient fault, so route it to a dead-letter queue instead of retrying. Note the underlying process keeps running after a timeout; cancel it explicitly if you need the worker slot back immediately." }
+        }
+      ]
+    }
+  ]
+}
+</script>
 
-## Why `asyncio` Alone Blocks on Heavy Geometries
+**Wrap each CPU-bound parse in `loop.run_in_executor(ProcessPoolExecutor(), validate_geometry, payload)` and `await` it behind an `asyncio.wait_for` timeout — the event loop keeps accepting webhooks while Shapely validation runs in a separate OS process.**
 
-`asyncio` is an I/O multiplexing framework, not a parallel execution engine. When a webhook handler receives a spatial payload containing thousands of vertices, nested multipolygons, or complex feature collections, parsing becomes fundamentally CPU-bound. Libraries like `shapely`, `pyproj`, or `geojson` invoke C extensions or perform heavy linear algebra to validate ring orientation, detect self-intersections, and compute bounding boxes. If executed directly on the event loop, these operations block the thread, causing webhook acknowledgments to timeout, connection pools to exhaust, and downstream routing queues to back up.
+This page sits under [Async Processing for Heavy Geometries](/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/), part of the broader [Spatial Payload Routing & Parsing](/spatial-payload-routing-parsing/) section that covers how spatial payloads are ingested, validated, and forwarded to consumers.
 
-The correct architectural approach treats geometry parsing as a synchronous worker task bridged into the async context. This is the core principle behind [Async Processing for Heavy Geometries](/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/), where payload acceptance remains non-blocking while validation runs in isolated processes. By isolating CPU work, you preserve the event loop's ability to handle thousands of concurrent HTTP connections, WebSocket streams, or message broker subscriptions without sacrificing spatial accuracy.
+## When to Use This Pattern
 
-## Executor-Backed Architecture for Spatial Workloads
+Reach for an executor-backed parse — rather than parsing inline in the coroutine — when:
 
-In an event-driven webhook pipeline, the optimal flow separates ingestion from computation:
+- **Parsing is CPU-bound, not I/O-bound.** Payloads carry dense `MultiPolygon` rings, thousands of vertices, or full `FeatureCollection` documents, and most of the wall-clock cost is GEOS topology work (`make_valid`, `is_valid`, `unary_union`) rather than network or disk waits.
+- **The same process must stay responsive to other webhooks.** A single FastAPI/aiohttp worker handles many concurrent senders and cannot afford to freeze the loop while one large geometry is validated.
+- **You need a hard upper bound per geometry.** A timeout must quarantine pathological inputs (degenerate rings, billion-coordinate spikes) without taking down the ingestion endpoint.
 
-1. **Acknowledge immediately**: Return `HTTP 202 Accepted` to the sender.
-2. **Queue raw payload**: Push the unmodified JSON to an async-compatible queue (e.g., `asyncio.Queue`, Redis Streams, or RabbitMQ).
-3. **Dispatch to executor**: Pull payloads from the queue and submit them to a process pool.
-4. **Route validated output**: Once parsing completes, route the normalized geometry to spatial databases, tile generators, or downstream microservices.
+If the heavy step is instead a remote call — fetching a WFS tile or an elevation API — prefer `asyncio.to_thread` or a `ThreadPoolExecutor`, since threads release the GIL during I/O and avoid the pickling overhead of a process pool.
 
-This separation ensures that [Spatial Payload Routing & Parsing](/spatial-payload-routing-parsing/) remains responsive under burst traffic. The event loop never waits on GEOS calculations; it only awaits the future returned by `run_in_executor()`. For authoritative guidance on bridging sync and async contexts, consult the official [Python asyncio event loop documentation](https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.run_in_executor).
+## How the Loop Stays Free
 
-## Production-Ready Implementation
+The event loop never executes geometry code. It submits the work to a pool of worker processes and immediately returns to servicing sockets; only the originating coroutine suspends on the returned future.
 
-The following pattern safely bridges async webhook handlers with synchronous geometry validation. It uses `ProcessPoolExecutor` to bypass the GIL, validates topology, and returns structured results without blocking the main thread.
+<svg viewBox="0 0 760 300" role="img" aria-label="The asyncio event loop offloads CPU-bound geometry parsing to separate worker processes via run_in_executor and awaits a future" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+  <title>Offloading geometry parsing off the event loop</title>
+  <desc>An async webhook handler calls loop.run_in_executor to submit each payload to a ProcessPoolExecutor. Worker processes run Shapely and pyproj past the GIL boundary, while the single event-loop thread stays free to accept new connections and only awaits a future.</desc>
+  <defs>
+    <marker id="ag-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="currentColor" opacity="0.6"/>
+    </marker>
+  </defs>
+  <!-- Event loop column -->
+  <rect x="20" y="40" width="200" height="230" rx="10" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3"/>
+  <text x="120" y="30" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor" opacity="0.75">Single event-loop thread</text>
+  <rect x="40" y="60" width="160" height="40" rx="6" fill="currentColor" opacity="0.08"/>
+  <text x="120" y="78" text-anchor="middle" font-size="10.5" fill="currentColor">accept connections</text>
+  <text x="120" y="92" text-anchor="middle" font-size="10.5" fill="currentColor">read raw bytes</text>
+  <rect x="40" y="112" width="160" height="40" rx="6" fill="currentColor" opacity="0.08"/>
+  <text x="120" y="130" text-anchor="middle" font-size="10.5" fill="currentColor">run_in_executor(...)</text>
+  <text x="120" y="144" text-anchor="middle" font-size="10.5" fill="currentColor">returns a future</text>
+  <rect x="40" y="164" width="160" height="40" rx="6" fill="currentColor" opacity="0.08"/>
+  <text x="120" y="182" text-anchor="middle" font-size="10.5" fill="currentColor">await wait_for(future)</text>
+  <text x="120" y="196" text-anchor="middle" font-size="10.5" fill="currentColor">loop serves others</text>
+  <rect x="40" y="216" width="160" height="38" rx="6" fill="currentColor" opacity="0.08"/>
+  <text x="120" y="233" text-anchor="middle" font-size="10.5" fill="currentColor">route normalized</text>
+  <text x="120" y="247" text-anchor="middle" font-size="10.5" fill="currentColor">geometry downstream</text>
+  <!-- GIL boundary -->
+  <line x1="300" y1="40" x2="300" y2="270" stroke="currentColor" stroke-width="1.2" stroke-dasharray="5 5" opacity="0.45"/>
+  <text x="300" y="32" text-anchor="middle" font-size="10" font-weight="600" fill="currentColor" opacity="0.65">process boundary (past the GIL)</text>
+  <!-- Worker processes -->
+  <text x="560" y="30" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor" opacity="0.75">ProcessPoolExecutor</text>
+  <rect x="400" y="55" width="320" height="58" rx="8" fill="currentColor" opacity="0.06" stroke="currentColor" stroke-width="1" stroke-opacity="0.3"/>
+  <text x="560" y="78" text-anchor="middle" font-size="10.5" fill="currentColor">Worker 1 — shape() · make_valid()</text>
+  <text x="560" y="96" text-anchor="middle" font-size="10.5" fill="currentColor">pyproj transform to EPSG:4326</text>
+  <rect x="400" y="123" width="320" height="58" rx="8" fill="currentColor" opacity="0.06" stroke="currentColor" stroke-width="1" stroke-opacity="0.3"/>
+  <text x="560" y="146" text-anchor="middle" font-size="10.5" fill="currentColor">Worker 2 — is_valid · bounds · simplify</text>
+  <text x="560" y="164" text-anchor="middle" font-size="10.5" fill="currentColor">true OS-level parallelism</text>
+  <rect x="400" y="191" width="320" height="58" rx="8" fill="currentColor" opacity="0.06" stroke="currentColor" stroke-width="1" stroke-opacity="0.3"/>
+  <text x="560" y="214" text-anchor="middle" font-size="10.5" fill="currentColor">Worker N — one per CPU core</text>
+  <text x="560" y="232" text-anchor="middle" font-size="10.5" fill="currentColor">picklable args · picklable result</text>
+  <!-- arrows out -->
+  <line x1="200" y1="132" x2="398" y2="84" stroke="currentColor" stroke-width="1.4" marker-end="url(#ag-arrow)" opacity="0.55"/>
+  <line x1="200" y1="132" x2="398" y2="152" stroke="currentColor" stroke-width="1.4" marker-end="url(#ag-arrow)" opacity="0.55"/>
+  <line x1="200" y1="132" x2="398" y2="220" stroke="currentColor" stroke-width="1.4" marker-end="url(#ag-arrow)" opacity="0.55"/>
+  <!-- arrow back (result) -->
+  <line x1="398" y1="152" x2="221" y2="184" stroke="currentColor" stroke-width="1.4" marker-end="url(#ag-arrow)" opacity="0.4" stroke-dasharray="4 4"/>
+</svg>
+
+## Complete Runnable Example
+
+The snippet below is self-contained. The worker is a plain module-level function so it can be pickled across the process boundary; the consumer offloads it with `loop.run_in_executor` and enforces a per-task ceiling with `asyncio.wait_for`. The worker normalizes any non-WGS84 input to `EPSG:4326`, mirroring the canonical-projection approach in [CRS Normalization Strategies](/spatial-payload-routing-parsing/crs-normalization-strategies/), and validates topology in line with [Geometry Validation Pipelines](/spatial-payload-routing-parsing/geometry-validation-pipelines/).
 
 ```python
 import asyncio
+import json
 import logging
+import os
 from concurrent.futures import ProcessPoolExecutor
-from typing import Dict, Any
+from typing import Any
 
-from shapely.geometry import shape
+from pyproj import CRS, Transformer
+from shapely.geometry import mapping, shape
+from shapely.ops import transform as shp_transform
 from shapely.validation import make_valid
 from shapely.errors import ShapelyError
 
-# 1. CPU-bound worker (runs in isolated process)
-def validate_geometry(payload: Dict[str, Any]) -> Dict[str, Any]:
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("async-geometry")
+
+
+# ---- 1. CPU-bound worker (runs in a separate OS process) --------------------
+# Must be a top-level def: lambdas and closures are not picklable and will
+# raise PicklingError when submitted to a ProcessPoolExecutor.
+def validate_geometry(payload: dict[str, Any]) -> dict[str, Any]:
     try:
         geom = shape(payload["geometry"])
+
+        # Topology repair before any measurement; make_valid keeps all vertices.
         if not geom.is_valid:
             geom = make_valid(geom)
+
+        # Normalize to EPSG:4326 (WGS 84). RFC 7946 mandates WGS84 when the
+        # source CRS is omitted, so default to it. always_xy=True keeps the
+        # (lon, lat) axis order PROJ 6+ would otherwise swap.
+        source_epsg = int(payload.get("source_epsg", 4326))
+        if source_epsg != 4326:
+            transformer = Transformer.from_crs(
+                CRS.from_epsg(source_epsg),
+                CRS.from_epsg(4326),
+                always_xy=True,
+            )
+            geom = shp_transform(transformer.transform, geom)
+
         return {
             "id": payload.get("id"),
-            "geometry": geom.__geo_interface__,
             "valid": True,
-            "bbox": geom.bounds
+            "crs": "EPSG:4326",
+            "geometry": mapping(geom),   # JSON-serializable -> safe to pickle back
+            "bbox": list(geom.bounds),
         }
-    except (ShapelyError, KeyError, TypeError) as e:
-        return {"id": payload.get("id"), "error": str(e), "valid": False}
+    except (ShapelyError, KeyError, TypeError, ValueError) as exc:
+        return {"id": payload.get("id"), "valid": False, "error": str(exc)}
 
-# 2. Async consumer loop
+
+# ---- 2. Async consumer: offload each payload, never block the loop ----------
 async def process_geometry_queue(
-    queue: asyncio.Queue,
+    queue: "asyncio.Queue[dict[str, Any]]",
     executor: ProcessPoolExecutor,
-    timeout: float = 10.0
+    timeout: float = 30.0,
 ) -> None:
     loop = asyncio.get_running_loop()
-
     while True:
         payload = await queue.get()
         try:
-            # Offload to process pool; event loop remains unblocked
             result = await asyncio.wait_for(
                 loop.run_in_executor(executor, validate_geometry, payload),
-                timeout=timeout
+                timeout=timeout,
             )
-            # Route `result` to PostGIS, S3, or downstream service here
-            logging.info("Processed geometry %s", result.get("id"))
+            if result["valid"]:
+                logger.info("geometry %s normalized, bbox=%s",
+                            result["id"], result["bbox"])
+                # route `result` to PostGIS / Redis / a downstream service here
+            else:
+                logger.warning("geometry %s rejected: %s",
+                               result["id"], result["error"])
+                # send to dead-letter queue here
         except asyncio.TimeoutError:
-            logging.warning("Timeout validating geometry %s", payload.get("id"))
-        except Exception as e:
-            logging.error("Queue processing failed: %s", e)
+            # The worker process is still running; quarantine, do not retry inline.
+            logger.error("geometry %s timed out after %.0fs", payload.get("id"), timeout)
         finally:
             queue.task_done()
+
+
+# ---- 3. Wire it together ----------------------------------------------------
+async def main() -> None:
+    queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=1000)
+    # One worker per core: oversubscribing increases context-switch + memory cost.
+    with ProcessPoolExecutor(max_workers=os.cpu_count() or 4) as executor:
+        consumers = [
+            asyncio.create_task(process_geometry_queue(queue, executor))
+            for _ in range(2)  # several consumers feed the same pool
+        ]
+
+        # Simulate an ingestion endpoint dropping raw payloads onto the queue.
+        sample = {
+            "id": "feat-001",
+            "source_epsg": 3857,  # Web Mercator -> will be reprojected to 4326
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [-13627361.0, 4544760.0],
+                    [-13626000.0, 4544760.0],
+                    [-13626000.0, 4546000.0],
+                    [-13627361.0, 4546000.0],
+                    [-13627361.0, 4544760.0],
+                ]],
+            },
+        }
+        await queue.put(sample)
+        await queue.join()  # wait until all queued geometries are processed
+
+        for c in consumers:
+            c.cancel()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
-Key implementation details:
+## Parameter Reference
 
-- **GIL bypass**: `ProcessPoolExecutor` spawns separate Python interpreters, allowing true parallelism for GEOS-backed operations. See the [Shapely manual](https://shapely.readthedocs.io/en/stable/manual.html) for geometry construction best practices.
-- **Timeout enforcement**: `asyncio.wait_for()` prevents slow or malformed payloads from starving the consumer loop.
-- **Serialization safety**: GeoJSON dictionaries are natively JSON-serializable, making them safe to pass across process boundaries. Avoid passing unpicklable objects like database connections or file handles.
+<div style="overflow-x:auto">
 
-## Tuning Executors for Spatial Throughput
+| Argument | Type | Spatial constraint / note | Default |
+|---|---|---|---|
+| `executor` (`max_workers`) | `int` | Set to `os.cpu_count()`; GEOS work is CPU-bound so oversubscribing degrades throughput and inflates RSS | `os.cpu_count()` |
+| `loop.run_in_executor(executor, fn, *args)` | callable + picklable args | `fn` must be a module-level `def`; args/return must be picklable (GeoJSON dicts are, Shapely objects are not by default) | required |
+| `asyncio.wait_for(..., timeout)` | `float` seconds | 30 s suits validation/simplify; dense union/intersection may need up to 120 s. Timeout cancels the *await*, not the OS process | `None` (no timeout) |
+| `source_epsg` | `int` (EPSG code) | Source CRS of incoming coords; reproject to `EPSG:4326` before topology checks to avoid corrupt indexes | `4326` |
+| `always_xy` (pyproj) | `bool` | `True` enforces `(lon, lat)` order and prevents the PROJ 6+ axis swap | `True` here |
+| `queue` (`maxsize`) | `int` | Bounded queue applies backpressure; `0` is unbounded and risks OOM under burst traffic | `1000` |
 
-Process pools introduce memory and context-switch overhead. Optimize throughput by aligning pool size with your deployment constraints:
+</div>
 
-- **CPU-bound sizing**: Set `max_workers` to `os.cpu_count()` or slightly lower. Oversubscribing processes increases memory pressure and degrades GEOS performance due to OS context switching.
-- **Payload chunking**: For FeatureCollections with >10,000 geometries, split payloads before queuing. Process pools perform best on uniform, bounded tasks.
-- **Backpressure handling**: Monitor `queue.qsize()`. If the queue consistently approaches capacity, scale consumers horizontally or implement circuit breakers to reject payloads gracefully with HTTP 429 or 503.
-- **Memory limits**: GEOS operations can temporarily allocate 3–5× the raw payload size. Use container memory limits and `ulimit` to prevent OOM kills during topology repairs on pathological geometries.
+## Gotchas & Spatial Edge Cases
 
-## Common Pitfalls & Mitigations
+1. **Pickling failures on geometry objects.** A `ProcessPoolExecutor` serializes args and results with `pickle`. Pass and return GeoJSON dicts (call `mapping(geom)` before returning), not raw Shapely objects, database connections, or closures — those raise `PicklingError` or silently fail to round-trip.
+2. **Topology repair before measurement.** Compute `bounds`, area, or centroid only after `make_valid`. Self-intersecting rings produce meaningless extents, and an invalid `Polygon` can yield a `GeometryCollection` after repair — assert the output type before persisting.
+3. **CRS mismatch on merge.** Reproject to `EPSG:4326` inside the worker *before* validating or unioning. Mixing `EPSG:3857` (Web Mercator) coordinates with WGS84 silently shifts features hundreds of kilometres; resolve the source CRS first, as detailed in [Handling Mixed CRS Payloads in Python Webhooks](/spatial-payload-routing-parsing/crs-normalization-strategies/handling-mixed-crs-payloads-in-python-event-handlers/).
+4. **Coordinate ring orientation.** [RFC 7946](https://datatracker.ietf.org/doc/html/rfc7946) expects exterior rings counter-clockwise and holes clockwise. `make_valid` does not normalize winding; call `shapely.geometry.polygon.orient(geom, sign=1.0)` if a downstream consumer is winding-sensitive.
+5. **Precision loss after transformation.** Reprojection introduces floating-point drift, so a transformed ring's first and last vertex may no longer be bit-identical. Re-close the ring (or re-run `make_valid`) after transforming to avoid spurious "unclosed ring" errors in PostGIS.
+6. **Timeout does not kill the process.** `asyncio.wait_for` cancels the *await*, but the worker process keeps grinding on the pathological geometry and holds a pool slot. For a hard kill, give each task its own short-lived pool or use `pebble.ProcessPool`, which cancels the underlying process.
+7. **Pool created at import time under spawn.** On macOS and Windows (spawn start method) a module-level `ProcessPoolExecutor()` re-imports the module in each child and can fork-bomb. Create the pool inside `if __name__ == "__main__":` or your app's startup hook, never at module top level.
 
-| Pitfall | Symptom | Mitigation |
-|---------|---------|------------|
-| **Blocking the loop** | Webhook latency spikes under load | Never call `shapely` or `pyproj` directly in `async def` handlers |
-| **Unpicklable errors** | `TypeError: cannot pickle '...' object` | Keep worker functions stateless; pass only dicts/strings |
-| **Executor leak** | Memory grows indefinitely | Use `executor.shutdown(wait=True)` on app shutdown or SIGTERM |
-| **Silent topology failures** | Invalid geometries reach PostGIS | Wrap workers in `try/except ShapelyError`; log and quarantine bad payloads |
-| **Queue starvation** | Workers idle while queue backs up | Use `asyncio.gather()` to run multiple consumers concurrently |
+## Verify It Works
 
-## When to Use `ThreadPoolExecutor` Instead
+Drop this into `test_async_geometry.py` and run `pytest -q`. It asserts the worker reprojects Web Mercator to WGS84 and that the offloaded call completes well under its timeout — proving the event loop is never blocked.
 
-`ThreadPoolExecutor` is appropriate only when your geometry pipeline relies on I/O-bound steps: fetching remote WFS tiles, querying external elevation APIs, or writing to network-attached storage. For coordinate math, ring validation, or projection transforms, threads share the GIL and will serialize execution under load. Stick to process pools for CPU-heavy spatial workloads, and use `asyncio.to_thread()` (Python 3.9+) as a lightweight alternative to `ThreadPoolExecutor` for simple I/O offloading.
+```python
+import asyncio
+import os
+from concurrent.futures import ProcessPoolExecutor
 
-## Summary
+import pytest
 
-Optimizing async geometry parsing with asyncio hinges on strict separation of concerns: keep the event loop lightweight, queue raw payloads immediately, and delegate topology validation to isolated worker processes. By combining `asyncio.Queue`, `ProcessPoolExecutor`, and explicit timeout boundaries, you achieve webhook-scale concurrency without sacrificing spatial accuracy or risking event loop starvation.
+from async_geometry import validate_geometry  # the module above
+
+
+def test_worker_reprojects_to_wgs84():
+    payload = {
+        "id": "t1",
+        "source_epsg": 3857,
+        "geometry": {
+            "type": "Point",
+            "coordinates": [-13627361.0, 4544760.0],  # Web Mercator
+        },
+    }
+    out = validate_geometry(payload)
+    assert out["valid"] is True
+    assert out["crs"] == "EPSG:4326"
+    lon, lat = out["geometry"]["coordinates"]
+    assert -123.0 < lon < -122.0 and 37.0 < lat < 38.0  # San Francisco area
+
+
+@pytest.mark.asyncio
+async def test_offload_does_not_block_loop():
+    loop = asyncio.get_running_loop()
+    payload = {"id": "t2", "geometry": {"type": "Point", "coordinates": [0, 0]}}
+    with ProcessPoolExecutor(max_workers=os.cpu_count() or 2) as ex:
+        result = await asyncio.wait_for(
+            loop.run_in_executor(ex, validate_geometry, payload),
+            timeout=5.0,
+        )
+    assert result["valid"] is True
+    assert result["bbox"] == [0.0, 0.0, 0.0, 0.0]
+```
+
+A passing run confirms the geometry is parsed and reprojected inside a child process and the future resolves before the timeout — exactly the non-blocking behaviour the pattern guarantees.
+
+## Related
+
+- [Async Processing for Heavy Geometries](/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/) — the full four-layer ingestion-to-persistence pipeline this offloading pattern plugs into
+- [Handling Mixed CRS Payloads in Python Webhooks](/spatial-payload-routing-parsing/crs-normalization-strategies/handling-mixed-crs-payloads-in-python-event-handlers/) — resolving and normalizing source CRS before geometry work
+- [Spatial Payload Routing & Parsing](/spatial-payload-routing-parsing/) — how spatial payloads are ingested, validated, and routed to consumers

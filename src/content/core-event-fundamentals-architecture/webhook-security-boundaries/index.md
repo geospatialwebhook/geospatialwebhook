@@ -5,7 +5,7 @@ slug: "webhook-security-boundaries"
 type: "cluster"
 breadcrumb: "Core Event Fundamentals & Architecture → Webhook Security Boundaries"
 datePublished: "2024-11-01"
-dateModified: "2026-06-24"
+dateModified: "2026-06-25"
 ---
 
 <script type="application/ld+json">
@@ -17,7 +17,7 @@ dateModified: "2026-06-24"
       "headline": "Webhook Security Boundaries for Spatial Event Pipelines",
       "description": "Harden geospatial webhook ingress with HMAC-SHA256 signature verification, region-scoped rate limiting, context-bound token validation, and idempotent delivery — step-by-step Python implementation.",
       "datePublished": "2024-11-01",
-      "dateModified": "2026-06-24",
+      "dateModified": "2026-06-25",
       "author": {"@type": "Organization", "name": "geospatialwebhook.com"}
     },
     {
@@ -32,12 +32,12 @@ dateModified: "2026-06-24"
       "@type": "HowTo",
       "name": "Secure Spatial Webhook Ingress in Python",
       "step": [
-        {"@type": "HowToStep", "position": 1, "name": "Isolate ingress and enforce context validation"},
+        {"@type": "HowToStep", "position": 1, "name": "Isolate ingress and enforce spatial schema validation"},
         {"@type": "HowToStep", "position": 2, "name": "Verify HMAC-SHA256 payload signatures"},
-        {"@type": "HowToStep", "position": 3, "name": "Apply region-scoped rate limiting"},
+        {"@type": "HowToStep", "position": 3, "name": "Apply region-scoped rate limiting keyed to H3 or S2 partitions"},
         {"@type": "HowToStep", "position": 4, "name": "Validate context-bound tokens and enforce idempotency"},
-        {"@type": "HowToStep", "position": 5, "name": "Route asynchronously with delivery guarantees"},
-        {"@type": "HowToStep", "position": 6, "name": "Verify the pipeline end-to-end"}
+        {"@type": "HowToStep", "position": 5, "name": "Route asynchronously to the downstream broker with delivery guarantees"},
+        {"@type": "HowToStep", "position": 6, "name": "Verify the pipeline end-to-end with a pytest suite"}
       ]
     },
     {
@@ -61,7 +61,7 @@ dateModified: "2026-06-24"
         {
           "@type": "Question",
           "name": "How long should idempotency keys be cached?",
-          "acceptedAnswer": {"@type": "Answer", "text": "Cache idempotency keys for at least as long as your message broker's maximum redelivery window, typically 24–72 hours. Set Redis TTLs with SET NX EX so the key expires automatically. Spatial pipelines that fan out to tile caches or spatial indices are especially vulnerable to duplicate side-effects."}
+          "acceptedAnswer": {"@type": "Answer", "text": "Cache idempotency keys for at least as long as your message broker's maximum redelivery window, typically 24-72 hours. Set Redis TTLs with SET NX EX so the key expires automatically. Spatial pipelines that fan out to tile caches or spatial indices are especially vulnerable to duplicate side-effects."}
         }
       ]
     }
@@ -69,7 +69,7 @@ dateModified: "2026-06-24"
 }
 </script>
 
-**Spatial webhook ingress must be treated as a hardened security perimeter: verify every HMAC signature, enforce region-scoped rate limits, validate context-bound tokens, and reject duplicate deliveries before a single coordinate reaches your processing pipeline.**
+**Treat every spatial webhook endpoint as a hardened perimeter: verify each HMAC-SHA256 signature, enforce region-scoped rate limits, validate context-bound tokens, and reject duplicate deliveries before a single coordinate reaches your processing pipeline.**
 
 This page is part of [Core Event Fundamentals & Architecture](/core-event-fundamentals-architecture/), the architectural foundation for Python-based geospatial event pipelines.
 
@@ -88,86 +88,102 @@ This page is part of [Core Event Fundamentals & Architecture](/core-event-fundam
 
 ## Architecture: Four Security Layers
 
-The diagram below shows data moving from an upstream spatial mutation through four mandatory checkpoints before any coordinate enters your processing pipeline.
+Every spatial webhook request passes through four sequential checkpoints before any coordinate is forwarded to the downstream broker. Each layer can independently reject the request with its own HTTP error code — a payload that fails signature verification never reaches the rate limiter, and a rate-limited request never touches the idempotency store.
 
-<svg viewBox="0 0 720 400" role="img" aria-label="Four-layer webhook security boundary diagram" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;">
+<svg viewBox="0 0 820 460" role="img" aria-label="Four-layer webhook security boundary diagram" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:820px;height:auto;display:block;margin:1.5rem auto;">
   <title>Webhook Security Boundaries — Four-Layer Architecture</title>
-  <desc>A spatial mutation event passes through four sequential security layers: TLS + ingress isolation, HMAC signature verification, region-scoped rate limiting, and token validation + idempotency check, before being dispatched asynchronously to a message broker.</desc>
+  <desc>A spatial mutation event passes through four independent security layers — TLS ingress isolation, HMAC-SHA256 signature verification, region-scoped rate limiting, and context-bound token plus idempotency check — before being dispatched asynchronously to a message broker. Each layer has its own reject path with a distinct HTTP error code.</desc>
   <defs>
-    <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-      <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.6"/>
+    <marker id="arrowfwd" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.55"/>
+    </marker>
+    <marker id="arrowdown" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.35"/>
     </marker>
   </defs>
-
-  <!-- Background layers -->
-  <rect x="10" y="10" width="700" height="380" rx="12" fill="none" stroke="currentColor" stroke-opacity="0.12" stroke-width="1.5"/>
-
-  <!-- Upstream source -->
-  <rect x="30" y="165" width="110" height="70" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5" stroke-dasharray="5,3"/>
-  <text x="85" y="196" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.75" font-family="sans-serif">Spatial</text>
-  <text x="85" y="211" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.75" font-family="sans-serif">Mutation</text>
-  <text x="85" y="226" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.5" font-family="sans-serif">(SDK / IoT / GIS)</text>
-
-  <!-- Arrow 1 -->
-  <line x1="140" y1="200" x2="168" y2="200" stroke="currentColor" stroke-opacity="0.5" stroke-width="1.5" marker-end="url(#arrow)"/>
-
+  <!-- Outer border -->
+  <rect x="8" y="8" width="804" height="444" rx="12" fill="none" stroke="currentColor" stroke-opacity="0.1" stroke-width="1.5"/>
+  <!-- Title -->
+  <text x="410" y="38" text-anchor="middle" font-size="13" fill="currentColor" opacity="0.75" font-family="sans-serif" font-weight="bold">Spatial Webhook Security Boundary</text>
+  <text x="410" y="56" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.4" font-family="sans-serif">Each layer rejects independently — failed events never reach the next checkpoint</text>
+  <!-- Source box -->
+  <rect x="18" y="155" width="96" height="74" rx="7" fill="none" stroke="currentColor" stroke-opacity="0.3" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="66" y="183" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7" font-family="sans-serif">Spatial</text>
+  <text x="66" y="199" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7" font-family="sans-serif">Mutation</text>
+  <text x="66" y="215" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.45" font-family="sans-serif">SDK / IoT / GIS</text>
+  <!-- Arrow: source → L1 -->
+  <line x1="114" y1="192" x2="138" y2="192" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.5" marker-end="url(#arrowfwd)"/>
   <!-- Layer 1: TLS + Ingress -->
-  <rect x="170" y="130" width="120" height="140" rx="8" fill="currentColor" fill-opacity="0.06" stroke="currentColor" stroke-opacity="0.3" stroke-width="1.5"/>
-  <text x="230" y="158" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.55" font-family="sans-serif" font-weight="bold">LAYER 1</text>
-  <text x="230" y="176" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85" font-family="sans-serif">TLS 1.3</text>
-  <text x="230" y="194" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85" font-family="sans-serif">Ingress</text>
-  <text x="230" y="212" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85" font-family="sans-serif">Isolation</text>
-  <text x="230" y="234" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.5" font-family="sans-serif">/webhooks/v1/*</text>
-  <text x="230" y="252" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.5" font-family="sans-serif">JSON schema check</text>
-
-  <!-- Arrow 2 -->
-  <line x1="290" y1="200" x2="318" y2="200" stroke="currentColor" stroke-opacity="0.5" stroke-width="1.5" marker-end="url(#arrow)"/>
-
+  <rect x="140" y="118" width="126" height="148" rx="8" fill="currentColor" fill-opacity="0.05" stroke="currentColor" stroke-opacity="0.28" stroke-width="1.5"/>
+  <text x="203" y="143" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.5" font-family="sans-serif" font-weight="bold">LAYER 1</text>
+  <text x="203" y="162" text-anchor="middle" font-size="11.5" fill="currentColor" opacity="0.85" font-family="sans-serif" font-weight="600">TLS 1.3</text>
+  <text x="203" y="180" text-anchor="middle" font-size="11.5" fill="currentColor" opacity="0.85" font-family="sans-serif" font-weight="600">Ingress</text>
+  <text x="203" y="198" text-anchor="middle" font-size="11.5" fill="currentColor" opacity="0.85" font-family="sans-serif" font-weight="600">Isolation</text>
+  <text x="203" y="220" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.45" font-family="sans-serif">/webhooks/v1/*</text>
+  <text x="203" y="237" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.45" font-family="sans-serif">JSON schema check</text>
+  <text x="203" y="254" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.45" font-family="sans-serif">WGS84 bounds</text>
+  <!-- Arrow: L1 → L2 -->
+  <line x1="266" y1="192" x2="290" y2="192" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.5" marker-end="url(#arrowfwd)"/>
   <!-- Layer 2: HMAC -->
-  <rect x="320" y="130" width="120" height="140" rx="8" fill="currentColor" fill-opacity="0.06" stroke="currentColor" stroke-opacity="0.3" stroke-width="1.5"/>
-  <text x="380" y="158" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.55" font-family="sans-serif" font-weight="bold">LAYER 2</text>
-  <text x="380" y="176" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85" font-family="sans-serif">HMAC-SHA256</text>
-  <text x="380" y="194" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85" font-family="sans-serif">Signature</text>
-  <text x="380" y="212" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85" font-family="sans-serif">Verification</text>
-  <text x="380" y="234" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.5" font-family="sans-serif">raw-body digest</text>
-  <text x="380" y="252" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.5" font-family="sans-serif">timestamp window</text>
-
-  <!-- Arrow 3 -->
-  <line x1="440" y1="200" x2="468" y2="200" stroke="currentColor" stroke-opacity="0.5" stroke-width="1.5" marker-end="url(#arrow)"/>
-
+  <rect x="292" y="118" width="126" height="148" rx="8" fill="currentColor" fill-opacity="0.05" stroke="currentColor" stroke-opacity="0.28" stroke-width="1.5"/>
+  <text x="355" y="143" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.5" font-family="sans-serif" font-weight="bold">LAYER 2</text>
+  <text x="355" y="162" text-anchor="middle" font-size="11.5" fill="currentColor" opacity="0.85" font-family="sans-serif" font-weight="600">HMAC-SHA256</text>
+  <text x="355" y="180" text-anchor="middle" font-size="11.5" fill="currentColor" opacity="0.85" font-family="sans-serif" font-weight="600">Signature</text>
+  <text x="355" y="198" text-anchor="middle" font-size="11.5" fill="currentColor" opacity="0.85" font-family="sans-serif" font-weight="600">Verification</text>
+  <text x="355" y="220" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.45" font-family="sans-serif">raw-body digest</text>
+  <text x="355" y="237" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.45" font-family="sans-serif">±5 min timestamp</text>
+  <text x="355" y="254" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.45" font-family="sans-serif">replay prevention</text>
+  <!-- Arrow: L2 → L3 -->
+  <line x1="418" y1="192" x2="442" y2="192" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.5" marker-end="url(#arrowfwd)"/>
   <!-- Layer 3: Rate limit -->
-  <rect x="470" y="130" width="120" height="140" rx="8" fill="currentColor" fill-opacity="0.06" stroke="currentColor" stroke-opacity="0.3" stroke-width="1.5"/>
-  <text x="530" y="158" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.55" font-family="sans-serif" font-weight="bold">LAYER 3</text>
-  <text x="530" y="176" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85" font-family="sans-serif">Region-Scoped</text>
-  <text x="530" y="194" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85" font-family="sans-serif">Rate Limit</text>
-  <text x="530" y="212" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85" font-family="sans-serif">+ Token Auth</text>
-  <text x="530" y="234" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.5" font-family="sans-serif">H3 partition key</text>
-  <text x="530" y="252" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.5" font-family="sans-serif">idempotency check</text>
-
-  <!-- Arrow 4 -->
-  <line x1="590" y1="200" x2="618" y2="200" stroke="currentColor" stroke-opacity="0.5" stroke-width="1.5" marker-end="url(#arrow)"/>
-
-  <!-- Downstream -->
-  <rect x="620" y="165" width="80" height="70" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5" stroke-dasharray="5,3"/>
-  <text x="660" y="196" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.75" font-family="sans-serif">Message</text>
-  <text x="660" y="211" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.75" font-family="sans-serif">Broker</text>
-  <text x="660" y="226" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.5" font-family="sans-serif">202 Accepted</text>
-
-  <!-- Reject arrows going down -->
-  <line x1="230" y1="270" x2="230" y2="340" stroke="currentColor" stroke-opacity="0.35" stroke-width="1" stroke-dasharray="4,2" marker-end="url(#arrow)"/>
-  <line x1="380" y1="270" x2="380" y2="340" stroke="currentColor" stroke-opacity="0.35" stroke-width="1" stroke-dasharray="4,2" marker-end="url(#arrow)"/>
-  <line x1="530" y1="270" x2="530" y2="340" stroke="currentColor" stroke-opacity="0.35" stroke-width="1" stroke-dasharray="4,2" marker-end="url(#arrow)"/>
-
-  <text x="230" y="365" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.45" font-family="sans-serif">400 Bad Request</text>
-  <text x="380" y="365" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.45" font-family="sans-serif">401 Unauthorized</text>
-  <text x="530" y="365" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.45" font-family="sans-serif">429 / 409 Conflict</text>
-
-  <!-- Label at top -->
-  <text x="360" y="48" text-anchor="middle" font-size="13" fill="currentColor" opacity="0.7" font-family="sans-serif" font-weight="bold">Spatial Webhook Security Boundary</text>
-  <text x="360" y="68" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.45" font-family="sans-serif">Each layer rejects independently — failed events never reach the broker</text>
+  <rect x="444" y="118" width="126" height="148" rx="8" fill="currentColor" fill-opacity="0.05" stroke="currentColor" stroke-opacity="0.28" stroke-width="1.5"/>
+  <text x="507" y="143" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.5" font-family="sans-serif" font-weight="bold">LAYER 3</text>
+  <text x="507" y="162" text-anchor="middle" font-size="11.5" fill="currentColor" opacity="0.85" font-family="sans-serif" font-weight="600">Region-Scoped</text>
+  <text x="507" y="180" text-anchor="middle" font-size="11.5" fill="currentColor" opacity="0.85" font-family="sans-serif" font-weight="600">Rate Limiting</text>
+  <text x="507" y="198" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.45" font-family="sans-serif">H3 / S2 partition key</text>
+  <text x="507" y="215" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.45" font-family="sans-serif">sliding window</text>
+  <text x="507" y="232" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.45" font-family="sans-serif">Redis INCR + TTL</text>
+  <text x="507" y="249" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.45" font-family="sans-serif">Retry-After header</text>
+  <!-- Arrow: L3 → L4 -->
+  <line x1="570" y1="192" x2="594" y2="192" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.5" marker-end="url(#arrowfwd)"/>
+  <!-- Layer 4: Token + idempotency -->
+  <rect x="596" y="118" width="126" height="148" rx="8" fill="currentColor" fill-opacity="0.05" stroke="currentColor" stroke-opacity="0.28" stroke-width="1.5"/>
+  <text x="659" y="143" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.5" font-family="sans-serif" font-weight="bold">LAYER 4</text>
+  <text x="659" y="162" text-anchor="middle" font-size="11.5" fill="currentColor" opacity="0.85" font-family="sans-serif" font-weight="600">Token Auth</text>
+  <text x="659" y="180" text-anchor="middle" font-size="11.5" fill="currentColor" opacity="0.85" font-family="sans-serif" font-weight="600">+ Idempotency</text>
+  <text x="659" y="200" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.45" font-family="sans-serif">region-scoped JWT</text>
+  <text x="659" y="217" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.45" font-family="sans-serif">SET NX EX key</text>
+  <text x="659" y="234" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.45" font-family="sans-serif">24 h TTL</text>
+  <text x="659" y="251" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.45" font-family="sans-serif">409 on duplicate</text>
+  <!-- Arrow: L4 → broker -->
+  <line x1="722" y1="192" x2="742" y2="192" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.5" marker-end="url(#arrowfwd)"/>
+  <!-- Broker box at right edge, inside the viewBox -->
+  <rect x="746" y="158" width="58" height="68" rx="7" fill="none" stroke="currentColor" stroke-opacity="0.3" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="775" y="186" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.7" font-family="sans-serif">Broker</text>
+  <text x="775" y="202" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.45" font-family="sans-serif">topic</text>
+  <text x="775" y="218" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.4" font-family="sans-serif">202</text>
+  <!-- Reject paths (dashed lines going down from each layer) -->
+  <!-- L1 reject -->
+  <line x1="203" y1="266" x2="203" y2="336" stroke="currentColor" stroke-opacity="0.3" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrowdown)"/>
+  <text x="203" y="354" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.4" font-family="sans-serif">400 Bad Request</text>
+  <text x="203" y="368" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.3" font-family="sans-serif">schema / bounds</text>
+  <!-- L2 reject -->
+  <line x1="355" y1="266" x2="355" y2="336" stroke="currentColor" stroke-opacity="0.3" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrowdown)"/>
+  <text x="355" y="354" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.4" font-family="sans-serif">401 Unauthorized</text>
+  <text x="355" y="368" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.3" font-family="sans-serif">bad / stale sig</text>
+  <!-- L3 reject -->
+  <line x1="507" y1="266" x2="507" y2="336" stroke="currentColor" stroke-opacity="0.3" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrowdown)"/>
+  <text x="507" y="354" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.4" font-family="sans-serif">429 Too Many Requests</text>
+  <text x="507" y="368" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.3" font-family="sans-serif">region burst exceeded</text>
+  <!-- L4 reject -->
+  <line x1="659" y1="266" x2="659" y2="336" stroke="currentColor" stroke-opacity="0.3" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrowdown)"/>
+  <text x="659" y="354" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.4" font-family="sans-serif">401 / 409 Conflict</text>
+  <text x="659" y="368" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.3" font-family="sans-serif">bad token / duplicate</text>
+  <!-- Bottom note -->
+  <text x="410" y="418" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.35" font-family="sans-serif">Dashed arrows = rejection paths. Events only reach the broker after passing all four layers.</text>
 </svg>
 
-**Layer 1** handles network-level concerns: TLS termination, dedicated path isolation, and payload schema validation. **Layer 2** performs cryptographic proof that the payload is authentic and recent. **Layer 3** protects downstream capacity with geographic partitioning. Events that survive all three layers are dispatched to the broker with a `202 Accepted` response.
+**Layer 1** handles network-level concerns: TLS termination, dedicated path isolation, spatial schema validation, and WGS84 (EPSG:4326) bounds enforcement. **Layer 2** provides cryptographic proof that the payload is authentic and recent. **Layer 3** protects downstream capacity using geographic partition keys rather than raw IP addresses. **Layer 4** ensures authentication tokens are scoped to a specific region and event type, and that each event is processed exactly once.
 
 ---
 
@@ -177,7 +193,7 @@ The diagram below shows data moving from an upstream spatial mutation through fo
 
 Webhook endpoints must never share routing tables with public REST or GraphQL APIs. Assign dedicated, versioned paths per event domain: `/webhooks/v1/features`, `/webhooks/v1/tiles`, `/webhooks/v1/sensors`. This enables targeted WAF rules, independent rate limits, and isolated logging.
 
-Validate incoming payloads against strict Pydantic schemas before any business logic executes. When receiving [feature change triggers](/core-event-fundamentals-architecture/feature-change-triggers/), enforce bounding box constraints and reject payloads with self-intersecting polygons or unsupported coordinate reference systems. Normalize all coordinates to WGS84 (EPSG:4326) at the edge, following the coordinate ordering rules in [RFC 7946](https://datatracker.ietf.org/doc/html/rfc7946).
+Validate incoming payloads against strict Pydantic schemas before any business logic executes. When receiving [feature change triggers](/core-event-fundamentals-architecture/feature-change-triggers/), enforce bounding box constraints and reject payloads with self-intersecting polygons or unsupported coordinate reference systems. Normalize all coordinates to WGS84 (EPSG:4326) at the edge, following the coordinate ordering rules in [RFC 7946](https://datatracker.ietf.org/doc/html/rfc7946). For deeper geometry topology checks before dispatch, see the [geometry validation pipelines](/spatial-payload-routing-parsing/geometry-validation-pipelines/) cluster.
 
 ```python
 from fastapi import FastAPI, Request, HTTPException
@@ -280,7 +296,7 @@ Key rotation is handled by validating against two secrets in parallel during the
 
 Generic IP-based rate limiting fails in spatial architectures. A single IoT gateway legitimately emits thousands of events per minute from a dense urban corridor while remaining idle in rural zones. Key your Redis sliding-window counters to a verified spatial partition identifier — such as an H3 hexagon index or S2 cell token — rather than the client IP.
 
-For spatially aware delivery patterns, the [sensor data routing patterns](/core-event-fundamentals-architecture/sensor-data-routing-patterns/) page covers how to assign region identifiers from IoT sources before they reach your webhook endpoint.
+For spatially aware delivery patterns, the [sensor data routing patterns](/core-event-fundamentals-architecture/sensor-data-routing-patterns/) page covers how to assign region identifiers to IoT sources before they reach your webhook endpoint.
 
 ```python
 import redis
@@ -322,9 +338,9 @@ The `Retry-After` header tells upstream clients exactly how many seconds remain 
 
 ### Step 4 — Validate Context-Bound Tokens and Enforce Idempotency
 
-Authentication tokens for spatial webhooks must be scoped to specific event types, geographic partitions, and expiration windows. Long-lived API keys in webhook configurations are a significant security liability: rotate to short-lived, context-bound tokens that embed region claims and permitted event schemas. The full signing pattern is detailed in [securing webhook endpoints with spatial token validation](/core-event-fundamentals-architecture/webhook-security-boundaries/securing-webhook-endpoints-with-spatial-token-validation/).
+Authentication tokens for spatial webhooks must be scoped to specific event types, geographic partitions, and expiration windows. Long-lived API keys in webhook configurations are a significant security liability: rotate to short-lived, context-bound tokens that embed region claims and permitted event schemas. The full signing and validation pattern is detailed in [securing webhook endpoints with spatial token validation](/core-event-fundamentals-architecture/webhook-security-boundaries/securing-webhook-endpoints-with-spatial-token-validation/).
 
-Pair token validation with strict idempotency enforcement. Spatial systems frequently experience duplicate deliveries due to network retries, load balancer failovers, or broker redelivery after a consumer crash. Generate a deterministic idempotency key from the event ID and verified spatial partition, then cache it in Redis. For the canonical approach to building these keys, follow [event key generation for spatial data](/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/).
+Pair token validation with strict idempotency enforcement. Spatial systems frequently experience duplicate deliveries due to network retries, load balancer failovers, or broker redelivery after a consumer crash. Generate a deterministic idempotency key from the event ID and verified spatial partition, then cache it in Redis. This falls under the broader [idempotency and spatial deduplication](/idempotency-spatial-deduplication/) discipline; for the canonical approach to building these keys, follow [event key generation for spatial data](/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/).
 
 ```python
 import hashlib
@@ -359,7 +375,7 @@ The `SET NX EX` operation is atomic: it sets the key only if it does not already
 
 Once a webhook passes all four security layers, dispatch it asynchronously to your message broker. Synchronous processing at the webhook layer introduces latency, blocks connection pools, and increases timeout risk during traffic surges.
 
-For tile regeneration events, route payloads to your [tile update event pipelines](/core-event-fundamentals-architecture/tile-update-event-pipelines/) using partitioned topics keyed by spatial region. For feature mutation events that require CRS re-projection before downstream consumers can act on them, apply [CRS normalization strategies](/spatial-payload-routing-parsing/crs-normalization-strategies/) as part of the async task, not inside the webhook handler.
+For tile regeneration events, route payloads to your [tile update event pipelines](/core-event-fundamentals-architecture/tile-update-event-pipelines/) using partitioned topics keyed by spatial region. For feature mutation events that require CRS re-projection before downstream consumers can act on them, apply [CRS normalization strategies](/spatial-payload-routing-parsing/crs-normalization-strategies/) as part of the async task, not inside the webhook handler. Heavy geometry payloads should be offloaded using the patterns from [async processing for heavy geometries](/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/).
 
 ```python
 import asyncio
@@ -406,7 +422,7 @@ async def receive_feature_event(
 
 ## Spatial Validation and Error Handling
 
-Beyond schema validation, spatial webhook handlers must handle geometry edge cases that generic validators miss:
+Beyond schema validation, spatial webhook handlers must handle geometry edge cases that generic validators miss.
 
 **Coordinate reference system drift.** Upstream SDKs or IoT gateways may silently emit coordinates in EPSG:3857 (Web Mercator) without advertising this. X/Y values above 20,000,000 in absolute terms are a strong signal of EPSG:3857 data masquerading as EPSG:4326. Reject or re-project using `pyproj`:
 
@@ -420,6 +436,8 @@ def reproject_if_needed(coords: list[float], source_epsg: int) -> list[float]:
     lon, lat = transformer.transform(coords[0], coords[1])
     return [lon, lat]
 ```
+
+Mixed CRS streams require per-payload detection and normalization before routing; the [handling mixed CRS payloads](/spatial-payload-routing-parsing/crs-normalization-strategies/handling-mixed-crs-payloads-in-python-event-handlers/) guide covers the detection heuristics in detail.
 
 **Self-intersecting polygons.** A polygon with crossing rings passes JSON schema validation but will corrupt spatial index operations. Call `shapely.validation.make_valid()` and log the original geometry before discarding the malformed version so you can investigate upstream SDK bugs.
 
@@ -548,7 +566,7 @@ Run with `pytest -v test_webhook_security.py`. All four assertions must pass bef
 | Symptom | Likely spatial cause | Fix |
 |---------|---------------------|-----|
 | Signature mismatch on every request | Reverse proxy normalizes body encoding or strips trailing newline | Read raw body before any middleware; set `proxy_request_buffering off` in NGINX |
-| CRS drift — coordinates appear in the ocean | Upstream SDK sends EPSG:3857 without metadata | Detect values outside WGS84 bounds and re-project with `pyproj`; reject payloads missing `crs` or `srid` fields |
+| CRS drift — coordinates appear in the ocean | Upstream SDK sends EPSG:3857 without metadata | Detect values outside WGS84 (EPSG:4326) bounds and re-project with `pyproj`; reject payloads missing `crs` or `srid` fields |
 | Token leakage — webhook URL appears in browser console | Context-bound token embedded in client-side mapping SDK config | Use server-side token vending; issue short-lived tokens scoped to a single region and event type |
 | Rate limit bypass from a single dense-area sensor | H3/S2 region ID absent or spoofed in header | Validate region ID against known SDK partition ranges; derive it server-side from the payload geometry when the header is untrusted |
 | Duplicate geometry processing after broker restart | Idempotency key TTL shorter than broker redelivery window | Extend Redis TTL to match broker max redelivery window (at least 72 hours for Kafka with default retention) |
@@ -592,8 +610,8 @@ Cache idempotency keys for at least as long as your message broker's maximum red
 
 ## Related
 
-- [Core Event Fundamentals & Architecture](/core-event-fundamentals-architecture/) — parent architectural domain covering spatial event design
-- [Securing webhook endpoints with spatial token validation](/core-event-fundamentals-architecture/webhook-security-boundaries/securing-webhook-endpoints-with-spatial-token-validation/) — context-bound token issuance and validation patterns
+- [Core Event Fundamentals & Architecture](/core-event-fundamentals-architecture/) — parent domain covering spatial event design patterns
+- [Securing webhook endpoints with spatial token validation](/core-event-fundamentals-architecture/webhook-security-boundaries/securing-webhook-endpoints-with-spatial-token-validation/) — context-bound token issuance and region-claim validation
 - [Event key generation for spatial data](/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/) — deterministic idempotency key construction from GeoJSON events
-- [Cache-backed idempotency checks](/idempotency-spatial-deduplication/cache-backed-idempotency-checks/) — Redis persistence and TTL strategies for deduplication
-- [Sensor data routing patterns](/core-event-fundamentals-architecture/sensor-data-routing-patterns/) — assigning geographic partition identifiers to IoT telemetry
+- [Cache-backed idempotency checks](/idempotency-spatial-deduplication/cache-backed-idempotency-checks/) — Redis persistence and TTL strategies for spatial deduplication
+- [Sensor data routing patterns](/core-event-fundamentals-architecture/sensor-data-routing-patterns/) — assigning geographic partition identifiers to IoT telemetry streams

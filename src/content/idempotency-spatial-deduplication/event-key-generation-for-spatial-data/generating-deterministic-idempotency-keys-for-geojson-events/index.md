@@ -11,7 +11,7 @@ breadcrumb:
   - label: "Generating Deterministic Idempotency Keys for GeoJSON Events"
     url: "/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/"
 datePublished: "2025-04-12"
-dateModified: "2026-06-24"
+dateModified: "2026-06-25"
 ---
 
 <script type="application/ld+json">
@@ -22,8 +22,9 @@ dateModified: "2026-06-24"
       "@type": "Article",
       "headline": "Generating Deterministic Idempotency Keys for GeoJSON Events",
       "description": "Learn how to canonicalize GeoJSON payloads and hash them into deterministic idempotency keys that survive webhook retries, serializer drift, and float precision variance.",
+      "url": "https://geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/",
       "datePublished": "2025-04-12",
-      "dateModified": "2026-06-24",
+      "dateModified": "2026-06-25",
       "author": { "@type": "Organization", "name": "geospatialwebhook.com" }
     },
     {
@@ -38,10 +39,10 @@ dateModified: "2026-06-24"
       "@type": "HowTo",
       "name": "Generate Deterministic Idempotency Keys for GeoJSON Events",
       "step": [
-        { "@type": "HowToStep", "position": 1, "name": "Normalize float precision", "text": "Recursively round all coordinate floats to a fixed decimal places (6–8 for WGS84/EPSG:4326) to neutralize IEEE-754 serialization drift." },
-        { "@type": "HowToStep", "position": 2, "name": "Sort keys alphabetically", "text": "Enforce strict alphabetical ordering of all dictionary keys at every nesting level to eliminate insertion-order variance." },
-        { "@type": "HowToStep", "position": 3, "name": "Compact serialize", "text": "Dump to JSON with minimal separators and no whitespace to guarantee byte-for-byte consistency before hashing." },
-        { "@type": "HowToStep", "position": 4, "name": "Hash with SHA-256 or BLAKE2b", "text": "Feed the canonical UTF-8 string into a collision-resistant hash function to produce the final idempotency key." }
+        { "@type": "HowToStep", "position": 1, "name": "Strip delivery envelope fields", "text": "Remove top-level fields that vary per delivery attempt (webhook_id, delivery_id, received_at, signatures) so they cannot shift the digest between retries." },
+        { "@type": "HowToStep", "position": 2, "name": "Normalize float precision", "text": "Recursively round all coordinate floats to a fixed number of decimal places (6–8 for WGS84/EPSG:4326) to neutralize IEEE-754 serialization drift across languages and serializers." },
+        { "@type": "HowToStep", "position": 3, "name": "Sort keys and compact-serialize", "text": "Enforce strict alphabetical ordering of all dictionary keys at every nesting level, then dump to JSON with minimal separators and no whitespace to guarantee byte-for-byte consistency before hashing." },
+        { "@type": "HowToStep", "position": 4, "name": "Hash with SHA-256 or BLAKE2b", "text": "Feed the canonical UTF-8 string into a collision-resistant hash function to produce the final idempotency key. Optionally truncate to 16 bytes (32 hex chars) for compact storage." }
       ]
     },
     {
@@ -61,6 +62,11 @@ dateModified: "2026-06-24"
           "@type": "Question",
           "name": "Is SHA-256 or BLAKE2b better for webhook idempotency keys?",
           "acceptedAnswer": { "@type": "Answer", "text": "Both are collision-resistant for this use case. BLAKE2b is 2–4× faster on modern CPUs and is available in Python's standard library (hashlib.blake2b). SHA-256 is more universally recognised and works in all compliance contexts. Pick SHA-256 when auditability matters; BLAKE2b for high-throughput sub-millisecond paths." }
+        },
+        {
+          "@type": "Question",
+          "name": "What happens if the same geographic boundary triggers multiple distinct events?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Include an event_type field (e.g. 'zone_entry', 'threshold_breach') in the canonical form before hashing. This ensures semantically different events at the same geometry produce different keys and are not collapsed as duplicates." }
         }
       ]
     }
@@ -68,9 +74,9 @@ dateModified: "2026-06-24"
 }
 </script>
 
-**To generate a deterministic idempotency key for a GeoJSON event: canonicalize the payload by recursively normalizing coordinate float precision, enforcing alphabetical key ordering, stripping whitespace, then hashing the resulting UTF-8 string with SHA-256 or BLAKE2b.** This produces an identical digest for every structurally equivalent payload regardless of serializer, retry count, or minor formatting drift.
+**To generate a deterministic idempotency key for a GeoJSON event: strip delivery-envelope fields, recursively normalize coordinate float precision, sort all dictionary keys alphabetically, compact-serialize the result, then hash the canonical UTF-8 string with SHA-256 or BLAKE2b.** This produces an identical digest for every structurally equivalent payload regardless of serializer, retry count, or minor formatting drift.
 
-This page is part of [Event Key Generation for Spatial Data](/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/), which lives under the [Idempotency & Spatial Deduplication](/idempotency-spatial-deduplication/) section.
+This page is part of [Event Key Generation for Spatial Data](/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/), which sits within the [Idempotency & Spatial Deduplication](/idempotency-spatial-deduplication/) architecture — the reference section for building duplicate-safe spatial webhook pipelines.
 
 ---
 
@@ -88,61 +94,64 @@ It is not the right tool when the webhook provider already guarantees a stable, 
 
 ## Why naive hashing breaks on spatial payloads
 
-The [JSON specification (RFC 8259)](https://www.rfc-editor.org/info/rfc8259/) defines object key ordering as insignificant, yet serializers preserve insertion order. A webhook provider retrying a failed delivery might send `{"type":"Feature","geometry":{...}}` the first time and `{"geometry":{...},"type":"Feature"}` on the second attempt. Hashing both raw strings yields different digests, triggering double processing, state overwrites, or corrupted spatial indexes.
+The JSON specification (RFC 8259) defines object key ordering as insignificant, yet serializers preserve insertion order. A webhook provider retrying a failed delivery might send `{"type":"Feature","geometry":{...}}` the first time and `{"geometry":{...},"type":"Feature"}` on the second attempt. Hashing both raw strings yields different digests, triggering double processing, state overwrites, or corrupted spatial indexes.
 
 GeoJSON compounds this further. Coordinates are deeply nested float arrays, and different languages round IEEE-754 values differently during JSON serialization. The coordinate `-122.4194155` may arrive as `-122.41941550000001` from a Java client even though the values represent the same geographic point. Without rounding to a shared precision, your event bus treats two deliveries of the same sensor ping as distinct messages.
 
-Robust [idempotency & spatial deduplication](/idempotency-spatial-deduplication/) requires treating the payload as a mathematical object rather than a raw byte stream. The three-step canonicalization pipeline below eliminates all three sources of variance.
+Robust [idempotency and spatial deduplication](/idempotency-spatial-deduplication/) requires treating the payload as a mathematical object rather than a raw byte stream. The four-step canonicalization pipeline below eliminates all sources of variance.
 
 ---
 
 ## Canonicalization pipeline — data flow
 
-The diagram below shows how a raw webhook body moves through the three transformation stages before reaching the hash function.
+The diagram below shows how a raw webhook body moves through each transformation stage before reaching the hash function.
 
-<svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="GeoJSON idempotency key generation pipeline" style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;">
+<svg viewBox="0 0 760 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="GeoJSON idempotency key generation pipeline" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
   <title>GeoJSON idempotency key generation pipeline</title>
-  <desc>A four-stage data-flow diagram: raw GeoJSON payload enters a float normaliser, then an alphabetical key sorter, then compact JSON serialisation, and finally a SHA-256 or BLAKE2b hash function that outputs the hex idempotency key.</desc>
+  <desc>A five-stage data-flow diagram: raw GeoJSON payload passes through an envelope stripper, then a float normaliser, then an alphabetical key sorter with compact serialisation, and finally a SHA-256 or BLAKE2b hash function that outputs the hex idempotency key.</desc>
   <defs>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
-      <path d="M0,0 L0,7 L8,3.5 Z" fill="currentColor" opacity="0.6"/>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L8,3.5 Z" fill="currentColor" opacity="0.55"/>
     </marker>
   </defs>
-  <!-- Stage boxes -->
-  <rect x="10" y="70" width="130" height="80" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.25" stroke-width="1.5"/>
-  <text x="75" y="102" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Raw GeoJSON</text>
-  <text x="75" y="118" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">webhook body</text>
-  <text x="75" y="133" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">(dict or string)</text>
-
-  <line x1="140" y1="110" x2="168" y2="110" stroke="currentColor" stroke-opacity="0.5" stroke-width="1.5" marker-end="url(#arrow)"/>
-
-  <rect x="170" y="70" width="130" height="80" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5"/>
-  <text x="235" y="97" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">1. Float</text>
-  <text x="235" y="112" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Normalisation</text>
-  <text x="235" y="131" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">round(coord, 8)</text>
-  <text x="235" y="144" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">recursive</text>
-
-  <line x1="300" y1="110" x2="328" y2="110" stroke="currentColor" stroke-opacity="0.5" stroke-width="1.5" marker-end="url(#arrow)"/>
-
-  <rect x="330" y="70" width="130" height="80" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5"/>
-  <text x="395" y="97" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">2. Key Sort</text>
-  <text x="395" y="112" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">+ Compact</text>
-  <text x="395" y="131" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">sort_keys=True</text>
-  <text x="395" y="144" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">separators=(",",":")</text>
-
-  <line x1="460" y1="110" x2="488" y2="110" stroke="currentColor" stroke-opacity="0.5" stroke-width="1.5" marker-end="url(#arrow)"/>
-
-  <rect x="490" y="70" width="130" height="80" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5"/>
-  <text x="555" y="97" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">3. Hash</text>
-  <text x="555" y="112" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">(SHA-256/BLAKE2b)</text>
-  <text x="555" y="131" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">hex digest →</text>
-  <text x="555" y="144" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">idempotency key</text>
-
-  <!-- Stage labels at bottom -->
-  <text x="75" y="175" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.5">INPUT</text>
-  <text x="235" y="175" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.5">STAGE 1</text>
-  <text x="395" y="175" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.5">STAGE 2</text>
-  <text x="555" y="175" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.5">STAGE 3 → OUTPUT</text>
+  <!-- Box 1: Raw GeoJSON -->
+  <rect x="8" y="80" width="118" height="80" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.25" stroke-width="1.5"/>
+  <text x="67" y="108" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Raw GeoJSON</text>
+  <text x="67" y="124" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">webhook body</text>
+  <text x="67" y="139" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">(dict or string)</text>
+  <text x="67" y="182" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.45">INPUT</text>
+  <line x1="126" y1="120" x2="148" y2="120" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Box 2: Strip Envelope -->
+  <rect x="150" y="80" width="128" height="80" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5"/>
+  <text x="214" y="105" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">1. Strip</text>
+  <text x="214" y="120" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Envelope</text>
+  <text x="214" y="138" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">delivery_id</text>
+  <text x="214" y="152" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">received_at …</text>
+  <text x="214" y="182" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.45">STAGE 1</text>
+  <line x1="278" y1="120" x2="300" y2="120" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Box 3: Float Normalise -->
+  <rect x="302" y="80" width="128" height="80" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5"/>
+  <text x="366" y="105" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">2. Float</text>
+  <text x="366" y="120" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Normalise</text>
+  <text x="366" y="138" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">round(coord, 8)</text>
+  <text x="366" y="152" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">recursive</text>
+  <text x="366" y="182" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.45">STAGE 2</text>
+  <line x1="430" y1="120" x2="452" y2="120" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Box 4: Key Sort + Compact -->
+  <rect x="454" y="80" width="140" height="80" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5"/>
+  <text x="524" y="105" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">3. Sort Keys</text>
+  <text x="524" y="120" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">+ Compact</text>
+  <text x="524" y="138" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">sort_keys=True</text>
+  <text x="524" y="152" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">separators=(",",":")</text>
+  <text x="524" y="182" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.45">STAGE 3</text>
+  <line x1="594" y1="120" x2="616" y2="120" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Box 5: Hash -->
+  <rect x="618" y="80" width="134" height="80" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5"/>
+  <text x="685" y="105" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">4. Hash</text>
+  <text x="685" y="120" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">SHA-256 / BLAKE2b</text>
+  <text x="685" y="138" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">hex digest →</text>
+  <text x="685" y="152" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">idempotency key</text>
+  <text x="685" y="182" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.45">OUTPUT</text>
 </svg>
 
 ---
@@ -295,7 +304,7 @@ print(key1)          # e.g. '3f8a92b1c4e7d05a' (32 hex chars)
 
 1. **Precision below 6 collapses distinct points.** Rounding to 5 decimal places creates a grid cell ~1.1 m wide. Two sensor readings from opposite sides of a road merge to the same canonical form and produce the same key even though they represent different physical events. Use at least 6 decimal places for EPSG:4326 (WGS84) data.
 
-2. **Mixed CRS payloads break cross-source deduplication.** A feature in EPSG:3857 (Web Mercator) and the same feature in EPSG:4326 will produce different coordinate arrays and therefore different keys, even after float normalization. Normalize all payloads to a single CRS — ideally EPSG:4326 as required by RFC 7946 — before canonicalization. See [handling mixed CRS payloads in Python event handlers](/spatial-payload-routing-parsing/crs-normalization-strategies/handling-mixed-crs-payloads-in-python-event-handlers/) for a reprojection approach.
+2. **Mixed CRS payloads break cross-source deduplication.** A feature in EPSG:3857 (Web Mercator) and the same feature in EPSG:4326 will produce different coordinate arrays and therefore different keys, even after float normalization. Normalize all payloads to a single CRS — ideally EPSG:4326 as required by RFC 7946 — before canonicalization. The approach in [handling mixed CRS payloads in Python event handlers](/spatial-payload-routing-parsing/crs-normalization-strategies/handling-mixed-crs-payloads-in-python-event-handlers/) covers reprojection before this step.
 
 3. **Coordinate ring orientation differences (Polygon winding order).** RFC 7946 mandates counter-clockwise exterior rings, but not all producers comply. A clockwise and a counter-clockwise representation of the same polygon produce identical geometry but different coordinate arrays, yielding different digests. Either validate and normalize ring orientation before hashing, or document that your key covers the serialized form, not the geometric shape.
 
@@ -311,7 +320,7 @@ print(key1)          # e.g. '3f8a92b1c4e7d05a' (32 hex chars)
 
 ## Verification snippet
 
-Paste this into a test file and run with `pytest` or `python -m pytest`:
+Paste this into a test file and run with `pytest`:
 
 ```python
 import pytest
@@ -374,11 +383,23 @@ def test_accepts_json_string():
 
 def test_precision_boundary():
     """Points that differ only beyond the precision threshold collapse to the same key."""
-    near_a = {"type": "Feature", "properties": {}, "geometry": {"type": "Point", "coordinates": [-73.9653550001, 40.7828650001]}}
-    near_b = {"type": "Feature", "properties": {}, "geometry": {"type": "Point", "coordinates": [-73.9653550002, 40.7828650002]}}
+    near_a = {
+        "type": "Feature", "properties": {},
+        "geometry": {"type": "Point", "coordinates": [-73.9653550001, 40.7828650001]},
+    }
+    near_b = {
+        "type": "Feature", "properties": {},
+        "geometry": {"type": "Point", "coordinates": [-73.9653550002, 40.7828650002]},
+    }
     # At precision=8 these differ; at precision=6 they collapse.
-    assert generate_geojson_idempotency_key(near_a, precision=6) == generate_geojson_idempotency_key(near_b, precision=6)
-    assert generate_geojson_idempotency_key(near_a, precision=8) != generate_geojson_idempotency_key(near_b, precision=8)
+    assert (
+        generate_geojson_idempotency_key(near_a, precision=6)
+        == generate_geojson_idempotency_key(near_b, precision=6)
+    )
+    assert (
+        generate_geojson_idempotency_key(near_a, precision=8)
+        != generate_geojson_idempotency_key(near_b, precision=8)
+    )
 ```
 
 ---
@@ -387,13 +408,33 @@ def test_precision_boundary():
 
 Once you have a key, store it in a low-latency idempotency store before processing the event. [Using Redis to cache spatial webhook signatures](/idempotency-spatial-deduplication/cache-backed-idempotency-checks/using-redis-to-cache-spatial-webhook-signatures/) walks through the `SET NX PX` atomic check-and-set pattern that prevents race conditions under concurrent delivery. Set the TTL to match your webhook provider's retry window — typically 24–72 hours — and log the key alongside the canonical string length and algorithm version to simplify debugging during payload format migrations.
 
-For payloads where the same geographic boundary may legitimately trigger multiple distinct events (zone entry, sensor threshold breach, status change), add a `event_type` field to the canonical form before hashing so semantically different events at the same geometry produce different keys.
+For payloads where the same geographic boundary may legitimately trigger multiple distinct events (zone entry, sensor threshold breach, status change), add an `event_type` field to the canonical form before hashing so semantically different events at the same geometry produce different keys.
+
+---
+
+## Frequently asked questions
+
+### Why can't I just hash the raw JSON string from the webhook body?
+
+Raw JSON strings carry insertion-order variance, float representation drift, and whitespace differences across serializers. Two payloads that are semantically identical will produce different digests if key order or decimal precision differs, causing false duplicate misses and double-processing.
+
+### How many decimal places should I use for WGS84 coordinates?
+
+RFC 7946 recommends 6 decimal places (~0.11 m resolution). Use 7–8 if you need centimetre-level fidelity. Go beyond 8 only when your source data genuinely carries that precision — extra digits amplify float serialization noise without adding geographic accuracy.
+
+### Is SHA-256 or BLAKE2b better for webhook idempotency keys?
+
+Both are collision-resistant for this use case. BLAKE2b is 2–4× faster on modern CPUs and is available in Python's standard library via `hashlib.blake2b`. SHA-256 is more universally recognised and works in all compliance contexts. Pick SHA-256 when auditability matters; BLAKE2b for high-throughput sub-millisecond paths.
+
+### What if the same geographic boundary triggers multiple distinct events?
+
+Include an `event_type` field (e.g. `"zone_entry"`, `"threshold_breach"`) in the canonical form before hashing. This ensures semantically different events at the same geometry produce different keys and are not collapsed as duplicates by your idempotency store.
 
 ---
 
 ## Related
 
 - [Event Key Generation for Spatial Data](/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/) — parent: key design strategies across geometry types and event schemas
-- [Idempotency & Spatial Deduplication](/idempotency-spatial-deduplication/) — grandparent: the full deduplication architecture for spatial webhook pipelines
+- [Idempotency & Spatial Deduplication](/idempotency-spatial-deduplication/) — the full deduplication architecture for spatial webhook pipelines
 - [Using Redis to Cache Spatial Webhook Signatures](/idempotency-spatial-deduplication/cache-backed-idempotency-checks/using-redis-to-cache-spatial-webhook-signatures/) — storing and atomically checking the keys this page generates
 - [Handling Mixed CRS Payloads in Python Event Handlers](/spatial-payload-routing-parsing/crs-normalization-strategies/handling-mixed-crs-payloads-in-python-event-handlers/) — normalizing EPSG codes before canonicalization

@@ -49,8 +49,8 @@
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ef3d820"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=9f5ca540"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -283,12 +283,12 @@
   <text x="674" y="140" text-anchor="middle" font-size="10" fill="currentColor" font-family="inherit" opacity="0.8">Processing</text>
   <text x="674" y="154" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.6">Joins · tiles · DB writes</text>
   <!-- Stage labels -->
-<p><text x="65" y="92" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.5">① INGEST</text>
-<text x="210" y="92" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.5">② NORMALISE</text>
-<text x="360" y="92" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.5">③ HASH</text>
-<text x="510" y="92" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.5">④ DEDUPLICATE</text>
-<text x="674" y="92" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.5">⑤ PROCESS</text>
-</svg></p>
+  <text x="65" y="92" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.5">① INGEST</text>
+  <text x="210" y="92" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.5">② NORMALISE</text>
+  <text x="360" y="92" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.5">③ HASH</text>
+  <text x="510" y="92" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.5">④ DEDUPLICATE</text>
+  <text x="674" y="92" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.5">⑤ PROCESS</text>
+</svg>
 <p><strong>Layer breakdown:</strong></p>
 <ol>
 <li><strong>Ingestion</strong> — Pydantic validates schema and rejects <code>400 Bad Request</code> before any cache touch.</li>
@@ -403,9 +403,8 @@
       idem:v1:&lt;sha256-hex>
 
     The version prefix (v1) allows rolling key-schema changes without
-    collisions during migration windows. Strategies for structuring
-    multi-polygon identifiers are detailed in
-    /idempotency-spatial-deduplication/event-key-generation-for-spatial-data/
+    collisions during migration windows. See the Event Key Generation
+    notes below for multi-polygon identifier strategies.
     """</span>
     normalised_geom <span class="token operator">=</span> normalise_geometry<span class="token punctuation">(</span>payload<span class="token punctuation">.</span>geometry<span class="token punctuation">.</span>model_dump<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
     composite <span class="token operator">=</span> <span class="token string-interpolation"><span class="token string">f"</span><span class="token interpolation"><span class="token punctuation">{</span>payload<span class="token punctuation">.</span>device_id<span class="token punctuation">}</span></span><span class="token string">:</span><span class="token interpolation"><span class="token punctuation">{</span>payload<span class="token punctuation">.</span>event_type<span class="token punctuation">}</span></span><span class="token string">:</span><span class="token interpolation"><span class="token punctuation">{</span>normalised_geom<span class="token punctuation">}</span></span><span class="token string">"</span></span>
@@ -595,7 +594,49 @@ app <span class="token operator">=</span> FastAPI<span class="token punctuation"
 <p>The at-least-once delivery model and its interaction with spatial state are explored in detail in <a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/">Implementing At-Least-Once Delivery for GIS Webhooks</a>.</p>
 <hr>
 <h2 id="fallback-when-the-cache-is-unavailable" tabindex="-1"><a class="heading-anchor" href="#fallback-when-the-cache-is-unavailable">Fallback When the Cache Is Unavailable</a></h2>
-<p>A Redis connection failure must not silently drop valid events. Implement a two-tier fallback:</p>
+<p>A Redis connection failure must not silently drop valid events. Implement a two-tier fallback: the distributed cache is the fast path, and a database UNIQUE constraint is the durable safety net that catches duplicates whenever the cache is unreachable.</p>
+<svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two-tier idempotency fallback decision flow from Redis to a PostgreSQL unique constraint" style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;">
+  <title>Two-tier idempotency fallback decision flow</title>
+  <desc>Decision diagram: a request first attempts an atomic Redis claim; on a Redis connection error it falls back to a PostgreSQL insert with an ON CONFLICT clause, and in both tiers a hit short-circuits as a duplicate while a miss proceeds to spatial processing.</desc>
+  <defs>
+    <marker id="fb-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.6"/>
+    </marker>
+  </defs>
+  <!-- Event in -->
+  <rect x="14" y="120" width="120" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
+  <text x="74" y="142" text-anchor="middle" font-size="11" fill="currentColor" font-family="inherit" font-weight="600">Validated</text>
+  <text x="74" y="157" text-anchor="middle" font-size="10" fill="currentColor" font-family="inherit" opacity="0.8">event</text>
+  <line x1="136" y1="145" x2="166" y2="145" stroke="currentColor" stroke-width="1.5" marker-end="url(#fb-arr)" opacity="0.55"/>
+  <!-- Redis tier (diamond) -->
+  <polygon points="245,110 320,145 245,180 170,145" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.6"/>
+  <text x="245" y="142" text-anchor="middle" font-size="10" fill="currentColor" font-family="inherit" font-weight="600">Redis</text>
+  <text x="245" y="156" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.75">SET NX EX?</text>
+  <!-- Redis reachable: MISS -> process -->
+  <line x1="320" y1="145" x2="560" y2="145" stroke="currentColor" stroke-width="1.5" marker-end="url(#fb-arr)" opacity="0.55"/>
+  <text x="440" y="137" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.65">claimed (MISS) → proceed</text>
+  <!-- Redis reachable: HIT -> duplicate -->
+  <line x1="245" y1="110" x2="245" y2="62" stroke="currentColor" stroke-width="1.2" marker-end="url(#fb-arr)" opacity="0.45" stroke-dasharray="4,3"/>
+  <text x="245" y="52" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.65">key exists (HIT) → 200 duplicate</text>
+  <!-- Redis unreachable -> DB tier -->
+  <line x1="245" y1="180" x2="245" y2="222" stroke="currentColor" stroke-width="1.5" marker-end="url(#fb-arr)" opacity="0.55"/>
+  <text x="255" y="205" font-size="9" fill="currentColor" font-family="inherit" opacity="0.65">ConnectionError / Timeout</text>
+  <!-- DB tier (diamond) -->
+  <polygon points="245,222 320,255 245,288 170,255" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.6"/>
+  <text x="245" y="252" text-anchor="middle" font-size="10" fill="currentColor" font-family="inherit" font-weight="600">Postgres</text>
+  <text x="245" y="266" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.75">ON CONFLICT?</text>
+  <!-- DB inserted -> process -->
+  <line x1="320" y1="255" x2="500" y2="255" stroke="currentColor" stroke-width="1.5" marker-end="url(#fb-arr)" opacity="0.55"/>
+  <line x1="500" y1="255" x2="500" y2="170" stroke="currentColor" stroke-width="1.5" marker-end="url(#fb-arr)" opacity="0.55"/>
+  <text x="410" y="247" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.65">inserted → proceed</text>
+  <!-- DB conflict -> duplicate -->
+  <line x1="170" y1="255" x2="120" y2="255" stroke="currentColor" stroke-width="1.2" marker-end="url(#fb-arr)" opacity="0.45" stroke-dasharray="4,3"/>
+  <text x="115" y="247" text-anchor="end" font-size="9" fill="currentColor" font-family="inherit" opacity="0.65">conflict → duplicate</text>
+  <!-- Process box -->
+  <rect x="560" y="120" width="146" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
+  <text x="633" y="142" text-anchor="middle" font-size="11" fill="currentColor" font-family="inherit" font-weight="600">Spatial</text>
+  <text x="633" y="157" text-anchor="middle" font-size="10" fill="currentColor" font-family="inherit" opacity="0.8">processing</text>
+</svg>
 <div class="code-block" data-lang="python">
   <div class="code-block__header">
     <span class="code-block__lang">python</span>
@@ -869,18 +910,30 @@ SAMPLE_PAYLOAD <span class="token operator">=</span> <span class="token punctuat
         <h4>Architecture</h4>
         <ul>
           <li><a href="/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
         </ul>
       </div>
       <div>
         <h4>Idempotency</h4>
         <ul>
           <li><a href="/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
         </ul>
       </div>
       <div>
         <h4>Routing &amp; Parsing</h4>
         <ul>
           <li><a href="/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
         </ul>
       </div>
     </div>

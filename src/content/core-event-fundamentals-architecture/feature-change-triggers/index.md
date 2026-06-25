@@ -5,7 +5,7 @@ slug: "feature-change-triggers"
 type: "cluster"
 breadcrumb: "Feature Change Triggers"
 datePublished: "2024-11-01"
-dateModified: "2026-06-24"
+dateModified: "2026-06-25"
 ---
 
 <script type="application/ld+json">
@@ -17,7 +17,7 @@ dateModified: "2026-06-24"
       "headline": "Feature Change Triggers for Geospatial Webhooks",
       "description": "Step-by-step guide to detecting, validating, and dispatching spatial feature change events in Python — from database CDC interception to HMAC-signed webhook delivery with retry guarantees.",
       "datePublished": "2024-11-01",
-      "dateModified": "2026-06-24",
+      "dateModified": "2026-06-25",
       "author": { "@type": "Organization", "name": "geospatialwebhook.com" }
     },
     {
@@ -69,9 +69,7 @@ dateModified: "2026-06-24"
 }
 </script>
 
-**Feature change triggers are the mechanism that converts a spatial database write — a parcel edit, a route update, a sensor footprint move — into a reliable, signed webhook event delivered to downstream consumers.** This guide walks through every production layer, from CDC interception to exponential-backoff retry, with runnable Python at each step.
-
-This topic is part of [Core Event Fundamentals & Architecture](/core-event-fundamentals-architecture/), which covers the full event pipeline from spatial mutation to consumer acknowledgement.
+**Feature change triggers convert a spatial database write — a parcel edit, a route update, a sensor footprint move — into a reliable, signed webhook event delivered to downstream consumers.** This topic is part of [Core Event Fundamentals & Architecture](/core-event-fundamentals-architecture/), which covers the full event pipeline from spatial mutation to consumer acknowledgement.
 
 ## Prerequisites
 
@@ -81,59 +79,60 @@ Before implementing, confirm your stack meets these baselines:
 - [ ] Asynchronous web framework: FastAPI, Starlette, or aiohttp
 - [ ] PostgreSQL/PostGIS with logical replication enabled, or a CDC connector (Debezium, pg_logical)
 - [ ] Message broker: Redis Streams, Apache Kafka, or AWS SQS/SNS
-- [ ] `shapely` 2.x for geometry validation and repair
+- [ ] `shapely` 2.x for geometry validation, repair, and precision snapping
 - [ ] `pyproj` 3.x for CRS transformation
 - [ ] `httpx` for async outbound HTTP with timeout and retry control
 - [ ] `pydantic` v2 for event envelope schema enforcement
 
-## Architecture overview
+## Architecture blueprint
 
 A spatial feature change moves through four layers before a consumer acknowledges receipt:
 
-<svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Feature change trigger pipeline: PostGIS → CDC stream → validation & envelope → broker → webhook dispatcher → consumer" style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;">
+<svg viewBox="0 0 760 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Feature change trigger pipeline: PostGIS CDC stream flows through geometry validation and CloudEvents enveloping, into a message broker, then through an async webhook dispatcher to a downstream consumer" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
   <title>Feature change trigger pipeline</title>
-  <desc>Four-layer pipeline showing a spatial mutation flowing from PostGIS logical replication through geometry validation and CloudEvents enveloping, into a message broker, then out through an async webhook dispatcher to a downstream consumer.</desc>
+  <desc>Four-stage pipeline diagram. Stage 1 Source: PostGIS logical replication (CDC / WAL). Stage 2 Normalise: CRS to EPSG:4326, topology check, CloudEvents wrap, idempotency key. Stage 3 Route: Kafka or Redis broker with spatial partition key. Stage 4 Deliver: dispatcher with HMAC-SHA256 signing, exponential backoff, DLQ on failure, then consumer endpoint.</desc>
   <defs>
-    <marker id="arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
-      <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.6"/>
+    <marker id="fct-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.55"/>
     </marker>
   </defs>
-  <!-- Layer boxes -->
-  <rect x="10" y="70" width="120" height="80" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
-  <text x="70" y="104" text-anchor="middle" font-size="12" fill="currentColor" font-family="sans-serif">PostGIS</text>
-  <text x="70" y="120" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.75">logical replication</text>
-  <text x="70" y="136" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.6">(CDC / WAL)</text>
-
-  <line x1="130" y1="110" x2="158" y2="110" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arr)"/>
-
-  <rect x="160" y="55" width="140" height="110" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
-  <text x="230" y="89" text-anchor="middle" font-size="12" fill="currentColor" font-family="sans-serif">Validate &amp; Envelop</text>
-  <text x="230" y="107" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.75">CRS → EPSG:4326</text>
-  <text x="230" y="122" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.75">topology check</text>
-  <text x="230" y="137" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.75">CloudEvents wrap</text>
-  <text x="230" y="152" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.6">idempotency key</text>
-
-  <line x1="300" y1="110" x2="328" y2="110" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arr)"/>
-
-  <rect x="330" y="70" width="120" height="80" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
-  <text x="390" y="104" text-anchor="middle" font-size="12" fill="currentColor" font-family="sans-serif">Broker</text>
-  <text x="390" y="120" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.75">Kafka / Redis</text>
-  <text x="390" y="136" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.6">spatial partition key</text>
-
-  <line x1="450" y1="110" x2="478" y2="110" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arr)"/>
-
-  <rect x="480" y="55" width="130" height="110" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
-  <text x="545" y="89" text-anchor="middle" font-size="12" fill="currentColor" font-family="sans-serif">Dispatcher</text>
-  <text x="545" y="107" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.75">HMAC-SHA256 sign</text>
-  <text x="545" y="122" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.75">exponential backoff</text>
-  <text x="545" y="137" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.75">DLQ on failure</text>
-  <text x="545" y="152" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.6">→ consumer endpoint</text>
-
-  <!-- Stage labels at top -->
-  <text x="70"  y="48" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.5">1. Source</text>
-  <text x="230" y="40" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.5">2. Normalise</text>
-  <text x="390" y="48" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.5">3. Route</text>
-  <text x="545" y="40" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.5">4. Deliver</text>
+  <!-- Stage labels -->
+  <text x="85"  y="28" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.5">1. Source</text>
+  <text x="258" y="28" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.5">2. Normalise</text>
+  <text x="462" y="28" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.5">3. Route</text>
+  <text x="648" y="28" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.5">4. Deliver</text>
+  <!-- Box 1: Source -->
+  <rect x="20" y="44" width="130" height="90" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+  <text x="85" y="76" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor" font-family="sans-serif">PostGIS</text>
+  <text x="85" y="95" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.75">logical replication</text>
+  <text x="85" y="112" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.6">CDC / WAL</text>
+  <!-- Arrow 1→2 -->
+  <line x1="150" y1="89" x2="176" y2="89" stroke="currentColor" stroke-width="1.5" opacity="0.45" marker-end="url(#fct-arr)"/>
+  <!-- Box 2: Normalise -->
+  <rect x="178" y="30" width="160" height="130" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+  <text x="258" y="58" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor" font-family="sans-serif">Validate &amp; Wrap</text>
+  <text x="258" y="77" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.75">CRS → EPSG:4326</text>
+  <text x="258" y="94" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.75">topology check</text>
+  <text x="258" y="111" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.75">CloudEvents wrap</text>
+  <text x="258" y="128" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.6">idempotency key</text>
+  <!-- Arrow 2→3 -->
+  <line x1="338" y1="95" x2="364" y2="95" stroke="currentColor" stroke-width="1.5" opacity="0.45" marker-end="url(#fct-arr)"/>
+  <!-- Box 3: Route -->
+  <rect x="366" y="44" width="152" height="102" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+  <text x="442" y="76" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor" font-family="sans-serif">Broker</text>
+  <text x="442" y="95" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.75">Kafka / Redis Streams</text>
+  <text x="442" y="113" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.6">spatial partition key</text>
+  <!-- Arrow 3→4 -->
+  <line x1="518" y1="95" x2="544" y2="95" stroke="currentColor" stroke-width="1.5" opacity="0.45" marker-end="url(#fct-arr)"/>
+  <!-- Box 4: Deliver -->
+  <rect x="546" y="30" width="180" height="148" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+  <text x="636" y="58" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor" font-family="sans-serif">Dispatcher</text>
+  <text x="636" y="77" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.75">HMAC-SHA256 sign</text>
+  <text x="636" y="94" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.75">exponential backoff</text>
+  <text x="636" y="111" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.75">DLQ on failure</text>
+  <text x="636" y="130" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.6">→ consumer endpoint</text>
+  <!-- Delivery guarantee note -->
+  <text x="380" y="195" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.45">at-least-once · idempotency key carried in envelope id field</text>
 </svg>
 
 ## Step-by-step implementation
@@ -155,7 +154,7 @@ async def stream_feature_changes(slot_name: str, publication: str):
         "SELECT pg_create_logical_replication_slot($1, 'pgoutput')", slot_name
     )
     async with conn.replication(slot_name, output_plugin="pgoutput",
-                                 options={"publication_names": publication}) as stream:
+                                options={"publication_names": publication}) as stream:
         async for message in stream:
             yield parse_wal_message(message)  # returns dict with op, pk, old_geom, new_geom
 ```
@@ -164,7 +163,7 @@ For a complete walkthrough of how this feeds into a full webhook architecture, s
 
 ### 2. Normalize and validate geometry
 
-Raw database geometries contain topology errors, mismatched coordinate reference systems, and floating-point noise that break downstream consumers. Enforce spatial integrity before packaging any event, using [CRS Normalization Strategies](/spatial-payload-routing-parsing/crs-normalization-strategies/) as the authoritative reference for reprojection patterns.
+Raw database geometries contain topology errors, mismatched coordinate reference systems, and floating-point noise that break downstream consumers. Enforce spatial integrity before packaging any event, using [CRS Normalization Strategies](/spatial-payload-routing-parsing/crs-normalization-strategies/) as the authoritative reference for reprojection patterns and the staged checks in [Geometry Validation Pipelines](/spatial-payload-routing-parsing/geometry-validation-pipelines/) for repairing malformed input before it reaches the broker.
 
 The three mandatory checks are:
 
@@ -175,13 +174,9 @@ The three mandatory checks are:
 ```python
 from shapely.geometry import shape, mapping
 from shapely.validation import explain_validity, make_valid
+from shapely.ops import transform as shapely_transform
 from shapely import set_precision
 import pyproj
-from functools import partial
-
-_transformer_to_4326 = pyproj.Transformer.from_crs(
-    "EPSG:3857", "EPSG:4326", always_xy=True
-)
 
 def normalize_geometry(geojson_geometry: dict, source_epsg: int = 4326) -> dict:
     """Validate, repair, reproject, and reduce precision of a GeoJSON geometry."""
@@ -196,7 +191,8 @@ def normalize_geometry(geojson_geometry: dict, source_epsg: int = 4326) -> dict:
         transformer = pyproj.Transformer.from_crs(
             f"EPSG:{source_epsg}", "EPSG:4326", always_xy=True
         )
-        geom = pyproj.transform(transformer.transform, geom)
+        # Use shapely.ops.transform, not the deprecated pyproj.transform
+        geom = shapely_transform(transformer.transform, geom)
 
     # Snap coordinates to 7 decimal places (~1 cm precision at equator)
     geom = set_precision(geom, grid_size=1e-7)
@@ -249,10 +245,12 @@ def build_event_envelope(
     geom_hash = hashlib.sha256(
         json.dumps(feature_event.geometry.model_dump(), sort_keys=True).encode()
     ).hexdigest()[:16]
-    event_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"{feature_event.feature_id}:{feature_event.operation}:{geom_hash}"))
+    event_id = str(uuid.uuid5(
+        uuid.NAMESPACE_URL,
+        f"{feature_event.feature_id}:{feature_event.operation}:{geom_hash}"
+    ))
 
     geom_dict = feature_event.geometry.model_dump()
-    coords = geom_dict.get("coordinates", [])
 
     return {
         "specversion": "1.0",
@@ -261,7 +259,7 @@ def build_event_envelope(
         "id": event_id,
         "time": datetime.now(timezone.utc).isoformat(),
         "datacontenttype": "application/geo+json",
-        # Spatial extensions
+        # Spatial CloudEvents extensions
         "crs": feature_event.crs,
         "spatialoperation": feature_event.operation,
         "data": {
@@ -369,7 +367,7 @@ Beyond topology checks, handle these spatial-specific failure modes before they 
 - **Empty or null geometry on `UPDATE`:** Treat as a `DELETE` — the feature has been blanked. Log the anomaly and emit a deletion event with the last known geometry as context.
 - **Coordinate ring orientation:** GeoJSON exterior rings must be counter-clockwise (RFC 7946 §3.1.6). Shapely's `orient()` corrects this silently; PostGIS may not.
 - **Geometry type change:** A polygon becoming a multipolygon on `UPDATE` is a legal mutation but can break consumers that cast the geometry type. Include both the old and new geometry types in the event envelope's `spatialoperation` context.
-- **Oversized payloads:** Complex boundaries often exceed broker message limits. Simplify with `shapely.simplify(tolerance=0.00001, preserve_topology=True)` and include an `simplified: true` flag in the envelope properties so consumers can request the full geometry from the source API if needed.
+- **Oversized payloads:** Complex boundaries often exceed broker message limits. Simplify with `shapely.simplify(tolerance=0.00001, preserve_topology=True)` and include a `simplified: true` flag in the envelope properties so consumers can request the full geometry from the source API if needed.
 
 ## Retry, backoff and delivery guarantees
 
@@ -419,10 +417,10 @@ async def test_feature_change_triggers_webhook():
     assert env["type"].startswith("com.geospatialwebhook.feature.")
     assert env["specversion"] == "1.0"
     assert env["crs"] == "EPSG:4326"
-    sig = env.get("_headers", {}).get("X-Webhook-Signature", "")
-    # Verify HMAC (re-sign with known secret and compare)
+
+    # Verify HMAC — re-sign with known secret and compare
     expected = sign_payload(env, secret="test-secret")
-    assert sig == expected
+    assert env.get("_headers", {}).get("X-Webhook-Signature", "") == expected
 
     await runner.cleanup()
 ```
@@ -472,7 +470,7 @@ Establish a canonical CRS at the event boundary — `EPSG:4326` for web delivery
 
 ## Related
 
-- [Core Event Fundamentals & Architecture](/core-event-fundamentals-architecture/) — the parent domain covering the full event-driven spatial pipeline
+- [Core Event Fundamentals & Architecture](/core-event-fundamentals-architecture/) — parent domain covering the full event-driven spatial pipeline
 - [How to Design a Geospatial Webhook Architecture in Python](/core-event-fundamentals-architecture/feature-change-triggers/how-to-design-a-geospatial-webhook-architecture-in-python/) — end-to-end architecture walkthrough for this trigger pattern
 - [Sensor Data Routing Patterns](/core-event-fundamentals-architecture/sensor-data-routing-patterns/) — handling high-frequency IoT streams alongside discrete feature change events
 - [Event Key Generation for Spatial Data](/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/) — generating deterministic idempotency keys from feature geometry hashes

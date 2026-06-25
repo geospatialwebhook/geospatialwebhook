@@ -4,7 +4,7 @@
 
 - **Niche:** Python Geospatial Webhook & Event-Driven Architecture
 - **Audience:** Platform engineers, GIS backend devs, real-time spatial app builders, SaaS founders
-- **Live now:** 25 pages, 29,143 words
+- **Live now:** 25 pages, 65,152 words
 - **Current phase:** foundation
 - **Next phase to build:** expansion
 

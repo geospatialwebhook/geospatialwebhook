@@ -50,12 +50,12 @@ dateModified: "2026-06-24"
         {
           "@type": "Question",
           "name": "What tolerance should I use for spatial overlap deduplication?",
-          "acceptedAnswer": {"@type": "Answer", "text": "Tolerance is domain-specific. Vehicle tracking can accept 5–10 m (roughly 0.00009° in EPSG:4326), while cadastral boundary management may need sub-centimetre precision. Profile your source data's GPS accuracy before setting a value."}
+          "acceptedAnswer": {"@type": "Answer", "text": "Tolerance is domain-specific. Vehicle tracking can accept 5-10 m (roughly 0.00009 degrees in EPSG:4326), while cadastral boundary management may need sub-centimetre precision. Profile your source data's GPS accuracy before setting a value."}
         },
         {
           "@type": "Question",
           "name": "How long should idempotency keys live in Redis?",
-          "acceptedAnswer": {"@type": "Answer", "text": "Match the TTL to your webhook provider's maximum retry window, which is typically 24–72 hours. Setting it shorter risks re-processing a retry after the key expires; longer wastes memory for keys that will never be replayed."}
+          "acceptedAnswer": {"@type": "Answer", "text": "Match the TTL to your webhook provider's maximum retry window, which is typically 24-72 hours. Setting it shorter risks re-processing a retry after the key expires; longer wastes memory for keys that will never be replayed."}
         },
         {
           "@type": "Question",
@@ -78,9 +78,11 @@ dateModified: "2026-06-24"
 }
 </script>
 
+<p class="uplink"><a href="/">Home</a> → Idempotency &amp; Spatial Deduplication</p>
+
 Modern geospatial platforms increasingly rely on event-driven architectures to ingest real-time telemetry, IoT sensor payloads, and third-party webhook notifications. While this paradigm delivers horizontal scalability and service decoupling, it introduces a fundamental reliability challenge: **duplicate event delivery**. Webhook providers retry on HTTP timeouts, message brokers redeliver on consumer crashes, and network partitions produce ambiguous acknowledgments. In traditional CRUD systems, idempotency is typically solved by hashing request payloads and tracking processed keys. In geospatial systems, the problem compounds significantly. Two webhook payloads may differ in coordinate precision, projection metadata, or attribute ordering while representing the exact same geographic feature.
 
-Idempotency and spatial deduplication together form the architectural discipline of guaranteeing that repeated or overlapping spatial events produce a single, deterministic state mutation. For platform engineers, GIS backend developers, and SaaS founders building real-time spatial applications, mastering this intersection is non-negotiable. It prevents phantom asset duplication, eliminates cascading billing errors, and ensures spatial analytics remain mathematically sound across distributed systems. Every technique in this guide connects to one of four implementation concerns: [Event Key Generation for Spatial Data](/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/), [Cache-Backed Idempotency Checks](/idempotency-spatial-deduplication/cache-backed-idempotency-checks/), [Spatial Overlap Deduplication](/idempotency-spatial-deduplication/spatial-overlap-deduplication/), and [Conflict Resolution Strategies](/idempotency-spatial-deduplication/conflict-resolution-strategies/).
+Idempotency and spatial deduplication together form the architectural discipline of guaranteeing that repeated or overlapping spatial events produce a single, deterministic state mutation. For platform engineers, GIS backend developers, and SaaS founders building real-time spatial applications, mastering this intersection is non-negotiable. It prevents phantom asset duplication, eliminates cascading billing errors, and ensures spatial analytics remain mathematically sound across distributed systems. The same event-driven foundations that govern this domain are covered in [Core Event Fundamentals & Architecture](/core-event-fundamentals-architecture/), where delivery guarantees and broker selection are treated in depth. Every technique in this guide connects to one of four implementation concerns: [Event Key Generation for Spatial Data](/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/), [Cache-Backed Idempotency Checks](/idempotency-spatial-deduplication/cache-backed-idempotency-checks/), [Spatial Overlap Deduplication](/idempotency-spatial-deduplication/spatial-overlap-deduplication/), and [Conflict Resolution Strategies](/idempotency-spatial-deduplication/conflict-resolution-strategies/).
 
 ---
 
@@ -90,7 +92,7 @@ Standard idempotency patterns assume byte-for-byte payload equivalence. Geospati
 
 **Coordinate noise.** A GPS tracker might report `[-122.4194, 37.7749]` in one webhook and `[-122.4194001, 37.7749002]` in the next due to floating-point drift or hardware jitter. Two hashes, one real-world location.
 
-**CRS and serialization variance.** A municipal GIS system might send the same polygon with vertices reordered, or with a different Coordinate Reference System (CRS) tag — for instance `EPSG:4326` vs `urn:ogc:def:crs:OGC:1.3:CRS84` — while the footprint is topologically identical. JSON key ordering differences further break naive MD5 or SHA-256 hashing.
+**CRS and serialization variance.** A municipal GIS system might send the same polygon with vertices reordered, or with a different Coordinate Reference System (CRS) tag — for instance `EPSG:4326` vs `urn:ogc:def:crs:OGC:1.3:CRS84` — while the footprint is topologically identical. JSON key ordering differences further break naive MD5 or SHA-256 hashing. The strategies for normalizing these CRS discrepancies at ingestion time are detailed in [CRS Normalization Strategies](/spatial-payload-routing-parsing/crs-normalization-strategies/).
 
 **Topological equivalence without coordinate equality.** Two geometries representing the same land parcel might be stored differently by separate upstream systems — one as a `Polygon`, another as a `MultiPolygon` with a single ring — yet they describe the same feature. No string comparison detects this.
 
@@ -108,69 +110,59 @@ The solution requires a layered approach: deterministic key generation, stateful
 
 A production-grade spatial webhook pipeline must separate ingestion, idempotency validation, spatial evaluation, and persistence into distinct, independently observable stages. The following diagram shows the data path from raw webhook arrival to committed state.
 
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 480" role="img" aria-label="Spatial idempotency pipeline: five stages from webhook receiver through idempotency cache, spatial evaluator, conflict resolver, to persistence layer" style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 520" role="img" aria-label="Spatial idempotency pipeline: five stages from webhook receiver through idempotency cache, spatial evaluator, conflict resolver, to persistence layer" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
   <title>Spatial Idempotency Pipeline</title>
-  <desc>Five-stage pipeline diagram showing how a geospatial webhook flows through payload normalization, Redis idempotency check, PostGIS spatial overlap evaluation, conflict resolution, and atomic upsert to the persistence layer.</desc>
+  <desc>Five-stage pipeline diagram showing how a geospatial webhook flows through payload normalization, Redis idempotency check, PostGIS spatial overlap evaluation, conflict resolution, and atomic upsert to the persistence layer. A duplicate exit branch from Stage 2 returns 200 OK without further processing.</desc>
   <defs>
-    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+    <marker id="arr-idem" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
     </marker>
   </defs>
-
-  <!-- Stage boxes -->
+  <!-- Stage labels column -->
+  <text x="14" y="56" font-family="system-ui,sans-serif" font-size="10" fill="currentColor" opacity="0.45">Stage 1</text>
+  <text x="14" y="152" font-family="system-ui,sans-serif" font-size="10" fill="currentColor" opacity="0.45">Stage 2</text>
+  <text x="14" y="248" font-family="system-ui,sans-serif" font-size="10" fill="currentColor" opacity="0.45">Stage 3</text>
+  <text x="14" y="344" font-family="system-ui,sans-serif" font-size="10" fill="currentColor" opacity="0.45">Stage 4</text>
+  <text x="14" y="440" font-family="system-ui,sans-serif" font-size="10" fill="currentColor" opacity="0.45">Stage 5</text>
   <!-- Stage 1: Webhook Receiver -->
-  <rect x="240" y="20" width="240" height="56" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
-  <text x="360" y="44" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" fill="currentColor" font-weight="600">Webhook Receiver</text>
-  <text x="360" y="62" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" fill="currentColor" opacity="0.7">FastAPI · Starlette · aiohttp</text>
-
+  <rect x="230" y="24" width="260" height="60" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
+  <text x="360" y="50" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" fill="currentColor" font-weight="600">Webhook Receiver</text>
+  <text x="360" y="68" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" fill="currentColor" opacity="0.7">FastAPI · Starlette · aiohttp</text>
   <!-- Arrow 1→2 -->
-  <line x1="360" y1="76" x2="360" y2="108" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arr)"/>
-  <text x="375" y="98" font-family="system-ui,sans-serif" font-size="10" fill="currentColor" opacity="0.6">normalize + fingerprint</text>
-
+  <line x1="360" y1="84" x2="360" y2="114" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arr-idem)"/>
+  <text x="370" y="103" font-family="system-ui,sans-serif" font-size="10" fill="currentColor" opacity="0.6">normalize + fingerprint</text>
   <!-- Stage 2: Idempotency Cache -->
-  <rect x="190" y="112" width="340" height="56" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
-  <text x="360" y="136" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" fill="currentColor" font-weight="600">Idempotency Cache</text>
-  <text x="360" y="154" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" fill="currentColor" opacity="0.7">Redis SET NX EX · composite key lookup</text>
-
-  <!-- Duplicate exit -->
-  <line x1="530" y1="140" x2="620" y2="140" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arr)"/>
-  <rect x="622" y="120" width="86" height="40" rx="6" fill="none" stroke="currentColor" stroke-width="1" opacity="0.2"/>
-  <text x="665" y="137" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="currentColor" opacity="0.7">200 OK</text>
-  <text x="665" y="151" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="currentColor" opacity="0.7">duplicate ignored</text>
-
+  <rect x="190" y="118" width="340" height="60" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
+  <text x="360" y="144" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" fill="currentColor" font-weight="600">Idempotency Cache</text>
+  <text x="360" y="162" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" fill="currentColor" opacity="0.7">Redis SET NX EX · composite key lookup</text>
+  <!-- Duplicate exit branch -->
+  <line x1="530" y1="148" x2="600" y2="148" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arr-idem)"/>
+  <rect x="602" y="128" width="110" height="40" rx="6" fill="none" stroke="currentColor" stroke-width="1" opacity="0.25"/>
+  <text x="657" y="145" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="currentColor" opacity="0.7">200 OK</text>
+  <text x="657" y="159" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="currentColor" opacity="0.7">duplicate ignored</text>
   <!-- Arrow 2→3 -->
-  <line x1="360" y1="168" x2="360" y2="200" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arr)"/>
-  <text x="375" y="190" font-family="system-ui,sans-serif" font-size="10" fill="currentColor" opacity="0.6">cache miss → proceed</text>
-
+  <line x1="360" y1="178" x2="360" y2="208" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arr-idem)"/>
+  <text x="370" y="197" font-family="system-ui,sans-serif" font-size="10" fill="currentColor" opacity="0.6">cache miss → proceed</text>
   <!-- Stage 3: Spatial Evaluator -->
-  <rect x="170" y="204" width="380" height="56" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
-  <text x="360" y="228" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" fill="currentColor" font-weight="600">Spatial Evaluator</text>
-  <text x="360" y="246" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" fill="currentColor" opacity="0.7">PostGIS ST_DWithin · ST_Equals · GiST index</text>
-
+  <rect x="170" y="212" width="380" height="60" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
+  <text x="360" y="238" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" fill="currentColor" font-weight="600">Spatial Evaluator</text>
+  <text x="360" y="256" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" fill="currentColor" opacity="0.7">PostGIS ST_DWithin · ST_Equals · GiST index</text>
   <!-- Arrow 3→4 -->
-  <line x1="360" y1="260" x2="360" y2="292" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arr)"/>
-  <text x="375" y="282" font-family="system-ui,sans-serif" font-size="10" fill="currentColor" opacity="0.6">overlap found → resolve</text>
-
+  <line x1="360" y1="272" x2="360" y2="302" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arr-idem)"/>
+  <text x="370" y="291" font-family="system-ui,sans-serif" font-size="10" fill="currentColor" opacity="0.6">overlap found → resolve</text>
   <!-- Stage 4: Conflict Resolver -->
-  <rect x="190" y="296" width="340" height="56" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
-  <text x="360" y="320" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" fill="currentColor" font-weight="600">Conflict Resolver</text>
-  <text x="360" y="338" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" fill="currentColor" opacity="0.7">discard · merge · version-stamp · confidence-score</text>
-
+  <rect x="190" y="306" width="340" height="60" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
+  <text x="360" y="332" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" fill="currentColor" font-weight="600">Conflict Resolver</text>
+  <text x="360" y="350" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" fill="currentColor" opacity="0.7">discard · merge · version-stamp · confidence-score</text>
   <!-- Arrow 4→5 -->
-  <line x1="360" y1="352" x2="360" y2="384" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arr)"/>
-  <text x="375" y="374" font-family="system-ui,sans-serif" font-size="10" fill="currentColor" opacity="0.6">atomic upsert</text>
-
+  <line x1="360" y1="366" x2="360" y2="396" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arr-idem)"/>
+  <text x="370" y="385" font-family="system-ui,sans-serif" font-size="10" fill="currentColor" opacity="0.6">atomic upsert</text>
   <!-- Stage 5: Persistence Layer -->
-  <rect x="220" y="388" width="280" height="56" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
-  <text x="360" y="412" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" fill="currentColor" font-weight="600">Persistence Layer</text>
-  <text x="360" y="430" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" fill="currentColor" opacity="0.7">PostGIS upsert · immutable event log</text>
-
-  <!-- Stage labels on left -->
-  <text x="10" y="52" font-family="system-ui,sans-serif" font-size="10" fill="currentColor" opacity="0.45">Stage 1</text>
-  <text x="10" y="144" font-family="system-ui,sans-serif" font-size="10" fill="currentColor" opacity="0.45">Stage 2</text>
-  <text x="10" y="236" font-family="system-ui,sans-serif" font-size="10" fill="currentColor" opacity="0.45">Stage 3</text>
-  <text x="10" y="328" font-family="system-ui,sans-serif" font-size="10" fill="currentColor" opacity="0.45">Stage 4</text>
-  <text x="10" y="420" font-family="system-ui,sans-serif" font-size="10" fill="currentColor" opacity="0.45">Stage 5</text>
+  <rect x="210" y="400" width="300" height="60" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
+  <text x="360" y="426" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" fill="currentColor" font-weight="600">Persistence Layer</text>
+  <text x="360" y="444" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" fill="currentColor" opacity="0.7">PostGIS upsert · immutable event log</text>
+  <!-- Caption -->
+  <text x="360" y="494" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="currentColor" opacity="0.4">Figure 1 — Five-stage spatial idempotency pipeline. Stage 2 short-circuits duplicates before any PostGIS query runs.</text>
 </svg>
 
 The labeled components map to four architectural layers: a normalization and fingerprinting step at ingestion, an atomic cache gate, a spatial database query for topology evaluation, and a conflict-aware persistence write. Each layer is independently testable and observable.
@@ -217,7 +209,9 @@ The critical constraint is that `EXISTS` followed by `SET` is not atomic and mus
 
 Cache validation handles exact or near-exact duplicates efficiently, but it cannot detect semantically identical features with differing geometries due to measurement variance. A delivery route polygon submitted with slightly shifted vertices due to GPS sampling variance will produce a different fingerprint, bypassing the cache gate entirely.
 
-At this stage, the pipeline queries PostGIS using tolerance-based spatial matching. `ST_DWithin` checks whether an incoming feature falls within a domain-calibrated distance of any existing stored feature, while `ST_Equals` or `ST_Within` verifies topological containment after the proximity filter. GiST indexes on geometry columns reduce these queries to logarithmic time across millions of records. The full implementation approach is detailed in [Spatial Overlap Deduplication](/idempotency-spatial-deduplication/spatial-overlap-deduplication/).
+At this stage, the pipeline queries PostGIS using tolerance-based spatial matching. `ST_DWithin` checks whether an incoming feature falls within a domain-calibrated distance of any existing stored feature, while `ST_Equals` or `ST_Within` verifies topological containment after the proximity filter. GiST indexes on geometry columns reduce these queries to logarithmic time across millions of records. The full implementation approach — including index creation DDL, the `EXPLAIN ANALYZE` patterns for verifying index usage, and how to combine `ST_DWithin` with `ST_Equals` in a single pass — is detailed in [Spatial Overlap Deduplication](/idempotency-spatial-deduplication/spatial-overlap-deduplication/).
+
+Before any PostGIS query runs, geometries must pass the same OGC Simple Features validity checks described in [Geometry Validation Pipelines](/spatial-payload-routing-parsing/geometry-validation-pipelines/). An invalid geometry — a self-intersecting ring, a coordinate sequence with NaN values — will cause PostGIS to raise an exception at constraint enforcement time.
 
 Tolerance thresholds must be calibrated to your domain:
 
@@ -314,7 +308,7 @@ Combining the three patterns into a coherent request handler requires careful se
 
 ### Payload Normalization
 
-The normalization module is the entry point for all incoming spatial payloads. It must be deterministic across all worker processes, meaning no random UUIDs or timestamp-derived values may enter the canonical representation.
+The normalization module is the entry point for all incoming spatial payloads. It must be deterministic across all worker processes, meaning no random UUIDs or timestamp-derived values may enter the canonical representation. For payloads already using Protobuf or MessagePack on the wire — as covered in [GeoJSON-to-Protobuf Mapping](/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/) — deserialize to a GeoJSON dict first so the normalization code path stays uniform across transport encodings.
 
 ```python
 from __future__ import annotations
@@ -368,7 +362,7 @@ def canonical_payload(event: dict[str, Any]) -> str:
 
 ### FastAPI Middleware Integration
 
-The idempotency gate runs as FastAPI middleware, meaning it intercepts every POST request before it reaches any route handler. This placement avoids leaking duplicate-check logic into business logic and allows the gate to short-circuit with a `200 OK` before the request body is parsed by application code.
+The idempotency gate runs as FastAPI middleware, meaning it intercepts every POST request before it reaches any route handler. This placement avoids leaking duplicate-check logic into business logic and allows the gate to short-circuit with a `200 OK` before the request body is parsed by application code. The async patterns for handling heavy geometry payloads — where parsing alone can take tens of milliseconds — are explored further in [Async Processing for Heavy Geometries](/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/).
 
 ```python
 from fastapi import FastAPI, Request
@@ -421,7 +415,7 @@ For the normalization pipeline described above, GeoJSON remains the canonical in
 
 ### CRS Normalization Before Key Generation
 
-CRS variance is the most common source of false duplicate misses in production. A payload tagged `EPSG:32637` (UTM zone 37N, units: metres) and a second payload tagged `EPSG:4326` (WGS 84, units: degrees) describing the same polygon will differ in both coordinate values and their JSON representation. Transforming all incoming geometries to a single canonical CRS — EPSG:4326 for global systems — before normalization closes this gap. The `pyproj.Transformer` instance should be cached per source EPSG as shown above; constructing a new `Transformer` on every request adds ~2 ms per call.
+CRS variance is the most common source of false duplicate misses in production. A payload tagged `EPSG:32637` (UTM zone 37N, units: metres) and a second payload tagged `EPSG:4326` (WGS 84, units: degrees) describing the same polygon will differ in both coordinate values and their JSON representation. Transforming all incoming geometries to a single canonical CRS — EPSG:4326 for global systems — before normalization closes this gap. The `pyproj.Transformer` instance should be cached per source EPSG as shown above; constructing a new `Transformer` on every request adds ~2 ms per call. Mixed-CRS event streams require the runtime detection approach described in [Handling Mixed CRS Payloads in Python Event Handlers](/spatial-payload-routing-parsing/crs-normalization-strategies/handling-mixed-crs-payloads-in-python-event-handlers/).
 
 ### Spatial Indexing: H3, S2, and Quadkey for Composite Keys
 
@@ -473,7 +467,7 @@ def validate_geojson_geometry(geojson: dict) -> tuple[bool, str]:
 
 **Redis unavailability.** If Redis is unreachable, the idempotency gate must fail open (admit the event) or fail closed (reject the event). The correct choice depends on your consistency requirements. Fail open is appropriate when duplicate writes are detectable and reconcilable downstream; fail closed is appropriate for billing or compliance events where a duplicate is more harmful than a dropped event.
 
-**Large geometry payloads.** Multi-polygon features with tens of thousands of vertices can exceed the Redis string storage limit practically — more relevantly, storing a 2 MB WKT string in Redis wastes memory and bloats serialization time. Store large geometries in object storage (S3/MinIO/R2) and cache only the SHA-256 hash reference in Redis.
+**Large geometry payloads.** Multi-polygon features with tens of thousands of vertices can exceed the Redis string storage limit practically — more relevantly, storing a 2 MB WKT string in Redis wastes memory and bloats serialization time. Store large geometries in object storage (S3/MinIO/R2) and cache only the SHA-256 hash reference in Redis. The strategies for offloading heavy geometry processing without blocking the HTTP response are examined in [Async Processing for Heavy Geometries](/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/).
 
 **Timezone and temporal drift.** Systems that track temporal validity (`valid_from`, `valid_to`) must normalize all timestamps to UTC before they enter the canonical representation. A timestamp stored as `2025-03-15T14:00:00+05:30` and the same instant stored as `2025-03-15T08:30:00Z` will produce different fingerprints.
 
@@ -490,7 +484,7 @@ Every webhook event should be logged with its idempotency key, spatial fingerpri
 
 ### Dead-Letter Queue Design for Spatial Payloads
 
-Events that fail geometry validation, exceed size limits, or trigger unhandled conflict outcomes must be routed to a dead-letter queue (DLQ) rather than silently dropped. The DLQ record must include the raw payload, the normalization stage at which the failure occurred, the specific error, and the idempotency key if one was assigned before the failure. This enables a human operator or automated repair job to correct the geometry and replay the event through the full pipeline using the same idempotency key, ensuring exactly-once semantics are preserved on replay. The relationship between retry strategy and spatial payload design is examined in depth in [Core Event Fundamentals & Architecture](/core-event-fundamentals-architecture/), specifically the [Sensor Data Routing Patterns](/core-event-fundamentals-architecture/sensor-data-routing-patterns/) cluster.
+Events that fail geometry validation, exceed size limits, or trigger unhandled conflict outcomes must be routed to a dead-letter queue (DLQ) rather than silently dropped. The DLQ record must include the raw payload, the normalization stage at which the failure occurred, the specific error, and the idempotency key if one was assigned before the failure. This enables a human operator or automated repair job to correct the geometry and replay the event through the full pipeline using the same idempotency key, ensuring exactly-once semantics are preserved on replay. The relationship between retry strategy and spatial payload design is examined in [Sensor Data Routing Patterns](/core-event-fundamentals-architecture/sensor-data-routing-patterns/), where at-least-once vs exactly-once delivery tradeoffs for high-volume sensor streams are treated in depth.
 
 ---
 
@@ -547,3 +541,6 @@ Yes, as the spatial component of a composite key. Combine the H3 or S2 cell ID w
 - [Spatial Overlap Deduplication](/idempotency-spatial-deduplication/spatial-overlap-deduplication/) — PostGIS tolerance-based matching and GiST index strategies
 - [Conflict Resolution Strategies](/idempotency-spatial-deduplication/conflict-resolution-strategies/) — last-write-wins, confidence scoring, and immutable append log patterns
 - [Core Event Fundamentals & Architecture](/core-event-fundamentals-architecture/) — delivery guarantees, event schema design, and broker selection for spatial workloads
+- [CRS Normalization Strategies](/spatial-payload-routing-parsing/crs-normalization-strategies/) — transforming mixed-CRS payloads to a canonical projection before fingerprinting
+- [Geometry Validation Pipelines](/spatial-payload-routing-parsing/geometry-validation-pipelines/) — OGC topology checks and repair patterns that protect your PostGIS upsert from invalid geometries
+- [All geospatial webhook topics](/) — return to the full architecture index for delivery, routing, and security sections

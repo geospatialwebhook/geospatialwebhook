@@ -100,57 +100,47 @@ A spatial payload does not travel from source to consumer in a single hop. In a 
 <svg viewBox="0 0 720 300" role="img" aria-label="Three-layer spatial ingestion pipeline: Ingestion Gateway, Routing Engine, and Parsing and Normalisation Layer" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;">
   <title>Spatial Ingestion Pipeline</title>
   <desc>Diagram showing how a spatial webhook payload flows from the Ingestion Gateway through the Routing Engine into the Parsing and Normalisation Layer before reaching downstream consumers.</desc>
-
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.55"/>
     </marker>
   </defs>
-
-  <!-- Layer boxes -->
-  <rect x="20"  y="60" width="160" height="180" rx="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
-  <rect x="280" y="60" width="160" height="180" rx="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
-  <rect x="540" y="60" width="160" height="180" rx="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
-
-  <!-- Layer fills -->
-  <rect x="20"  y="60" width="160" height="180" rx="10" fill="#e8f5e9" opacity="0.18"/>
-  <rect x="280" y="60" width="160" height="180" rx="10" fill="#fce4ec" opacity="0.18"/>
-  <rect x="540" y="60" width="160" height="180" rx="10" fill="#fff3e0" opacity="0.18"/>
-
+  <!-- Layer fills (theme-aware: currentColor at low opacity) -->
+  <rect x="20"  y="60" width="160" height="180" rx="10" fill="currentColor" opacity="0.05"/>
+  <rect x="280" y="60" width="160" height="180" rx="10" fill="currentColor" opacity="0.05"/>
+  <rect x="540" y="60" width="160" height="180" rx="10" fill="currentColor" opacity="0.05"/>
+  <!-- Layer box outlines -->
+  <rect x="20"  y="60" width="160" height="180" rx="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
+  <rect x="280" y="60" width="160" height="180" rx="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
+  <rect x="540" y="60" width="160" height="180" rx="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
   <!-- Layer headings -->
   <text x="100" y="90" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.85">Ingestion Gateway</text>
   <text x="360" y="90" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.85">Routing Engine</text>
   <text x="620" y="90" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.85">Parse &amp; Normalise</text>
-
   <!-- Bullets layer 1 -->
   <text x="35" y="118" font-size="10" fill="currentColor" opacity="0.7">• TLS termination</text>
   <text x="35" y="136" font-size="10" fill="currentColor" opacity="0.7">• Rate limiting</text>
   <text x="35" y="154" font-size="10" fill="currentColor" opacity="0.7">• Auth + HMAC</text>
   <text x="35" y="172" font-size="10" fill="currentColor" opacity="0.7">• Push to broker</text>
   <text x="35" y="190" font-size="10" fill="currentColor" opacity="0.7">• Ack immediately</text>
-
   <!-- Bullets layer 2 -->
   <text x="295" y="118" font-size="10" fill="currentColor" opacity="0.7">• Feature type check</text>
   <text x="295" y="136" font-size="10" fill="currentColor" opacity="0.7">• Spatial extent hash</text>
   <text x="295" y="154" font-size="10" fill="currentColor" opacity="0.7">• Priority assignment</text>
   <text x="295" y="172" font-size="10" fill="currentColor" opacity="0.7">• Partition key (H3/S2)</text>
   <text x="295" y="190" font-size="10" fill="currentColor" opacity="0.7">• Idempotency filter</text>
-
   <!-- Bullets layer 3 -->
   <text x="555" y="118" font-size="10" fill="currentColor" opacity="0.7">• Schema validation</text>
   <text x="555" y="136" font-size="10" fill="currentColor" opacity="0.7">• Topology check</text>
   <text x="555" y="154" font-size="10" fill="currentColor" opacity="0.7">• CRS transform</text>
   <text x="555" y="172" font-size="10" fill="currentColor" opacity="0.7">• Serialise output</text>
   <text x="555" y="190" font-size="10" fill="currentColor" opacity="0.7">• Enrich + emit</text>
-
   <!-- Arrows between layers -->
   <line x1="182" y1="150" x2="278" y2="150" stroke="currentColor" stroke-width="1.5" opacity="0.45" marker-end="url(#arr)"/>
   <line x1="442" y1="150" x2="538" y2="150" stroke="currentColor" stroke-width="1.5" opacity="0.45" marker-end="url(#arr)"/>
-
   <!-- Webhook source label -->
   <text x="100" y="268" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.55">Webhook / IoT source</text>
   <line x1="100" y1="242" x2="100" y2="255" stroke="currentColor" stroke-width="1" opacity="0.35" stroke-dasharray="3,2"/>
-
   <!-- Consumer label -->
   <text x="620" y="268" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.55">Downstream consumers</text>
   <line x1="620" y1="242" x2="620" y2="255" stroke="currentColor" stroke-width="1" opacity="0.35" stroke-dasharray="3,2"/>

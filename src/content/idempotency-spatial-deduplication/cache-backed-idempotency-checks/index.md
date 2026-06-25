@@ -100,55 +100,44 @@ The pipeline enforces a strict order: normalise first, hash second, look up thir
       <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.6"/>
     </marker>
   </defs>
-
   <!-- Stage boxes -->
   <!-- 1: Ingest -->
   <rect x="10" y="100" width="110" height="60" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
   <text x="65" y="124" text-anchor="middle" font-size="11" fill="currentColor" font-family="inherit" font-weight="600">Webhook</text>
   <text x="65" y="140" text-anchor="middle" font-size="10" fill="currentColor" font-family="inherit" opacity="0.8">Ingestion</text>
   <text x="65" y="154" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.6">Schema validation</text>
-
   <!-- Arrow 1→2 -->
   <line x1="122" y1="130" x2="148" y2="130" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)" opacity="0.55"/>
-
   <!-- 2: Normalise -->
   <rect x="150" y="100" width="120" height="60" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
   <text x="210" y="124" text-anchor="middle" font-size="11" fill="currentColor" font-family="inherit" font-weight="600">Spatial</text>
   <text x="210" y="140" text-anchor="middle" font-size="10" fill="currentColor" font-family="inherit" opacity="0.8">Normalisation</text>
   <text x="210" y="154" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.6">Precision · CRS · rings</text>
-
   <!-- Arrow 2→3 -->
   <line x1="272" y1="130" x2="298" y2="130" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)" opacity="0.55"/>
-
   <!-- 3: Key derive -->
   <rect x="300" y="100" width="120" height="60" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
   <text x="360" y="124" text-anchor="middle" font-size="11" fill="currentColor" font-family="inherit" font-weight="600">Key</text>
   <text x="360" y="140" text-anchor="middle" font-size="10" fill="currentColor" font-family="inherit" opacity="0.8">Derivation</text>
   <text x="360" y="154" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.6">v1:sha256:…</text>
-
   <!-- Arrow 3→4 -->
   <line x1="422" y1="130" x2="448" y2="130" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)" opacity="0.55"/>
-
   <!-- 4: Cache -->
   <rect x="450" y="100" width="120" height="60" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
   <text x="510" y="124" text-anchor="middle" font-size="11" fill="currentColor" font-family="inherit" font-weight="600">Redis</text>
   <text x="510" y="140" text-anchor="middle" font-size="10" fill="currentColor" font-family="inherit" opacity="0.8">SET NX EX</text>
   <text x="510" y="154" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.6">Atomic check-and-claim</text>
-
   <!-- Arrow 4→5 (HIT path, go to duplicate label) -->
   <line x1="510" y1="100" x2="510" y2="55" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr)" opacity="0.45" stroke-dasharray="4,3"/>
   <text x="520" y="48" font-size="9" fill="currentColor" font-family="inherit" opacity="0.65">HIT → 200 OK (skip)</text>
-
   <!-- Arrow 4→5 (MISS path) -->
   <line x1="572" y1="130" x2="598" y2="130" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)" opacity="0.55"/>
   <text x="578" y="122" font-size="9" fill="currentColor" font-family="inherit" opacity="0.65">MISS</text>
-
   <!-- 5: Process -->
   <rect x="600" y="100" width="148" height="60" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
   <text x="674" y="124" text-anchor="middle" font-size="11" fill="currentColor" font-family="inherit" font-weight="600">Spatial</text>
   <text x="674" y="140" text-anchor="middle" font-size="10" fill="currentColor" font-family="inherit" opacity="0.8">Processing</text>
   <text x="674" y="154" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.6">Joins · tiles · DB writes</text>
-
   <!-- Stage labels -->
   <text x="65" y="92" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.5">① INGEST</text>
   <text x="210" y="92" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.5">② NORMALISE</text>
@@ -265,9 +254,8 @@ def derive_idempotency_key(payload: SpatialWebhookPayload) -> str:
       idem:v1:<sha256-hex>
 
     The version prefix (v1) allows rolling key-schema changes without
-    collisions during migration windows. Strategies for structuring
-    multi-polygon identifiers are detailed in
-    /idempotency-spatial-deduplication/event-key-generation-for-spatial-data/
+    collisions during migration windows. See the Event Key Generation
+    notes below for multi-polygon identifier strategies.
     """
     normalised_geom = normalise_geometry(payload.geometry.model_dump())
     composite = f"{payload.device_id}:{payload.event_type}:{normalised_geom}"
@@ -437,7 +425,50 @@ The at-least-once delivery model and its interaction with spatial state are expl
 
 ## Fallback When the Cache Is Unavailable
 
-A Redis connection failure must not silently drop valid events. Implement a two-tier fallback:
+A Redis connection failure must not silently drop valid events. Implement a two-tier fallback: the distributed cache is the fast path, and a database UNIQUE constraint is the durable safety net that catches duplicates whenever the cache is unreachable.
+
+<svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two-tier idempotency fallback decision flow from Redis to a PostgreSQL unique constraint" style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;">
+  <title>Two-tier idempotency fallback decision flow</title>
+  <desc>Decision diagram: a request first attempts an atomic Redis claim; on a Redis connection error it falls back to a PostgreSQL insert with an ON CONFLICT clause, and in both tiers a hit short-circuits as a duplicate while a miss proceeds to spatial processing.</desc>
+  <defs>
+    <marker id="fb-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.6"/>
+    </marker>
+  </defs>
+  <!-- Event in -->
+  <rect x="14" y="120" width="120" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
+  <text x="74" y="142" text-anchor="middle" font-size="11" fill="currentColor" font-family="inherit" font-weight="600">Validated</text>
+  <text x="74" y="157" text-anchor="middle" font-size="10" fill="currentColor" font-family="inherit" opacity="0.8">event</text>
+  <line x1="136" y1="145" x2="166" y2="145" stroke="currentColor" stroke-width="1.5" marker-end="url(#fb-arr)" opacity="0.55"/>
+  <!-- Redis tier (diamond) -->
+  <polygon points="245,110 320,145 245,180 170,145" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.6"/>
+  <text x="245" y="142" text-anchor="middle" font-size="10" fill="currentColor" font-family="inherit" font-weight="600">Redis</text>
+  <text x="245" y="156" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.75">SET NX EX?</text>
+  <!-- Redis reachable: MISS -> process -->
+  <line x1="320" y1="145" x2="560" y2="145" stroke="currentColor" stroke-width="1.5" marker-end="url(#fb-arr)" opacity="0.55"/>
+  <text x="440" y="137" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.65">claimed (MISS) → proceed</text>
+  <!-- Redis reachable: HIT -> duplicate -->
+  <line x1="245" y1="110" x2="245" y2="62" stroke="currentColor" stroke-width="1.2" marker-end="url(#fb-arr)" opacity="0.45" stroke-dasharray="4,3"/>
+  <text x="245" y="52" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.65">key exists (HIT) → 200 duplicate</text>
+  <!-- Redis unreachable -> DB tier -->
+  <line x1="245" y1="180" x2="245" y2="222" stroke="currentColor" stroke-width="1.5" marker-end="url(#fb-arr)" opacity="0.55"/>
+  <text x="255" y="205" font-size="9" fill="currentColor" font-family="inherit" opacity="0.65">ConnectionError / Timeout</text>
+  <!-- DB tier (diamond) -->
+  <polygon points="245,222 320,255 245,288 170,255" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.6"/>
+  <text x="245" y="252" text-anchor="middle" font-size="10" fill="currentColor" font-family="inherit" font-weight="600">Postgres</text>
+  <text x="245" y="266" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.75">ON CONFLICT?</text>
+  <!-- DB inserted -> process -->
+  <line x1="320" y1="255" x2="500" y2="255" stroke="currentColor" stroke-width="1.5" marker-end="url(#fb-arr)" opacity="0.55"/>
+  <line x1="500" y1="255" x2="500" y2="170" stroke="currentColor" stroke-width="1.5" marker-end="url(#fb-arr)" opacity="0.55"/>
+  <text x="410" y="247" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.65">inserted → proceed</text>
+  <!-- DB conflict -> duplicate -->
+  <line x1="170" y1="255" x2="120" y2="255" stroke="currentColor" stroke-width="1.2" marker-end="url(#fb-arr)" opacity="0.45" stroke-dasharray="4,3"/>
+  <text x="115" y="247" text-anchor="end" font-size="9" fill="currentColor" font-family="inherit" opacity="0.65">conflict → duplicate</text>
+  <!-- Process box -->
+  <rect x="560" y="120" width="146" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
+  <text x="633" y="142" text-anchor="middle" font-size="11" fill="currentColor" font-family="inherit" font-weight="600">Spatial</text>
+  <text x="633" y="157" text-anchor="middle" font-size="10" fill="currentColor" font-family="inherit" opacity="0.8">processing</text>
+</svg>
 
 ```python
 from contextlib import asynccontextmanager

@@ -5,7 +5,7 @@ slug: "conflict-resolution-strategies"
 type: "cluster"
 breadcrumb: "Idempotency & Spatial Deduplication > Conflict Resolution Strategies"
 datePublished: "2024-11-01"
-dateModified: "2026-06-24"
+dateModified: "2026-06-25"
 ---
 
 <script type="application/ld+json">
@@ -17,7 +17,7 @@ dateModified: "2026-06-24"
       "headline": "Conflict Resolution Strategies for Geospatial Webhook Systems",
       "description": "Step-by-step guide to detecting and resolving competing spatial state updates in event-driven GIS pipelines — covering LWW, semantic merge, distributed locking, and backoff patterns with runnable Python code.",
       "datePublished": "2024-11-01",
-      "dateModified": "2026-06-24",
+      "dateModified": "2026-06-25",
       "author": {"@type": "Organization", "name": "GeoSpatialWebhook"}
     },
     {
@@ -89,80 +89,88 @@ Before wiring up a conflict resolution layer, verify the following are in place:
 
 ---
 
-## Architecture Overview
+## Pipeline Architecture
 
 The diagram below shows the four-layer path from raw webhook delivery to committed spatial state. Each layer has a single responsibility so failures are isolated and the pipeline remains resumable.
 
-<svg viewBox="0 0 720 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four-layer conflict resolution pipeline from webhook ingestion to spatial state commit" style="width:100%;max-width:720px;height:auto;font-family:inherit;display:block;margin:1.5rem auto;">
+<svg viewBox="0 0 760 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four-layer conflict resolution pipeline from webhook ingestion to spatial state commit, with duplicate short-circuit, dead-letter branch, and the three resolution policies" style="width:100%;max-width:760px;height:auto;font-family:inherit;display:block;margin:1.5rem auto;">
   <title>Conflict Resolution Pipeline</title>
-  <desc>Diagram showing four layers: Ingestion &amp; Normalization, Idempotency Gate, Spatial Conflict Evaluation, and Atomic Commit, connected by arrows. A Dead-Letter Queue branches from the Conflict Evaluation layer.</desc>
+  <desc>Four numbered layers laid out left to right: Ingestion and Normalization, Idempotency Gate, Spatial Conflict Evaluation, and Atomic Commit, connected by arrows. The Idempotency Gate short-circuits exact duplicates with a 200 OK; the Conflict Evaluation layer branches irreconcilable updates to a dead-letter queue. A lower panel compares the three resolution policies: last-write-wins, semantic merge, and manual review.</desc>
   <defs>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+    <marker id="crs-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
     </marker>
   </defs>
-  <!-- Layer boxes -->
-  <rect x="20" y="20" width="160" height="68" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
-  <text x="100" y="48" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Layer 1</text>
-  <text x="100" y="65" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Ingestion &amp;</text>
-  <text x="100" y="80" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Normalization</text>
-
-  <rect x="220" y="20" width="160" height="68" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
-  <text x="300" y="48" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Layer 2</text>
-  <text x="300" y="65" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Idempotency</text>
-  <text x="300" y="80" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Gate</text>
-
-  <rect x="420" y="20" width="160" height="68" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
-  <text x="500" y="48" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Layer 3</text>
-  <text x="500" y="65" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Spatial Conflict</text>
-  <text x="500" y="80" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Evaluation</text>
-
-  <rect x="620" y="20" width="80" height="68" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
-  <text x="660" y="48" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Layer 4</text>
-  <text x="660" y="65" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Atomic</text>
-  <text x="660" y="80" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Commit</text>
-
+  <!-- Layer 1 -->
+  <rect x="20" y="24" width="160" height="92" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+  <text x="100" y="46" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">Layer 1</text>
+  <text x="100" y="63" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">Ingestion &amp;</text>
+  <text x="100" y="77" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">Normalization</text>
+  <line x1="40" y1="86" x2="160" y2="86" stroke="currentColor" stroke-width="0.75" opacity="0.25"/>
+  <text x="100" y="100" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.6">CRS &#8594; EPSG:4326</text>
+  <text x="100" y="112" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.6">make_valid()</text>
+  <!-- Layer 2 -->
+  <rect x="220" y="24" width="160" height="92" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+  <text x="300" y="46" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">Layer 2</text>
+  <text x="300" y="63" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">Idempotency</text>
+  <text x="300" y="77" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">Gate</text>
+  <line x1="240" y1="86" x2="360" y2="86" stroke="currentColor" stroke-width="0.75" opacity="0.25"/>
+  <text x="300" y="100" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.6">SET NX EX</text>
+  <text x="300" y="112" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.6">cache lookup</text>
+  <!-- Layer 3 -->
+  <rect x="420" y="24" width="160" height="92" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+  <text x="500" y="46" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">Layer 3</text>
+  <text x="500" y="63" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">Spatial Conflict</text>
+  <text x="500" y="77" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">Evaluation</text>
+  <line x1="440" y1="86" x2="560" y2="86" stroke="currentColor" stroke-width="0.75" opacity="0.25"/>
+  <text x="500" y="100" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.6">overlap + policy</text>
+  <text x="500" y="112" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.6">LWW / merge</text>
+  <!-- Layer 4 -->
+  <rect x="620" y="24" width="120" height="92" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+  <text x="680" y="46" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">Layer 4</text>
+  <text x="680" y="63" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">Atomic</text>
+  <text x="680" y="77" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">Commit</text>
+  <line x1="636" y1="86" x2="724" y2="86" stroke="currentColor" stroke-width="0.75" opacity="0.25"/>
+  <text x="680" y="100" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.6">lock &#8594; write</text>
+  <text x="680" y="112" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.6">audit &#8594; unlock</text>
   <!-- Arrows between layers -->
-  <line x1="182" y1="54" x2="218" y2="54" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.6"/>
-  <line x1="382" y1="54" x2="418" y2="54" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.6"/>
-  <line x1="582" y1="54" x2="618" y2="54" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.6"/>
-
+  <line x1="182" y1="70" x2="216" y2="70" stroke="currentColor" stroke-width="1.5" marker-end="url(#crs-arrow)" opacity="0.6"/>
+  <line x1="382" y1="70" x2="416" y2="70" stroke="currentColor" stroke-width="1.5" marker-end="url(#crs-arrow)" opacity="0.6"/>
+  <line x1="582" y1="70" x2="616" y2="70" stroke="currentColor" stroke-width="1.5" marker-end="url(#crs-arrow)" opacity="0.6"/>
   <!-- Duplicate short-circuit from Gate -->
-  <line x1="300" y1="88" x2="300" y2="140" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" opacity="0.5"/>
-  <rect x="220" y="140" width="160" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3"/>
-  <text x="300" y="162" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.75">Duplicate detected</text>
-  <text x="300" y="177" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.75">→ 200 OK, discard</text>
-
+  <line x1="300" y1="116" x2="300" y2="166" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#crs-arrow)" opacity="0.55"/>
+  <rect x="216" y="166" width="168" height="48" rx="6" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.35"/>
+  <text x="300" y="188" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.8">Duplicate detected</text>
+  <text x="300" y="203" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.8">&#8594; 200 OK, discard</text>
   <!-- DLQ branch from Layer 3 -->
-  <line x1="500" y1="88" x2="500" y2="140" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" opacity="0.5"/>
-  <rect x="420" y="140" width="160" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3"/>
-  <text x="500" y="162" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.75">Irreconcilable</text>
-  <text x="500" y="177" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.75">→ Dead-Letter Queue</text>
-
-  <!-- Detail rows -->
-  <text x="100" y="118" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">CRS → EPSG:4326</text>
-  <text x="100" y="132" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">make_valid()</text>
-  <text x="100" y="146" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">strip provider metadata</text>
-
-  <text x="660" y="118" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">Lock → write</text>
-  <text x="660" y="132" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">→ audit event</text>
-  <text x="660" y="146" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">→ unlock</text>
-
-  <!-- Resolution strategies box -->
-  <rect x="20" y="220" width="680" height="100" rx="8" fill="none" stroke="currentColor" stroke-width="1" opacity="0.2"/>
-  <text x="360" y="243" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor" opacity="0.8">Resolution Policies (Layer 3)</text>
-  <text x="120" y="268" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7" font-weight="600">Last-Write-Wins</text>
-  <text x="120" y="284" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">Compare timestamps;</text>
-  <text x="120" y="298" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">higher ts wins</text>
-  <text x="120" y="312" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">Fast, may lose data</text>
-  <text x="360" y="268" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7" font-weight="600">Semantic Merge</text>
-  <text x="360" y="284" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">Union / clip geometries;</text>
-  <text x="360" y="298" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">version vector required</text>
-  <text x="360" y="312" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">Safe, higher CPU cost</text>
-  <text x="590" y="268" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7" font-weight="600">Manual Review</text>
-  <text x="590" y="284" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">Route to DLQ;</text>
-  <text x="590" y="298" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">operator resolves</text>
-  <text x="590" y="312" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">For regulatory data</text>
+  <line x1="500" y1="116" x2="500" y2="166" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#crs-arrow)" opacity="0.55"/>
+  <rect x="416" y="166" width="168" height="48" rx="6" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.35"/>
+  <text x="500" y="188" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.8">Irreconcilable</text>
+  <text x="500" y="203" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.8">&#8594; Dead-Letter Queue</text>
+  <!-- Resolution strategies panel -->
+  <rect x="20" y="262" width="720" height="184" rx="8" fill="none" stroke="currentColor" stroke-width="1" opacity="0.25"/>
+  <text x="380" y="286" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.85">Resolution Policies (Layer 3)</text>
+  <rect x="44" y="304" width="208" height="122" rx="6" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"/>
+  <text x="148" y="328" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85" font-weight="700">Last-Write-Wins</text>
+  <text x="148" y="350" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">Compare timestamps;</text>
+  <text x="148" y="365" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">higher ts wins</text>
+  <text x="148" y="386" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">Fast, may lose</text>
+  <text x="148" y="401" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">a concurrent edit</text>
+  <text x="148" y="418" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.55">Best for telemetry</text>
+  <rect x="276" y="304" width="208" height="122" rx="6" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"/>
+  <text x="380" y="328" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85" font-weight="700">Semantic Merge</text>
+  <text x="380" y="350" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">Union / clip</text>
+  <text x="380" y="365" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">geometries;</text>
+  <text x="380" y="386" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">version vector</text>
+  <text x="380" y="401" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">required</text>
+  <text x="380" y="418" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.55">Safe, higher CPU cost</text>
+  <rect x="508" y="304" width="208" height="122" rx="6" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"/>
+  <text x="612" y="328" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85" font-weight="700">Manual Review</text>
+  <text x="612" y="350" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">Route to DLQ;</text>
+  <text x="612" y="365" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">operator resolves</text>
+  <text x="612" y="386" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">Preserves every</text>
+  <text x="612" y="401" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">edit for replay</text>
+  <text x="612" y="418" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.55">For regulatory data</text>
 </svg>
 
 The pipeline has four numbered layers:

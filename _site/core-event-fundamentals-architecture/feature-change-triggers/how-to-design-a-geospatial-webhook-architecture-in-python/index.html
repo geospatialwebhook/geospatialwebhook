@@ -49,8 +49,8 @@
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ef3d820"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=9f5ca540"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -246,10 +246,10 @@
   <rect x="390" y="60" width="160" height="200" rx="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
   <rect x="580" y="60" width="190" height="200" rx="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
   <!-- Layer labels -->
-<p><text x="90"  y="44" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.75">1. Ingestion</text>
-<text x="280" y="44" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.75">2. Validation</text>
-<text x="470" y="44" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.75">3. Broker</text>
-<text x="675" y="44" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.75">4. Dispatcher</text></p>
+  <text x="90"  y="44" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.75">1. Ingestion</text>
+  <text x="280" y="44" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.75">2. Validation</text>
+  <text x="470" y="44" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.75">3. Broker</text>
+  <text x="675" y="44" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.75">4. Dispatcher</text>
   <!-- Ingestion items -->
   <rect x="24"  y="82"  width="132" height="30" rx="5" fill="currentColor" opacity="0.08"/>
   <text x="90"  y="102" text-anchor="middle" font-size="11" fill="currentColor">PostGIS trigger</text>
@@ -325,6 +325,7 @@
 <span class="token keyword">import</span> logging
 <span class="token keyword">import</span> random
 <span class="token keyword">import</span> uuid
+<span class="token keyword">from</span> contextlib <span class="token keyword">import</span> asynccontextmanager
 <span class="token keyword">from</span> datetime <span class="token keyword">import</span> datetime<span class="token punctuation">,</span> timezone
 <span class="token keyword">from</span> typing <span class="token keyword">import</span> Literal
 
@@ -337,7 +338,26 @@
 logging<span class="token punctuation">.</span>basicConfig<span class="token punctuation">(</span>level<span class="token operator">=</span>logging<span class="token punctuation">.</span>INFO<span class="token punctuation">,</span> <span class="token builtin">format</span><span class="token operator">=</span><span class="token string">"%(asctime)s %(levelname)s %(message)s"</span><span class="token punctuation">)</span>
 log <span class="token operator">=</span> logging<span class="token punctuation">.</span>getLogger<span class="token punctuation">(</span>__name__<span class="token punctuation">)</span>
 
-app <span class="token operator">=</span> FastAPI<span class="token punctuation">(</span>title<span class="token operator">=</span><span class="token string">"Geospatial Webhook Dispatcher"</span><span class="token punctuation">)</span>
+<span class="token comment"># One shared aiohttp.ClientSession per worker process — created on startup,</span>
+<span class="token comment"># closed on shutdown via the lifespan handler defined below.</span>
+_session<span class="token punctuation">:</span> aiohttp<span class="token punctuation">.</span>ClientSession <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span>
+
+
+<span class="token decorator annotation punctuation">@asynccontextmanager</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">lifespan</span><span class="token punctuation">(</span><span class="token keyword">_</span><span class="token punctuation">:</span> FastAPI<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token comment"># Reuse TCP connections + DNS cache across every POST so retries do not</span>
+    <span class="token comment"># repeat the TLS handshake. on_event("startup"/"shutdown") is deprecated</span>
+    <span class="token comment"># in modern FastAPI; the lifespan context manager is the supported path.</span>
+    <span class="token keyword">global</span> _session
+    connector <span class="token operator">=</span> aiohttp<span class="token punctuation">.</span>TCPConnector<span class="token punctuation">(</span>limit<span class="token operator">=</span><span class="token number">50</span><span class="token punctuation">,</span> ttl_dns_cache<span class="token operator">=</span><span class="token number">300</span><span class="token punctuation">)</span>
+    _session <span class="token operator">=</span> aiohttp<span class="token punctuation">.</span>ClientSession<span class="token punctuation">(</span>connector<span class="token operator">=</span>connector<span class="token punctuation">)</span>
+    <span class="token keyword">try</span><span class="token punctuation">:</span>
+        <span class="token keyword">yield</span>
+    <span class="token keyword">finally</span><span class="token punctuation">:</span>
+        <span class="token keyword">await</span> _session<span class="token punctuation">.</span>close<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+
+app <span class="token operator">=</span> FastAPI<span class="token punctuation">(</span>title<span class="token operator">=</span><span class="token string">"Geospatial Webhook Dispatcher"</span><span class="token punctuation">,</span> lifespan<span class="token operator">=</span>lifespan<span class="token punctuation">)</span>
 
 <span class="token comment"># ---------------------------------------------------------------------------</span>
 <span class="token comment"># 1. Canonical GeoEvent schema</span>
@@ -395,23 +415,9 @@ app <span class="token operator">=</span> FastAPI<span class="token punctuation"
 
 <span class="token comment"># ---------------------------------------------------------------------------</span>
 <span class="token comment"># 3. Async dispatcher with exponential backoff + full jitter</span>
-<span class="token comment">#    Create ONE ClientSession per worker process (not per request) so TCP</span>
-<span class="token comment">#    connections are reused and TLS handshakes are not repeated on every POST.</span>
+<span class="token comment">#    The ClientSession is created once per worker in the lifespan handler</span>
+<span class="token comment">#    above — never one per request, and never one per retry attempt.</span>
 <span class="token comment"># ---------------------------------------------------------------------------</span>
-
-_session<span class="token punctuation">:</span> aiohttp<span class="token punctuation">.</span>ClientSession <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span>
-
-<span class="token decorator annotation punctuation">@app<span class="token punctuation">.</span>on_event</span><span class="token punctuation">(</span><span class="token string">"startup"</span><span class="token punctuation">)</span>
-<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">create_session</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
-    <span class="token keyword">global</span> _session
-    connector <span class="token operator">=</span> aiohttp<span class="token punctuation">.</span>TCPConnector<span class="token punctuation">(</span>limit<span class="token operator">=</span><span class="token number">50</span><span class="token punctuation">,</span> ttl_dns_cache<span class="token operator">=</span><span class="token number">300</span><span class="token punctuation">)</span>
-    _session <span class="token operator">=</span> aiohttp<span class="token punctuation">.</span>ClientSession<span class="token punctuation">(</span>connector<span class="token operator">=</span>connector<span class="token punctuation">)</span>
-
-<span class="token decorator annotation punctuation">@app<span class="token punctuation">.</span>on_event</span><span class="token punctuation">(</span><span class="token string">"shutdown"</span><span class="token punctuation">)</span>
-<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">close_session</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
-    <span class="token keyword">if</span> _session<span class="token punctuation">:</span>
-        <span class="token keyword">await</span> _session<span class="token punctuation">.</span>close<span class="token punctuation">(</span><span class="token punctuation">)</span>
-
 
 <span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">deliver_with_retry</span><span class="token punctuation">(</span>
     url<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span>
@@ -605,7 +611,7 @@ _session<span class="token punctuation">:</span> aiohttp<span class="token punct
 <p><strong>HMAC signature drift on large payloads.</strong> If the consumer reconstructs the body from a different key ordering than the dispatcher’s <code>sort_keys=True</code>, the HMAC will not match. Standardize on <code>sort_keys=True, separators=(&quot;,&quot;, &quot;:&quot;)</code> on both sides, and document this contract in your API reference. Mismatches surface as 401s, not 5xxs, so they bypass retry logic — log them explicitly.</p>
 </li>
 <li>
-<p><strong>Session lifecycle in async frameworks.</strong> Creating a new <code>aiohttp.ClientSession</code> inside <code>deliver_with_retry</code> (one per attempt) opens a new TCP connection and TLS handshake on every retry. The code above creates one session per worker process at startup. When using Celery workers instead of FastAPI, create the session in a <code>celery.signals.worker_process_init</code> handler and close it in <code>worker_process_shutdown</code>.</p>
+<p><strong>Session lifecycle in async frameworks.</strong> Creating a new <code>aiohttp.ClientSession</code> inside <code>deliver_with_retry</code> (one per attempt) opens a new TCP connection and TLS handshake on every retry. The code above creates one session per worker process via the <code>lifespan</code> context manager — the deprecated <code>@app.on_event(&quot;startup&quot;)</code> hook still works but is being phased out, so prefer <code>lifespan</code> on new services. When using Celery workers instead of FastAPI, create the session in a <code>celery.signals.worker_process_init</code> handler and close it in <code>worker_process_shutdown</code>.</p>
 </li>
 </ol>
 <hr>
@@ -707,6 +713,14 @@ VALID_POLYGON_GEOMETRY <span class="token operator">=</span> <span class="token 
 </code></pre>
 </div>
 <hr>
+<h2 id="frequently-asked-questions" tabindex="-1"><a class="heading-anchor" href="#frequently-asked-questions">Frequently asked questions</a></h2>
+<h3 id="why-use-async-dispatch-instead-of-synchronous-http-for-geospatial-webhooks" tabindex="-1"><a class="heading-anchor" href="#why-use-async-dispatch-instead-of-synchronous-http-for-geospatial-webhooks">Why use async dispatch instead of synchronous HTTP for geospatial webhooks?</a></h3>
+<p>Spatial payloads — especially polygon and multipolygon geometries — can be large, and topology validation is CPU-bound. Blocking on synchronous <code>requests.post</code> calls ties up workers and pushes backpressure into the ingestion layer, so a slow consumer slows down the database trigger that produced the event. Async delivery with <code>aiohttp</code> decouples validation from delivery: the ingestion path stays write-optimized while a fixed pool of connections fans out POSTs concurrently.</p>
+<h3 id="how-do-i-handle-crs-mismatches-before-dispatching-a-webhook-payload" tabindex="-1"><a class="heading-anchor" href="#how-do-i-handle-crs-mismatches-before-dispatching-a-webhook-payload">How do I handle CRS mismatches before dispatching a webhook payload?</a></h3>
+<p>Normalize every incoming geometry to WGS 84 (EPSG:4326) at the validation layer using <code>pyproj.Transformer</code> before serializing to GeoJSON, since RFC 7946 mandates EPSG:4326. Reject or reproject any geometry whose source CRS differs, and log the original SRID so consumers can audit the transformation. The full reprojection workflow is covered in <a href="/spatial-payload-routing-parsing/crs-normalization-strategies/handling-mixed-crs-payloads-in-python-event-handlers/">Handling Mixed CRS Payloads in Python Event Handlers</a>.</p>
+<h3 id="when-should-events-go-to-a-dead-letter-queue-versus-be-retried" tabindex="-1"><a class="heading-anchor" href="#when-should-events-go-to-a-dead-letter-queue-versus-be-retried">When should events go to a dead-letter queue versus be retried?</a></h3>
+<p>Retry on transient failures — 5xx responses, timeouts, and connection resets — using the capped exponential backoff with full jitter shown above. Send straight to the dead-letter queue on 4xx client errors (bad endpoint, auth failure, malformed signature), because retrying those only wastes connections, and after <code>max_retries</code> is exhausted for transient errors. Always preserve the full original payload plus failure metadata in the DLQ so the event can be replayed without data loss.</p>
+<hr>
 <h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
 <ul>
 <li><a href="/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers</a> — the parent topic covering when and why to fire events on spatial mutations</li>
@@ -760,18 +774,30 @@ VALID_POLYGON_GEOMETRY <span class="token operator">=</span> <span class="token 
         <h4>Architecture</h4>
         <ul>
           <li><a href="/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
         </ul>
       </div>
       <div>
         <h4>Idempotency</h4>
         <ul>
           <li><a href="/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
         </ul>
       </div>
       <div>
         <h4>Routing &amp; Parsing</h4>
         <ul>
           <li><a href="/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
         </ul>
       </div>
     </div>

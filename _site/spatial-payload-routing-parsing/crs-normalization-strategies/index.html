@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 
   <title>CRS Normalization Strategies for Geospatial Events · Geo Webhook</title>
-  <meta name="description" content="--- title: &quot;CRS Normalization Strategies for Geospatial Events&quot; ---"/>
+  <meta name="description" content="Normalize mixed coordinate reference systems to a canonical EPSG:4326 projection at the webhook ingestion boundary: CRS detection, thread-safe pyproj transformer caching, topology-safe reprojection, retry handling, and verification in Python."/>
   <link rel="canonical" href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/"/>
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
 
@@ -33,7 +33,7 @@
   <meta property="og:locale" content="en_US"/>
   <meta property="og:url" content="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/"/>
   <meta property="og:title" content="CRS Normalization Strategies for Geospatial Events"/>
-  <meta property="og:description" content="--- title: &quot;CRS Normalization Strategies for Geospatial Events&quot; ---"/>
+  <meta property="og:description" content="Normalize mixed coordinate reference systems to a canonical EPSG:4326 projection at the webhook ingestion boundary: CRS detection, thread-safe pyproj transformer caching, topology-safe reprojection, retry handling, and verification in Python."/>
   <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
   <meta property="og:image:width" content="1200"/>
   <meta property="og:image:height" content="630"/>
@@ -42,15 +42,15 @@
   
   <meta name="twitter:card" content="summary_large_image"/>
   <meta name="twitter:title" content="CRS Normalization Strategies for Geospatial Events"/>
-  <meta name="twitter:description" content="--- title: &quot;CRS Normalization Strategies for Geospatial Events&quot; ---"/>
+  <meta name="twitter:description" content="Normalize mixed coordinate reference systems to a canonical EPSG:4326 projection at the webhook ingestion boundary: CRS detection, thread-safe pyproj transformer caching, topology-safe reprojection, retry handling, and verification in Python."/>
   <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
   <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
 
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ef3d820"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=9f5ca540"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -99,7 +99,7 @@
     "@id": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/#article",
     "mainEntityOfPage": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/",
     "headline": "CRS Normalization Strategies for Geospatial Events",
-    "description": "--- title: &quot;CRS Normalization Strategies for Geospatial Events&quot; ---",
+    "description": "Normalize mixed coordinate reference systems to a canonical EPSG:4326 projection at the webhook ingestion boundary: CRS detection, thread-safe pyproj transformer caching, topology-safe reprojection, retry handling, and verification in Python.",
     "inLanguage": "en",
     "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
     "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
@@ -160,27 +160,222 @@
 
     <div class="page__layout">
       <div class="markdown">
-        <p>In modern geospatial architectures, incoming webhook payloads rarely arrive in a uniform coordinate reference system. IoT trackers, third-party mapping services, and legacy GIS exports frequently transmit coordinates in disparate projections, custom local grids, or implicit WGS84 formats. Without systematic <strong>CRS normalization strategies</strong>, downstream routing, spatial indexing, and analytical pipelines will produce inconsistent results, trigger validation failures, or silently corrupt geometries. This guide outlines production-tested workflows for standardizing coordinate systems within Python-based event-driven architectures.</p>
-<h2 id="the-cost-of-coordinate-inconsistency" tabindex="-1"><a class="heading-anchor" href="#the-cost-of-coordinate-inconsistency">The Cost of Coordinate Inconsistency</a></h2>
-<p>Spatial data pipelines operate under strict geometric assumptions. When a routing engine expects <code>EPSG:4326</code> but receives <code>EPSG:32633</code> (UTM Zone 33N), distance calculations become meaningless, spatial joins fail, and tile-based renderers misplace features entirely. In high-throughput event streams, these mismatches compound rapidly. Implementing deterministic normalization at the ingestion boundary eliminates downstream ambiguity, reduces retry storms, and ensures that every geometry entering your system adheres to a single canonical standard.</p>
-<h2 id="prerequisites-baseline-architecture" tabindex="-1"><a class="heading-anchor" href="#prerequisites-baseline-architecture">Prerequisites &amp; Baseline Architecture</a></h2>
-<p>Before implementing normalization logic, ensure your stack meets the following baseline requirements:</p>
-<ul>
-<li><strong>Python 3.9+</strong> with <code>pyproj&gt;=3.3.0</code> and <code>shapely&gt;=2.0.0</code></li>
-<li><strong>Event Broker</strong>: Kafka, RabbitMQ, or AWS SQS configured for at-least-once delivery</li>
-<li><strong>Canonical CRS Target</strong>: Typically <code>EPSG:4326</code> (lat/lon) for global routing or <code>EPSG:3857</code> for tile-based rendering</li>
-<li><strong>Baseline Routing Layer</strong>: A structured ingestion pipeline aligned with <a href="/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a> principles to guarantee deterministic payload handling before transformation occurs</li>
-<li><strong>Monitoring</strong>: Distributed tracing (OpenTelemetry) and metric aggregation for transformation latency and error rates</li>
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "CRS Normalization Strategies for Geospatial Events",
+      "description": "Normalize mixed coordinate reference systems to a canonical EPSG:4326 projection at the webhook ingestion boundary: CRS detection, thread-safe pyproj transformer caching, topology-safe reprojection, retry handling, and verification in Python.",
+      "datePublished": "2025-02-04",
+      "dateModified": "2026-06-25",
+      "author": { "@type": "Organization", "name": "geospatialwebhook.com" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatialwebhook.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Spatial Payload Routing & Parsing", "item": "https://geospatialwebhook.com/spatial-payload-routing-parsing/" },
+        { "@type": "ListItem", "position": 3, "name": "CRS Normalization Strategies", "item": "https://geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/" }
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "CRS Normalization Strategies for Geospatial Events",
+      "step": [
+        { "@type": "HowToStep", "position": 1, "name": "Detect the source CRS and extract metadata" },
+        { "@type": "HowToStep", "position": 2, "name": "Pre-transformation bounds and topology validation" },
+        { "@type": "HowToStep", "position": 3, "name": "Initialize and cache thread-safe transformers" },
+        { "@type": "HowToStep", "position": 4, "name": "Reproject geometry while preserving topology" },
+        { "@type": "HowToStep", "position": 5, "name": "Serialize the canonical geometry for downstream routing" }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Why normalize to EPSG:4326 instead of EPSG:3857?",
+          "acceptedAnswer": { "@type": "Answer", "text": "EPSG:4326 (WGS 84 lat/lon) is the canonical interchange CRS mandated by RFC 7946 for GeoJSON and is the safe storage projection for spatial indexes. EPSG:3857 (Web Mercator) distorts area and distance away from the equator, so use it only as a render-time projection for tile pipelines, never as the storage canonical CRS." }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I detect the CRS when the payload has no crs property?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Apply a fallback resolution chain: check an explicit crs or srid property, then a vendor header such as X-Source-CRS, then heuristics on the coordinate bounds — values outside the +/-180 / +/-90 range almost always indicate a projected system in meters. If none resolve, quarantine the payload to a dead-letter queue rather than guessing." }
+        },
+        {
+          "@type": "Question",
+          "name": "Why must I set always_xy=True on a pyproj Transformer?",
+          "acceptedAnswer": { "@type": "Answer", "text": "PROJ 6+ honours each CRS's authority-defined axis order, which for EPSG:4326 is lat/lon. GeoJSON coordinates are lon/lat. Passing always_xy=True forces longitude-first, latitude-second ordering on both ends so coordinates do not silently swap and land features in the wrong hemisphere." }
+        },
+        {
+          "@type": "Question",
+          "name": "Should I round coordinates before or after reprojection?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Always round or grid-snap after reprojection, never before. Rounding source coordinates introduces error that the transform amplifies, and can collapse adjacent vertices into invalid self-touching rings. Apply precision reduction as the final step before serialization." }
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>Detect the source coordinate reference system at the ingestion boundary, then reproject every incoming geometry to a single canonical <code>EPSG:4326</code> (WGS 84) projection — using cached, thread-safe <code>pyproj</code> transformers — before it touches any spatial index, routing rule, or store.</strong></p>
+<p>This implementation guide is part of <a href="/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a>, the section covering how GeoJSON and binary geometry payloads are ingested, classified, validated, and forwarded to spatial consumers.</p>
+<hr>
+<h2 id="prerequisites" tabindex="-1"><a class="heading-anchor" href="#prerequisites">Prerequisites</a></h2>
+<p>Confirm your environment meets these baseline requirements before building a normalization stage:</p>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Python 3.10+</strong> — for <code>match</code> statement CRS dispatch and modern type hints.</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>pyproj 3.4+</strong> — PROJ 9 bindings for CRS detection, transformer construction, and thread-safe transforms.</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Shapely 2.0+</strong> — GEOS 3.10+ geometry objects and <code>shapely.ops.transform</code> for whole-geometry reprojection.</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Pydantic v2</strong> — schema-validate the normalized output before it leaves the stage.</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>FastAPI 0.100+ or aiohttp 3.9+</strong> — non-blocking ingestion endpoint.</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>A canonical CRS target</strong> — <code>EPSG:4326</code> for storage and routing; <code>EPSG:3857</code> only as a downstream render projection.</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Redis 7+ or RabbitMQ 3.12+</strong> — optional, for buffering and a dead-letter queue for unresolvable-CRS payloads.</label></li>
 </ul>
-<p>Coordinate normalization is not a standalone step; it must integrate cleanly with schema validation, serialization, and downstream consumption. Refer to the official <a href="https://pyproj4.github.io/pyproj/stable/">pyproj documentation</a> for version-specific transformer behaviors and thread-safety guarantees.</p>
-<h2 id="step-by-step-normalization-workflow" tabindex="-1"><a class="heading-anchor" href="#step-by-step-normalization-workflow">Step-by-Step Normalization Workflow</a></h2>
-<p>A robust normalization pipeline follows a deterministic sequence to prevent partial transformations and ensure idempotency:</p>
-<h3 id="1-crs-detection-metadata-extraction" tabindex="-1"><a class="heading-anchor" href="#1-crs-detection-metadata-extraction">1. CRS Detection &amp; Metadata Extraction</a></h3>
-<p>Parse the payload for explicit <code>crs</code>, <code>srid</code>, or <code>epsg</code> metadata. GeoJSON payloads often embed CRS definitions in the <code>crs</code> property, while proprietary vendor formats may use custom headers or embedded WKT strings. When metadata is absent, apply heuristic detection based on coordinate bounds (e.g., values exceeding ±180 strongly indicate a projected system) or vendor-specific routing tags. For complex ingestion scenarios, see <a href="/spatial-payload-routing-parsing/crs-normalization-strategies/handling-mixed-crs-payloads-in-python-event-handlers/">Handling mixed CRS payloads in Python event handlers</a> to implement fallback resolution chains without blocking the consumer thread.</p>
-<h3 id="2-pre-transformation-validation" tabindex="-1"><a class="heading-anchor" href="#2-pre-transformation-validation">2. Pre-Transformation Validation</a></h3>
-<p>Verify topology, coordinate precision, and CRS validity before invoking heavy transformation routines. This step prevents wasted compute on malformed inputs and integrates directly with <a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a> to catch self-intersections, coordinate drift, or NaN values early. Reject or quarantine payloads that fail bounds checks against the source CRS extent. The <a href="https://epsg.org/">EPSG Geodetic Parameter Dataset</a> provides authoritative extent boundaries that can be cached locally for rapid pre-flight validation.</p>
-<h3 id="3-transformer-initialization-thread-safe-caching" tabindex="-1"><a class="heading-anchor" href="#3-transformer-initialization-thread-safe-caching">3. Transformer Initialization &amp; Thread-Safe Caching</a></h3>
-<p>Cache <code>pyproj.Transformer</code> instances keyed by source-target CRS pairs. Avoid per-request initialization, which introduces unacceptable latency under high webhook throughput due to PROJ database lookups. <code>pyproj</code> transformers are thread-safe after construction. Implement a global cache with a bounded size to prevent memory leaks in long-running workers.</p>
+<hr>
+<h2 id="architecture-overview" tabindex="-1"><a class="heading-anchor" href="#architecture-overview">Architecture Overview</a></h2>
+<p>Normalization sits between raw ingestion and any spatially aware consumer. It runs as three ordered layers: detect the source CRS, reproject through a cached transformer, then emit a canonical geometry. Anything that cannot be resolved is quarantined rather than guessed at.</p>
+<svg viewBox="0 0 720 320" role="img" aria-label="Three-layer CRS normalization flow: detection, cached reprojection, and canonical emission, with a quarantine branch for unresolvable CRS" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;">
+  <title>CRS Normalization Data Flow</title>
+  <desc>A payload enters a detection layer that reads explicit CRS metadata, vendor headers, or coordinate-bounds heuristics. Resolved payloads pass to a reprojection layer backed by a thread-safe transformer cache, then to a canonical emission layer that serializes EPSG:4326 GeoJSON. Payloads with no resolvable CRS branch to a dead-letter quarantine.</desc>
+  <defs>
+    <marker id="crsArrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
+    </marker>
+  </defs>
+  <!-- Inbound -->
+  <rect x="14" y="120" width="120" height="56" rx="6" fill="currentColor" opacity="0.08"/>
+  <text x="74" y="143" text-anchor="middle" font-size="11" fill="currentColor">Raw payload</text>
+  <text x="74" y="159" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8">mixed CRS</text>
+  <!-- Layer 1 detection -->
+  <rect x="166" y="40" width="170" height="216" rx="8" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.25"/>
+  <text x="251" y="32" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" opacity="0.7">1 · Detect CRS</text>
+  <rect x="181" y="58" width="140" height="40" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="251" y="74" text-anchor="middle" font-size="10" fill="currentColor">crs / srid property</text>
+  <text x="251" y="88" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8">explicit metadata</text>
+  <rect x="181" y="108" width="140" height="40" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="251" y="124" text-anchor="middle" font-size="10" fill="currentColor">X-Source-CRS header</text>
+  <text x="251" y="138" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8">vendor fallback</text>
+  <rect x="181" y="158" width="140" height="40" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="251" y="174" text-anchor="middle" font-size="10" fill="currentColor">bounds heuristic</text>
+  <text x="251" y="188" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8">&gt; 180 = projected</text>
+  <rect x="181" y="208" width="140" height="36" rx="5" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="4 3" opacity="0.5"/>
+  <text x="251" y="230" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8">unresolved → quarantine</text>
+  <!-- Layer 2 reproject -->
+  <rect x="368" y="40" width="170" height="160" rx="8" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.25"/>
+  <text x="453" y="32" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" opacity="0.7">2 · Reproject</text>
+  <rect x="383" y="58" width="140" height="40" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="453" y="74" text-anchor="middle" font-size="10" fill="currentColor">transformer cache</text>
+  <text x="453" y="88" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8">keyed src→4326</text>
+  <rect x="383" y="108" width="140" height="40" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="453" y="124" text-anchor="middle" font-size="10" fill="currentColor">shapely transform</text>
+  <text x="453" y="138" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8">all rings, always_xy</text>
+  <rect x="383" y="156" width="140" height="34" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="453" y="177" text-anchor="middle" font-size="10" fill="currentColor">precision reduce (after)</text>
+  <!-- Layer 3 emit -->
+  <rect x="570" y="40" width="138" height="160" rx="8" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.25"/>
+  <text x="639" y="32" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" opacity="0.7">3 · Emit</text>
+  <rect x="583" y="58" width="112" height="40" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="639" y="74" text-anchor="middle" font-size="10" fill="currentColor">EPSG:4326</text>
+  <text x="639" y="88" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8">GeoJSON / proto</text>
+  <rect x="583" y="108" width="112" height="40" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="639" y="124" text-anchor="middle" font-size="10" fill="currentColor">spatial index</text>
+  <text x="639" y="138" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8">+ routing rules</text>
+  <!-- Quarantine -->
+  <rect x="368" y="222" width="170" height="40" rx="6" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="4 3" opacity="0.55"/>
+  <text x="453" y="246" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.85">dead-letter queue</text>
+  <!-- Arrows -->
+  <line x1="134" y1="148" x2="163" y2="148" stroke="currentColor" stroke-width="1.4" marker-end="url(#crsArrow)" opacity="0.55"/>
+  <line x1="336" y1="120" x2="365" y2="120" stroke="currentColor" stroke-width="1.4" marker-end="url(#crsArrow)" opacity="0.55"/>
+  <line x1="538" y1="120" x2="567" y2="120" stroke="currentColor" stroke-width="1.4" marker-end="url(#crsArrow)" opacity="0.55"/>
+  <line x1="251" y1="244" x2="251" y2="286" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3" opacity="0.5"/>
+  <line x1="251" y1="286" x2="365" y2="286" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#crsArrow)" opacity="0.5"/>
+  <line x1="453" y1="262" x2="453" y2="278" stroke="currentColor" stroke-width="0" opacity="0"/>
+</svg>
+<p><strong>Layer 1 — Detect CRS:</strong> Resolve the source projection from explicit GeoJSON <code>crs</code>/<code>srid</code> metadata, then a vendor header, then a coordinate-bounds heuristic. Payloads that resolve to nothing branch to quarantine instead of defaulting silently.</p>
+<p><strong>Layer 2 — Reproject:</strong> A cached <code>pyproj.Transformer</code> keyed by the source→target CRS pair reprojects the whole geometry with <code>shapely.ops.transform</code>, walking every coordinate ring. Precision reduction happens only after the transform.</p>
+<p><strong>Layer 3 — Emit:</strong> The geometry is serialized as canonical <code>EPSG:4326</code> GeoJSON (or a binary equivalent) and handed to the spatial index and routing rules with a single, predictable projection.</p>
+<hr>
+<h2 id="step-by-step-implementation" tabindex="-1"><a class="heading-anchor" href="#step-by-step-implementation">Step-by-Step Implementation</a></h2>
+<h3 id="step-1-detect-the-source-crs-and-extract-metadata" tabindex="-1"><a class="heading-anchor" href="#step-1-detect-the-source-crs-and-extract-metadata">Step 1 — Detect the Source CRS and Extract Metadata</a></h3>
+<p>The first responsibility of the stage is to learn the source projection without trusting a default. Read the GeoJSON <code>crs</code> member, fall back to a <code>srid</code>/<code>epsg</code> property, then a vendor header, then a bounds heuristic. For the full fallback chain and how to keep it off the consumer thread, see <a href="/spatial-payload-routing-parsing/crs-normalization-strategies/handling-mixed-crs-payloads-in-python-event-handlers/">Handling mixed CRS payloads in Python event handlers</a>.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> __future__ <span class="token keyword">import</span> annotations
+
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape
+
+CANONICAL_EPSG <span class="token operator">=</span> <span class="token number">4326</span>  <span class="token comment"># WGS 84 lon/lat</span>
+
+
+<span class="token keyword">class</span> <span class="token class-name">CRSUnresolved</span><span class="token punctuation">(</span>Exception<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Raised when no detection method can determine the source CRS."""</span>
+
+
+<span class="token keyword">def</span> <span class="token function">detect_source_epsg</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">,</span> headers<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> <span class="token builtin">str</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">int</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Resolve the source EPSG code from metadata, header, then geometry bounds."""</span>
+    headers <span class="token operator">=</span> headers <span class="token keyword">or</span> <span class="token punctuation">{</span><span class="token punctuation">}</span>
+
+    <span class="token comment"># 1. Explicit GeoJSON 2008-style crs member, e.g. urn:ogc:def:crs:EPSG::32633</span>
+    crs_member <span class="token operator">=</span> payload<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"crs"</span><span class="token punctuation">,</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"properties"</span><span class="token punctuation">,</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"name"</span><span class="token punctuation">,</span> <span class="token string">""</span><span class="token punctuation">)</span>
+    <span class="token keyword">if</span> <span class="token string">"EPSG::"</span> <span class="token keyword">in</span> crs_member<span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token builtin">int</span><span class="token punctuation">(</span>crs_member<span class="token punctuation">.</span>rsplit<span class="token punctuation">(</span><span class="token string">"EPSG::"</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">[</span><span class="token number">1</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+
+    <span class="token comment"># 2. Vendor property or header</span>
+    <span class="token keyword">for</span> candidate <span class="token keyword">in</span> <span class="token punctuation">(</span>payload<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"properties"</span><span class="token punctuation">,</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"source_epsg"</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+                      headers<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"X-Source-CRS"</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">if</span> candidate<span class="token punctuation">:</span>
+            <span class="token keyword">return</span> <span class="token builtin">int</span><span class="token punctuation">(</span><span class="token builtin">str</span><span class="token punctuation">(</span>candidate<span class="token punctuation">)</span><span class="token punctuation">.</span>removeprefix<span class="token punctuation">(</span><span class="token string">"EPSG:"</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+    <span class="token comment"># 3. Bounds heuristic: |lon| &lt;= 180 and |lat| &lt;= 90 implies geographic 4326.</span>
+    geom <span class="token operator">=</span> shape<span class="token punctuation">(</span>payload<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+    minx<span class="token punctuation">,</span> miny<span class="token punctuation">,</span> maxx<span class="token punctuation">,</span> maxy <span class="token operator">=</span> geom<span class="token punctuation">.</span>bounds
+    <span class="token keyword">if</span> <span class="token operator">-</span><span class="token number">180</span> <span class="token operator">&lt;=</span> minx <span class="token operator">&lt;=</span> <span class="token number">180</span> <span class="token keyword">and</span> <span class="token operator">-</span><span class="token number">90</span> <span class="token operator">&lt;=</span> miny <span class="token operator">&lt;=</span> <span class="token number">90</span> <span class="token keyword">and</span> <span class="token builtin">abs</span><span class="token punctuation">(</span>maxx<span class="token punctuation">)</span> <span class="token operator">&lt;=</span> <span class="token number">180</span> <span class="token keyword">and</span> <span class="token builtin">abs</span><span class="token punctuation">(</span>maxy<span class="token punctuation">)</span> <span class="token operator">&lt;=</span> <span class="token number">90</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> CANONICAL_EPSG
+
+    <span class="token keyword">raise</span> CRSUnresolved<span class="token punctuation">(</span>
+        <span class="token string-interpolation"><span class="token string">f"Coordinates out of geographic range (bounds=</span><span class="token interpolation"><span class="token punctuation">{</span>geom<span class="token punctuation">.</span>bounds<span class="token punctuation">}</span></span><span class="token string">); "</span></span>
+        <span class="token string">"no explicit CRS supplied"</span>
+    <span class="token punctuation">)</span>
+</code></pre>
+</div>
+<h3 id="step-2-pre-transformation-bounds-and-topology-validation" tabindex="-1"><a class="heading-anchor" href="#step-2-pre-transformation-bounds-and-topology-validation">Step 2 — Pre-Transformation Bounds and Topology Validation</a></h3>
+<p>Validate before you spend CPU on a transform. Check that coordinates fall within the source CRS’s declared extent and that the topology is repairable, so malformed input fails fast instead of producing silently corrupt output. This is the lightweight gate ahead of the deeper checks in <a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a>.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry<span class="token punctuation">.</span>base <span class="token keyword">import</span> BaseGeometry
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>validation <span class="token keyword">import</span> explain_validity<span class="token punctuation">,</span> make_valid
+
+
+<span class="token keyword">def</span> <span class="token function">validate_before_transform</span><span class="token punctuation">(</span>geom<span class="token punctuation">:</span> BaseGeometry<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> BaseGeometry<span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Reject empty geometries and repair invalid topology before reprojection."""</span>
+    <span class="token keyword">if</span> geom<span class="token punctuation">.</span>is_empty<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"Empty geometry cannot be normalized"</span><span class="token punctuation">)</span>
+
+    <span class="token keyword">if</span> <span class="token keyword">not</span> geom<span class="token punctuation">.</span>is_valid<span class="token punctuation">:</span>
+        <span class="token comment"># explain_validity surfaces the exact failing ring for DLQ triage.</span>
+        reason <span class="token operator">=</span> explain_validity<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>
+        repaired <span class="token operator">=</span> make_valid<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>
+        <span class="token keyword">if</span> repaired<span class="token punctuation">.</span>is_empty<span class="token punctuation">:</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Unrepairable geometry: </span><span class="token interpolation"><span class="token punctuation">{</span>reason<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> repaired
+
+    <span class="token keyword">return</span> geom
+</code></pre>
+</div>
+<h3 id="step-3-initialize-and-cache-thread-safe-transformers" tabindex="-1"><a class="heading-anchor" href="#step-3-initialize-and-cache-thread-safe-transformers">Step 3 — Initialize and Cache Thread-Safe Transformers</a></h3>
+<p>Constructing a <code>pyproj.Transformer</code> triggers a PROJ database lookup, which is far too slow to repeat per request. <code>Transformer</code> instances are thread-safe once built, so cache them keyed by the source→target pair behind a lock with a bounded size to prevent unbounded growth in long-running workers.</p>
 <div class="code-block" data-lang="python">
   <div class="code-block__header">
     <span class="code-block__lang">python</span>
@@ -189,33 +384,40 @@
     </button>
   </div>
   <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> threading
-<span class="token keyword">from</span> pyproj <span class="token keyword">import</span> Transformer<span class="token punctuation">,</span> CRS
-<span class="token keyword">from</span> typing <span class="token keyword">import</span> Tuple
+
+<span class="token keyword">from</span> pyproj <span class="token keyword">import</span> CRS<span class="token punctuation">,</span> Transformer
+
 
 <span class="token keyword">class</span> <span class="token class-name">TransformerCache</span><span class="token punctuation">:</span>
-    <span class="token keyword">def</span> <span class="token function">__init__</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> maxsize<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">128</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Bounded, thread-safe cache of pyproj transformers keyed by CRS pair."""</span>
+
+    <span class="token keyword">def</span> <span class="token function">__init__</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> maxsize<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">128</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
         self<span class="token punctuation">.</span>_lock <span class="token operator">=</span> threading<span class="token punctuation">.</span>Lock<span class="token punctuation">(</span><span class="token punctuation">)</span>
-        self<span class="token punctuation">.</span>_cache<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span>Tuple<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> <span class="token builtin">str</span><span class="token punctuation">]</span><span class="token punctuation">,</span> Transformer<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token punctuation">}</span>
+        self<span class="token punctuation">.</span>_cache<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">tuple</span><span class="token punctuation">[</span><span class="token builtin">int</span><span class="token punctuation">,</span> <span class="token builtin">int</span><span class="token punctuation">]</span><span class="token punctuation">,</span> Transformer<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token punctuation">}</span>
         self<span class="token punctuation">.</span>_maxsize <span class="token operator">=</span> maxsize
 
-    <span class="token keyword">def</span> <span class="token function">get_transformer</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> src_crs<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> dst_crs<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> Transformer<span class="token punctuation">:</span>
-        key <span class="token operator">=</span> <span class="token punctuation">(</span>src_crs<span class="token punctuation">,</span> dst_crs<span class="token punctuation">)</span>
+    <span class="token keyword">def</span> <span class="token function">get</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> src_epsg<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">,</span> dst_epsg<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> CANONICAL_EPSG<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> Transformer<span class="token punctuation">:</span>
+        key <span class="token operator">=</span> <span class="token punctuation">(</span>src_epsg<span class="token punctuation">,</span> dst_epsg<span class="token punctuation">)</span>
         <span class="token keyword">with</span> self<span class="token punctuation">.</span>_lock<span class="token punctuation">:</span>
-            <span class="token keyword">if</span> key <span class="token keyword">not</span> <span class="token keyword">in</span> self<span class="token punctuation">.</span>_cache<span class="token punctuation">:</span>
+            transformer <span class="token operator">=</span> self<span class="token punctuation">.</span>_cache<span class="token punctuation">.</span>get<span class="token punctuation">(</span>key<span class="token punctuation">)</span>
+            <span class="token keyword">if</span> transformer <span class="token keyword">is</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
                 transformer <span class="token operator">=</span> Transformer<span class="token punctuation">.</span>from_crs<span class="token punctuation">(</span>
-                    CRS<span class="token punctuation">.</span>from_user_input<span class="token punctuation">(</span>src_crs<span class="token punctuation">)</span><span class="token punctuation">,</span>
-                    CRS<span class="token punctuation">.</span>from_user_input<span class="token punctuation">(</span>dst_crs<span class="token punctuation">)</span><span class="token punctuation">,</span>
-                    always_xy<span class="token operator">=</span><span class="token boolean">True</span>
+                    CRS<span class="token punctuation">.</span>from_epsg<span class="token punctuation">(</span>src_epsg<span class="token punctuation">)</span><span class="token punctuation">,</span>
+                    CRS<span class="token punctuation">.</span>from_epsg<span class="token punctuation">(</span>dst_epsg<span class="token punctuation">)</span><span class="token punctuation">,</span>
+                    always_xy<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span>  <span class="token comment"># force lon/lat ordering for GeoJSON</span>
                 <span class="token punctuation">)</span>
                 <span class="token keyword">if</span> <span class="token builtin">len</span><span class="token punctuation">(</span>self<span class="token punctuation">.</span>_cache<span class="token punctuation">)</span> <span class="token operator">>=</span> self<span class="token punctuation">.</span>_maxsize<span class="token punctuation">:</span>
-                    <span class="token comment"># Evict oldest entry (insertion-ordered dict in Python 3.7+)</span>
+                    <span class="token comment"># Insertion-ordered dict (Python 3.7+): evict the oldest entry.</span>
                     self<span class="token punctuation">.</span>_cache<span class="token punctuation">.</span>pop<span class="token punctuation">(</span><span class="token builtin">next</span><span class="token punctuation">(</span><span class="token builtin">iter</span><span class="token punctuation">(</span>self<span class="token punctuation">.</span>_cache<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
                 self<span class="token punctuation">.</span>_cache<span class="token punctuation">[</span>key<span class="token punctuation">]</span> <span class="token operator">=</span> transformer
-            <span class="token keyword">return</span> self<span class="token punctuation">.</span>_cache<span class="token punctuation">[</span>key<span class="token punctuation">]</span>
+            <span class="token keyword">return</span> transformer
+
+
+TRANSFORMERS <span class="token operator">=</span> TransformerCache<span class="token punctuation">(</span><span class="token punctuation">)</span>
 </code></pre>
 </div>
-<h3 id="4-coordinate-transformation-geometry-reconstruction" tabindex="-1"><a class="heading-anchor" href="#4-coordinate-transformation-geometry-reconstruction">4. Coordinate Transformation &amp; Geometry Reconstruction</a></h3>
-<p>Apply the cached transformer to geometry coordinates. Handle multi-part geometries (<code>MultiPoint</code>, <code>MultiPolygon</code>, <code>GeometryCollection</code>) by leveraging Shapely’s built-in transformation utilities. <code>shapely.ops.transform</code> accepts a callable that operates on coordinate tuples, making it ideal for batch projection of any geometry type.</p>
+<h3 id="step-4-reproject-geometry-while-preserving-topology" tabindex="-1"><a class="heading-anchor" href="#step-4-reproject-geometry-while-preserving-topology">Step 4 — Reproject Geometry While Preserving Topology</a></h3>
+<p>Apply the cached transformer with <code>shapely.ops.transform</code>, which walks every coordinate in every ring — so <code>MultiPolygon</code> and <code>GeometryCollection</code> features are reprojected in full, not just their bounding boxes. Reduce precision only after the transform completes.</p>
 <div class="code-block" data-lang="python">
   <div class="code-block__header">
     <span class="code-block__lang">python</span>
@@ -223,39 +425,289 @@
       <span class="code-block__copy-label">Copy</span>
     </button>
   </div>
-  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape<span class="token punctuation">,</span> mapping
-<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>ops <span class="token keyword">import</span> transform
-<span class="token keyword">from</span> pyproj <span class="token keyword">import</span> Transformer
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> mapping
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry<span class="token punctuation">.</span>base <span class="token keyword">import</span> BaseGeometry
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>ops <span class="token keyword">import</span> transform <span class="token keyword">as</span> shapely_transform
+<span class="token keyword">from</span> shapely <span class="token keyword">import</span> set_precision
 
-<span class="token keyword">def</span> <span class="token function">normalize_geometry</span><span class="token punctuation">(</span>geom_dict<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">,</span> transformer<span class="token punctuation">:</span> Transformer<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">:</span>
-    geom <span class="token operator">=</span> shape<span class="token punctuation">(</span>geom_dict<span class="token punctuation">)</span>
-    <span class="token keyword">if</span> geom<span class="token punctuation">.</span>is_empty<span class="token punctuation">:</span>
-        <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"Empty geometry cannot be transformed"</span><span class="token punctuation">)</span>
 
-    <span class="token comment"># Transform coordinates while preserving topology</span>
-    transformed_geom <span class="token operator">=</span> transform<span class="token punctuation">(</span>transformer<span class="token punctuation">.</span>transform<span class="token punctuation">,</span> geom<span class="token punctuation">)</span>
+<span class="token keyword">def</span> <span class="token function">reproject_to_canonical</span><span class="token punctuation">(</span>geom<span class="token punctuation">:</span> BaseGeometry<span class="token punctuation">,</span> src_epsg<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> BaseGeometry<span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Reproject any geometry to EPSG:4326, snapping precision afterwards."""</span>
+    <span class="token keyword">if</span> src_epsg <span class="token operator">==</span> CANONICAL_EPSG<span class="token punctuation">:</span>
+        out <span class="token operator">=</span> geom
+    <span class="token keyword">else</span><span class="token punctuation">:</span>
+        transformer <span class="token operator">=</span> TRANSFORMERS<span class="token punctuation">.</span>get<span class="token punctuation">(</span>src_epsg<span class="token punctuation">,</span> CANONICAL_EPSG<span class="token punctuation">)</span>
+        out <span class="token operator">=</span> shapely_transform<span class="token punctuation">(</span>transformer<span class="token punctuation">.</span>transform<span class="token punctuation">,</span> geom<span class="token punctuation">)</span>
 
-    <span class="token keyword">return</span> mapping<span class="token punctuation">(</span>transformed_geom<span class="token punctuation">)</span>
+    <span class="token comment"># Grid-snap AFTER reprojection (~1.1 mm at the equator); never before.</span>
+    out <span class="token operator">=</span> set_precision<span class="token punctuation">(</span>out<span class="token punctuation">,</span> grid_size<span class="token operator">=</span><span class="token number">1e-8</span><span class="token punctuation">)</span>
+    <span class="token keyword">if</span> <span class="token keyword">not</span> out<span class="token punctuation">.</span>is_valid<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"Geometry became invalid after precision reduction"</span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> out
+
+
+<span class="token keyword">def</span> <span class="token function">normalize_feature</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">,</span> headers<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> <span class="token builtin">str</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""End-to-end: detect, validate, reproject, and return a canonical Feature."""</span>
+    src_epsg <span class="token operator">=</span> detect_source_epsg<span class="token punctuation">(</span>payload<span class="token punctuation">,</span> headers<span class="token punctuation">)</span>
+    geom <span class="token operator">=</span> validate_before_transform<span class="token punctuation">(</span>shape<span class="token punctuation">(</span>payload<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    geom <span class="token operator">=</span> reproject_to_canonical<span class="token punctuation">(</span>geom<span class="token punctuation">,</span> src_epsg<span class="token punctuation">)</span>
+    <span class="token keyword">return</span> <span class="token punctuation">{</span>
+        <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Feature"</span><span class="token punctuation">,</span>
+        <span class="token string">"geometry"</span><span class="token punctuation">:</span> mapping<span class="token punctuation">(</span>geom<span class="token punctuation">)</span><span class="token punctuation">,</span>
+        <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span>
+            <span class="token operator">**</span>payload<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"properties"</span><span class="token punctuation">,</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+            <span class="token string">"crs"</span><span class="token punctuation">:</span> <span class="token string">"EPSG:4326"</span><span class="token punctuation">,</span>
+            <span class="token string">"source_epsg"</span><span class="token punctuation">:</span> src_epsg<span class="token punctuation">,</span>
+            <span class="token string">"bbox"</span><span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">(</span>geom<span class="token punctuation">.</span>bounds<span class="token punctuation">)</span><span class="token punctuation">,</span>
+        <span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token punctuation">}</span>
 </code></pre>
 </div>
-<p>Always set <code>always_xy=True</code> during transformer initialization to prevent axis-order confusion, a common pitfall when migrating between legacy GIS libraries and modern PROJ 6+ standards.</p>
-<h3 id="5-canonical-serialization-downstream-routing" tabindex="-1"><a class="heading-anchor" href="#5-canonical-serialization-downstream-routing">5. Canonical Serialization &amp; Downstream Routing</a></h3>
-<p>Convert the normalized geometry into your target format. If your pipeline consumes GeoJSON, ensure the <code>type</code> and <code>coordinates</code> arrays align with RFC 7946 specifications. For high-throughput microservices, binary serialization often outperforms JSON. Review <a href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping</a> to implement compact, schema-enforced wire formats that preserve spatial precision while reducing network I/O.</p>
-<p>When payloads include temporal metadata, coordinate normalization must remain synchronized with event timestamps. Ensure all timestamps are normalized to UTC alongside spatial projection, to avoid spatiotemporal join mismatches caused by timezone inconsistencies.</p>
-<h2 id="production-considerations-performance-idempotency-monitoring" tabindex="-1"><a class="heading-anchor" href="#production-considerations-performance-idempotency-monitoring">Production Considerations: Performance, Idempotency &amp; Monitoring</a></h2>
-<p>Normalization pipelines must survive network partitions, malformed payloads, and sudden traffic spikes. Implement the following safeguards:</p>
+<h3 id="step-5-serialize-the-canonical-geometry-for-downstream-routing" tabindex="-1"><a class="heading-anchor" href="#step-5-serialize-the-canonical-geometry-for-downstream-routing">Step 5 — Serialize the Canonical Geometry for Downstream Routing</a></h3>
+<p>Validate the normalized output against an explicit schema with Pydantic v2 before it leaves the stage, then serialize it for the consumer. If a downstream service needs a compact wire format, the canonical <code>EPSG:4326</code> feature feeds directly into the <a href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping</a> path without further projection.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> pydantic <span class="token keyword">import</span> BaseModel<span class="token punctuation">,</span> Field<span class="token punctuation">,</span> model_validator
+
+_ALLOWED <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"LineString"</span><span class="token punctuation">,</span> <span class="token string">"Polygon"</span><span class="token punctuation">,</span> <span class="token string">"MultiPoint"</span><span class="token punctuation">,</span>
+            <span class="token string">"MultiLineString"</span><span class="token punctuation">,</span> <span class="token string">"MultiPolygon"</span><span class="token punctuation">,</span> <span class="token string">"GeometryCollection"</span><span class="token punctuation">}</span>
+
+
+<span class="token keyword">class</span> <span class="token class-name">CanonicalFeature</span><span class="token punctuation">(</span>BaseModel<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token builtin">type</span><span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">=</span> Field<span class="token punctuation">(</span>pattern<span class="token operator">=</span><span class="token string">"^Feature$"</span><span class="token punctuation">)</span>
+    geometry<span class="token punctuation">:</span> <span class="token builtin">dict</span>
+    properties<span class="token punctuation">:</span> <span class="token builtin">dict</span>
+
+    <span class="token decorator annotation punctuation">@model_validator</span><span class="token punctuation">(</span>mode<span class="token operator">=</span><span class="token string">"after"</span><span class="token punctuation">)</span>
+    <span class="token keyword">def</span> <span class="token function">check</span><span class="token punctuation">(</span>self<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token string">"CanonicalFeature"</span><span class="token punctuation">:</span>
+        <span class="token keyword">if</span> self<span class="token punctuation">.</span>geometry<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"type"</span><span class="token punctuation">)</span> <span class="token keyword">not</span> <span class="token keyword">in</span> _ALLOWED<span class="token punctuation">:</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Unsupported geometry type: </span><span class="token interpolation"><span class="token punctuation">{</span>self<span class="token punctuation">.</span>geometry<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">'type'</span><span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+        <span class="token keyword">if</span> self<span class="token punctuation">.</span>properties<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"crs"</span><span class="token punctuation">)</span> <span class="token operator">!=</span> <span class="token string">"EPSG:4326"</span><span class="token punctuation">:</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"Feature is not normalized to EPSG:4326"</span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> self
+
+
+<span class="token keyword">def</span> <span class="token function">serialize_for_routing</span><span class="token punctuation">(</span>feature<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Validate the canonical feature and emit RFC 7946 GeoJSON for the consumer."""</span>
+    <span class="token keyword">import</span> json
+    validated <span class="token operator">=</span> CanonicalFeature<span class="token punctuation">.</span>model_validate<span class="token punctuation">(</span>feature<span class="token punctuation">)</span>
+    <span class="token keyword">return</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>validated<span class="token punctuation">.</span>model_dump<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>When payloads carry temporal metadata, normalize timestamps to UTC alongside the spatial projection so that spatiotemporal joins downstream are never skewed by a mixed timezone and a mixed CRS at once.</p>
+<hr>
+<h2 id="spatial-validation-and-error-handling" tabindex="-1"><a class="heading-anchor" href="#spatial-validation-and-error-handling">Spatial Validation and Error Handling</a></h2>
+<p>Reprojection can turn a valid source geometry into an invalid target one — narrow slivers collapse, near-coincident vertices merge, and ring orientation can flip relative to <a href="https://datatracker.ietf.org/doc/html/rfc7946">RFC 7946</a>, which requires exterior rings to be counter-clockwise. Re-check validity and orientation after the transform, not only before it:</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> Polygon<span class="token punctuation">,</span> MultiPolygon
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry<span class="token punctuation">.</span>polygon <span class="token keyword">import</span> orient
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>validation <span class="token keyword">import</span> explain_validity
+
+
+<span class="token keyword">def</span> <span class="token function">enforce_post_transform_invariants</span><span class="token punctuation">(</span>geom<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Re-validate and fix ring orientation after reprojection."""</span>
+    <span class="token keyword">if</span> <span class="token keyword">not</span> geom<span class="token punctuation">.</span>is_valid<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Invalid after transform: </span><span class="token interpolation"><span class="token punctuation">{</span>explain_validity<span class="token punctuation">(</span>geom<span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+
+    <span class="token comment"># RFC 7946 §3.1.6: exterior rings CCW, interior rings CW (sign=1.0 in Shapely).</span>
+    <span class="token keyword">if</span> <span class="token builtin">isinstance</span><span class="token punctuation">(</span>geom<span class="token punctuation">,</span> Polygon<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> orient<span class="token punctuation">(</span>geom<span class="token punctuation">,</span> sign<span class="token operator">=</span><span class="token number">1.0</span><span class="token punctuation">)</span>
+    <span class="token keyword">if</span> <span class="token builtin">isinstance</span><span class="token punctuation">(</span>geom<span class="token punctuation">,</span> MultiPolygon<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> MultiPolygon<span class="token punctuation">(</span><span class="token punctuation">[</span>orient<span class="token punctuation">(</span>p<span class="token punctuation">,</span> sign<span class="token operator">=</span><span class="token number">1.0</span><span class="token punctuation">)</span> <span class="token keyword">for</span> p <span class="token keyword">in</span> geom<span class="token punctuation">.</span>geoms<span class="token punctuation">]</span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> geom
+</code></pre>
+</div>
+<p>On failure, route the payload — together with the detected <code>source_epsg</code>, the validity explanation, and the raw bytes — to a dead-letter queue rather than retrying a deterministic transform that will only fail again. A geometry that is invalid after transform is a data pathology, not a transient fault. Where retries <em>are</em> warranted (transient PROJ data or database errors), they must not reprocess features already persisted, which is why normalization pairs with the <a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/">at-least-once delivery pattern</a>.</p>
+<hr>
+<h2 id="retry-backoff-and-delivery-guarantees" tabindex="-1"><a class="heading-anchor" href="#retry-backoff-and-delivery-guarantees">Retry, Backoff, and Delivery Guarantees</a></h2>
+<p>Distinguish transient failures (PROJ grid-shift download timeouts, missing transformation pipelines on cold start) from permanent ones (unresolvable CRS, post-transform invalidity). Retry only the transient class, with exponential backoff and jitter:</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">import</span> random
+
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">normalize_with_retry</span><span class="token punctuation">(</span>
+    payload<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">,</span>
+    headers<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> <span class="token builtin">str</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span><span class="token punctuation">,</span>
+    max_attempts<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">4</span><span class="token punctuation">,</span>
+    base_delay<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> <span class="token number">0.5</span><span class="token punctuation">,</span>
+    max_delay<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> <span class="token number">15.0</span><span class="token punctuation">,</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span> <span class="token operator">|</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Retry normalization for transient errors only; quarantine the rest."""</span>
+    <span class="token keyword">for</span> attempt <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">,</span> max_attempts <span class="token operator">+</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">try</span><span class="token punctuation">:</span>
+            <span class="token keyword">return</span> <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>to_thread<span class="token punctuation">(</span>normalize_feature<span class="token punctuation">,</span> payload<span class="token punctuation">,</span> headers<span class="token punctuation">)</span>
+        <span class="token keyword">except</span> <span class="token punctuation">(</span>CRSUnresolved<span class="token punctuation">,</span> ValueError<span class="token punctuation">)</span><span class="token punctuation">:</span>
+            <span class="token comment"># Deterministic failure — no retry will change the outcome.</span>
+            <span class="token keyword">await</span> send_to_dlq<span class="token punctuation">(</span>payload<span class="token punctuation">,</span> reason<span class="token operator">=</span><span class="token string">"permanent"</span><span class="token punctuation">)</span>
+            <span class="token keyword">return</span> <span class="token boolean">None</span>
+        <span class="token keyword">except</span> OSError <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+            <span class="token comment"># e.g. PROJ network resource fetch failed — worth a retry.</span>
+            <span class="token keyword">if</span> attempt <span class="token operator">==</span> max_attempts<span class="token punctuation">:</span>
+                <span class="token keyword">await</span> send_to_dlq<span class="token punctuation">(</span>payload<span class="token punctuation">,</span> reason<span class="token operator">=</span><span class="token string-interpolation"><span class="token string">f"transient: </span><span class="token interpolation"><span class="token punctuation">{</span>exc<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+                <span class="token keyword">return</span> <span class="token boolean">None</span>
+            delay <span class="token operator">=</span> <span class="token builtin">min</span><span class="token punctuation">(</span>base_delay <span class="token operator">*</span> <span class="token number">2</span> <span class="token operator">**</span> <span class="token punctuation">(</span>attempt <span class="token operator">-</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">,</span> max_delay<span class="token punctuation">)</span>
+            <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span>delay <span class="token operator">+</span> random<span class="token punctuation">.</span>uniform<span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> delay <span class="token operator">*</span> <span class="token number">0.2</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> <span class="token boolean">None</span>
+</code></pre>
+</div>
+<p><strong>At-least-once vs exactly-once:</strong> Reprojection itself is deterministic, so re-delivering the same payload always yields the same canonical geometry. That makes at-least-once safe for the transform, but the <em>write</em> still needs deduplication. Derive an idempotency key from the normalized geometry so a re-delivery does not duplicate rows in your spatial store, following <a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a> and the cache check in <a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks</a>.</p>
+<hr>
+<h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
+<p>Confirm the round trip end to end: a UTM-projected polygon must come out as a valid <code>EPSG:4326</code> feature whose coordinates are back inside geographic range. Run this with <code>pytest</code>:</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> pytest
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape
+
+<span class="token comment"># A square ~1 km on a side in UTM Zone 33N (EPSG:32633), near Rome.</span>
+UTM_FEATURE <span class="token operator">=</span> <span class="token punctuation">{</span>
+    <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Feature"</span><span class="token punctuation">,</span>
+    <span class="token string">"crs"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"name"</span><span class="token punctuation">:</span> <span class="token string">"urn:ogc:def:crs:EPSG::32633"</span><span class="token punctuation">}</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span>
+        <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Polygon"</span><span class="token punctuation">,</span>
+        <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token punctuation">[</span>
+            <span class="token punctuation">[</span><span class="token number">290000</span><span class="token punctuation">,</span> <span class="token number">4640000</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+            <span class="token punctuation">[</span><span class="token number">291000</span><span class="token punctuation">,</span> <span class="token number">4640000</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+            <span class="token punctuation">[</span><span class="token number">291000</span><span class="token punctuation">,</span> <span class="token number">4641000</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+            <span class="token punctuation">[</span><span class="token number">290000</span><span class="token punctuation">,</span> <span class="token number">4641000</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+            <span class="token punctuation">[</span><span class="token number">290000</span><span class="token punctuation">,</span> <span class="token number">4640000</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+        <span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+    <span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"name"</span><span class="token punctuation">:</span> <span class="token string">"utm-test"</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+<span class="token punctuation">}</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_utm_normalizes_to_wgs84</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    result <span class="token operator">=</span> normalize_feature<span class="token punctuation">(</span>UTM_FEATURE<span class="token punctuation">)</span>
+
+    <span class="token keyword">assert</span> result<span class="token punctuation">[</span><span class="token string">"properties"</span><span class="token punctuation">]</span><span class="token punctuation">[</span><span class="token string">"crs"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token string">"EPSG:4326"</span>
+    <span class="token keyword">assert</span> result<span class="token punctuation">[</span><span class="token string">"properties"</span><span class="token punctuation">]</span><span class="token punctuation">[</span><span class="token string">"source_epsg"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token number">32633</span>
+
+    geom <span class="token operator">=</span> shape<span class="token punctuation">(</span>result<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> geom<span class="token punctuation">.</span>is_valid
+
+    minx<span class="token punctuation">,</span> miny<span class="token punctuation">,</span> maxx<span class="token punctuation">,</span> maxy <span class="token operator">=</span> geom<span class="token punctuation">.</span>bounds
+    <span class="token comment"># Output must be inside geographic range and near Rome (~12.5E, 41.9N).</span>
+    <span class="token keyword">assert</span> <span class="token number">12</span> <span class="token operator">&lt;</span> minx <span class="token operator">&lt;</span> <span class="token number">13</span> <span class="token keyword">and</span> <span class="token number">41</span> <span class="token operator">&lt;</span> miny <span class="token operator">&lt;</span> <span class="token number">42</span>
+    <span class="token keyword">assert</span> <span class="token operator">-</span><span class="token number">180</span> <span class="token operator">&lt;=</span> minx <span class="token operator">&lt;=</span> <span class="token number">180</span> <span class="token keyword">and</span> <span class="token operator">-</span><span class="token number">90</span> <span class="token operator">&lt;=</span> miny <span class="token operator">&lt;=</span> <span class="token number">90</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_unresolvable_crs_raises</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    bad <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Feature"</span><span class="token punctuation">,</span> <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span>
+        <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token number">500000</span><span class="token punctuation">,</span> <span class="token number">4640000</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">}</span>
+    <span class="token keyword">with</span> pytest<span class="token punctuation">.</span>raises<span class="token punctuation">(</span>CRSUnresolved<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        normalize_feature<span class="token punctuation">(</span>bad<span class="token punctuation">)</span>  <span class="token comment"># projected coords, no CRS declared</span>
+</code></pre>
+</div>
+<p>A passing run confirms three things at once: detection read the embedded EPSG code, the transformer reprojected the full ring, and the output survived post-transform validation.</p>
+<hr>
+<h2 id="troubleshooting" tabindex="-1"><a class="heading-anchor" href="#troubleshooting">Troubleshooting</a></h2>
+<div style="overflow-x:auto">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely spatial cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Features land in the wrong hemisphere</td>
+<td>Axis order swapped — lat/lon emitted instead of lon/lat</td>
+<td>Set <code>always_xy=True</code> on every <code>Transformer.from_crs</code> call</td>
+</tr>
+<tr>
+<td>Coordinates look like <code>[500000, 4640000]</code> after normalization</td>
+<td>Source was a projected CRS (meters) treated as <code>EPSG:4326</code></td>
+<td>Read the <code>crs</code> member or <code>X-Source-CRS</code> header; reject payloads with no resolvable CRS</td>
+</tr>
+<tr>
+<td>Geometry valid before, invalid after transform</td>
+<td>Sliver collapse or vertex merge from projection distortion</td>
+<td>Re-run <code>make_valid</code>/<code>orient</code> after the transform; widen <code>grid_size</code> only as a last resort</td>
+</tr>
+<tr>
+<td>First request per CRS pair is slow, rest are fast</td>
+<td>PROJ database lookup on every transformer construction</td>
+<td>Cache transformers keyed by <code>(src, dst)</code> EPSG pair; pre-warm common pairs at startup</td>
+</tr>
+<tr>
+<td>Polygons render with holes filled in</td>
+<td>Ring orientation flipped relative to RFC 7946 after reprojection</td>
+<td>Apply <code>shapely.geometry.polygon.orient(geom, sign=1.0)</code> post-transform</td>
+</tr>
+<tr>
+<td>Memory grows in long-running workers</td>
+<td>Unbounded transformer cache accumulating rare CRS pairs</td>
+<td>Bound the cache <code>maxsize</code> and evict the oldest entry on overflow</td>
+</tr>
+<tr>
+<td><code>CRSError: Invalid projection</code> on cold start</td>
+<td>Missing PROJ grid-shift files in the container image</td>
+<td>Bundle PROJ data or set <code>PROJ_NETWORK=ON</code>; retry transient fetch failures with backoff</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<hr>
+<h2 id="faq" tabindex="-1"><a class="heading-anchor" href="#faq">FAQ</a></h2>
+<details class="faq">
+<summary><strong>Why normalize to EPSG:4326 instead of EPSG:3857?</strong></summary>
+<div class="faq__body">
+<p><code>EPSG:4326</code> (WGS 84 lat/lon) is the canonical interchange CRS mandated by <a href="https://datatracker.ietf.org/doc/html/rfc7946">RFC 7946</a> for GeoJSON and the safe storage projection for spatial indexes. <code>EPSG:3857</code> (Web Mercator) distorts area and distance increasingly away from the equator, so reserve it for the render step of a tile pipeline — never as the canonical storage CRS.</p>
+</div>
+</details>
+<details class="faq">
+<summary><strong>How do I detect the CRS when the payload has no crs property?</strong></summary>
+<div class="faq__body">
+<p>Apply a fallback resolution chain: check an explicit <code>crs</code> or <code>srid</code> property, then a vendor header such as <code>X-Source-CRS</code>, then a heuristic on the coordinate bounds — values outside the ±180 / ±90 range almost always indicate a projected system measured in meters. If nothing resolves, quarantine the payload to a dead-letter queue rather than guessing. The full chain is in <a href="/spatial-payload-routing-parsing/crs-normalization-strategies/handling-mixed-crs-payloads-in-python-event-handlers/">Handling mixed CRS payloads in Python event handlers</a>.</p>
+</div>
+</details>
+<details class="faq">
+<summary><strong>Why must I set always_xy=True on a pyproj Transformer?</strong></summary>
+<div class="faq__body">
+<p>PROJ 6+ honours each CRS’s authority-defined axis order, which for <code>EPSG:4326</code> is latitude-first. GeoJSON coordinates are longitude-first. Passing <code>always_xy=True</code> forces lon/lat ordering on both ends, so coordinates do not silently swap and place features in the wrong location.</p>
+</div>
+</details>
+<details class="faq">
+<summary><strong>Should I round coordinates before or after reprojection?</strong></summary>
+<div class="faq__body">
+<p>Always round or grid-snap <em>after</em> reprojection. Rounding source coordinates introduces error that the transform amplifies and can collapse adjacent vertices into invalid self-touching rings. Apply precision reduction with <code>shapely.set_precision</code> as the final step before serialization, then re-check validity.</p>
+</div>
+</details>
+<hr>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
 <ul>
-<li><strong>Idempotent Processing</strong>: Attach a deterministic event ID to each payload. If a transformation fails midway, the consumer should be able to replay the message without duplicating geometries in downstream stores.</li>
-<li><strong>Dead-Letter Queues (DLQ)</strong>: Route payloads that fail CRS detection or validation to a DLQ with enriched error metadata. Include the original payload, detected CRS, validation failure reason, and stack trace for rapid triage.</li>
-<li><strong>Precision Management</strong>: Floating-point arithmetic introduces micro-drift during projection. Apply grid snapping or coordinate rounding only <em>after</em> transformation, never before, to preserve topological integrity.</li>
-<li><strong>Observability</strong>: Instrument transformation latency, cache hit rates, and error categorization using OpenTelemetry spans. Track the <code>pyproj</code> version and PROJ data directory path in startup logs to prevent environment drift across container deployments.</li>
+<li><a href="/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a> — parent section covering the full ingestion, validation, and routing architecture</li>
+<li><a href="/spatial-payload-routing-parsing/crs-normalization-strategies/handling-mixed-crs-payloads-in-python-event-handlers/">Handling Mixed CRS Payloads in Python Event Handlers</a> — the detection fallback chain in depth, without blocking the consumer thread</li>
+<li><a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a> — topology and schema checks that bracket the reprojection step</li>
+<li><a href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping</a> — compact binary serialization for the canonical EPSG:4326 feature</li>
+<li><a href="/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a> — running normalization off the event loop in a process pool under load</li>
 </ul>
-<p>The Open Geospatial Consortium (OGC) maintains strict interoperability standards for coordinate reference systems. Aligning your normalization logic with <a href="https://www.ogc.org/standards/ogcapi-features/">OGC API - Features</a> ensures your pipeline remains compatible with enterprise GIS platforms and open-source spatial databases alike.</p>
-<h2 id="integrating-with-event-driven-messaging-patterns" tabindex="-1"><a class="heading-anchor" href="#integrating-with-event-driven-messaging-patterns">Integrating with Event-Driven Messaging Patterns</a></h2>
-<p>Normalization sits at the intersection of ingestion and routing. In Kafka-based architectures, deploy normalization as a stateless stream processor (e.g., Kafka Streams or Faust) that consumes raw topics, applies projection, and emits to a <code>normalized-geometries</code> topic. For RabbitMQ, use a dedicated worker pool with prefetch limits tuned to transformer cache size, preventing memory thrashing during burst loads.</p>
-<p>When designing consumer groups, ensure partition keys align with spatial bounding boxes or tenant IDs rather than raw coordinate hashes. This guarantees that geometries belonging to the same geographic region or customer are processed sequentially, preserving spatial consistency during concurrent transformations.</p>
-<h2 id="conclusion" tabindex="-1"><a class="heading-anchor" href="#conclusion">Conclusion</a></h2>
-<p>Effective <strong>CRS normalization strategies</strong> transform chaotic, multi-source spatial streams into reliable, query-ready datasets. By enforcing deterministic detection, caching expensive transformers, validating geometry integrity, and aligning with event-driven best practices, platform teams can eliminate projection-related failures before they reach analytical layers. Treat normalization as a foundational routing primitive, not an afterthought, and your geospatial infrastructure will scale predictably across regions, vendors, and data volumes.</p>
 
         <h2 id="explore-this-section">Explore this section</h2>
         <div class="children-grid">
@@ -272,8 +724,8 @@
           <h3>Related in this section</h3>
           <ul>
             <li><a href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
-            <li><a href="/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
             <li><a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
+            <li><a href="/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
           </ul>
         </div>
         <div class="aside-card">
@@ -319,18 +771,30 @@
         <h4>Architecture</h4>
         <ul>
           <li><a href="/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
         </ul>
       </div>
       <div>
         <h4>Idempotency</h4>
         <ul>
           <li><a href="/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
         </ul>
       </div>
       <div>
         <h4>Routing &amp; Parsing</h4>
         <ul>
           <li><a href="/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
         </ul>
       </div>
     </div>
