@@ -1,0 +1,834 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>Tile Update Event Pipelines · Geo Webhook</title>
+  <meta name="description" content="Build production-grade tile update event pipelines in Python: ingestion, spatial validation, partition-aware routing, and broadcast with idempotent async workers."/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360"/>
+  <meta name="color-scheme" content="light"/>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/"/>
+  <meta property="og:title" content="Tile Update Event Pipelines"/>
+  <meta property="og:description" content="Build production-grade tile update event pipelines in Python: ingestion, spatial validation, partition-aware routing, and broadcast with idempotent async workers."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Tile Update Event Pipelines"/>
+  <meta name="twitter:description" content="Build production-grade tile update event pipelines in Python: ingestion, spatial validation, partition-aware routing, and broadcast with idempotent async workers."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },{ "@type": "ListItem", "position": 2, "name": "Core Event Fundamentals Architecture", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" },{ "@type": "ListItem", "position": 3, "name": "Tile Update Event Pipelines", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/" }
+    ]
+  }
+  </script>
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/#article",
+    "mainEntityOfPage": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/",
+    "headline": "Tile Update Event Pipelines",
+    "description": "Build production-grade tile update event pipelines in Python: ingestion, spatial validation, partition-aware routing, and broadcast with idempotent async workers.",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
+    "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
+    "image": "https://www.geospatialwebhook.com/og-image.png",
+    "url": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/",
+    "articleSection": "Core Event Fundamentals Architecture",
+    "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
+  }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="https://www.geospatialwebhook.com/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="https://www.geospatialwebhook.com/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Queues &amp; Retries</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
+      </a>
+    </nav>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="https://www.geospatialwebhook.com/">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals Architecture</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">Tile Update Event Pipelines</span>
+    </nav>
+
+    <h1 class="page__title">Tile Update Event Pipelines</h1>
+
+    <div class="page__layout">
+      <div class="markdown">
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Tile Update Event Pipelines",
+      "description": "Build production-grade tile update event pipelines in Python: ingestion, spatial validation, partition-aware routing, and broadcast with idempotent async workers.",
+      "datePublished": "2024-11-01",
+      "dateModified": "2026-06-24",
+      "author": { "@type": "Organization", "name": "geospatialwebhook.com" },
+      "publisher": { "@type": "Organization", "name": "geospatialwebhook.com" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Core Event Fundamentals & Architecture", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" },
+        { "@type": "ListItem", "position": 3, "name": "Tile Update Event Pipelines", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/" }
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Build a Tile Update Event Pipeline in Python",
+      "step": [
+        { "@type": "HowToStep", "position": 1, "name": "Ingestion & cryptographic verification", "text": "Authenticate and deserialize incoming webhook payloads at the edge, rejecting unsigned requests before they reach the broker." },
+        { "@type": "HowToStep", "position": 2, "name": "Validation & spatial enrichment", "text": "Parse events with Pydantic, validate geometry topology with Shapely, and attach tile matrix identifiers." },
+        { "@type": "HowToStep", "position": 3, "name": "Partition-aware routing", "text": "Assign each event a composite partition key (zoom:quadkey) so updates to the same tile region are always processed in order." },
+        { "@type": "HowToStep", "position": 4, "name": "Async processing & broadcast", "text": "Regenerate affected tiles, invalidate CDN cache, and push a lightweight tile_updated message to WebSocket or SSE consumers." }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Should I partition tile update events by H3 cell or by z/x/y quadkey?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Use z/x/y quadkey partitioning when your downstream is a standard XYZ tile server — the key maps directly to the cache path so routing and invalidation share the same identifier. H3 is better when you also run spatial analytics alongside tile rendering, because H3 cells support hierarchical aggregation at multiple resolutions without re-indexing." }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I prevent tile flickering from out-of-order event delivery?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Add a monotonic version field (integer sequence or millisecond timestamp) to every payload. In your consumer, skip processing when the incoming version is lower than the last persisted version for that tile. Combine this with a Redis SETNX idempotency guard so broker retries cannot overwrite a newer tile with a stale one." }
+        },
+        {
+          "@type": "Question",
+          "name": "What delivery guarantee is best for tile update events?",
+          "acceptedAnswer": { "@type": "Answer", "text": "At-least-once delivery paired with idempotency checks is the standard choice. Exactly-once semantics require distributed transactions that impose latency unsuitable for real-time tile invalidation. An idempotency key derived from the upstream mutation ID makes at-least-once safe in practice." }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I detect hot geographic regions that bottleneck a consumer?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Emit a partition_lag metric tagged with zoom level and quadkey prefix. A Kafka consumer group dashboard or Prometheus histogram will reveal which z/x/y ranges consistently lag. Remedies include sub-partitioning hot tiles at a finer quadkey depth or routing high-frequency regions to a dedicated consumer group." }
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>A tile update event pipeline takes a spatial mutation — a feature edit, a sensor burst, a boundary change — and drives it through ingestion, validation, partition-aware routing, and CDN broadcast so that map clients see the updated tile within milliseconds of the source change.</strong></p>
+<p>This topic is part of <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a>, which covers the event modeling, delivery guarantees, and security patterns that underpin all real-time geospatial systems.</p>
+<h2 id="prerequisites" tabindex="-1"><a class="heading-anchor" href="#prerequisites">Prerequisites</a></h2>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> Python 3.10+ (<code>asyncio</code>, structural pattern matching, <code>match</code>/<code>case</code>)</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <code>pydantic</code> v2, <code>shapely</code> 2.x, <code>pyproj</code> 3.x, <code>httpx</code>, <code>aiohttp</code> or FastAPI</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> Apache Kafka, RabbitMQ, or AWS SQS/SNS with per-key ordering or partitioning</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> A tile store accessible to workers (S3-compatible bucket, Cloudflare R2, or local MBTiles for development)</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> Redis (or equivalent) for idempotency guards and consumer-lag metrics</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> Familiarity with how upstream GIS services emit spatial mutations, as described in <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers</a></label></li>
+</ul>
+<h2 id="pipeline-architecture" tabindex="-1"><a class="heading-anchor" href="#pipeline-architecture">Pipeline Architecture</a></h2>
+<p>The pipeline has four sequential layers. Each layer has a single responsibility and a defined failure exit so that a bad payload cannot travel further than one stage.</p>
+<p>&lt;svg
+viewBox=“0 0 760 220”
+xmlns=“<a href="http://www.w3.org/2000/svg">http://www.w3.org/2000/svg</a>”
+role=“img”
+aria-label=“Four-stage tile update event pipeline diagram”
+style=“width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;”</p>
+<blockquote></blockquote>
+  <title>Four-stage tile update event pipeline</title>
+  <desc>A left-to-right flow diagram showing: Webhook Source → Stage 1 Ingestion and Verification → Stage 2 Validation and Enrichment → Stage 3 Partition Router → Stage 4 Tile Worker and Broadcast. A Dead-Letter Queue branches off Stage 2.</desc>
+  <!-- Source box -->
+  <rect x="4" y="80" width="100" height="60" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="54" y="106" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif">Webhook</text>
+  <text x="54" y="121" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif">Source</text>
+  <!-- Arrow 1 -->
+  <line x1="104" y1="110" x2="134" y2="110" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Stage 1 -->
+  <rect x="136" y="66" width="120" height="88" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 2"/>
+  <text x="196" y="90" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Stage 1</text>
+  <text x="196" y="108" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">Ingestion &amp;</text>
+  <text x="196" y="122" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">Verification</text>
+  <text x="196" y="143" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">(HMAC-SHA256)</text>
+  <!-- Arrow 2 -->
+  <line x1="256" y1="110" x2="286" y2="110" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Stage 2 -->
+  <rect x="288" y="66" width="120" height="88" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 2"/>
+  <text x="348" y="90" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Stage 2</text>
+  <text x="348" y="108" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">Validation &amp;</text>
+  <text x="348" y="122" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">Enrichment</text>
+  <text x="348" y="143" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">(Pydantic + Shapely)</text>
+  <!-- DLQ branch -->
+  <line x1="348" y1="154" x2="348" y2="178" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 2" marker-end="url(#arr)"/>
+  <rect x="290" y="180" width="116" height="34" rx="4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 2"/>
+  <text x="348" y="198" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">Dead-Letter Queue</text>
+  <text x="348" y="210" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">(invalid payloads)</text>
+  <!-- Arrow 3 -->
+  <line x1="408" y1="110" x2="438" y2="110" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Stage 3 -->
+  <rect x="440" y="66" width="120" height="88" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 2"/>
+  <text x="500" y="90" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Stage 3</text>
+  <text x="500" y="108" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">Partition</text>
+  <text x="500" y="122" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">Router</text>
+  <text x="500" y="143" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">(zoom:quadkey)</text>
+  <!-- Arrow 4 -->
+  <line x1="560" y1="110" x2="590" y2="110" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Stage 4 -->
+  <rect x="592" y="66" width="160" height="88" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 2"/>
+  <text x="672" y="90" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Stage 4</text>
+  <text x="672" y="108" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">Tile Worker</text>
+  <text x="672" y="122" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">&amp; Broadcast</text>
+  <text x="672" y="143" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">(render → SSE/WS)</text>
+  <!-- Arrowhead marker -->
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="currentColor"/>
+    </marker>
+  </defs>
+</svg>
+<p><strong>Stage 1 — Ingestion &amp; Verification:</strong> The edge endpoint authenticates the request with HMAC-SHA256, applies TLS termination, and writes accepted payloads to a raw ingestion topic with a monotonic timestamp and an upstream-derived idempotency key. Rejected requests return <code>401 Unauthorized</code> immediately.</p>
+<p><strong>Stage 2 — Validation &amp; Spatial Enrichment:</strong> A consumer reads from the raw topic, parses the payload with Pydantic, and validates geometry topology with <code>shapely.is_valid</code>. Bounding boxes, tile matrix set identifiers, and version stamps are computed and attached. Invalid events are written to a dead-letter queue without blocking the main stream.</p>
+<p><strong>Stage 3 — Partition Router:</strong> Enriched events are keyed by a composite <code>zoom:quadkey</code> string and routed to the appropriate partition. This guarantees strict ordering per tile region while allowing full parallelism across disjoint regions. When your architecture also ingests sensor telemetry alongside feature edits, sharing consumer groups with <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns</a> can co-locate spatial and temporal streams efficiently.</p>
+<p><strong>Stage 4 — Tile Worker &amp; Broadcast:</strong> Workers pull from their assigned partition, run tile regeneration, write outputs to the tile store, and publish a lightweight <code>tile_updated</code> event containing <code>z</code>, <code>x</code>, <code>y</code>, and a content hash to a WebSocket or Server-Sent Events channel. Clients perform a targeted cache bust rather than a full map reload.</p>
+<h2 id="step-by-step-implementation" tabindex="-1"><a class="heading-anchor" href="#step-by-step-implementation">Step-by-Step Implementation</a></h2>
+<h3 id="step-1-define-the-canonical-event-model" tabindex="-1"><a class="heading-anchor" href="#step-1-define-the-canonical-event-model">Step 1 — Define the Canonical Event Model</a></h3>
+<p>Start by locking down the payload contract. Applying <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/best-practices-for-spatial-event-payload-schemas/">best practices for spatial event payload schemas</a> at ingestion time prevents projection ambiguity and bounding-box errors from propagating through all downstream stages.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> pydantic <span class="token keyword">import</span> BaseModel<span class="token punctuation">,</span> Field<span class="token punctuation">,</span> field_validator
+<span class="token keyword">from</span> typing <span class="token keyword">import</span> Literal
+
+<span class="token keyword">class</span> <span class="token class-name">TileUpdateEvent</span><span class="token punctuation">(</span>BaseModel<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    event_id<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">=</span> Field<span class="token punctuation">(</span>description<span class="token operator">=</span><span class="token string">"Upstream mutation ID; drives idempotency key"</span><span class="token punctuation">)</span>
+    zoom<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> Field<span class="token punctuation">(</span>ge<span class="token operator">=</span><span class="token number">0</span><span class="token punctuation">,</span> le<span class="token operator">=</span><span class="token number">22</span><span class="token punctuation">)</span>
+    x<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> Field<span class="token punctuation">(</span>ge<span class="token operator">=</span><span class="token number">0</span><span class="token punctuation">)</span>
+    y<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> Field<span class="token punctuation">(</span>ge<span class="token operator">=</span><span class="token number">0</span><span class="token punctuation">)</span>
+    <span class="token comment"># [min_lon, min_lat, max_lon, max_lat] — WGS84 (EPSG:4326)</span>
+    bbox<span class="token punctuation">:</span> <span class="token builtin">tuple</span><span class="token punctuation">[</span><span class="token builtin">float</span><span class="token punctuation">,</span> <span class="token builtin">float</span><span class="token punctuation">,</span> <span class="token builtin">float</span><span class="token punctuation">,</span> <span class="token builtin">float</span><span class="token punctuation">]</span>
+    crs<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">=</span> Field<span class="token punctuation">(</span>default<span class="token operator">=</span><span class="token string">"EPSG:4326"</span><span class="token punctuation">)</span>
+    version<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> Field<span class="token punctuation">(</span>description<span class="token operator">=</span><span class="token string">"Monotonic counter; used for conflict resolution"</span><span class="token punctuation">)</span>
+    source<span class="token punctuation">:</span> <span class="token builtin">str</span>
+
+    <span class="token decorator annotation punctuation">@field_validator</span><span class="token punctuation">(</span><span class="token string">"bbox"</span><span class="token punctuation">)</span>
+    <span class="token decorator annotation punctuation">@classmethod</span>
+    <span class="token keyword">def</span> <span class="token function">bbox_must_be_valid</span><span class="token punctuation">(</span>cls<span class="token punctuation">,</span> v<span class="token punctuation">:</span> <span class="token builtin">tuple</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">tuple</span><span class="token punctuation">:</span>
+        min_lon<span class="token punctuation">,</span> min_lat<span class="token punctuation">,</span> max_lon<span class="token punctuation">,</span> max_lat <span class="token operator">=</span> v
+        <span class="token keyword">if</span> min_lon <span class="token operator">>=</span> max_lon <span class="token keyword">or</span> min_lat <span class="token operator">>=</span> max_lat<span class="token punctuation">:</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"bbox min values must be strictly less than max values"</span><span class="token punctuation">)</span>
+        <span class="token keyword">if</span> <span class="token keyword">not</span> <span class="token punctuation">(</span><span class="token operator">-</span><span class="token number">180</span> <span class="token operator">&lt;=</span> min_lon <span class="token operator">&lt;=</span> <span class="token number">180</span> <span class="token keyword">and</span> <span class="token operator">-</span><span class="token number">180</span> <span class="token operator">&lt;=</span> max_lon <span class="token operator">&lt;=</span> <span class="token number">180</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"longitude out of WGS84 range"</span><span class="token punctuation">)</span>
+        <span class="token keyword">if</span> <span class="token keyword">not</span> <span class="token punctuation">(</span><span class="token operator">-</span><span class="token number">90</span> <span class="token operator">&lt;=</span> min_lat <span class="token operator">&lt;=</span> <span class="token number">90</span> <span class="token keyword">and</span> <span class="token operator">-</span><span class="token number">90</span> <span class="token operator">&lt;=</span> max_lat <span class="token operator">&lt;=</span> <span class="token number">90</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"latitude out of WGS84 range"</span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> v
+</code></pre>
+</div>
+<p>All coordinate references in the model default to WGS84 (EPSG:4326). If upstream sources emit mixed projections, normalize them before writing to the raw ingestion topic, as described in <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a>.</p>
+<h3 id="step-2-validate-geometry-topology" tabindex="-1"><a class="heading-anchor" href="#step-2-validate-geometry-topology">Step 2 — Validate Geometry Topology</a></h3>
+<p>Schema validity is necessary but not sufficient. A polygon that is topologically invalid — self-intersecting rings, incorrect winding order — will silently corrupt spatial operations downstream.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>validation <span class="token keyword">import</span> explain_validity
+
+<span class="token keyword">def</span> <span class="token function">validate_geometry</span><span class="token punctuation">(</span>geojson_geom<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">tuple</span><span class="token punctuation">[</span><span class="token builtin">bool</span><span class="token punctuation">,</span> <span class="token builtin">str</span> <span class="token operator">|</span> <span class="token boolean">None</span><span class="token punctuation">]</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Returns (True, None) when geometry is valid.
+    Returns (False, reason) when invalid so callers can route to DLQ.
+    """</span>
+    <span class="token keyword">try</span><span class="token punctuation">:</span>
+        geom <span class="token operator">=</span> shape<span class="token punctuation">(</span>geojson_geom<span class="token punctuation">)</span>
+    <span class="token keyword">except</span> Exception <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token boolean">False</span><span class="token punctuation">,</span> <span class="token string-interpolation"><span class="token string">f"unparseable geometry: </span><span class="token interpolation"><span class="token punctuation">{</span>exc<span class="token punctuation">}</span></span><span class="token string">"</span></span>
+
+    <span class="token keyword">if</span> <span class="token keyword">not</span> geom<span class="token punctuation">.</span>is_valid<span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token boolean">False</span><span class="token punctuation">,</span> explain_validity<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>
+
+    <span class="token keyword">return</span> <span class="token boolean">True</span><span class="token punctuation">,</span> <span class="token boolean">None</span>
+</code></pre>
+</div>
+<p>Pair this check with the approach in <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a> when your pipeline receives raw WKT alongside GeoJSON, as different serialization formats have distinct validity edge cases.</p>
+<h3 id="step-3-compute-the-partition-key" tabindex="-1"><a class="heading-anchor" href="#step-3-compute-the-partition-key">Step 3 — Compute the Partition Key</a></h3>
+<p>Tile events must be partitioned so that all mutations to the same tile region land on the same consumer in order. A composite <code>zoom:quadkey</code> string is deterministic, human-readable in logs, and maps directly to the cache path your tile server uses.</p>
+<p>The routing guarantee is two-sided: events sharing a <code>zoom:quadkey</code> are pinned to one partition and processed strictly in arrival order, while events for disjoint regions fan out across partitions and run fully in parallel.</p>
+<p>&lt;svg
+viewBox=“0 0 720 300”
+xmlns=“<a href="http://www.w3.org/2000/svg">http://www.w3.org/2000/svg</a>”
+role=“img”
+aria-label=“Diagram showing quadkey-based partition routing: same-region events stay ordered on one partition while disjoint regions run in parallel”
+style=“width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;”</p>
+<blockquote></blockquote>
+  <title>Quadkey partition routing preserves per-region order and cross-region parallelism</title>
+  <desc>Incoming tile events are hashed by their zoom:quadkey key. Three events for quadkey 0231 are routed to the same partition and processed in order; an event for quadkey 1200 is routed to a different partition that runs concurrently.</desc>
+  <!-- Incoming events column -->
+  <text x="80" y="24" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" font-family="system-ui,sans-serif">Incoming events</text>
+  <rect x="14" y="40" width="132" height="30" rx="5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+  <text x="80" y="59" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">12:0231  v=1</text>
+  <rect x="14" y="78" width="132" height="30" rx="5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+  <text x="80" y="97" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">12:1200  v=1</text>
+  <rect x="14" y="116" width="132" height="30" rx="5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+  <text x="80" y="135" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">12:0231  v=2</text>
+  <rect x="14" y="154" width="132" height="30" rx="5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+  <text x="80" y="173" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">12:0231  v=3</text>
+  <!-- Router node -->
+  <rect x="250" y="86" width="110" height="92" rx="6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="4 2"/>
+  <text x="305" y="124" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" font-family="system-ui,sans-serif">Partition</text>
+  <text x="305" y="140" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" font-family="system-ui,sans-serif">Router</text>
+  <text x="305" y="158" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">hash(zoom:quadkey)</text>
+  <!-- Arrows from events into router -->
+  <line x1="146" y1="55" x2="248" y2="110" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr2)"/>
+  <line x1="146" y1="93" x2="248" y2="124" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr2)"/>
+  <line x1="146" y1="131" x2="248" y2="138" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr2)"/>
+  <line x1="146" y1="169" x2="248" y2="152" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr2)"/>
+  <!-- Partition A (ordered, same region) -->
+  <text x="560" y="24" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" font-family="system-ui,sans-serif">Partitions (consumers)</text>
+  <rect x="430" y="44" width="276" height="78" rx="6" fill="none" stroke="currentColor" stroke-width="1.6"/>
+  <text x="446" y="62" font-size="10" font-weight="600" fill="currentColor" font-family="system-ui,sans-serif">Partition A — key 12:0231 (ordered)</text>
+  <rect x="446" y="74" width="74" height="30" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"/>
+  <text x="483" y="93" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">v=1</text>
+  <rect x="528" y="74" width="74" height="30" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"/>
+  <text x="565" y="93" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">v=2</text>
+  <rect x="610" y="74" width="74" height="30" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"/>
+  <text x="647" y="93" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">v=3</text>
+  <!-- Partition B (parallel, disjoint region) -->
+  <rect x="430" y="150" width="276" height="58" rx="6" fill="none" stroke="currentColor" stroke-width="1.6"/>
+  <text x="446" y="168" font-size="10" font-weight="600" fill="currentColor" font-family="system-ui,sans-serif">Partition B — key 12:1200 (parallel)</text>
+  <rect x="446" y="178" width="74" height="22" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"/>
+  <text x="483" y="193" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">v=1</text>
+  <!-- Router to partitions -->
+  <line x1="360" y1="118" x2="428" y2="83" stroke="currentColor" stroke-width="1.4" marker-end="url(#arr2)"/>
+  <line x1="360" y1="146" x2="428" y2="179" stroke="currentColor" stroke-width="1.4" marker-end="url(#arr2)"/>
+  <text x="360" y="250" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif">Same key → same partition, strict order.  Different key → different partition, concurrent.</text>
+  <defs>
+    <marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="currentColor"/>
+    </marker>
+  </defs>
+</svg>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">def</span> <span class="token function">quadkey</span><span class="token punctuation">(</span>zoom<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">,</span> x<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">,</span> y<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Convert z/x/y to a Bing-style quadkey string."""</span>
+    key <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+    <span class="token keyword">for</span> i <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span>zoom<span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">,</span> <span class="token operator">-</span><span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        digit <span class="token operator">=</span> <span class="token number">0</span>
+        mask <span class="token operator">=</span> <span class="token number">1</span> <span class="token operator">&lt;&lt;</span> <span class="token punctuation">(</span>i <span class="token operator">-</span> <span class="token number">1</span><span class="token punctuation">)</span>
+        <span class="token keyword">if</span> x <span class="token operator">&amp;</span> mask<span class="token punctuation">:</span>
+            digit <span class="token operator">+=</span> <span class="token number">1</span>
+        <span class="token keyword">if</span> y <span class="token operator">&amp;</span> mask<span class="token punctuation">:</span>
+            digit <span class="token operator">+=</span> <span class="token number">2</span>
+        key<span class="token punctuation">.</span>append<span class="token punctuation">(</span><span class="token builtin">str</span><span class="token punctuation">(</span>digit<span class="token punctuation">)</span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> <span class="token string">""</span><span class="token punctuation">.</span>join<span class="token punctuation">(</span>key<span class="token punctuation">)</span>
+
+<span class="token keyword">def</span> <span class="token function">partition_key</span><span class="token punctuation">(</span>event<span class="token punctuation">:</span> TileUpdateEvent<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+    qk <span class="token operator">=</span> quadkey<span class="token punctuation">(</span>event<span class="token punctuation">.</span>zoom<span class="token punctuation">,</span> event<span class="token punctuation">.</span>x<span class="token punctuation">,</span> event<span class="token punctuation">.</span>y<span class="token punctuation">)</span>
+    <span class="token keyword">return</span> <span class="token string-interpolation"><span class="token string">f"</span><span class="token interpolation"><span class="token punctuation">{</span>event<span class="token punctuation">.</span>zoom<span class="token punctuation">}</span></span><span class="token string">:</span><span class="token interpolation"><span class="token punctuation">{</span>qk<span class="token punctuation">}</span></span><span class="token string">"</span></span>
+</code></pre>
+</div>
+<p>For Kafka, use this string as the message key. For SQS FIFO queues, use it as the <code>MessageGroupId</code>. Downstream consumers then process each <code>zoom:quadkey</code> group sequentially without any cross-region serialization overhead.</p>
+<h3 id="step-4-idempotent-async-consumer" tabindex="-1"><a class="heading-anchor" href="#step-4-idempotent-async-consumer">Step 4 — Idempotent Async Consumer</a></h3>
+<p>The core worker loop uses SHA-256 of the upstream <code>event_id</code> as its idempotency key, following the hashing approach described in <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/">Generating Deterministic Idempotency Keys for GeoJSON Events</a>. The guard lives in Redis so that all worker replicas share a consistent view.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">import</span> hashlib
+<span class="token keyword">import</span> logging
+<span class="token keyword">from</span> pydantic <span class="token keyword">import</span> ValidationError
+
+<span class="token comment"># Stubs — replace with your Redis, tile renderer, and broker bindings</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">idempotency_guard_check</span><span class="token punctuation">(</span>key<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span> <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">idempotency_guard_set</span><span class="token punctuation">(</span>key<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span> <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">regenerate_tile</span><span class="token punctuation">(</span>zoom<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">,</span> x<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">,</span> y<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span> <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span>  <span class="token comment"># returns content hash</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">broadcast_tile_updated</span><span class="token punctuation">(</span>event<span class="token punctuation">:</span> TileUpdateEvent<span class="token punctuation">,</span> content_hash<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span> <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">write_to_dlq</span><span class="token punctuation">(</span>raw<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">,</span> reason<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span> <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span>
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">process_tile_event</span><span class="token punctuation">(</span>raw_payload<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token keyword">try</span><span class="token punctuation">:</span>
+        event <span class="token operator">=</span> TileUpdateEvent<span class="token punctuation">(</span><span class="token operator">**</span>raw_payload<span class="token punctuation">)</span>
+    <span class="token keyword">except</span> ValidationError <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+        logging<span class="token punctuation">.</span>error<span class="token punctuation">(</span><span class="token string">"Schema validation failed: %s"</span><span class="token punctuation">,</span> exc<span class="token punctuation">)</span>
+        <span class="token keyword">await</span> write_to_dlq<span class="token punctuation">(</span>raw_payload<span class="token punctuation">,</span> <span class="token builtin">str</span><span class="token punctuation">(</span>exc<span class="token punctuation">)</span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span>
+
+    ok<span class="token punctuation">,</span> reason <span class="token operator">=</span> validate_geometry<span class="token punctuation">(</span>raw_payload<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"geometry"</span><span class="token punctuation">,</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token keyword">if</span> <span class="token string">"geometry"</span> <span class="token keyword">in</span> raw_payload <span class="token keyword">else</span> <span class="token punctuation">(</span><span class="token boolean">True</span><span class="token punctuation">,</span> <span class="token boolean">None</span><span class="token punctuation">)</span>
+    <span class="token keyword">if</span> <span class="token keyword">not</span> ok<span class="token punctuation">:</span>
+        <span class="token keyword">await</span> write_to_dlq<span class="token punctuation">(</span>raw_payload<span class="token punctuation">,</span> <span class="token string-interpolation"><span class="token string">f"invalid geometry: </span><span class="token interpolation"><span class="token punctuation">{</span>reason<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span>
+
+    idem_key <span class="token operator">=</span> hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">(</span>event<span class="token punctuation">.</span>event_id<span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">if</span> <span class="token keyword">await</span> idempotency_guard_check<span class="token punctuation">(</span>idem_key<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        logging<span class="token punctuation">.</span>info<span class="token punctuation">(</span><span class="token string">"Duplicate skipped: event_id=%s"</span><span class="token punctuation">,</span> event<span class="token punctuation">.</span>event_id<span class="token punctuation">)</span>
+        <span class="token keyword">return</span>
+
+    content_hash <span class="token operator">=</span> <span class="token keyword">await</span> regenerate_tile<span class="token punctuation">(</span>event<span class="token punctuation">.</span>zoom<span class="token punctuation">,</span> event<span class="token punctuation">.</span>x<span class="token punctuation">,</span> event<span class="token punctuation">.</span>y<span class="token punctuation">)</span>
+    <span class="token keyword">await</span> broadcast_tile_updated<span class="token punctuation">(</span>event<span class="token punctuation">,</span> content_hash<span class="token punctuation">)</span>
+    <span class="token keyword">await</span> idempotency_guard_set<span class="token punctuation">(</span>idem_key<span class="token punctuation">)</span>
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">run_consumer</span><span class="token punctuation">(</span>broker_topic<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> concurrency<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">10</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    dlq<span class="token punctuation">:</span> asyncio<span class="token punctuation">.</span>Queue<span class="token punctuation">[</span><span class="token builtin">dict</span><span class="token punctuation">]</span> <span class="token operator">=</span> asyncio<span class="token punctuation">.</span>Queue<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    semaphore <span class="token operator">=</span> asyncio<span class="token punctuation">.</span>Semaphore<span class="token punctuation">(</span>concurrency<span class="token punctuation">)</span>
+
+    <span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">bounded_process</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        <span class="token keyword">async</span> <span class="token keyword">with</span> semaphore<span class="token punctuation">:</span>
+            <span class="token keyword">await</span> process_tile_event<span class="token punctuation">(</span>payload<span class="token punctuation">)</span>
+
+    <span class="token comment"># Replace with your actual broker polling loop</span>
+    <span class="token keyword">async</span> <span class="token keyword">for</span> raw <span class="token keyword">in</span> poll_broker<span class="token punctuation">(</span>broker_topic<span class="token punctuation">)</span><span class="token punctuation">:</span>  <span class="token comment"># type: ignore[name-defined]</span>
+        asyncio<span class="token punctuation">.</span>create_task<span class="token punctuation">(</span>bounded_process<span class="token punctuation">(</span>raw<span class="token punctuation">)</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>Use <code>httpx.AsyncClient</code> for CDN cache-purge calls and <code>aiobotocore</code> for S3/R2 writes so that the worker loop never blocks on I/O.</p>
+<h2 id="spatial-validation-error-handling" tabindex="-1"><a class="heading-anchor" href="#spatial-validation-error-handling">Spatial Validation &amp; Error Handling</a></h2>
+<p>Four error conditions require explicit routing rather than silent discard:</p>
+<ol>
+<li><strong>Signature mismatch</strong> — Return <code>401</code> at the edge. Do not write to the broker at all.</li>
+<li><strong>Schema validation failure</strong> — Pydantic <code>ValidationError</code> caught in <code>process_tile_event</code>; written to the dead-letter queue with the raw payload and error detail for operator triage.</li>
+<li><strong>Geometry topology error</strong> — <code>shapely.is_valid</code> returns <code>False</code>; same DLQ path as schema failure, but tagged with <code>reason=invalid_geometry</code> so alerts can distinguish schema drift from bad source data.</li>
+<li><strong>Stale version</strong> — When <code>event.version</code> is lower than the last committed version for that tile, the event is acknowledged and discarded without triggering regeneration. This prevents older events from overwriting newer tiles during backpressure recovery.</li>
+</ol>
+<h2 id="retry-backoff-delivery-guarantees" tabindex="-1"><a class="heading-anchor" href="#retry-backoff-delivery-guarantees">Retry, Backoff &amp; Delivery Guarantees</a></h2>
+<p>At-least-once delivery is the correct default for tile update pipelines. Exactly-once semantics require distributed transactions that impose latency incompatible with real-time tile invalidation, and the idempotency guard already makes at-least-once safe.</p>
+<p>For transient regeneration failures — network errors, tile renderer timeouts — apply exponential backoff with full jitter:</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> random
+<span class="token keyword">import</span> asyncio
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">regenerate_with_backoff</span><span class="token punctuation">(</span>
+    zoom<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">,</span>
+    x<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">,</span>
+    y<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">,</span>
+    max_attempts<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">5</span><span class="token punctuation">,</span>
+    base_delay<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> <span class="token number">0.5</span><span class="token punctuation">,</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+    <span class="token keyword">for</span> attempt <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span>max_attempts<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">try</span><span class="token punctuation">:</span>
+            <span class="token keyword">return</span> <span class="token keyword">await</span> regenerate_tile<span class="token punctuation">(</span>zoom<span class="token punctuation">,</span> x<span class="token punctuation">,</span> y<span class="token punctuation">)</span>
+        <span class="token keyword">except</span> Exception <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+            <span class="token keyword">if</span> attempt <span class="token operator">==</span> max_attempts <span class="token operator">-</span> <span class="token number">1</span><span class="token punctuation">:</span>
+                <span class="token keyword">raise</span>
+            delay <span class="token operator">=</span> base_delay <span class="token operator">*</span> <span class="token punctuation">(</span><span class="token number">2</span> <span class="token operator">**</span> attempt<span class="token punctuation">)</span> <span class="token operator">*</span> random<span class="token punctuation">.</span>uniform<span class="token punctuation">(</span><span class="token number">0.5</span><span class="token punctuation">,</span> <span class="token number">1.5</span><span class="token punctuation">)</span>
+            logging<span class="token punctuation">.</span>warning<span class="token punctuation">(</span>
+                <span class="token string">"Tile regeneration failed (attempt %d/%d), retrying in %.2fs: %s"</span><span class="token punctuation">,</span>
+                attempt <span class="token operator">+</span> <span class="token number">1</span><span class="token punctuation">,</span> max_attempts<span class="token punctuation">,</span> delay<span class="token punctuation">,</span> exc<span class="token punctuation">,</span>
+            <span class="token punctuation">)</span>
+            <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span>delay<span class="token punctuation">)</span>
+    <span class="token keyword">raise</span> RuntimeError<span class="token punctuation">(</span><span class="token string">"unreachable"</span><span class="token punctuation">)</span>  <span class="token comment"># satisfies type checker</span>
+</code></pre>
+</div>
+<p>After <code>max_attempts</code>, write the event to the dead-letter queue. Use the <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks</a> pattern to ensure that a manual DLQ replay does not re-trigger completed regenerations.</p>
+<h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
+<p>Run this smoke test against a locally running worker to confirm the full path from raw payload to broadcast:</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">import</span> pytest
+
+<span class="token decorator annotation punctuation">@pytest<span class="token punctuation">.</span>mark<span class="token punctuation">.</span>asyncio</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">test_valid_event_triggers_broadcast</span><span class="token punctuation">(</span>monkeypatch<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    processed<span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">[</span>TileUpdateEvent<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+    broadcast_calls<span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+
+    <span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">mock_regenerate</span><span class="token punctuation">(</span>zoom<span class="token punctuation">,</span> x<span class="token punctuation">,</span> y<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token string">"abc123"</span>
+
+    <span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">mock_broadcast</span><span class="token punctuation">(</span>event<span class="token punctuation">,</span> content_hash<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        processed<span class="token punctuation">.</span>append<span class="token punctuation">(</span>event<span class="token punctuation">)</span>
+        broadcast_calls<span class="token punctuation">.</span>append<span class="token punctuation">(</span>content_hash<span class="token punctuation">)</span>
+
+    <span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">mock_idem_check</span><span class="token punctuation">(</span>key<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token boolean">False</span>  <span class="token comment"># not yet processed</span>
+
+    <span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">mock_idem_set</span><span class="token punctuation">(</span>key<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">pass</span>
+
+    monkeypatch<span class="token punctuation">.</span><span class="token builtin">setattr</span><span class="token punctuation">(</span><span class="token string">"your_module.regenerate_tile"</span><span class="token punctuation">,</span> mock_regenerate<span class="token punctuation">)</span>
+    monkeypatch<span class="token punctuation">.</span><span class="token builtin">setattr</span><span class="token punctuation">(</span><span class="token string">"your_module.broadcast_tile_updated"</span><span class="token punctuation">,</span> mock_broadcast<span class="token punctuation">)</span>
+    monkeypatch<span class="token punctuation">.</span><span class="token builtin">setattr</span><span class="token punctuation">(</span><span class="token string">"your_module.idempotency_guard_check"</span><span class="token punctuation">,</span> mock_idem_check<span class="token punctuation">)</span>
+    monkeypatch<span class="token punctuation">.</span><span class="token builtin">setattr</span><span class="token punctuation">(</span><span class="token string">"your_module.idempotency_guard_set"</span><span class="token punctuation">,</span> mock_idem_set<span class="token punctuation">)</span>
+
+    payload <span class="token operator">=</span> <span class="token punctuation">{</span>
+        <span class="token string">"event_id"</span><span class="token punctuation">:</span> <span class="token string">"evt-001"</span><span class="token punctuation">,</span>
+        <span class="token string">"zoom"</span><span class="token punctuation">:</span> <span class="token number">12</span><span class="token punctuation">,</span>
+        <span class="token string">"x"</span><span class="token punctuation">:</span> <span class="token number">2048</span><span class="token punctuation">,</span>
+        <span class="token string">"y"</span><span class="token punctuation">:</span> <span class="token number">1024</span><span class="token punctuation">,</span>
+        <span class="token string">"bbox"</span><span class="token punctuation">:</span> <span class="token punctuation">(</span><span class="token operator">-</span><span class="token number">74.01</span><span class="token punctuation">,</span> <span class="token number">40.70</span><span class="token punctuation">,</span> <span class="token operator">-</span><span class="token number">73.97</span><span class="token punctuation">,</span> <span class="token number">40.73</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+        <span class="token string">"crs"</span><span class="token punctuation">:</span> <span class="token string">"EPSG:4326"</span><span class="token punctuation">,</span>
+        <span class="token string">"version"</span><span class="token punctuation">:</span> <span class="token number">1</span><span class="token punctuation">,</span>
+        <span class="token string">"source"</span><span class="token punctuation">:</span> <span class="token string">"parcel-edit-service"</span><span class="token punctuation">,</span>
+    <span class="token punctuation">}</span>
+    <span class="token keyword">await</span> process_tile_event<span class="token punctuation">(</span>payload<span class="token punctuation">)</span>
+
+    <span class="token keyword">assert</span> <span class="token builtin">len</span><span class="token punctuation">(</span>processed<span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token number">1</span>
+    <span class="token keyword">assert</span> broadcast_calls <span class="token operator">==</span> <span class="token punctuation">[</span><span class="token string">"abc123"</span><span class="token punctuation">]</span>
+
+<span class="token decorator annotation punctuation">@pytest<span class="token punctuation">.</span>mark<span class="token punctuation">.</span>asyncio</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">test_duplicate_event_is_skipped</span><span class="token punctuation">(</span>monkeypatch<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    regenerate_calls<span class="token punctuation">:</span> <span class="token builtin">list</span> <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+
+    <span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">mock_regenerate</span><span class="token punctuation">(</span>zoom<span class="token punctuation">,</span> x<span class="token punctuation">,</span> y<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        regenerate_calls<span class="token punctuation">.</span>append<span class="token punctuation">(</span><span class="token punctuation">(</span>zoom<span class="token punctuation">,</span> x<span class="token punctuation">,</span> y<span class="token punctuation">)</span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> <span class="token string">"abc123"</span>
+
+    <span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">mock_idem_check</span><span class="token punctuation">(</span>key<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token boolean">True</span>  <span class="token comment"># already processed</span>
+
+    monkeypatch<span class="token punctuation">.</span><span class="token builtin">setattr</span><span class="token punctuation">(</span><span class="token string">"your_module.regenerate_tile"</span><span class="token punctuation">,</span> mock_regenerate<span class="token punctuation">)</span>
+    monkeypatch<span class="token punctuation">.</span><span class="token builtin">setattr</span><span class="token punctuation">(</span><span class="token string">"your_module.idempotency_guard_check"</span><span class="token punctuation">,</span> mock_idem_check<span class="token punctuation">)</span>
+
+    payload <span class="token operator">=</span> <span class="token punctuation">{</span>
+        <span class="token string">"event_id"</span><span class="token punctuation">:</span> <span class="token string">"evt-002"</span><span class="token punctuation">,</span>
+        <span class="token string">"zoom"</span><span class="token punctuation">:</span> <span class="token number">10</span><span class="token punctuation">,</span>
+        <span class="token string">"x"</span><span class="token punctuation">:</span> <span class="token number">512</span><span class="token punctuation">,</span>
+        <span class="token string">"y"</span><span class="token punctuation">:</span> <span class="token number">256</span><span class="token punctuation">,</span>
+        <span class="token string">"bbox"</span><span class="token punctuation">:</span> <span class="token punctuation">(</span><span class="token operator">-</span><span class="token number">74.01</span><span class="token punctuation">,</span> <span class="token number">40.70</span><span class="token punctuation">,</span> <span class="token operator">-</span><span class="token number">73.97</span><span class="token punctuation">,</span> <span class="token number">40.73</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+        <span class="token string">"crs"</span><span class="token punctuation">:</span> <span class="token string">"EPSG:4326"</span><span class="token punctuation">,</span>
+        <span class="token string">"version"</span><span class="token punctuation">:</span> <span class="token number">3</span><span class="token punctuation">,</span>
+        <span class="token string">"source"</span><span class="token punctuation">:</span> <span class="token string">"parcel-edit-service"</span><span class="token punctuation">,</span>
+    <span class="token punctuation">}</span>
+    <span class="token keyword">await</span> process_tile_event<span class="token punctuation">(</span>payload<span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> regenerate_calls <span class="token operator">==</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+</code></pre>
+</div>
+<h2 id="troubleshooting" tabindex="-1"><a class="heading-anchor" href="#troubleshooting">Troubleshooting</a></h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely Spatial Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tiles flicker between old and new state</td>
+<td>Out-of-order delivery overwriting newer versions</td>
+<td>Add monotonic <code>version</code> field; skip events where <code>incoming.version &lt; committed.version</code></td>
+</tr>
+<tr>
+<td>DLQ spike after upstream schema change</td>
+<td>New field added without default in Pydantic model</td>
+<td>Add <code>Field(default=None)</code> for optional fields; alert on DLQ rate &gt; 1% of throughput</td>
+</tr>
+<tr>
+<td>Hot partition bottlenecking one consumer</td>
+<td>High-edit-frequency tile region landing on a single partition</td>
+<td>Sub-partition by appending a fractional quadkey depth or route hot tiles to a dedicated topic</td>
+</tr>
+<tr>
+<td>CDN cache not clearing after broadcast</td>
+<td>Broadcast emitted before tile write completes</td>
+<td>Write tile to store before publishing <code>tile_updated</code>; await storage confirmation</td>
+</tr>
+<tr>
+<td>Duplicate tile regeneration on broker retry</td>
+<td>Idempotency key TTL expired in Redis before retry window</td>
+<td>Increase Redis TTL to at least 2× the broker’s retention window</td>
+</tr>
+<tr>
+<td><code>shapely.is_valid</code> rejects polygon from trusted source</td>
+<td>Coordinate ring winding order inverted</td>
+<td>Call <code>shapely.geometry.polygon.orient(geom, sign=1.0)</code> to normalize orientation</td>
+</tr>
+</tbody>
+</table>
+</div><h2 id="faq" tabindex="-1"><a class="heading-anchor" href="#faq">FAQ</a></h2>
+<details class="faq">
+<summary><strong>Should I partition by H3 cell or by z/x/y quadkey?</strong></summary>
+<p>Use <code>z/x/y</code> quadkey when your downstream is an XYZ tile server — the partition key maps directly to the cache path, so routing and invalidation share the same identifier. H3 is better when you also run spatial analytics alongside tile rendering, because H3 cells support hierarchical aggregation at multiple resolutions without re-indexing.</p>
+</details>
+<details class="faq">
+<summary><strong>How many partitions do I need?</strong></summary>
+<p>Start with one partition per planned consumer thread, then monitor consumer lag per partition. Under-partitioning creates hot shards; over-partitioning inflates metadata overhead. A working rule: re-evaluate when any single partition sustains lag above 70% of broker retention window.</p>
+</details>
+<details class="faq">
+<summary><strong>Can I skip the dead-letter queue for a small deployment?</strong></summary>
+<p>Only if you are comfortable losing visibility into why events fail. Even in small deployments, a DLQ is the fastest way to detect upstream schema drift before it silently corrupts tile state.</p>
+</details>
+<details class="faq">
+<summary><strong>How do I handle the same tile being invalidated by both a feature edit and a sensor burst simultaneously?</strong></summary>
+<p>Process both events normally. The idempotency key is derived from each event’s own <code>event_id</code>, not from the tile coordinates, so two legitimate mutations from different sources produce two regeneration calls. The version guard ensures the second call overwrites the first only if it carries a higher version number.</p>
+</details>
+<hr>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
+<ul>
+<li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a> — parent section covering event modeling, delivery guarantees, and security contracts for spatial systems</li>
+<li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/best-practices-for-spatial-event-payload-schemas/">Best Practices for Spatial Event Payload Schemas</a> — field definitions, CRS declarations, and bounding-box rules for tile update payloads</li>
+<li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers</a> — how upstream GIS services detect and emit spatial mutations that feed this pipeline</li>
+<li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns</a> — partition and consumer-group strategies for high-frequency telemetry streams alongside tile events</li>
+<li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a> — deterministic idempotency key derivation from GeoJSON feature hashes</li>
+</ul>
+
+        <h2 id="explore-this-section">Explore this section</h2>
+        <div class="children-grid">
+          <a class="card " href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/best-practices-for-spatial-event-payload-schemas/">
+            <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19c0-8 6-14 14-14 0 8-6 14-14 14z"/><path d="M5 19l6-6"/></svg></span>
+            <h3 class="card__title">Best Practices for Spatial Event Payload Schemas</h3>
+            <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+          </a>
+        </div>
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        <div class="aside-card">
+          <h3>Related in this section</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a></li>
+          </ul>
+        </div>
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a></li>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a></li>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a></li>
+            <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring &amp; Observability for Spatial Pipelines</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</article>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="https://www.geospatialwebhook.com/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/">Home</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queues &amp; Retries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Queues &amp; Retries</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Monitoring</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging &amp; Tracing for Spatial Events</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <a class="site-footer__gh" href="https://github.com/geospatialwebhook" target="_blank" rel="noopener" aria-label="Geospatial Webhook on GitHub">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5Z"/></svg><span>GitHub</span>
+      </a>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

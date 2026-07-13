@@ -1,0 +1,23 @@
+{% from "partials/icons.njk" import icon %}
+{% set top = page.url | topSection %}
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/" class="{% if top == 'home' %}is-active{% endif %}" {% if top == 'home' %}aria-current="page"{% endif %}>
+        {{ icon("home") }}<span>Home</span>
+      </a>
+      {%- for s in site.sections %}
+      <a href="/{{ s.slug }}/" class="{% if top == s.slug %}is-active{% endif %}" {% if top == s.slug %}aria-current="page"{% endif %}>
+        {{ icon(s.icon) }}<span>{{ s.navTitle }}</span>
+      </a>
+      {%- endfor %}
+    </nav>
+  </div>
+</header>

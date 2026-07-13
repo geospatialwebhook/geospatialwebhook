@@ -1,0 +1,711 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>Adding OpenTelemetry Spans to Async Geometry Handlers · Geo Webhook</title>
+  <meta name="description" content="Instrument an async Python geometry pipeline with OpenTelemetry so one webhook event yields a connected trace across ingress, validate, reproject, and publish."/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/adding-opentelemetry-spans-to-async-geometry-handlers/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360"/>
+  <meta name="color-scheme" content="light"/>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/adding-opentelemetry-spans-to-async-geometry-handlers/"/>
+  <meta property="og:title" content="Adding OpenTelemetry Spans to Async Geometry Handlers"/>
+  <meta property="og:description" content="Instrument an async Python geometry pipeline with OpenTelemetry so one webhook event yields a connected trace across ingress, validate, reproject, and publish."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Adding OpenTelemetry Spans to Async Geometry Handlers"/>
+  <meta name="twitter:description" content="Instrument an async Python geometry pipeline with OpenTelemetry so one webhook event yields a connected trace across ingress, validate, reproject, and publish."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },{ "@type": "ListItem", "position": 2, "name": "Monitoring Observability Spatial", "item": "https://www.geospatialwebhook.com/monitoring-observability-spatial/" },{ "@type": "ListItem", "position": 3, "name": "Structured Logging Tracing", "item": "https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/" },{ "@type": "ListItem", "position": 4, "name": "Adding Opentelemetry Spans To Async Geometry Handlers", "item": "https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/adding-opentelemetry-spans-to-async-geometry-handlers/" }
+    ]
+  }
+  </script>
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/adding-opentelemetry-spans-to-async-geometry-handlers/#article",
+    "mainEntityOfPage": "https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/adding-opentelemetry-spans-to-async-geometry-handlers/",
+    "headline": "Adding OpenTelemetry Spans to Async Geometry Handlers",
+    "description": "Instrument an async Python geometry pipeline with OpenTelemetry so one webhook event yields a connected trace across ingress, validate, reproject, and publish.",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
+    "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
+    "image": "https://www.geospatialwebhook.com/og-image.png",
+    "url": "https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/adding-opentelemetry-spans-to-async-geometry-handlers/",
+    "articleSection": "Monitoring Observability Spatial",
+    "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
+  }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="https://www.geospatialwebhook.com/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="https://www.geospatialwebhook.com/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Queues &amp; Retries</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
+      </a>
+    </nav>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="https://www.geospatialwebhook.com/">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring Observability Spatial</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging Tracing</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">Adding Opentelemetry Spans To Async Geometry Handlers</span>
+    </nav>
+
+    <h1 class="page__title">Adding OpenTelemetry Spans to Async Geometry Handlers</h1>
+
+    <div class="page__layout">
+      <div class="markdown">
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Adding OpenTelemetry Spans to Async Geometry Handlers",
+      "description": "Instrument an async Python geometry-processing pipeline with OpenTelemetry so one webhook event produces a single connected trace across ingress, validate, reproject, and publish.",
+      "url": "https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/adding-opentelemetry-spans-to-async-geometry-handlers/",
+      "datePublished": "2025-05-01",
+      "dateModified": "2026-07-13",
+      "author": { "@type": "Organization", "name": "geospatialwebhook.com" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Monitoring & Observability for Spatial Pipelines", "item": "https://www.geospatialwebhook.com/monitoring-observability-spatial/" },
+        { "@type": "ListItem", "position": 2, "name": "Structured Logging & Tracing for Spatial Events", "item": "https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/" },
+        { "@type": "ListItem", "position": 3, "name": "Adding OpenTelemetry Spans to Async Geometry Handlers", "item": "https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/adding-opentelemetry-spans-to-async-geometry-handlers/" }
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Instrument an Async Geometry Handler with OpenTelemetry Spans",
+      "step": [
+        { "@type": "HowToStep", "position": 1, "name": "Configure a tracer provider", "text": "Create an SDK TracerProvider with a span processor and exporter, register it globally, and obtain a named tracer for the geometry pipeline." },
+        { "@type": "HowToStep", "position": 2, "name": "Wrap each stage in a span", "text": "Open a span with tracer.start_as_current_span around each handler — ingress, validate_geometry, reproject, publish — so they nest into one trace tree." },
+        { "@type": "HowToStep", "position": 3, "name": "Attach bounded geo attributes", "text": "Record low-cardinality geo context on each span (h3 cell, source EPSG, vertex count, geometry type) and never the raw coordinate array." },
+        { "@type": "HowToStep", "position": 4, "name": "Propagate context across create_task", "text": "Capture the active OpenTelemetry context before scheduling a background task and attach it inside the coroutine so the child span links to the parent trace." },
+        { "@type": "HowToStep", "position": 5, "name": "Verify with an in-memory exporter", "text": "Run the pipeline in a test against InMemorySpanExporter and assert the finished-span parent/child tree by trace_id and parent span_id." }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Why does my publish span show up as a separate trace instead of a child?",
+          "acceptedAnswer": { "@type": "Answer", "text": "asyncio.create_task does not carry the OpenTelemetry context into the new task on all runtimes and instrumentation setups, so a span opened inside the task starts a fresh root. Capture context.get_current() in the scheduling coroutine and context.attach() it as the first line of the background coroutine, detaching the token in a finally block." }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I put the geometry coordinates in a span attribute for debugging?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. A raw coordinate array can be kilobytes per span, it inflates trace storage and export payloads, and it can leak sensitive location data into your observability backend. Record derived, bounded values instead — an h3 cell index, the vertex count, the bounding-box area, and the source EPSG code." }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I keep high-volume geometry traces from overwhelming the backend?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Use a parent-based, ratio sampler (ParentBased(TraceIdRatioBased(rate))) so the sampling decision is made once at ingress and inherited by every child span in the pipeline. Sample a small fraction of normal traffic and pair it with tail-based sampling in a collector to always keep error and high-latency traces." }
+        },
+        {
+          "@type": "Question",
+          "name": "Should h3 cell index be a span attribute or a metric label?",
+          "acceptedAnswer": { "@type": "Answer", "text": "As a span attribute it is safe because spans are individual records, not aggregated time series. As a Prometheus metric label it would explode cardinality — millions of h3 cells become millions of series. Keep the cell on the span for per-request debugging and aggregate to a coarse resolution before using it as a metric label." }
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>To trace an async geometry pipeline, configure one SDK <code>TracerProvider</code>, wrap each handler stage in <code>tracer.start_as_current_span(...)</code> so ingress, validate, reproject, and publish nest under a single root span, attach only bounded geo attributes (h3 cell, source EPSG, vertex count), and manually re-attach the captured context inside any <code>asyncio.create_task</code> coroutine so the child span stays in the same trace.</strong> Done correctly, one webhook delivery produces one connected trace you can read top to bottom.</p>
+<p>This page belongs to <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging &amp; Tracing for Spatial Events</a>, part of the <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring &amp; Observability for Spatial Pipelines</a> — the reference for making event-driven spatial systems debuggable in production.</p>
+<hr>
+<h2 id="when-to-use-this-pattern" tabindex="-1"><a class="heading-anchor" href="#when-to-use-this-pattern">When to use this pattern</a></h2>
+<p>Reach for distributed tracing over plain structured logs when:</p>
+<ul>
+<li>A single webhook event fans out across several async coroutines or tasks — validate, reproject, enrich, publish — and you need to see the causal chain and per-stage latency for one delivery, not aggregate counters.</li>
+<li>Slow or failing events are hard to pin down because logs from concurrent deliveries interleave, and you cannot tell which log line belongs to which payload.</li>
+<li>You already ship spans from an upstream service (an API gateway, a Kafka producer) and want the geometry worker to continue the same trace rather than start a disconnected one.</li>
+</ul>
+<p>It is not the right tool when you only need rates, ratios, or histograms — geometry validation failure rate, queue depth, reprojection duration percentiles. Those are aggregate signals and belong in metrics; see <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a> for that layer. Tracing answers “what happened to <em>this</em> event”; metrics answer “how is the fleet doing”.</p>
+<hr>
+<h2 id="why-async-breaks-a-naive-trace" tabindex="-1"><a class="heading-anchor" href="#why-async-breaks-a-naive-trace">Why async breaks a naive trace</a></h2>
+<p>OpenTelemetry tracks the “current span” in a context variable. In synchronous code, opening a span with <code>start_as_current_span</code> sets that context for the duration of the <code>with</code> block, and any span opened inside becomes its child automatically. Async pipelines break this in two places.</p>
+<p>First, <code>await</code> boundaries are fine — the context travels with the coroutine — but <code>asyncio.create_task</code> schedules a coroutine that may not inherit the active OpenTelemetry context. A span opened inside that task can silently start a brand-new root trace, so your <code>publish</code> stage appears as an orphan disconnected from <code>ingress</code>. Second, geometry payloads tempt you to attach the whole coordinate array as an attribute for “easier debugging”, which bloats every span and can leak location data.</p>
+<p>The diagram shows the shape you want: one root span per delivery, three nested child spans, and a fourth span that crosses a <code>create_task</code> boundary yet stays inside the same trace because the context was re-attached by hand.</p>
+<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One webhook event producing a single OpenTelemetry trace across four async stages" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+  <title>A single trace across four async geometry stages</title>
+  <desc>A root span labelled process_geometry_event spans the full width. Beneath it, three nested child spans — validate_geometry, reproject, and publish — sit in sequence. The publish span sits below a dashed create_task boundary, with an arrow showing the OpenTelemetry context being carried across it so publish remains a child of the root rather than a new trace.</desc>
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L8,3.5 Z" fill="currentColor" opacity="0.55"/>
+    </marker>
+  </defs>
+  <!-- Root span -->
+  <rect x="20" y="30" width="720" height="34" rx="6" fill="none" stroke="currentColor" stroke-opacity="0.55" stroke-width="1.5"/>
+  <text x="34" y="51" font-size="12" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">process_geometry_event  (root span · trace_id shared by all children)</text>
+  <!-- Child 1 validate -->
+  <rect x="40" y="86" width="200" height="34" rx="6" fill="none" stroke="currentColor" stroke-opacity="0.3" stroke-width="1.5"/>
+  <text x="140" y="107" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">validate_geometry</text>
+  <!-- Child 2 reproject -->
+  <rect x="270" y="86" width="200" height="34" rx="6" fill="none" stroke="currentColor" stroke-opacity="0.3" stroke-width="1.5"/>
+  <text x="370" y="107" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">reproject</text>
+  <!-- attributes note -->
+  <text x="40" y="140" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.6">span attributes: geo.h3_cell · geo.source_epsg · geo.vertex_count   (never the raw coordinates)</text>
+  <!-- create_task boundary -->
+  <line x1="20" y1="180" x2="740" y2="180" stroke="currentColor" stroke-opacity="0.4" stroke-width="1.2" stroke-dasharray="5 4"/>
+  <text x="500" y="174" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">asyncio.create_task boundary — context attached by hand</text>
+  <!-- context carry arrow -->
+  <line x1="400" y1="124" x2="400" y2="204" stroke="currentColor" stroke-opacity="0.55" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="410" y="164" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">carry ctx</text>
+  <!-- Child 3 publish -->
+  <rect x="300" y="212" width="200" height="34" rx="6" fill="none" stroke="currentColor" stroke-opacity="0.3" stroke-width="1.5"/>
+  <text x="400" y="233" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">publish</text>
+  <text x="300" y="268" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.6">still a child of the root — same trace_id, parent = process_geometry_event</text>
+</svg>
+<hr>
+<h2 id="complete-runnable-implementation" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-implementation">Complete runnable implementation</a></h2>
+<p>The module below is self-contained. It configures a tracer, instruments four async stages, attaches bounded geo attributes, and shows the manual context handoff across <code>asyncio.create_task</code>. It uses only <code>opentelemetry-api</code> and <code>opentelemetry-sdk</code> (<code>pip install opentelemetry-api opentelemetry-sdk</code>); the <code>h3</code> call is illustrative and stubbed so the file runs standalone.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">from</span> opentelemetry <span class="token keyword">import</span> trace<span class="token punctuation">,</span> context
+<span class="token keyword">from</span> opentelemetry<span class="token punctuation">.</span>sdk<span class="token punctuation">.</span>trace <span class="token keyword">import</span> TracerProvider
+<span class="token keyword">from</span> opentelemetry<span class="token punctuation">.</span>sdk<span class="token punctuation">.</span>trace<span class="token punctuation">.</span>export <span class="token keyword">import</span> SimpleSpanProcessor<span class="token punctuation">,</span> ConsoleSpanExporter
+<span class="token keyword">from</span> opentelemetry<span class="token punctuation">.</span>sdk<span class="token punctuation">.</span>trace<span class="token punctuation">.</span>sampling <span class="token keyword">import</span> ParentBased<span class="token punctuation">,</span> TraceIdRatioBased
+<span class="token keyword">from</span> opentelemetry<span class="token punctuation">.</span>trace <span class="token keyword">import</span> SpanKind<span class="token punctuation">,</span> Status<span class="token punctuation">,</span> StatusCode
+
+<span class="token comment"># --- One-time tracer setup (do this at process startup) -------------------</span>
+<span class="token comment"># ParentBased(TraceIdRatioBased(rate)) makes the sampling decision once at the</span>
+<span class="token comment"># root and every child span inherits it, so heavy geometry traces are kept or</span>
+<span class="token comment"># dropped as a whole rather than half-recorded.</span>
+provider <span class="token operator">=</span> TracerProvider<span class="token punctuation">(</span>sampler<span class="token operator">=</span>ParentBased<span class="token punctuation">(</span>TraceIdRatioBased<span class="token punctuation">(</span><span class="token number">0.10</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+provider<span class="token punctuation">.</span>add_span_processor<span class="token punctuation">(</span>SimpleSpanProcessor<span class="token punctuation">(</span>ConsoleSpanExporter<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+trace<span class="token punctuation">.</span>set_tracer_provider<span class="token punctuation">(</span>provider<span class="token punctuation">)</span>
+
+tracer <span class="token operator">=</span> trace<span class="token punctuation">.</span>get_tracer<span class="token punctuation">(</span><span class="token string">"geospatial.webhook.geometry_handler"</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">_bounded_geo_attrs</span><span class="token punctuation">(</span>feature<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Derive low-cardinality, size-safe span attributes from a GeoJSON feature.
+
+    We deliberately never attach the coordinate array itself: it can be
+    kilobytes per span, inflates export payloads, and may leak location data.
+    Instead we record an h3 cell (spatial bucket), the source CRS, the vertex
+    count, and the geometry type — all small and bounded.
+    """</span>
+    geom <span class="token operator">=</span> feature<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"geometry"</span><span class="token punctuation">)</span> <span class="token keyword">or</span> <span class="token punctuation">{</span><span class="token punctuation">}</span>
+    coords <span class="token operator">=</span> geom<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"coordinates"</span><span class="token punctuation">)</span> <span class="token keyword">or</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+
+    <span class="token keyword">def</span> <span class="token function">_count_vertices</span><span class="token punctuation">(</span>c<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">int</span><span class="token punctuation">:</span>
+        <span class="token keyword">if</span> <span class="token keyword">not</span> <span class="token builtin">isinstance</span><span class="token punctuation">(</span>c<span class="token punctuation">,</span> <span class="token builtin">list</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+            <span class="token keyword">return</span> <span class="token number">0</span>
+        <span class="token keyword">if</span> c <span class="token keyword">and</span> <span class="token builtin">isinstance</span><span class="token punctuation">(</span>c<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token builtin">int</span><span class="token punctuation">,</span> <span class="token builtin">float</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+            <span class="token keyword">return</span> <span class="token number">1</span>  <span class="token comment"># a single [lon, lat] position</span>
+        <span class="token keyword">return</span> <span class="token builtin">sum</span><span class="token punctuation">(</span>_count_vertices<span class="token punctuation">(</span>x<span class="token punctuation">)</span> <span class="token keyword">for</span> x <span class="token keyword">in</span> c<span class="token punctuation">)</span>
+
+    lon<span class="token punctuation">,</span> lat <span class="token operator">=</span> <span class="token number">0.0</span><span class="token punctuation">,</span> <span class="token number">0.0</span>
+    <span class="token keyword">if</span> geom<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"type"</span><span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token string">"Point"</span> <span class="token keyword">and</span> <span class="token builtin">len</span><span class="token punctuation">(</span>coords<span class="token punctuation">)</span> <span class="token operator">>=</span> <span class="token number">2</span><span class="token punctuation">:</span>
+        lon<span class="token punctuation">,</span> lat <span class="token operator">=</span> coords<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> coords<span class="token punctuation">[</span><span class="token number">1</span><span class="token punctuation">]</span>
+
+    <span class="token keyword">return</span> <span class="token punctuation">{</span>
+        <span class="token comment"># h3.latlng_to_cell(lat, lon, 8) in real code; stubbed here to stay standalone.</span>
+        <span class="token string">"geo.h3_cell"</span><span class="token punctuation">:</span> <span class="token string-interpolation"><span class="token string">f"stub-h3-r8-</span><span class="token interpolation"><span class="token punctuation">{</span><span class="token builtin">round</span><span class="token punctuation">(</span>lat<span class="token punctuation">,</span> <span class="token number">2</span><span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">-</span><span class="token interpolation"><span class="token punctuation">{</span><span class="token builtin">round</span><span class="token punctuation">(</span>lon<span class="token punctuation">,</span> <span class="token number">2</span><span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">,</span>
+        <span class="token string">"geo.source_epsg"</span><span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">(</span>feature<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"source_epsg"</span><span class="token punctuation">,</span> <span class="token number">4326</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">,</span>  <span class="token comment"># EPSG:4326 (WGS84)</span>
+        <span class="token string">"geo.geometry_type"</span><span class="token punctuation">:</span> geom<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"type"</span><span class="token punctuation">,</span> <span class="token string">"unknown"</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+        <span class="token string">"geo.vertex_count"</span><span class="token punctuation">:</span> _count_vertices<span class="token punctuation">(</span>coords<span class="token punctuation">)</span><span class="token punctuation">,</span>
+    <span class="token punctuation">}</span>
+
+
+<span class="token comment"># --- Stage handlers, each wrapped in its own span -------------------------</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">validate_geometry</span><span class="token punctuation">(</span>feature<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">:</span>
+    <span class="token keyword">with</span> tracer<span class="token punctuation">.</span>start_as_current_span<span class="token punctuation">(</span><span class="token string">"validate_geometry"</span><span class="token punctuation">)</span> <span class="token keyword">as</span> span<span class="token punctuation">:</span>
+        span<span class="token punctuation">.</span>set_attributes<span class="token punctuation">(</span>_bounded_geo_attrs<span class="token punctuation">(</span>feature<span class="token punctuation">)</span><span class="token punctuation">)</span>
+        <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">)</span>  <span class="token comment"># stand-in for real async validation I/O</span>
+        <span class="token keyword">if</span> <span class="token keyword">not</span> feature<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"geometry"</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+            span<span class="token punctuation">.</span>set_status<span class="token punctuation">(</span>Status<span class="token punctuation">(</span>StatusCode<span class="token punctuation">.</span>ERROR<span class="token punctuation">,</span> <span class="token string">"null geometry"</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"feature has no geometry"</span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> feature
+
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">reproject</span><span class="token punctuation">(</span>feature<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">,</span> target_epsg<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">4326</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">:</span>
+    <span class="token keyword">with</span> tracer<span class="token punctuation">.</span>start_as_current_span<span class="token punctuation">(</span><span class="token string">"reproject"</span><span class="token punctuation">)</span> <span class="token keyword">as</span> span<span class="token punctuation">:</span>
+        span<span class="token punctuation">.</span>set_attribute<span class="token punctuation">(</span><span class="token string">"geo.source_epsg"</span><span class="token punctuation">,</span> <span class="token builtin">int</span><span class="token punctuation">(</span>feature<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"source_epsg"</span><span class="token punctuation">,</span> <span class="token number">4326</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+        span<span class="token punctuation">.</span>set_attribute<span class="token punctuation">(</span><span class="token string">"geo.target_epsg"</span><span class="token punctuation">,</span> target_epsg<span class="token punctuation">)</span>  <span class="token comment"># EPSG:4326 (WGS84)</span>
+        <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">)</span>  <span class="token comment"># stand-in for pyproj transform</span>
+        feature<span class="token punctuation">[</span><span class="token string">"source_epsg"</span><span class="token punctuation">]</span> <span class="token operator">=</span> target_epsg
+        <span class="token keyword">return</span> feature
+
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">publish</span><span class="token punctuation">(</span>feature<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token comment"># Runs inside a task scheduled by the ingress handler. The parent context</span>
+    <span class="token comment"># is attached by the caller before we open this span (see below).</span>
+    <span class="token keyword">with</span> tracer<span class="token punctuation">.</span>start_as_current_span<span class="token punctuation">(</span><span class="token string">"publish"</span><span class="token punctuation">,</span> kind<span class="token operator">=</span>SpanKind<span class="token punctuation">.</span>PRODUCER<span class="token punctuation">)</span> <span class="token keyword">as</span> span<span class="token punctuation">:</span>
+        span<span class="token punctuation">.</span>set_attribute<span class="token punctuation">(</span><span class="token string">"geo.h3_cell"</span><span class="token punctuation">,</span> _bounded_geo_attrs<span class="token punctuation">(</span>feature<span class="token punctuation">)</span><span class="token punctuation">[</span><span class="token string">"geo.h3_cell"</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+        <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">)</span>  <span class="token comment"># stand-in for Kafka/Redis produce</span>
+
+
+<span class="token comment"># --- Ingress: root span + manual context propagation ---------------------</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">process_geometry_event</span><span class="token punctuation">(</span>feature<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token keyword">with</span> tracer<span class="token punctuation">.</span>start_as_current_span<span class="token punctuation">(</span><span class="token string">"process_geometry_event"</span><span class="token punctuation">,</span> kind<span class="token operator">=</span>SpanKind<span class="token punctuation">.</span>CONSUMER<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        feature <span class="token operator">=</span> <span class="token keyword">await</span> validate_geometry<span class="token punctuation">(</span>feature<span class="token punctuation">)</span>
+        feature <span class="token operator">=</span> <span class="token keyword">await</span> reproject<span class="token punctuation">(</span>feature<span class="token punctuation">)</span>
+
+        <span class="token comment"># Capture the ACTIVE context now, while the root span is current.</span>
+        parent_ctx <span class="token operator">=</span> context<span class="token punctuation">.</span>get_current<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+        <span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">_publish_task</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+            <span class="token comment"># Re-attach the captured context as the first action in the task,</span>
+            <span class="token comment"># otherwise the publish span may start a brand-new root trace.</span>
+            token <span class="token operator">=</span> context<span class="token punctuation">.</span>attach<span class="token punctuation">(</span>parent_ctx<span class="token punctuation">)</span>
+            <span class="token keyword">try</span><span class="token punctuation">:</span>
+                <span class="token keyword">await</span> publish<span class="token punctuation">(</span>feature<span class="token punctuation">)</span>
+            <span class="token keyword">finally</span><span class="token punctuation">:</span>
+                context<span class="token punctuation">.</span>detach<span class="token punctuation">(</span>token<span class="token punctuation">)</span>
+
+        task <span class="token operator">=</span> asyncio<span class="token punctuation">.</span>create_task<span class="token punctuation">(</span>_publish_task<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+        <span class="token keyword">await</span> task  <span class="token comment"># await so the span exports before the demo exits</span>
+
+
+<span class="token keyword">if</span> __name__ <span class="token operator">==</span> <span class="token string">"__main__"</span><span class="token punctuation">:</span>
+    demo <span class="token operator">=</span> <span class="token punctuation">{</span>
+        <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Feature"</span><span class="token punctuation">,</span>
+        <span class="token string">"source_epsg"</span><span class="token punctuation">:</span> <span class="token number">4326</span><span class="token punctuation">,</span>  <span class="token comment"># EPSG:4326 (WGS84)</span>
+        <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">73.965355</span><span class="token punctuation">,</span> <span class="token number">40.782865</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+        <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"sensor_id"</span><span class="token punctuation">:</span> <span class="token string">"SN-42"</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token punctuation">}</span>
+    asyncio<span class="token punctuation">.</span>run<span class="token punctuation">(</span>process_geometry_event<span class="token punctuation">(</span>demo<span class="token punctuation">)</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>Run it and the console exporter prints four spans that share one <code>trace_id</code>, with <code>validate_geometry</code>, <code>reproject</code>, and <code>publish</code> all pointing at the <code>process_geometry_event</code> span as their parent.</p>
+<hr>
+<h2 id="parameter-reference" tabindex="-1"><a class="heading-anchor" href="#parameter-reference">Parameter reference</a></h2>
+<div style="overflow-x:auto;">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Span / attribute</th>
+<th>Type</th>
+<th>Spatial constraint</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>process_geometry_event</code></td>
+<td>span (<code>CONSUMER</code>)</td>
+<td>Root span per delivery; owns the sampling decision</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>validate_geometry</code></td>
+<td>span</td>
+<td>Set <code>ERROR</code> status on invalid/null geometry</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>reproject</code></td>
+<td>span</td>
+<td>Carry both <code>geo.source_epsg</code> and <code>geo.target_epsg</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>publish</code></td>
+<td>span (<code>PRODUCER</code>)</td>
+<td>Must inherit context across <code>create_task</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>geo.h3_cell</code></td>
+<td><code>str</code></td>
+<td>One h3 index at a fixed resolution (7–9); low cardinality per span</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>geo.source_epsg</code></td>
+<td><code>int</code></td>
+<td>Numeric EPSG code, e.g. <code>4326</code> (WGS84) or <code>3857</code> (Web Mercator)</td>
+<td><code>4326</code></td>
+</tr>
+<tr>
+<td><code>geo.vertex_count</code></td>
+<td><code>int</code></td>
+<td>Derived count, never the coordinate array itself</td>
+<td><code>0</code></td>
+</tr>
+<tr>
+<td><code>geo.geometry_type</code></td>
+<td><code>str</code></td>
+<td>Bounded enum: Point, LineString, Polygon, … per RFC 7946</td>
+<td><code>&quot;unknown&quot;</code></td>
+</tr>
+<tr>
+<td>sampler ratio</td>
+<td><code>float</code></td>
+<td><code>0.0</code>–<code>1.0</code>; keep low for high-volume geometry traffic</td>
+<td><code>0.10</code></td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<hr>
+<h2 id="gotchas-and-spatial-edge-cases" tabindex="-1"><a class="heading-anchor" href="#gotchas-and-spatial-edge-cases">Gotchas and spatial edge cases</a></h2>
+<ol>
+<li>
+<p><strong>Context lost across <code>create_task</code>.</strong> This is the most common failure. <code>asyncio.create_task</code> does not reliably carry the OpenTelemetry context, so a span opened in the task becomes a new root. Always <code>context.get_current()</code> in the scheduling coroutine and <code>context.attach()</code> it as the first line of the task, detaching in a <code>finally</code>.</p>
+</li>
+<li>
+<p><strong>Raw coordinates as attributes.</strong> A large <code>Polygon</code> or <code>MultiPolygon</code> coordinate array is kilobytes per span. Attaching it multiplies export volume, can breach exporter size limits, and leaks precise location data. Record <code>geo.vertex_count</code>, <code>geo.h3_cell</code>, and a bounding-box area instead.</p>
+</li>
+<li>
+<p><strong>Attribute cardinality creep.</strong> Span attributes tolerate high cardinality far better than metric labels, but backends still index them. Avoid per-request unique strings like a full delivery UUID <em>as a searchable dimension</em> unless you need it; prefer the h3 cell at a coarse resolution for spatial grouping.</p>
+</li>
+<li>
+<p><strong>Sampling that splits a trace.</strong> A head sampler that decides independently per span can keep <code>validate_geometry</code> but drop <code>publish</code>, giving you half a trace. Use <code>ParentBased(TraceIdRatioBased(rate))</code> so one decision at the root propagates to all children.</p>
+</li>
+<li>
+<p><strong>CRS mismatch hidden by tracing.</strong> Recording only <code>geo.target_epsg</code> hides reprojection bugs. Always record <code>geo.source_epsg</code> <em>and</em> <code>geo.target_epsg</code> so a trace shows, for example, an EPSG:3857 (Web Mercator) payload that was never normalized to EPSG:4326 (WGS84).</p>
+</li>
+<li>
+<p><strong>Spans not exported in short-lived scripts.</strong> With <code>SimpleSpanProcessor</code>/<code>BatchSpanProcessor</code>, spans flush asynchronously. In tests or one-shot workers call <code>provider.force_flush()</code> (or <code>await</code> the task as above) before the process exits, or the last spans vanish.</p>
+</li>
+<li>
+<p><strong>Instrumenting CPU-bound offload.</strong> Heavy reprojection or validation often runs in a thread or process pool. <code>run_in_executor</code> does not carry context automatically either — capture and re-attach it inside the executor callable, the same way you do for <code>create_task</code>. See <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a> for the offload patterns this applies to.</p>
+</li>
+</ol>
+<hr>
+<h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
+<p>This test drives the pipeline against an <code>InMemorySpanExporter</code> and asserts the span tree by <code>trace_id</code> and <code>parent</code> linkage — proving the <code>publish</code> span really is a child and not an orphan. Run with <code>pytest</code>.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">import</span> pytest
+<span class="token keyword">from</span> opentelemetry <span class="token keyword">import</span> trace
+<span class="token keyword">from</span> opentelemetry<span class="token punctuation">.</span>sdk<span class="token punctuation">.</span>trace <span class="token keyword">import</span> TracerProvider
+<span class="token keyword">from</span> opentelemetry<span class="token punctuation">.</span>sdk<span class="token punctuation">.</span>trace<span class="token punctuation">.</span>export <span class="token keyword">import</span> SimpleSpanProcessor
+<span class="token keyword">from</span> opentelemetry<span class="token punctuation">.</span>sdk<span class="token punctuation">.</span>trace<span class="token punctuation">.</span>export<span class="token punctuation">.</span>in_memory_span_exporter <span class="token keyword">import</span> InMemorySpanExporter
+
+<span class="token keyword">import</span> geometry_handler <span class="token keyword">as</span> gh  <span class="token comment"># the module shown above</span>
+
+
+<span class="token decorator annotation punctuation">@pytest<span class="token punctuation">.</span>fixture</span>
+<span class="token keyword">def</span> <span class="token function">spans</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Swap in a provider backed by an in-memory exporter for assertions."""</span>
+    exporter <span class="token operator">=</span> InMemorySpanExporter<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    provider <span class="token operator">=</span> TracerProvider<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    provider<span class="token punctuation">.</span>add_span_processor<span class="token punctuation">(</span>SimpleSpanProcessor<span class="token punctuation">(</span>exporter<span class="token punctuation">)</span><span class="token punctuation">)</span>
+    trace<span class="token punctuation">.</span>set_tracer_provider<span class="token punctuation">(</span>provider<span class="token punctuation">)</span>
+    <span class="token comment"># Rebind the module's tracer to the test provider.</span>
+    gh<span class="token punctuation">.</span>tracer <span class="token operator">=</span> trace<span class="token punctuation">.</span>get_tracer<span class="token punctuation">(</span><span class="token string">"test.geometry_handler"</span><span class="token punctuation">)</span>
+    <span class="token keyword">yield</span> exporter
+    exporter<span class="token punctuation">.</span>clear<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_single_connected_trace</span><span class="token punctuation">(</span>spans<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    feature <span class="token operator">=</span> <span class="token punctuation">{</span>
+        <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Feature"</span><span class="token punctuation">,</span>
+        <span class="token string">"source_epsg"</span><span class="token punctuation">:</span> <span class="token number">3857</span><span class="token punctuation">,</span>  <span class="token comment"># EPSG:3857 (Web Mercator) — should be recorded</span>
+        <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">73.965355</span><span class="token punctuation">,</span> <span class="token number">40.782865</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token punctuation">}</span>
+    asyncio<span class="token punctuation">.</span>run<span class="token punctuation">(</span>gh<span class="token punctuation">.</span>process_geometry_event<span class="token punctuation">(</span>feature<span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+    finished <span class="token operator">=</span> <span class="token punctuation">{</span>s<span class="token punctuation">.</span>name<span class="token punctuation">:</span> s <span class="token keyword">for</span> s <span class="token keyword">in</span> spans<span class="token punctuation">.</span>get_finished_spans<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">}</span>
+    <span class="token keyword">assert</span> <span class="token builtin">set</span><span class="token punctuation">(</span>finished<span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token punctuation">{</span>
+        <span class="token string">"process_geometry_event"</span><span class="token punctuation">,</span> <span class="token string">"validate_geometry"</span><span class="token punctuation">,</span> <span class="token string">"reproject"</span><span class="token punctuation">,</span> <span class="token string">"publish"</span><span class="token punctuation">,</span>
+    <span class="token punctuation">}</span>
+
+    root <span class="token operator">=</span> finished<span class="token punctuation">[</span><span class="token string">"process_geometry_event"</span><span class="token punctuation">]</span>
+    <span class="token comment"># All four spans share ONE trace_id.</span>
+    trace_ids <span class="token operator">=</span> <span class="token punctuation">{</span>s<span class="token punctuation">.</span>context<span class="token punctuation">.</span>trace_id <span class="token keyword">for</span> s <span class="token keyword">in</span> finished<span class="token punctuation">.</span>values<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">}</span>
+    <span class="token keyword">assert</span> <span class="token builtin">len</span><span class="token punctuation">(</span>trace_ids<span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token number">1</span>
+
+    <span class="token comment"># publish crossed a create_task boundary but is still a child of the root.</span>
+    publish <span class="token operator">=</span> finished<span class="token punctuation">[</span><span class="token string">"publish"</span><span class="token punctuation">]</span>
+    <span class="token keyword">assert</span> publish<span class="token punctuation">.</span>parent <span class="token keyword">is</span> <span class="token keyword">not</span> <span class="token boolean">None</span>
+    <span class="token keyword">assert</span> publish<span class="token punctuation">.</span>parent<span class="token punctuation">.</span>span_id <span class="token operator">==</span> root<span class="token punctuation">.</span>context<span class="token punctuation">.</span>span_id
+    <span class="token keyword">assert</span> root<span class="token punctuation">.</span>parent <span class="token keyword">is</span> <span class="token boolean">None</span>  <span class="token comment"># the root has no parent</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_geo_attributes_are_bounded</span><span class="token punctuation">(</span>spans<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    feature <span class="token operator">=</span> <span class="token punctuation">{</span>
+        <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Feature"</span><span class="token punctuation">,</span>
+        <span class="token string">"source_epsg"</span><span class="token punctuation">:</span> <span class="token number">4326</span><span class="token punctuation">,</span>  <span class="token comment"># EPSG:4326 (WGS84)</span>
+        <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">73.965355</span><span class="token punctuation">,</span> <span class="token number">40.782865</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token punctuation">}</span>
+    asyncio<span class="token punctuation">.</span>run<span class="token punctuation">(</span>gh<span class="token punctuation">.</span>process_geometry_event<span class="token punctuation">(</span>feature<span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+    validate <span class="token operator">=</span> <span class="token builtin">next</span><span class="token punctuation">(</span>
+        s <span class="token keyword">for</span> s <span class="token keyword">in</span> spans<span class="token punctuation">.</span>get_finished_spans<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token keyword">if</span> s<span class="token punctuation">.</span>name <span class="token operator">==</span> <span class="token string">"validate_geometry"</span>
+    <span class="token punctuation">)</span>
+    attrs <span class="token operator">=</span> <span class="token builtin">dict</span><span class="token punctuation">(</span>validate<span class="token punctuation">.</span>attributes<span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> attrs<span class="token punctuation">[</span><span class="token string">"geo.vertex_count"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token number">1</span>
+    <span class="token keyword">assert</span> attrs<span class="token punctuation">[</span><span class="token string">"geo.source_epsg"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token number">4326</span>
+    <span class="token comment"># No raw coordinate array leaked onto any attribute value.</span>
+    <span class="token keyword">assert</span> <span class="token builtin">all</span><span class="token punctuation">(</span><span class="token string">"coordinates"</span> <span class="token keyword">not</span> <span class="token keyword">in</span> <span class="token builtin">str</span><span class="token punctuation">(</span>v<span class="token punctuation">)</span> <span class="token keyword">for</span> v <span class="token keyword">in</span> attrs<span class="token punctuation">.</span>values<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<hr>
+<h2 id="faq" tabindex="-1"><a class="heading-anchor" href="#faq">FAQ</a></h2>
+<details class="faq">
+<summary><strong>Why does my publish span show up as a separate trace instead of a child?</strong></summary>
+<p><code>asyncio.create_task</code> does not carry the OpenTelemetry context into the new task on all runtimes and instrumentation setups, so a span opened inside the task starts a fresh root. Capture <code>context.get_current()</code> in the scheduling coroutine and <code>context.attach()</code> it as the first line of the background coroutine, detaching the token in a <code>finally</code> block.</p>
+</details>
+<details class="faq">
+<summary><strong>Can I put the geometry coordinates in a span attribute for debugging?</strong></summary>
+<p>No. A raw coordinate array can be kilobytes per span, it inflates trace storage and export payloads, and it can leak sensitive location data into your observability backend. Record derived, bounded values instead — an h3 cell index, the vertex count, the bounding-box area, and the source EPSG code.</p>
+</details>
+<details class="faq">
+<summary><strong>How do I keep high-volume geometry traces from overwhelming the backend?</strong></summary>
+<p>Use a parent-based, ratio sampler (<code>ParentBased(TraceIdRatioBased(rate))</code>) so the sampling decision is made once at ingress and inherited by every child span in the pipeline. Sample a small fraction of normal traffic and pair it with tail-based sampling in a collector to always keep error and high-latency traces.</p>
+</details>
+<details class="faq">
+<summary><strong>Should h3 cell index be a span attribute or a metric label?</strong></summary>
+<p>As a span attribute it is safe because spans are individual records, not aggregated time series. As a Prometheus metric label it would explode cardinality — millions of h3 cells become millions of series. Keep the cell on the span for per-request debugging and aggregate to a coarse resolution before using it as a metric label.</p>
+</details>
+<hr>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
+<ul>
+<li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging &amp; Tracing for Spatial Events</a> — the parent guide to correlating logs and traces across a spatial event pipeline</li>
+<li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a> — the aggregate signal layer that complements per-event traces</li>
+<li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a> — the offload patterns whose task and executor boundaries need manual context propagation</li>
+</ul>
+
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a></li>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a></li>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a></li>
+            <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring &amp; Observability for Spatial Pipelines</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</article>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="https://www.geospatialwebhook.com/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/">Home</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queues &amp; Retries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Queues &amp; Retries</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Monitoring</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging &amp; Tracing for Spatial Events</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <a class="site-footer__gh" href="https://github.com/geospatialwebhook" target="_blank" rel="noopener" aria-label="Geospatial Webhook on GitHub">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5Z"/></svg><span>GitHub</span>
+      </a>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

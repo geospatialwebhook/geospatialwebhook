@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>Idempotent Consumers for Out-of-Order Spatial Events · Geo Webhook</title>
+  <meta name="description" content="Build a spatial event consumer that is safe under at-least-once delivery and out-of-order arrival, so a stale feature update never overwrites a newer geometry."/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/idempotent-consumers-for-out-of-order-spatial-events/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360"/>
+  <meta name="color-scheme" content="light"/>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/idempotent-consumers-for-out-of-order-spatial-events/"/>
+  <meta property="og:title" content="Idempotent Consumers for Out-of-Order Spatial Events"/>
+  <meta property="og:description" content="Build a spatial event consumer that is safe under at-least-once delivery and out-of-order arrival, so a stale feature update never overwrites a newer geometry."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Idempotent Consumers for Out-of-Order Spatial Events"/>
+  <meta name="twitter:description" content="Build a spatial event consumer that is safe under at-least-once delivery and out-of-order arrival, so a stale feature update never overwrites a newer geometry."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },{ "@type": "ListItem", "position": 2, "name": "Queue Management Retry Delivery", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/" },{ "@type": "ListItem", "position": 3, "name": "Delivery Guarantees Ordering", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/" },{ "@type": "ListItem", "position": 4, "name": "Idempotent Consumers For Out Of Order Spatial Events", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/idempotent-consumers-for-out-of-order-spatial-events/" }
+    ]
+  }
+  </script>
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/idempotent-consumers-for-out-of-order-spatial-events/#article",
+    "mainEntityOfPage": "https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/idempotent-consumers-for-out-of-order-spatial-events/",
+    "headline": "Idempotent Consumers for Out-of-Order Spatial Events",
+    "description": "Build a spatial event consumer that is safe under at-least-once delivery and out-of-order arrival, so a stale feature update never overwrites a newer geometry.",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
+    "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
+    "image": "https://www.geospatialwebhook.com/og-image.png",
+    "url": "https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/idempotent-consumers-for-out-of-order-spatial-events/",
+    "articleSection": "Queue Management Retry Delivery",
+    "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
+  }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="https://www.geospatialwebhook.com/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="https://www.geospatialwebhook.com/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Queues &amp; Retries</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
+      </a>
+    </nav>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="https://www.geospatialwebhook.com/">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management Retry Delivery</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees Ordering</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">Idempotent Consumers For Out Of Order Spatial Events</span>
+    </nav>
+
+    <h1 class="page__title">Idempotent Consumers for Out-of-Order Spatial Events</h1>
+
+    <div class="page__layout">
+      <div class="markdown">
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Idempotent Consumers for Out-of-Order Spatial Events",
+      "description": "Build a spatial event consumer that is safe under at-least-once delivery and out-of-order arrival, so a stale feature update never overwrites a newer geometry.",
+      "url": "https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/idempotent-consumers-for-out-of-order-spatial-events/",
+      "datePublished": "2025-05-14",
+      "dateModified": "2026-07-13",
+      "author": { "@type": "Organization", "name": "geospatialwebhook.com" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Queue Management, Retries & Delivery Guarantees", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/" },
+        { "@type": "ListItem", "position": 2, "name": "Delivery Guarantees & Event Ordering", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/" },
+        { "@type": "ListItem", "position": 3, "name": "Idempotent Consumers for Out-of-Order Spatial Events", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/idempotent-consumers-for-out-of-order-spatial-events/" }
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Build an idempotent consumer for out-of-order spatial events",
+      "step": [
+        { "@type": "HowToStep", "position": 1, "name": "Drop exact duplicates by idempotency key", "text": "Check the event's content-derived idempotency key against a Redis store with SET NX. If the key already exists, the event is an exact redelivery and is acknowledged without touching feature state." },
+        { "@type": "HowToStep", "position": 2, "name": "Carry a per-feature version or observation time", "text": "Require every event to carry a monotonic version or observation_time for its feature_id. This is the ordering token the consumer compares, independent of arrival order." },
+        { "@type": "HowToStep", "position": 3, "name": "Apply as a conditional upsert", "text": "Upsert the feature into PostGIS with a WHERE clause that only overwrites the stored row when the incoming observed_at is strictly greater than the existing observed_at, so stale updates are ignored." },
+        { "@type": "HowToStep", "position": 4, "name": "Acknowledge regardless of outcome", "text": "Whether the row was updated, skipped as stale, or dropped as a duplicate, acknowledge the message so the broker does not redeliver it and amplify load." }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Should I order events by wall-clock arrival time or by observation time?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Always by observation time — the moment the sensor or source system recorded the feature state. Wall-clock arrival time reflects network and queue delays, so a stale event that was delayed can arrive after a fresh one. Ordering by received_at would then let the stale event win. Use a source-supplied version or observation_time as the comparison token." }
+        },
+        {
+          "@type": "Question",
+          "name": "What happens when two events for the same feature have identical observation times?",
+          "acceptedAnswer": { "@type": "Answer", "text": "A strict greater-than comparison treats ties as no-ops: neither overwrites the other, so whichever landed first wins and the result is stable and deterministic. If ties must be broken deterministically, add a secondary tiebreaker such as a monotonic sequence number or the idempotency key, and compare the pair (observed_at, seq) lexicographically." }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I still need an idempotency key if I already compare versions?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Version comparison makes a redelivered event a harmless no-op at the database, but it still costs a round trip and can mask logic bugs. A Redis idempotency check drops exact duplicates before they reach the database, which is cheaper and gives you a clean duplicate-rate metric. The two mechanisms cover different failure modes and are complementary." }
+        },
+        {
+          "@type": "Question",
+          "name": "Why must monotonicity be per feature rather than global?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Independent features change independently, and a partitioned broker gives you ordering guarantees only within a partition, not across the whole topic. Requiring a single global sequence would force all events through one partition and destroy throughput. Track the latest version per feature_id so each feature has its own monotonic timeline while features remain independent and parallelisable." }
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>To make a spatial consumer safe under at-least-once delivery and out-of-order arrival, drop exact redeliveries with an idempotency-key check, then apply every feature update as a conditional upsert that overwrites the stored row only when the incoming <code>observed_at</code> is strictly newer than what is already persisted.</strong> Ordering by observation time rather than arrival time guarantees that a delayed, stale feature update can never clobber a newer geometry, no matter what order the broker hands the events to you.</p>
+<p>This page sits within <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a>, part of the broader <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a> reference for building spatial webhook pipelines that survive redelivery and reordering.</p>
+<hr>
+<h2 id="when-to-use-this-pattern" tabindex="-1"><a class="heading-anchor" href="#when-to-use-this-pattern">When to use this pattern</a></h2>
+<p>Reach for a version-aware conditional upsert when:</p>
+<ul>
+<li>Your broker gives <strong>at-least-once</strong> delivery (Kafka, Redis Streams, SQS, RabbitMQ), so any event may arrive more than once, and reprocessing must be safe.</li>
+<li>Events for the same feature can arrive <strong>out of order</strong> — because of retries, partition rebalances, multiple producers, or a slow consumer catching up after lag — and the newest state must always win.</li>
+<li>You maintain a <strong>current-state table</strong> (the latest known geometry and attributes per feature), not just an append-only log, so a stale write would visibly corrupt what users see.</li>
+</ul>
+<p>It is <strong>not</strong> the right tool when you genuinely need a full event history rather than a latest-value projection — there, append every event to an immutable log keyed by <code>(feature_id, version)</code> and compute the current state at read time. It is also unnecessary when your broker provides strict total ordering <em>and</em> exactly-once semantics end to end, which almost no real webhook pipeline does.</p>
+<hr>
+<h2 id="why-out-of-order-delivery-corrupts-spatial-state" tabindex="-1"><a class="heading-anchor" href="#why-out-of-order-delivery-corrupts-spatial-state">Why out-of-order delivery corrupts spatial state</a></h2>
+<p>At-least-once delivery and ordering are two separate guarantees, and most pipelines have neither for free. A feature — a parcel boundary, a vehicle position, a flood-zone polygon — emits an update at 12:00:00 and a correction at 12:00:03. The 12:00:00 event hits a transient failure, gets retried, and lands <em>after</em> the 12:00:03 event. If your consumer blindly writes whatever it receives, the last message processed wins, and the stored geometry silently reverts to the older, wrong shape. Nothing errors; the map is just quietly stale.</p>
+<p>The fix is to stop trusting arrival order and start trusting an ordering token carried <em>inside</em> each event — a per-feature <code>version</code> counter or, more commonly for sensor data, the source <code>observed_at</code> timestamp. The consumer compares that token against what is already stored and applies the write only if it is strictly newer. This is a form of last-writer-wins conflict resolution where “last” means <em>newest observation</em>, not <em>newest arrival</em>; the deeper trade-offs of that choice are covered in <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies</a>.</p>
+<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Out-of-order spatial event consumer decision flow" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+  <title>Idempotent out-of-order consumer decision flow</title>
+  <desc>An event arrives and flows through a Redis idempotency-key check that drops exact duplicates, then a PostGIS conditional upsert that compares the incoming observation time against the stored observation time, applying the write only when the incoming event is strictly newer and otherwise skipping it as stale. All three outcomes acknowledge the message.</desc>
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L8,3.5 Z" fill="currentColor" opacity="0.55"/>
+    </marker>
+  </defs>
+  <!-- Incoming event -->
+  <rect x="8" y="120" width="120" height="60" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.25" stroke-width="1.5"/>
+  <text x="68" y="146" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Event</text>
+  <text x="68" y="162" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">feature + observed_at</text>
+  <line x1="128" y1="150" x2="152" y2="150" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Redis idempotency check -->
+  <rect x="154" y="120" width="150" height="60" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5"/>
+  <text x="229" y="145" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Redis SET NX</text>
+  <text x="229" y="161" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">idempotency key</text>
+  <!-- duplicate branch -->
+  <line x1="229" y1="120" x2="229" y2="70" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="243" y="98" text-anchor="start" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">exact duplicate</text>
+  <rect x="154" y="30" width="150" height="40" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5"/>
+  <text x="229" y="55" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">DROP → ack</text>
+  <line x1="304" y1="150" x2="328" y2="150" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- PostGIS conditional upsert -->
+  <rect x="330" y="115" width="180" height="70" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5"/>
+  <text x="420" y="140" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">PostGIS upsert</text>
+  <text x="420" y="156" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">WHERE incoming.observed_at</text>
+  <text x="420" y="170" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">&gt; existing.observed_at</text>
+  <!-- stale branch -->
+  <line x1="420" y1="115" x2="420" y2="70" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="434" y="98" text-anchor="start" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">older / tie</text>
+  <rect x="345" y="30" width="150" height="40" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5"/>
+  <text x="420" y="55" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">SKIP stale → ack</text>
+  <!-- apply branch -->
+  <line x1="510" y1="150" x2="558" y2="150" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="534" y="142" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">newer</text>
+  <rect x="560" y="120" width="180" height="60" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.25" stroke-width="1.5"/>
+  <text x="650" y="145" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Row updated</text>
+  <text x="650" y="161" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">newest geometry wins → ack</text>
+</svg>
+<hr>
+<h2 id="complete-runnable-implementation" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-implementation">Complete runnable implementation</a></h2>
+<p>The consumer below is self-contained and async. It reads events from an in-memory queue (swap in your Kafka or Redis Streams client), performs a Redis idempotency check to drop exact duplicates, then issues a single-statement PostGIS conditional upsert that persists the feature only when the incoming observation is strictly newer. Geometry arrives as GeoJSON in EPSG:4326 (WGS84) per RFC 7946 and is handed to PostGIS via <code>ST_GeomFromGeoJSON</code>. The idempotency key is assumed to be a content digest computed upstream (see the related links); here we only check and record it.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">import</span> json
+<span class="token keyword">from</span> dataclasses <span class="token keyword">import</span> dataclass
+<span class="token keyword">from</span> datetime <span class="token keyword">import</span> datetime<span class="token punctuation">,</span> timezone
+
+<span class="token keyword">import</span> asyncpg
+<span class="token keyword">import</span> redis<span class="token punctuation">.</span>asyncio <span class="token keyword">as</span> redis
+
+<span class="token comment"># --- Event model -----------------------------------------------------------</span>
+
+<span class="token decorator annotation punctuation">@dataclass</span><span class="token punctuation">(</span>frozen<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span>
+<span class="token keyword">class</span> <span class="token class-name">FeatureEvent</span><span class="token punctuation">:</span>
+    feature_id<span class="token punctuation">:</span> <span class="token builtin">str</span>          <span class="token comment"># stable identity of the real-world feature</span>
+    idempotency_key<span class="token punctuation">:</span> <span class="token builtin">str</span>     <span class="token comment"># content digest, unique per exact payload</span>
+    observed_at<span class="token punctuation">:</span> datetime    <span class="token comment"># SOURCE observation time (NOT arrival time)</span>
+    geometry<span class="token punctuation">:</span> <span class="token builtin">dict</span>           <span class="token comment"># GeoJSON geometry, EPSG:4326 (WGS84), RFC 7946</span>
+    properties<span class="token punctuation">:</span> <span class="token builtin">dict</span>         <span class="token comment"># non-spatial attributes</span>
+
+
+<span class="token comment"># --- Schema (run once) -----------------------------------------------------</span>
+<span class="token comment"># CREATE TABLE features (</span>
+<span class="token comment">#     feature_id  text PRIMARY KEY,</span>
+<span class="token comment">#     observed_at timestamptz NOT NULL,</span>
+<span class="token comment">#     geom        geometry(Geometry, 4326) NOT NULL,</span>
+<span class="token comment">#     properties  jsonb NOT NULL DEFAULT '{}'::jsonb,</span>
+<span class="token comment">#     updated_at  timestamptz NOT NULL DEFAULT now()</span>
+<span class="token comment"># );</span>
+
+UPSERT_SQL <span class="token operator">=</span> <span class="token triple-quoted-string string">"""
+INSERT INTO features (feature_id, observed_at, geom, properties)
+VALUES ($1, $2, ST_SetSRID(ST_GeomFromGeoJSON($3), 4326), $4::jsonb)
+ON CONFLICT (feature_id) DO UPDATE
+    SET observed_at = EXCLUDED.observed_at,
+        geom        = EXCLUDED.geom,
+        properties  = EXCLUDED.properties,
+        updated_at  = now()
+    -- The guard: only overwrite when the incoming observation is STRICTLY
+    -- newer. A stale (older) or tied event leaves the stored row untouched.
+    WHERE features.observed_at &lt; EXCLUDED.observed_at
+RETURNING feature_id;
+"""</span>
+
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">is_duplicate</span><span class="token punctuation">(</span>r<span class="token punctuation">:</span> redis<span class="token punctuation">.</span>Redis<span class="token punctuation">,</span> key<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> ttl_seconds<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">259200</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Return True if this exact payload was already seen (at-least-once guard).
+
+    SET NX is atomic: the first caller sets the key and gets True back from
+    Redis; any concurrent or later redelivery finds the key present and is
+    told it is a duplicate. TTL should cover the broker's redelivery window
+    (72h default here).
+    """</span>
+    <span class="token comment"># `set(..., nx=True)` returns True only if the key did NOT exist.</span>
+    was_set <span class="token operator">=</span> <span class="token keyword">await</span> r<span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"idem:</span><span class="token interpolation"><span class="token punctuation">{</span>key<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">,</span> <span class="token string">"1"</span><span class="token punctuation">,</span> nx<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span> ex<span class="token operator">=</span>ttl_seconds<span class="token punctuation">)</span>
+    <span class="token keyword">return</span> <span class="token keyword">not</span> was_set
+
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">handle_event</span><span class="token punctuation">(</span>pool<span class="token punctuation">:</span> asyncpg<span class="token punctuation">.</span>Pool<span class="token punctuation">,</span> r<span class="token punctuation">:</span> redis<span class="token punctuation">.</span>Redis<span class="token punctuation">,</span> ev<span class="token punctuation">:</span> FeatureEvent<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Process one event idempotently and order-safely. Returns the outcome."""</span>
+    <span class="token comment"># 1. Drop exact redeliveries before touching the database.</span>
+    <span class="token keyword">if</span> <span class="token keyword">await</span> is_duplicate<span class="token punctuation">(</span>r<span class="token punctuation">,</span> ev<span class="token punctuation">.</span>idempotency_key<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token string">"duplicate"</span>
+
+    <span class="token comment"># 2. Conditional upsert: newest observation wins, regardless of arrival order.</span>
+    <span class="token keyword">async</span> <span class="token keyword">with</span> pool<span class="token punctuation">.</span>acquire<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token keyword">as</span> conn<span class="token punctuation">:</span>
+        row <span class="token operator">=</span> <span class="token keyword">await</span> conn<span class="token punctuation">.</span>fetchrow<span class="token punctuation">(</span>
+            UPSERT_SQL<span class="token punctuation">,</span>
+            ev<span class="token punctuation">.</span>feature_id<span class="token punctuation">,</span>
+            ev<span class="token punctuation">.</span>observed_at<span class="token punctuation">,</span>
+            json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>ev<span class="token punctuation">.</span>geometry<span class="token punctuation">)</span><span class="token punctuation">,</span>
+            json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>ev<span class="token punctuation">.</span>properties<span class="token punctuation">)</span><span class="token punctuation">,</span>
+        <span class="token punctuation">)</span>
+    <span class="token comment"># RETURNING yields a row only when the WHERE guard passed (insert or newer update).</span>
+    <span class="token keyword">return</span> <span class="token string">"applied"</span> <span class="token keyword">if</span> row <span class="token keyword">is</span> <span class="token keyword">not</span> <span class="token boolean">None</span> <span class="token keyword">else</span> <span class="token string">"stale"</span>
+
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">consume</span><span class="token punctuation">(</span>pool<span class="token punctuation">:</span> asyncpg<span class="token punctuation">.</span>Pool<span class="token punctuation">,</span> r<span class="token punctuation">:</span> redis<span class="token punctuation">.</span>Redis<span class="token punctuation">,</span> queue<span class="token punctuation">:</span> asyncio<span class="token punctuation">.</span>Queue<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Main consumer loop. Acknowledge on every outcome so the broker
+    does not redeliver a message we have already reasoned about."""</span>
+    <span class="token keyword">while</span> <span class="token boolean">True</span><span class="token punctuation">:</span>
+        ev<span class="token punctuation">,</span> ack <span class="token operator">=</span> <span class="token keyword">await</span> queue<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token punctuation">)</span>
+        <span class="token keyword">try</span><span class="token punctuation">:</span>
+            outcome <span class="token operator">=</span> <span class="token keyword">await</span> handle_event<span class="token punctuation">(</span>pool<span class="token punctuation">,</span> r<span class="token punctuation">,</span> ev<span class="token punctuation">)</span>
+            <span class="token keyword">print</span><span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"</span><span class="token interpolation"><span class="token punctuation">{</span>ev<span class="token punctuation">.</span>feature_id<span class="token punctuation">}</span></span><span class="token string"> @ </span><span class="token interpolation"><span class="token punctuation">{</span>ev<span class="token punctuation">.</span>observed_at<span class="token punctuation">.</span>isoformat<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string"> -> </span><span class="token interpolation"><span class="token punctuation">{</span>outcome<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+            ack<span class="token punctuation">(</span><span class="token punctuation">)</span>  <span class="token comment"># duplicate, stale, and applied are all terminal — ack all three</span>
+        <span class="token keyword">except</span> Exception<span class="token punctuation">:</span>
+            <span class="token comment"># Do NOT ack: let the broker redeliver. The idempotency + version</span>
+            <span class="token comment"># guards make redelivery safe, so transient errors self-heal.</span>
+            <span class="token keyword">raise</span>
+        <span class="token keyword">finally</span><span class="token punctuation">:</span>
+            queue<span class="token punctuation">.</span>task_done<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">main</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    pool <span class="token operator">=</span> <span class="token keyword">await</span> asyncpg<span class="token punctuation">.</span>create_pool<span class="token punctuation">(</span>dsn<span class="token operator">=</span><span class="token string">"postgresql://localhost/geo"</span><span class="token punctuation">)</span>
+    r <span class="token operator">=</span> redis<span class="token punctuation">.</span>from_url<span class="token punctuation">(</span><span class="token string">"redis://localhost/0"</span><span class="token punctuation">)</span>
+    queue<span class="token punctuation">:</span> asyncio<span class="token punctuation">.</span>Queue <span class="token operator">=</span> asyncio<span class="token punctuation">.</span>Queue<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+    <span class="token comment"># Enqueue an OUT-OF-ORDER pair: the newer correction arrives FIRST.</span>
+    t_new <span class="token operator">=</span> datetime<span class="token punctuation">(</span><span class="token number">2026</span><span class="token punctuation">,</span> <span class="token number">7</span><span class="token punctuation">,</span> <span class="token number">13</span><span class="token punctuation">,</span> <span class="token number">12</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">3</span><span class="token punctuation">,</span> tzinfo<span class="token operator">=</span>timezone<span class="token punctuation">.</span>utc<span class="token punctuation">)</span>
+    t_old <span class="token operator">=</span> datetime<span class="token punctuation">(</span><span class="token number">2026</span><span class="token punctuation">,</span> <span class="token number">7</span><span class="token punctuation">,</span> <span class="token number">13</span><span class="token punctuation">,</span> <span class="token number">12</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">,</span> tzinfo<span class="token operator">=</span>timezone<span class="token punctuation">.</span>utc<span class="token punctuation">)</span>
+    events <span class="token operator">=</span> <span class="token punctuation">[</span>
+        FeatureEvent<span class="token punctuation">(</span><span class="token string">"parcel-42"</span><span class="token punctuation">,</span> <span class="token string">"key-new"</span><span class="token punctuation">,</span> t_new<span class="token punctuation">,</span>
+                     <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">73.9857</span><span class="token punctuation">,</span> <span class="token number">40.7484</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token punctuation">{</span><span class="token string">"v"</span><span class="token punctuation">:</span> <span class="token number">2</span><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+        FeatureEvent<span class="token punctuation">(</span><span class="token string">"parcel-42"</span><span class="token punctuation">,</span> <span class="token string">"key-old"</span><span class="token punctuation">,</span> t_old<span class="token punctuation">,</span>
+                     <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">73.9800</span><span class="token punctuation">,</span> <span class="token number">40.7400</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token punctuation">{</span><span class="token string">"v"</span><span class="token punctuation">:</span> <span class="token number">1</span><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+    <span class="token punctuation">]</span>
+    <span class="token keyword">for</span> ev <span class="token keyword">in</span> events<span class="token punctuation">:</span>
+        <span class="token keyword">await</span> queue<span class="token punctuation">.</span>put<span class="token punctuation">(</span><span class="token punctuation">(</span>ev<span class="token punctuation">,</span> <span class="token keyword">lambda</span><span class="token punctuation">:</span> <span class="token boolean">None</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+    worker <span class="token operator">=</span> asyncio<span class="token punctuation">.</span>create_task<span class="token punctuation">(</span>consume<span class="token punctuation">(</span>pool<span class="token punctuation">,</span> r<span class="token punctuation">,</span> queue<span class="token punctuation">)</span><span class="token punctuation">)</span>
+    <span class="token keyword">await</span> queue<span class="token punctuation">.</span>join<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    worker<span class="token punctuation">.</span>cancel<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">await</span> pool<span class="token punctuation">.</span>close<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">await</span> r<span class="token punctuation">.</span>aclose<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">if</span> __name__ <span class="token operator">==</span> <span class="token string">"__main__"</span><span class="token punctuation">:</span>
+    asyncio<span class="token punctuation">.</span>run<span class="token punctuation">(</span>main<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>The entire ordering decision lives in one line of SQL — <code>WHERE features.observed_at &lt; EXCLUDED.observed_at</code> — evaluated atomically by PostgreSQL under row locking. There is no read-then-write race: concurrent consumers cannot both read a stale <code>observed_at</code> and both decide to write, because the conditional update is a single statement.</p>
+<hr>
+<h2 id="parameter-reference" tabindex="-1"><a class="heading-anchor" href="#parameter-reference">Parameter reference</a></h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Spatial constraint</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>feature_id</code></td>
+<td><code>str</code></td>
+<td>Stable identity of the real-world feature; the per-feature ordering scope. Not the geometry hash</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>idempotency_key</code></td>
+<td><code>str</code></td>
+<td>Content digest of the exact payload; two distinct events at one feature must differ</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>observed_at</code></td>
+<td><code>timestamptz</code></td>
+<td>Source observation time in UTC; the comparison token. Must be monotonic <em>per <code>feature_id</code></em></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>geometry</code></td>
+<td><code>dict</code> (GeoJSON)</td>
+<td>Must be EPSG:4326 (WGS84) per RFC 7946; reproject upstream before ingest</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>ttl_seconds</code></td>
+<td><code>int</code></td>
+<td>Redis idempotency TTL; set ≥ broker’s max redelivery window</td>
+<td><code>259200</code> (72h)</td>
+</tr>
+<tr>
+<td>SRID in <code>ST_SetSRID</code></td>
+<td><code>int</code></td>
+<td>Must match the column’s declared SRID (<code>4326</code>) or PostGIS raises a mixed-SRID error</td>
+<td><code>4326</code></td>
+</tr>
+</tbody>
+</table>
+</div><hr>
+<h2 id="gotchas-and-spatial-edge-cases" tabindex="-1"><a class="heading-anchor" href="#gotchas-and-spatial-edge-cases">Gotchas and spatial edge cases</a></h2>
+<ol>
+<li>
+<p><strong>Wall-clock arrival time is not observation time.</strong> Never order by <code>received_at</code> or <code>now()</code>. A stale event delayed by a retry arrives <em>later</em> but describes an <em>earlier</em> state; comparing arrival times would let it win. Compare only the source-stamped <code>observed_at</code> (or a source <code>version</code>), which travels with the payload and reflects when the feature actually held that shape.</p>
+</li>
+<li>
+<p><strong>Ties are silently dropped by <code>&lt;</code>.</strong> With a strict less-than guard, two events sharing an identical <code>observed_at</code> never overwrite each other — first write wins, stably. That is usually correct. If you must break ties deterministically (e.g. two producers stamping the same second), compare a composite <code>(observed_at, sequence)</code> and guard on <code>features.observed_at &lt; EXCLUDED.observed_at OR (equal AND features.seq &lt; EXCLUDED.seq)</code>.</p>
+</li>
+<li>
+<p><strong>A missing version field defeats the whole scheme.</strong> If some producers omit <code>observed_at</code>, you cannot order their events. Reject such events to a dead-letter queue rather than defaulting to <code>now()</code> — defaulting silently reintroduces arrival-order semantics and the stale-overwrite bug you are trying to kill.</p>
+</li>
+<li>
+<p><strong>Monotonicity is per feature, not global.</strong> Each <code>feature_id</code> needs its own increasing timeline; there is no requirement that feature A’s clock relate to feature B’s. Do not force a global sequence — it collapses all traffic onto one partition and destroys throughput. Kafka only orders within a partition, so key your topic by <code>feature_id</code> (or its H3 cell) to keep each feature’s events on one partition.</p>
+</li>
+<li>
+<p><strong>Late create after update (the phantom row).</strong> If a <code>create</code> for a feature is delayed and its later <code>update</code> arrives first, the <code>INSERT ... ON CONFLICT</code> still does the right thing: the update inserts the row, and the delayed create — carrying an <em>older</em> <code>observed_at</code> — hits the <code>WHERE</code> guard and is skipped. The newest state survives even when “create” loses the race, provided the create carries the correct earlier <code>observed_at</code>.</p>
+</li>
+<li>
+<p><strong>SRID must match the column.</strong> Feeding a geometry parsed without an SRID, or in a different CRS such as EPSG:3857 (Web Mercator), into a <code>geometry(Geometry, 4326)</code> column raises <code>Operation on mixed SRID geometries</code>. Always wrap with <code>ST_SetSRID(..., 4326)</code> and reproject non-WGS84 sources before they reach the consumer.</p>
+</li>
+<li>
+<p><strong>Idempotency TTL shorter than the retry window reopens the gap.</strong> If Redis expires the key before the broker stops retrying, a very late redelivery is treated as new. It is still order-safe (the version guard catches it), but you lose the cheap duplicate-drop and the duplicate-rate metric. Size the TTL to exceed your provider’s maximum retry horizon.</p>
+</li>
+</ol>
+<hr>
+<h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
+<p>This pytest exercises the core invariant: an out-of-order pair — newer event processed first, older event second — must converge to the newer geometry. It uses stub stores so it runs without a live database or Redis, isolating the ordering logic.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> pytest
+<span class="token keyword">from</span> datetime <span class="token keyword">import</span> datetime<span class="token punctuation">,</span> timezone
+
+
+<span class="token keyword">class</span> <span class="token class-name">FakeFeatureStore</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Emulates the PostGIS conditional upsert: newest observed_at wins."""</span>
+    <span class="token keyword">def</span> <span class="token function">__init__</span><span class="token punctuation">(</span>self<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        self<span class="token punctuation">.</span>rows <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token punctuation">}</span>
+
+    <span class="token keyword">def</span> <span class="token function">upsert_if_newer</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> feature_id<span class="token punctuation">,</span> observed_at<span class="token punctuation">,</span> geom<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        existing <span class="token operator">=</span> self<span class="token punctuation">.</span>rows<span class="token punctuation">.</span>get<span class="token punctuation">(</span>feature_id<span class="token punctuation">)</span>
+        <span class="token keyword">if</span> existing <span class="token keyword">is</span> <span class="token boolean">None</span> <span class="token keyword">or</span> existing<span class="token punctuation">[</span><span class="token string">"observed_at"</span><span class="token punctuation">]</span> <span class="token operator">&lt;</span> observed_at<span class="token punctuation">:</span>
+            self<span class="token punctuation">.</span>rows<span class="token punctuation">[</span>feature_id<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"observed_at"</span><span class="token punctuation">:</span> observed_at<span class="token punctuation">,</span> <span class="token string">"geom"</span><span class="token punctuation">:</span> geom<span class="token punctuation">}</span>
+            <span class="token keyword">return</span> <span class="token string">"applied"</span>
+        <span class="token keyword">return</span> <span class="token string">"stale"</span>      <span class="token comment"># strict '&lt;' => older OR tied is skipped</span>
+
+
+<span class="token keyword">class</span> <span class="token class-name">FakeIdem</span><span class="token punctuation">:</span>
+    <span class="token keyword">def</span> <span class="token function">__init__</span><span class="token punctuation">(</span>self<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        self<span class="token punctuation">.</span>seen <span class="token operator">=</span> <span class="token builtin">set</span><span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+    <span class="token keyword">def</span> <span class="token function">is_duplicate</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> key<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">if</span> key <span class="token keyword">in</span> self<span class="token punctuation">.</span>seen<span class="token punctuation">:</span>
+            <span class="token keyword">return</span> <span class="token boolean">True</span>
+        self<span class="token punctuation">.</span>seen<span class="token punctuation">.</span>add<span class="token punctuation">(</span>key<span class="token punctuation">)</span>
+        <span class="token keyword">return</span> <span class="token boolean">False</span>
+
+
+<span class="token keyword">def</span> <span class="token function">process</span><span class="token punctuation">(</span>store<span class="token punctuation">,</span> idem<span class="token punctuation">,</span> feature_id<span class="token punctuation">,</span> key<span class="token punctuation">,</span> observed_at<span class="token punctuation">,</span> geom<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">if</span> idem<span class="token punctuation">.</span>is_duplicate<span class="token punctuation">(</span>key<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token string">"duplicate"</span>
+    <span class="token keyword">return</span> store<span class="token punctuation">.</span>upsert_if_newer<span class="token punctuation">(</span>feature_id<span class="token punctuation">,</span> observed_at<span class="token punctuation">,</span> geom<span class="token punctuation">)</span>
+
+
+T_OLD <span class="token operator">=</span> datetime<span class="token punctuation">(</span><span class="token number">2026</span><span class="token punctuation">,</span> <span class="token number">7</span><span class="token punctuation">,</span> <span class="token number">13</span><span class="token punctuation">,</span> <span class="token number">12</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">,</span> tzinfo<span class="token operator">=</span>timezone<span class="token punctuation">.</span>utc<span class="token punctuation">)</span>
+T_NEW <span class="token operator">=</span> datetime<span class="token punctuation">(</span><span class="token number">2026</span><span class="token punctuation">,</span> <span class="token number">7</span><span class="token punctuation">,</span> <span class="token number">13</span><span class="token punctuation">,</span> <span class="token number">12</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">3</span><span class="token punctuation">,</span> tzinfo<span class="token operator">=</span>timezone<span class="token punctuation">.</span>utc<span class="token punctuation">)</span>
+GEOM_OLD <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">73.9800</span><span class="token punctuation">,</span> <span class="token number">40.7400</span><span class="token punctuation">]</span><span class="token punctuation">}</span>
+GEOM_NEW <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">73.9857</span><span class="token punctuation">,</span> <span class="token number">40.7484</span><span class="token punctuation">]</span><span class="token punctuation">}</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_out_of_order_converges_to_newest</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Newer event arrives first, stale event second: newest geometry must win."""</span>
+    store<span class="token punctuation">,</span> idem <span class="token operator">=</span> FakeFeatureStore<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> FakeIdem<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> process<span class="token punctuation">(</span>store<span class="token punctuation">,</span> idem<span class="token punctuation">,</span> <span class="token string">"p-42"</span><span class="token punctuation">,</span> <span class="token string">"k2"</span><span class="token punctuation">,</span> T_NEW<span class="token punctuation">,</span> GEOM_NEW<span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token string">"applied"</span>
+    <span class="token keyword">assert</span> process<span class="token punctuation">(</span>store<span class="token punctuation">,</span> idem<span class="token punctuation">,</span> <span class="token string">"p-42"</span><span class="token punctuation">,</span> <span class="token string">"k1"</span><span class="token punctuation">,</span> T_OLD<span class="token punctuation">,</span> GEOM_OLD<span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token string">"stale"</span>
+    <span class="token keyword">assert</span> store<span class="token punctuation">.</span>rows<span class="token punctuation">[</span><span class="token string">"p-42"</span><span class="token punctuation">]</span><span class="token punctuation">[</span><span class="token string">"geom"</span><span class="token punctuation">]</span> <span class="token operator">==</span> GEOM_NEW      <span class="token comment"># stale did NOT overwrite</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_in_order_also_converges</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Same two events in natural order converge to the same final state."""</span>
+    store<span class="token punctuation">,</span> idem <span class="token operator">=</span> FakeFeatureStore<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> FakeIdem<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> process<span class="token punctuation">(</span>store<span class="token punctuation">,</span> idem<span class="token punctuation">,</span> <span class="token string">"p-42"</span><span class="token punctuation">,</span> <span class="token string">"k1"</span><span class="token punctuation">,</span> T_OLD<span class="token punctuation">,</span> GEOM_OLD<span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token string">"applied"</span>
+    <span class="token keyword">assert</span> process<span class="token punctuation">(</span>store<span class="token punctuation">,</span> idem<span class="token punctuation">,</span> <span class="token string">"p-42"</span><span class="token punctuation">,</span> <span class="token string">"k2"</span><span class="token punctuation">,</span> T_NEW<span class="token punctuation">,</span> GEOM_NEW<span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token string">"applied"</span>
+    <span class="token keyword">assert</span> store<span class="token punctuation">.</span>rows<span class="token punctuation">[</span><span class="token string">"p-42"</span><span class="token punctuation">]</span><span class="token punctuation">[</span><span class="token string">"geom"</span><span class="token punctuation">]</span> <span class="token operator">==</span> GEOM_NEW
+
+
+<span class="token keyword">def</span> <span class="token function">test_exact_redelivery_is_dropped</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""At-least-once: the same key twice is a no-op the second time."""</span>
+    store<span class="token punctuation">,</span> idem <span class="token operator">=</span> FakeFeatureStore<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> FakeIdem<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> process<span class="token punctuation">(</span>store<span class="token punctuation">,</span> idem<span class="token punctuation">,</span> <span class="token string">"p-42"</span><span class="token punctuation">,</span> <span class="token string">"k2"</span><span class="token punctuation">,</span> T_NEW<span class="token punctuation">,</span> GEOM_NEW<span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token string">"applied"</span>
+    <span class="token keyword">assert</span> process<span class="token punctuation">(</span>store<span class="token punctuation">,</span> idem<span class="token punctuation">,</span> <span class="token string">"p-42"</span><span class="token punctuation">,</span> <span class="token string">"k2"</span><span class="token punctuation">,</span> T_NEW<span class="token punctuation">,</span> GEOM_NEW<span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token string">"duplicate"</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_tie_does_not_overwrite</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Equal observation times: first write wins, tie is skipped."""</span>
+    store<span class="token punctuation">,</span> idem <span class="token operator">=</span> FakeFeatureStore<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> FakeIdem<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    process<span class="token punctuation">(</span>store<span class="token punctuation">,</span> idem<span class="token punctuation">,</span> <span class="token string">"p-42"</span><span class="token punctuation">,</span> <span class="token string">"a"</span><span class="token punctuation">,</span> T_NEW<span class="token punctuation">,</span> GEOM_NEW<span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> process<span class="token punctuation">(</span>store<span class="token punctuation">,</span> idem<span class="token punctuation">,</span> <span class="token string">"p-42"</span><span class="token punctuation">,</span> <span class="token string">"b"</span><span class="token punctuation">,</span> T_NEW<span class="token punctuation">,</span> GEOM_OLD<span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token string">"stale"</span>
+    <span class="token keyword">assert</span> store<span class="token punctuation">.</span>rows<span class="token punctuation">[</span><span class="token string">"p-42"</span><span class="token punctuation">]</span><span class="token punctuation">[</span><span class="token string">"geom"</span><span class="token punctuation">]</span> <span class="token operator">==</span> GEOM_NEW
+</code></pre>
+</div>
+<p>Both orderings land on <code>GEOM_NEW</code>, which is the definition of convergence: the final state is independent of delivery order and delivery count.</p>
+<hr>
+<h2 id="faq" tabindex="-1"><a class="heading-anchor" href="#faq">FAQ</a></h2>
+<details class="faq">
+<summary><strong>Should I order events by wall-clock arrival time or by observation time?</strong></summary>
+<p>Always by observation time — the moment the sensor or source system recorded the feature state. Wall-clock arrival time reflects network and queue delays, so a stale event that was delayed can arrive after a fresh one. Ordering by <code>received_at</code> would then let the stale event win. Use a source-supplied <code>version</code> or <code>observed_at</code> as the comparison token.</p>
+</details>
+<details class="faq">
+<summary><strong>What happens when two events for the same feature have identical observation times?</strong></summary>
+<p>A strict greater-than comparison treats ties as no-ops: neither overwrites the other, so whichever landed first wins and the result is stable and deterministic. If ties must be broken deterministically, add a secondary tiebreaker such as a monotonic sequence number or the idempotency key, and compare the pair <code>(observed_at, seq)</code> lexicographically.</p>
+</details>
+<details class="faq">
+<summary><strong>Do I still need an idempotency key if I already compare versions?</strong></summary>
+<p>Yes. Version comparison makes a redelivered event a harmless no-op at the database, but it still costs a round trip and can mask logic bugs. A Redis idempotency check drops exact duplicates before they reach the database, which is cheaper and gives you a clean duplicate-rate metric. The two mechanisms cover different failure modes and are complementary.</p>
+</details>
+<details class="faq">
+<summary><strong>Why must monotonicity be per feature rather than global?</strong></summary>
+<p>Independent features change independently, and a partitioned broker gives you ordering guarantees only within a partition, not across the whole topic. Requiring a single global sequence would force all events through one partition and destroy throughput. Track the latest version per <code>feature_id</code> so each feature has its own monotonic timeline while features remain independent and parallelisable.</p>
+</details>
+<hr>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
+<ul>
+<li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a> — parent: the full picture of at-least-once, exactly-once, and ordering for spatial streams</li>
+<li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies</a> — deciding which write wins when versions collide, beyond simple last-writer-wins</li>
+<li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks</a> — the Redis store and atomic <code>SET NX</code> pattern behind the duplicate-drop step</li>
+</ul>
+
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a></li>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a></li>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a></li>
+            <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring &amp; Observability for Spatial Pipelines</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</article>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="https://www.geospatialwebhook.com/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/">Home</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queues &amp; Retries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Queues &amp; Retries</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Monitoring</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging &amp; Tracing for Spatial Events</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <a class="site-footer__gh" href="https://github.com/geospatialwebhook" target="_blank" rel="noopener" aria-label="Geospatial Webhook on GitHub">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5Z"/></svg><span>GitHub</span>
+      </a>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

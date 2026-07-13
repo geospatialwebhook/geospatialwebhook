@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>Python Geospatial Webhook &amp; Event-Driven Architecture</title>
+  <meta name="description" content="Design, build, and scale event-driven spatial systems in Python — feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring."/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360"/>
+  <meta name="color-scheme" content="light"/>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="website"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/"/>
+  <meta property="og:title" content="Python Geospatial Webhook &amp; Event-Driven Architecture"/>
+  <meta property="og:description" content="Design, build, and scale event-driven spatial systems in Python — feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Python Geospatial Webhook &amp; Event-Driven Architecture"/>
+  <meta name="twitter:description" content="Design, build, and scale event-driven spatial systems in Python — feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="https://www.geospatialwebhook.com/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="https://www.geospatialwebhook.com/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Queues &amp; Retries</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
+      </a>
+    </nav>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+<section class="hero">
+  <div class="container container--wide">
+    <div class="hero__inner">
+      <div>
+        <span class="hero__eyebrow">Python · Event-Driven Geospatial</span>
+        <h1 class="hero__title">
+          Build <em>resilient spatial pipelines</em> with Python webhooks.
+        </h1>
+        <p class="hero__lead">
+          Design, deploy, and scale event-driven geospatial systems that route real-time
+          feature changes, tile updates, and sensor payloads without breaking under load.
+          Practical patterns for idempotency, retries, queues, and production monitoring.
+        </p>
+        <p class="hero__lead">
+          A working playbook for platform engineers, GIS backend developers, and SaaS
+          founders who need event pipelines that don't lose data, don't double-write
+          features, and stay observable at scale.
+        </p>
+        <div class="hero__ctas">
+          <a class="cta-button" href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">
+            <span class="cta-button__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></span>
+            <span>Architecture fundamentals</span>
+          </a>
+          <a class="cta-button cta-button--mint" href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">
+            <span class="cta-button__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+            <span>Idempotency &amp; dedup</span>
+          </a>
+          <a class="cta-button cta-button--earth" href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">
+            <span class="cta-button__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg></span>
+            <span>Routing &amp; parsing</span>
+          </a>
+        </div>
+      </div>
+      <div class="hero__visual" aria-hidden="true">
+        <svg viewBox="0 0 420 315" width="420" height="315" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">
+          <!-- Background map grid -->
+          <rect width="420" height="315" rx="18" fill="none"/>
+          <!-- Grid lines (lat/lon feel) -->
+          <g stroke="#d8c2a3" stroke-width="1" opacity="0.5">
+            <line x1="70" y1="0" x2="70" y2="315"/>
+            <line x1="140" y1="0" x2="140" y2="315"/>
+            <line x1="210" y1="0" x2="210" y2="315"/>
+            <line x1="280" y1="0" x2="280" y2="315"/>
+            <line x1="350" y1="0" x2="350" y2="315"/>
+            <line x1="0" y1="52" x2="420" y2="52"/>
+            <line x1="0" y1="104" x2="420" y2="104"/>
+            <line x1="0" y1="157" x2="420" y2="157"/>
+            <line x1="0" y1="210" x2="420" y2="210"/>
+            <line x1="0" y1="262" x2="420" y2="262"/>
+          </g>
+          <!-- Land polygon (stylised region) -->
+          <polygon points="55,80 130,55 210,70 300,50 370,90 390,160 340,220 260,250 170,240 90,210 45,160" fill="#b7e1c4" opacity="0.55" stroke="#5fb682" stroke-width="1.5"/>
+          <!-- River / routing line -->
+          <path d="M90,160 Q150,140 200,165 Q260,195 330,175" fill="none" stroke="#3e9763" stroke-width="2.5" stroke-dasharray="6,3" opacity="0.8"/>
+          <!-- Webhook event nodes -->
+          <circle cx="130" cy="105" r="9" fill="#d9744f" opacity="0.9"/>
+          <circle cx="130" cy="105" r="16" fill="none" stroke="#d9744f" stroke-width="1.5" opacity="0.4"/>
+          <circle cx="130" cy="105" r="24" fill="none" stroke="#d9744f" stroke-width="1" opacity="0.2"/>
+
+          <circle cx="270" cy="88" r="9" fill="#3e9763" opacity="0.9"/>
+          <circle cx="270" cy="88" r="16" fill="none" stroke="#3e9763" stroke-width="1.5" opacity="0.4"/>
+          <circle cx="270" cy="88" r="24" fill="none" stroke="#3e9763" stroke-width="1" opacity="0.2"/>
+
+          <circle cx="210" cy="180" r="9" fill="#8f7150" opacity="0.9"/>
+          <circle cx="210" cy="180" r="16" fill="none" stroke="#8f7150" stroke-width="1.5" opacity="0.4"/>
+
+          <!-- Connector lines (event routing) -->
+          <line x1="130" y1="105" x2="270" y2="88" stroke="#d9744f" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.6"/>
+          <line x1="270" y1="88" x2="210" y2="180" stroke="#3e9763" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.6"/>
+          <line x1="130" y1="105" x2="210" y2="180" stroke="#8f7150" stroke-width="1" stroke-dasharray="4,4" opacity="0.5"/>
+
+          <!-- Payload badge -->
+          <rect x="290" y="185" width="112" height="52" rx="8" fill="#ffffff" stroke="#ead7c0" stroke-width="1.2" opacity="0.95"/>
+          <text x="346" y="204" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="9.5" fill="#6b5238" font-weight="600">GeoJSON</text>
+          <text x="346" y="218" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="8.5" fill="#2c6e44">type: Feature</text>
+          <text x="346" y="231" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="8.5" fill="#b14d28">sig: HMAC ✓</text>
+
+          <!-- H3 hexagons (sensor grid) -->
+          <g opacity="0.35" fill="none" stroke="#5fb682" stroke-width="1.2">
+            <polygon points="65,230 80,221 95,230 95,248 80,257 65,248"/>
+            <polygon points="95,230 110,221 125,230 125,248 110,257 95,248"/>
+            <polygon points="80,257 95,248 110,257 110,275 95,284 80,275"/>
+          </g>
+
+          <!-- Legend label -->
+          <text x="210" y="300" text-anchor="middle" font-family="'Inter',sans-serif" font-size="10" fill="#876e54" letter-spacing="0.06em">REAL-TIME SPATIAL EVENT ROUTING</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<section class="section">
+  <div class="container container--wide">
+    <div class="section__head">
+      <h2 class="section__title">Five core areas of a production spatial webhook stack</h2>
+      <p class="section__sub">
+        Each section is a deep dive: architectural patterns first, then concrete Python
+        implementations, then the operational hardening — queues, retries, and observability —
+        that separates a prototype from a platform.
+      </p>
+    </div>
+    <div class="card-grid">
+      <a class="card " href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></span>
+        <h3 class="card__title">Core Event Fundamentals &amp; Architecture</h3>
+        <p class="card__text">Pub/sub, partitioning, event sourcing, sensor routing, tile pipelines, webhook security — the architectural baseline for spatial event systems.</p>
+        <span class="card__more">Read the guide <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card card--mint" href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+        <h3 class="card__title">Idempotency &amp; Spatial Deduplication</h3>
+        <p class="card__text">Deterministic keys, cache-backed checks, tolerance-based overlap detection, and conflict resolution for repeated geospatial events.</p>
+        <span class="card__more">Read the guide <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card card--earth" href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg></span>
+        <h3 class="card__title">Spatial Payload Routing &amp; Parsing</h3>
+        <p class="card__text">CRS normalization, geometry validation, GeoJSON/Protobuf mapping, async parsing — turn chaotic webhook streams into clean spatial events.</p>
+        <span class="card__more">Read the guide <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card card--rose" href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span>
+        <h3 class="card__title">Queue Management, Retries &amp; Delivery Guarantees</h3>
+        <p class="card__text">Exponential backoff with jitter, dead-letter queues for spatial payloads, broker selection, and ordering guarantees for high-volume geospatial event streams.</p>
+        <span class="card__more">Read the guide <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card " href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg></span>
+        <h3 class="card__title">Monitoring &amp; Observability for Spatial Pipelines</h3>
+        <p class="card__text">Geo-specific metrics, consumer lag and partition skew detection, structured logging, and distributed tracing for production spatial webhook systems.</p>
+        <span class="card__more">Read the guide <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+    </div>
+  </div>
+</section>
+
+
+<section class="section">
+  <div class="container container--wide">
+    <div class="section__head">
+      <h2 class="section__title">Start here</h2>
+      <p class="section__sub">
+        The articles that cover the most common problems engineers hit when wiring up
+        geospatial webhooks — from first architecture through delivery guarantees,
+        partitioning, and production observability. Read these before diving into a subsection.
+      </p>
+    </div>
+    <div class="card-grid">
+      <a class="card" href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/how-to-design-a-geospatial-webhook-architecture-in-python/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></span>
+        <h3 class="card__title">Design a Geospatial Webhook Architecture in Python</h3>
+        <p class="card__text">Async dispatch, Shapely validation, HMAC signing, exponential backoff, and dead-letter routing for spatial event pipelines.</p>
+        <span class="card__more">Read <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card card--mint" href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+        <h3 class="card__title">Deterministic Idempotency Keys for GeoJSON Events</h3>
+        <p class="card__text">Canonicalize GeoJSON payloads and hash them into stable keys that survive retries, serializer drift, and float precision variance.</p>
+        <span class="card__more">Read <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card card--earth" href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/handling-mixed-crs-payloads-in-python-event-handlers/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg></span>
+        <h3 class="card__title">Handling Mixed CRS Payloads in Python Webhooks</h3>
+        <p class="card__text">Detect, transform, and normalize coordinate reference systems on the fly so downstream consumers always receive WGS-84.</p>
+        <span class="card__more">Read <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card card--mint" href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/using-redis-to-cache-spatial-webhook-signatures/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></span>
+        <h3 class="card__title">Redis-Backed Spatial Webhook Signatures</h3>
+        <p class="card__text">Store HMAC-SHA256 hashes of geospatial payloads in Redis with SET NX EX for atomic, sub-millisecond duplicate detection.</p>
+        <span class="card__more">Read <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card card--rose" href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/securing-webhook-endpoints-with-spatial-token-validation/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+        <h3 class="card__title">Securing Webhooks with Spatial Token Validation</h3>
+        <p class="card__text">Embed a signed geohash or bounding-box digest into HMAC or JWT so consumers reject events that fail cryptographic or geographic checks.</p>
+        <span class="card__more">Read <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card card--earth" href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/parsing-geojson-webhooks-with-fastapi-and-pydantic/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.5 5.5l2.5 2.5M16 16l2.5 2.5M5.5 18.5L8 16M16 8l2.5-2.5"/></svg></span>
+        <h3 class="card__title">Parsing GeoJSON Webhooks with FastAPI and Pydantic</h3>
+        <p class="card__text">RFC 7946-compliant Pydantic v2 models enforce spatial schemas at the HTTP layer, rejecting malformed payloads before they reach business logic.</p>
+        <span class="card__more">Read <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card card--mint" href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s7-7.5 7-13a7 7 0 1 0-14 0c0 5.5 7 13 7 13z"/><circle cx="12" cy="9" r="2.5"/></svg></span>
+        <h3 class="card__title">At-Least-Once Delivery for GIS Webhooks</h3>
+        <p class="card__text">Durable acknowledgement patterns, consumer-side deduplication, and re-delivery logic so spatial events survive broker restarts and network failures.</p>
+        <span class="card__more">Read <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card card--earth" href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/converting-wkt-to-protobuf-for-low-latency-routing/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></span>
+        <h3 class="card__title">Converting WKT to Protobuf for Low-Latency Routing</h3>
+        <p class="card__text">Serialise Well-Known Text geometries into compact Protobuf messages to cut payload size and parse overhead in high-throughput spatial event queues.</p>
+        <span class="card__more">Read <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card card--rose" href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/h3-vs-s2-vs-quadkey-for-spatial-partitioning/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg></span>
+        <h3 class="card__title">H3 vs S2 vs Quadkey for Spatial Partitioning</h3>
+        <p class="card__text">A definitive comparison of the three discrete global grid systems as partition keys — cell shape, hierarchy, Python libraries, and skew behaviour under load.</p>
+        <span class="card__more">Read <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card" href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/redis-streams-vs-kafka-for-geospatial-webhooks/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span>
+        <h3 class="card__title">Redis Streams vs Kafka for Geospatial Webhooks</h3>
+        <p class="card__text">Throughput, retention, spatial partitioning, and ordering compared — with runnable producers and consumers for both brokers keyed by H3 cell.</p>
+        <span class="card__more">Read <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card card--mint" href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg></span>
+        <h3 class="card__title">Consumer Lag &amp; Partition Skew Monitoring</h3>
+        <p class="card__text">Detect when H3-sharded streams pile onto dense urban cells: measure per-shard lag, compute a skew coefficient, and alert before consumers fall behind.</p>
+        <span class="card__more">Read <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+    </div>
+  </div>
+</section>
+
+
+<section class="section">
+  <div class="container container--wide">
+    <div class="section__head">
+      <h2 class="section__title">What you'll learn</h2>
+      <p class="section__sub">
+        Spatial data is messier than typical event payloads. CRS drift, topological
+        equivalence, partition skew, and floating-point variance all conspire to break
+        naive pipelines. The content here walks through the subsections and patterns
+        that hold up under real production load.
+      </p>
+    </div>
+    <div class="card-grid">
+      <a class="card card--mint" href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></span>
+        <h3 class="card__title">Feature change triggers</h3>
+        <p class="card__text">Propagate cadastral edits, infrastructure updates, and field-collector mutations through async Python pipelines without race conditions.</p>
+        <span class="card__more">Explore <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card card--earth" href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/><path d="M3 18l9 5 9-5"/></svg></span>
+        <h3 class="card__title">Tile update pipelines</h3>
+        <p class="card__text">Incremental cache invalidation and targeted tile regeneration triggered by spatial webhook events — keeps maps fresh without reprocessing entire datasets.</p>
+        <span class="card__more">Explore <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card card--rose" href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s7-7.5 7-13a7 7 0 1 0-14 0c0 5.5 7 13 7 13z"/><circle cx="12" cy="9" r="2.5"/></svg></span>
+        <h3 class="card__title">Sensor &amp; IoT routing</h3>
+        <p class="card__text">Spatial partitioning by H3, S2, or watershed boundary, plus at-least-once delivery guarantees so downstream analytics receive coherent streams.</p>
+        <span class="card__more">Explore <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card" href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+        <h3 class="card__title">Idempotency key generation</h3>
+        <p class="card__text">Deterministic composite keys derived from geometry hashes, event type, and source ID — the foundation for deduplication across retries and replays.</p>
+        <span class="card__more">Explore <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card card--mint" href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg></span>
+        <h3 class="card__title">CRS normalization</h3>
+        <p class="card__text">Detect, validate, and reproject mixed coordinate reference systems on-the-fly so every downstream consumer receives clean WGS-84 payloads.</p>
+        <span class="card__more">Explore <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+      <a class="card card--earth" href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">
+        <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.5 5.5l2.5 2.5M16 16l2.5 2.5M5.5 18.5L8 16M16 8l2.5-2.5"/></svg></span>
+        <h3 class="card__title">Geometry validation pipelines</h3>
+        <p class="card__text">Shapely-based validity checks, self-intersection repair, and WKT-to-Protobuf conversion for low-latency spatial event routing.</p>
+        <span class="card__more">Explore <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </a>
+    </div>
+  </div>
+</section>
+
+
+<section class="section">
+  <div class="container container--wide">
+    <div class="section__head">
+      <h2 class="section__title">Browse all topics</h2>
+      <p class="section__sub">
+        Every subsection is self-contained — pick the one closest to the problem you're
+        solving right now.
+      </p>
+    </div>
+    <div style="margin-bottom: 2rem;">
+      <h3 style="font-family: var(--font-display); color: var(--earth-600); margin: 0 0 .75rem; font-size: 1.15rem;">
+        <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" style="color: inherit; border: none;">Core Event Fundamentals &amp; Architecture</a>
+      </h3>
+      <div class="children-grid">
+        <a class="card " href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></span>
+          <h4 class="card__title">Feature Change Triggers for Geospatial Webhooks</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+        <a class="card card--mint" href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></span>
+          <h4 class="card__title">Sensor Data Routing Patterns for Geospatial Webhooks</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+        <a class="card card--earth" href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></span>
+          <h4 class="card__title">Spatial Partitioning Strategies for Event Streams</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+        <a class="card card--rose" href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></span>
+          <h4 class="card__title">Tile Update Event Pipelines</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+        <a class="card " href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></span>
+          <h4 class="card__title">Webhook Security Boundaries for Spatial Event Pipelines</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+      </div>
+    </div>
+    <div style="margin-bottom: 2rem;">
+      <h3 style="font-family: var(--font-display); color: var(--earth-600); margin: 0 0 .75rem; font-size: 1.15rem;">
+        <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" style="color: inherit; border: none;">Idempotency &amp; Spatial Deduplication</a>
+      </h3>
+      <div class="children-grid">
+        <a class="card " href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+          <h4 class="card__title">Cache-Backed Idempotency Checks for Geospatial Webhooks</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+        <a class="card card--mint" href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+          <h4 class="card__title">Conflict Resolution Strategies for Geospatial Webhooks</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+        <a class="card card--earth" href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+          <h4 class="card__title">Event Key Generation for Spatial Data</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+        <a class="card card--rose" href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+          <h4 class="card__title">Spatial Overlap Deduplication for Geospatial Webhooks</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+      </div>
+    </div>
+    <div style="margin-bottom: 2rem;">
+      <h3 style="font-family: var(--font-display); color: var(--earth-600); margin: 0 0 .75rem; font-size: 1.15rem;">
+        <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" style="color: inherit; border: none;">Spatial Payload Routing &amp; Parsing</a>
+      </h3>
+      <div class="children-grid">
+        <a class="card " href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg></span>
+          <h4 class="card__title">Async Processing for Heavy Geometries</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+        <a class="card card--mint" href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg></span>
+          <h4 class="card__title">CRS Normalization Strategies for Geospatial Events</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+        <a class="card card--earth" href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg></span>
+          <h4 class="card__title">GeoJSON to Protobuf Mapping for Spatial Webhooks</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+        <a class="card card--rose" href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg></span>
+          <h4 class="card__title">Geometry Validation Pipelines</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+      </div>
+    </div>
+    <div style="margin-bottom: 2rem;">
+      <h3 style="font-family: var(--font-display); color: var(--earth-600); margin: 0 0 .75rem; font-size: 1.15rem;">
+        <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/" style="color: inherit; border: none;">Queue Management, Retries &amp; Delivery Guarantees</a>
+      </h3>
+      <div class="children-grid">
+        <a class="card " href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span>
+          <h4 class="card__title">Broker Selection &amp; Partitioning for Spatial Streams</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+        <a class="card card--mint" href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span>
+          <h4 class="card__title">Dead-Letter Queues for Spatial Payloads</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+        <a class="card card--earth" href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span>
+          <h4 class="card__title">Delivery Guarantees &amp; Event Ordering</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+        <a class="card card--rose" href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span>
+          <h4 class="card__title">Exponential Backoff &amp; Jitter for Spatial Webhooks</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+      </div>
+    </div>
+    <div style="margin-bottom: 2rem;">
+      <h3 style="font-family: var(--font-display); color: var(--earth-600); margin: 0 0 .75rem; font-size: 1.15rem;">
+        <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/" style="color: inherit; border: none;">Monitoring &amp; Observability for Spatial Pipelines</a>
+      </h3>
+      <div class="children-grid">
+        <a class="card " href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg></span>
+          <h4 class="card__title">Consumer Lag &amp; Partition Skew Monitoring</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+        <a class="card card--mint" href="https://www.geospatialwebhook.com/monitoring-observability-spatial/geo-metrics-instrumentation/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg></span>
+          <h4 class="card__title">Geo-Specific Metrics &amp; Instrumentation</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+        <a class="card card--earth" href="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/">
+          <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg></span>
+          <h4 class="card__title">Structured Logging &amp; Tracing for Spatial Events</h4>
+          <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="https://www.geospatialwebhook.com/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/">Home</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queues &amp; Retries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Queues &amp; Retries</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Monitoring</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging &amp; Tracing for Spatial Events</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <a class="site-footer__gh" href="https://github.com/geospatialwebhook" target="_blank" rel="noopener" aria-label="Geospatial Webhook on GitHub">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5Z"/></svg><span>GitHub</span>
+      </a>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

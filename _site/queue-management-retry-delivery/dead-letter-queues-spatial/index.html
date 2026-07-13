@@ -1,0 +1,973 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>Dead-Letter Queues for Spatial Payloads · Geo Webhook</title>
+  <meta name="description" content="Design a dead-letter queue for geospatial events: capture raw payload, failed stage, geometry-validity error, idempotency key, and offload pointer for safe replay."/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360"/>
+  <meta name="color-scheme" content="light"/>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/"/>
+  <meta property="og:title" content="Dead-Letter Queues for Spatial Payloads"/>
+  <meta property="og:description" content="Design a dead-letter queue for geospatial events: capture raw payload, failed stage, geometry-validity error, idempotency key, and offload pointer for safe replay."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Dead-Letter Queues for Spatial Payloads"/>
+  <meta name="twitter:description" content="Design a dead-letter queue for geospatial events: capture raw payload, failed stage, geometry-validity error, idempotency key, and offload pointer for safe replay."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },{ "@type": "ListItem", "position": 2, "name": "Queue Management Retry Delivery", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/" },{ "@type": "ListItem", "position": 3, "name": "Dead Letter Queues Spatial", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/" }
+    ]
+  }
+  </script>
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/#article",
+    "mainEntityOfPage": "https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/",
+    "headline": "Dead-Letter Queues for Spatial Payloads",
+    "description": "Design a dead-letter queue for geospatial events: capture raw payload, failed stage, geometry-validity error, idempotency key, and offload pointer for safe replay.",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
+    "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
+    "image": "https://www.geospatialwebhook.com/og-image.png",
+    "url": "https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/",
+    "articleSection": "Queue Management Retry Delivery",
+    "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
+  }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="https://www.geospatialwebhook.com/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="https://www.geospatialwebhook.com/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Queues &amp; Retries</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
+      </a>
+    </nav>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="https://www.geospatialwebhook.com/">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management Retry Delivery</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">Dead Letter Queues Spatial</span>
+    </nav>
+
+    <h1 class="page__title">Dead-Letter Queues for Spatial Payloads</h1>
+
+    <div class="page__layout">
+      <div class="markdown">
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Dead-Letter Queues for Spatial Payloads",
+      "description": "How to design a dead-letter queue for geospatial webhook events that captures the raw payload, the failed pipeline stage, the specific geometry-validity error, the idempotency key, and an offload pointer for oversized geometries — enabling safe replay under exactly-once semantics.",
+      "url": "https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/",
+      "datePublished": "2025-02-10",
+      "dateModified": "2026-07-13",
+      "author": {"@type": "Organization", "name": "geospatialwebhook.com"},
+      "publisher": {"@type": "Organization", "name": "geospatialwebhook.com"}
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/"},
+        {"@type": "ListItem", "position": 2, "name": "Queue Management, Retries & Delivery Guarantees", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/"},
+        {"@type": "ListItem", "position": 3, "name": "Dead-Letter Queues for Spatial Payloads", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/"}
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Design a dead-letter queue for geospatial webhook events",
+      "step": [
+        {"@type": "HowToStep", "position": 1, "name": "Classify the failure as invalid geometry, transient broker error, or schema violation"},
+        {"@type": "HowToStep", "position": 2, "name": "Build a dead-letter envelope capturing payload, failed stage, geometry error, and idempotency key"},
+        {"@type": "HowToStep", "position": 3, "name": "Offload oversized geometries to object storage and store only a pointer"},
+        {"@type": "HowToStep", "position": 4, "name": "Route the failed event to the dead-letter backend after retries are exhausted"},
+        {"@type": "HowToStep", "position": 5, "name": "Replay from the dead-letter store while preserving exactly-once semantics via the idempotency key"}
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What should a spatial dead-letter record capture beyond a normal DLQ entry?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Beyond the raw payload and error message that any dead-letter record holds, a spatial record must capture the pipeline stage that failed (parse, CRS transform, topology validation, or spatial join), the precise geometry-validity error including the offending vertex or ring, the CRS with its EPSG code when a mismatch caused the failure, the assigned idempotency key so replay stays exactly-once, and a size or offload pointer when the geometry is too large to store inline."}
+        },
+        {
+          "@type": "Question",
+          "name": "How do I stop a dead-letter queue from replaying the same event twice?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Carry the idempotency key assigned at ingestion into the dead-letter envelope and reuse it verbatim on replay. The consumer performs its normal atomic claim on that key before doing any spatial work, so a replayed event that was in fact already processed short-circuits harmlessly. Never regenerate the key at replay time, because a re-serialised payload can hash differently and defeat the guarantee."}
+        },
+        {
+          "@type": "Question",
+          "name": "Should invalid geometries and transient broker errors go to the same dead-letter queue?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Route them to separate destinations. Transient broker errors are worth retrying with exponential backoff and usually recover on their own, so they should only reach the dead-letter store after the retry budget is exhausted. Invalid geometry and schema violations are deterministic and will never succeed on replay without human or upstream correction, so they belong in a poison queue that triggers an alert rather than an automatic retry loop."}
+        },
+        {
+          "@type": "Question",
+          "name": "How do I dead-letter a 40 MB MultiPolygon without bloating the queue?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Offload the raw geometry to object storage such as S3 or a large-object column, and store only a pointer (bucket, key, byte size, and content hash) inside the dead-letter envelope. The broker message stays small and fast to scan, while the full payload remains recoverable for replay. Record the content hash so you can verify the offloaded blob was not truncated or corrupted before you re-inject it."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>A spatial dead-letter queue is a durable holding area for geospatial events that failed processing, and it earns its place only when each record captures enough context — raw payload, failed stage, exact geometry error, CRS with EPSG code, idempotency key, and an offload pointer for oversized geometries — to make a later replay safe and exactly-once.</strong></p>
+<p>This topic is part of <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a>, the discipline of moving geospatial webhook events through a broker without losing them, duplicating their side effects, or letting one poison payload stall an entire partition.</p>
+<hr>
+<h2 id="prerequisites" tabindex="-1"><a class="heading-anchor" href="#prerequisites">Prerequisites</a></h2>
+<p>Before wiring up a dead-letter path, confirm your stack meets the following baseline. Check off each item as you verify it:</p>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Python 3.11+</strong> — required for <code>StrEnum</code>, <code>Self</code>, and the exception-group ergonomics used in the routing code</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong><code>pydantic</code> 2.x</strong> — the dead-letter envelope is a strict Pydantic model with typed enums</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong><code>shapely</code> 2.0+</strong> — <code>explain_validity</code> produces the human-readable topology error stored in the record</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong><code>pyproj</code> 3.6+</strong> — needed to detect and report CRS mismatches by EPSG code</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>A broker with a DLQ primitive</strong> — Kafka + a <code>*.DLT</code> topic, RabbitMQ with a dead-letter exchange, or Redis Streams with a parked-message list</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Durable object storage</strong> — S3, MinIO, or a <code>bytea</code> / large-object column for offloading geometries above the broker message-size limit</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>An existing idempotency key per event</strong> — assigned at ingestion so replay can reuse it verbatim</label></li>
+</ul>
+<hr>
+<h2 id="architecture-overview" tabindex="-1"><a class="heading-anchor" href="#architecture-overview">Architecture Overview</a></h2>
+<p>A dead-letter queue is not a second inbox. It is a branch off the consumer that captures <em>why</em> an event could not be processed, in enough spatial detail that a human or an automated replay job can act on it later. The consumer attempts processing, and only when a failure is classified as terminal (or the retry budget is spent) does the event cross into the dead-letter branch with a fully populated envelope.</p>
+<svg viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Consumer pipeline with a dead-letter branch capturing failed geospatial events" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+  <title>Spatial dead-letter branch off the consumer</title>
+  <desc>A broker delivers events to a consumer that runs parse, CRS transform, and topology validation stages. Transient failures loop back through retry with backoff; terminal failures branch down into a dead-letter envelope which writes to a durable store and offloads oversized geometry to object storage. A replay worker reads the store and re-injects events using the preserved idempotency key.</desc>
+  <defs>
+    <marker id="dlq-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.6"/>
+    </marker>
+  </defs>
+  <!-- Broker -->
+  <rect x="12" y="40" width="110" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
+  <text x="67" y="62" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Broker</text>
+  <text x="67" y="77" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">Kafka / Redis</text>
+  <line x1="122" y1="65" x2="152" y2="65" stroke="currentColor" stroke-width="1.5" marker-end="url(#dlq-arr)" opacity="0.55"/>
+  <!-- Consumer -->
+  <rect x="154" y="30" width="180" height="72" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
+  <text x="244" y="52" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Consumer</text>
+  <text x="244" y="68" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">parse → CRS → topology</text>
+  <text x="244" y="82" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">→ spatial join</text>
+  <!-- success out -->
+  <line x1="334" y1="52" x2="420" y2="52" stroke="currentColor" stroke-width="1.5" marker-end="url(#dlq-arr)" opacity="0.55"/>
+  <text x="377" y="44" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">ack</text>
+  <rect x="422" y="30" width="120" height="44" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
+  <text x="482" y="49" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Processed</text>
+  <text x="482" y="63" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">DB · tiles</text>
+  <!-- transient retry loop -->
+  <path d="M244 102 q -70 26 -70 -10" fill="none" stroke="currentColor" stroke-width="1.2" marker-end="url(#dlq-arr)" opacity="0.4" stroke-dasharray="4,3"/>
+  <text x="118" y="120" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.6">transient → retry + backoff</text>
+  <!-- terminal branch down -->
+  <line x1="244" y1="102" x2="244" y2="150" stroke="currentColor" stroke-width="1.5" marker-end="url(#dlq-arr)" opacity="0.55"/>
+  <text x="256" y="132" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">terminal / budget spent</text>
+  <!-- envelope builder -->
+  <rect x="154" y="152" width="180" height="60" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
+  <text x="244" y="174" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">DL envelope</text>
+  <text x="244" y="190" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">stage · error · CRS</text>
+  <text x="244" y="203" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">idempotency key</text>
+  <!-- offload -->
+  <line x1="334" y1="182" x2="420" y2="182" stroke="currentColor" stroke-width="1.5" marker-end="url(#dlq-arr)" opacity="0.55"/>
+  <text x="377" y="174" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">large geom</text>
+  <rect x="422" y="158" width="120" height="48" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
+  <text x="482" y="178" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Object store</text>
+  <text x="482" y="192" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">S3 blob + hash</text>
+  <!-- envelope to store -->
+  <line x1="244" y1="212" x2="244" y2="252" stroke="currentColor" stroke-width="1.5" marker-end="url(#dlq-arr)" opacity="0.55"/>
+  <rect x="154" y="254" width="180" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
+  <text x="244" y="276" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Dead-letter store</text>
+  <text x="244" y="291" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">DLT topic / PostGIS table</text>
+  <!-- replay worker -->
+  <rect x="560" y="254" width="180" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
+  <text x="650" y="276" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Replay worker</text>
+  <text x="650" y="291" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">reuse idempotency key</text>
+  <line x1="334" y1="279" x2="558" y2="279" stroke="currentColor" stroke-width="1.5" marker-end="url(#dlq-arr)" opacity="0.55"/>
+  <!-- replay back to broker -->
+  <line x1="650" y1="254" x2="650" y2="65" stroke="currentColor" stroke-width="1.2" marker-end="url(#dlq-arr)" opacity="0.4" stroke-dasharray="4,3"/>
+  <line x1="650" y1="65" x2="124" y2="65" stroke="currentColor" stroke-width="1.2" marker-end="url(#dlq-arr)" opacity="0.4" stroke-dasharray="4,3"/>
+  <text x="655" y="160" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.6">re-inject</text>
+</svg>
+<p><strong>Layer breakdown:</strong></p>
+<ol>
+<li><strong>Consumer with classified failure</strong> — each processing stage (parse, CRS transform, topology validation, spatial join) can fail. The consumer maps the raised exception to a failure class before deciding where the event goes.</li>
+<li><strong>Retry branch (transient only)</strong> — broker timeouts, connection resets, and downstream <code>503</code>s loop back through <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a>. The dead-letter path is the <em>destination</em> those retries fall into once the budget is exhausted, not a substitute for them.</li>
+<li><strong>Envelope construction and offload</strong> — terminal failures are wrapped in a dead-letter envelope that records the failed stage, the exact geometry error, the CRS with EPSG code, and the preserved idempotency key. Oversized geometries are written to object storage and replaced by a pointer.</li>
+<li><strong>Durable dead-letter store</strong> — a Kafka <code>*.DLT</code> topic, a PostGIS table, or a Redis parked list holds the envelope until a replay worker or a human operator acts on it, reusing the idempotency key to keep the whole cycle exactly-once.</li>
+</ol>
+<hr>
+<h2 id="step-by-step-implementation" tabindex="-1"><a class="heading-anchor" href="#step-by-step-implementation">Step-by-Step Implementation</a></h2>
+<h3 id="step-1-classify-the-failure" tabindex="-1"><a class="heading-anchor" href="#step-1-classify-the-failure">Step 1 — Classify the Failure</a></h3>
+<p>The single most important design decision in a dead-letter path is deciding what <em>not</em> to dead-letter automatically. Three failure classes behave completely differently on replay: a transient broker error will likely succeed on retry, an invalid geometry will never succeed until the data is corrected, and a schema violation is a contract breach that needs an upstream fix. Collapsing them into one queue produces either an infinite poison loop or a graveyard of retryable events nobody replays.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> __future__ <span class="token keyword">import</span> annotations
+<span class="token keyword">from</span> enum <span class="token keyword">import</span> StrEnum
+
+
+<span class="token keyword">class</span> <span class="token class-name">FailureClass</span><span class="token punctuation">(</span>StrEnum<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""How a failed spatial event should be treated downstream."""</span>
+    TRANSIENT <span class="token operator">=</span> <span class="token string">"transient"</span>        <span class="token comment"># broker/network/downstream 5xx — retry, then DLQ</span>
+    INVALID_GEOMETRY <span class="token operator">=</span> <span class="token string">"invalid_geometry"</span>  <span class="token comment"># deterministic — never auto-retry</span>
+    SCHEMA_VIOLATION <span class="token operator">=</span> <span class="token string">"schema_violation"</span>  <span class="token comment"># contract breach — never auto-retry</span>
+    CRS_MISMATCH <span class="token operator">=</span> <span class="token string">"crs_mismatch"</span>  <span class="token comment"># deterministic — needs reprojection or upstream fix</span>
+    UNKNOWN <span class="token operator">=</span> <span class="token string">"unknown"</span>            <span class="token comment"># unclassified — DLQ and alert a human</span>
+
+
+<span class="token keyword">class</span> <span class="token class-name">PipelineStage</span><span class="token punctuation">(</span>StrEnum<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    PARSE <span class="token operator">=</span> <span class="token string">"parse"</span>
+    CRS_TRANSFORM <span class="token operator">=</span> <span class="token string">"crs_transform"</span>
+    TOPOLOGY_VALIDATION <span class="token operator">=</span> <span class="token string">"topology_validation"</span>
+    SPATIAL_JOIN <span class="token operator">=</span> <span class="token string">"spatial_join"</span>
+    PERSIST <span class="token operator">=</span> <span class="token string">"persist"</span>
+
+
+<span class="token comment"># Domain exceptions raised by each stage</span>
+<span class="token keyword">class</span> <span class="token class-name">TransientBrokerError</span><span class="token punctuation">(</span>Exception<span class="token punctuation">)</span><span class="token punctuation">:</span> <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span>
+<span class="token keyword">class</span> <span class="token class-name">GeometryValidityError</span><span class="token punctuation">(</span>Exception<span class="token punctuation">)</span><span class="token punctuation">:</span> <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span>
+<span class="token keyword">class</span> <span class="token class-name">SchemaViolationError</span><span class="token punctuation">(</span>Exception<span class="token punctuation">)</span><span class="token punctuation">:</span> <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span>
+<span class="token keyword">class</span> <span class="token class-name">CRSMismatchError</span><span class="token punctuation">(</span>Exception<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">def</span> <span class="token function">__init__</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> message<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> epsg<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">|</span> <span class="token boolean">None</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        <span class="token builtin">super</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span>__init__<span class="token punctuation">(</span>message<span class="token punctuation">)</span>
+        self<span class="token punctuation">.</span>epsg <span class="token operator">=</span> epsg
+
+
+<span class="token keyword">def</span> <span class="token function">classify</span><span class="token punctuation">(</span>exc<span class="token punctuation">:</span> Exception<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> FailureClass<span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Map a raised exception to a failure class. Order matters: check the
+    deterministic, non-retryable classes before the catch-all."""</span>
+    <span class="token keyword">match</span> exc<span class="token punctuation">:</span>
+        <span class="token keyword">case</span> TransientBrokerError<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+            <span class="token keyword">return</span> FailureClass<span class="token punctuation">.</span>TRANSIENT
+        <span class="token keyword">case</span> GeometryValidityError<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+            <span class="token keyword">return</span> FailureClass<span class="token punctuation">.</span>INVALID_GEOMETRY
+        <span class="token keyword">case</span> CRSMismatchError<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+            <span class="token keyword">return</span> FailureClass<span class="token punctuation">.</span>CRS_MISMATCH
+        <span class="token keyword">case</span> SchemaViolationError<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+            <span class="token keyword">return</span> FailureClass<span class="token punctuation">.</span>SCHEMA_VIOLATION
+        <span class="token keyword">case</span> <span class="token keyword">_</span><span class="token punctuation">:</span>
+            <span class="token keyword">return</span> FailureClass<span class="token punctuation">.</span>UNKNOWN
+</code></pre>
+</div>
+<p>Only <code>TRANSIENT</code> and <code>UNKNOWN</code> are candidates for automatic replay. The deterministic classes are parked for human or upstream correction. The upstream discipline that produces the <code>GeometryValidityError</code> in the first place is covered in <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a>; the dead-letter record simply preserves what that pipeline reported.</p>
+<hr>
+<h3 id="step-2-define-the-dead-letter-envelope" tabindex="-1"><a class="heading-anchor" href="#step-2-define-the-dead-letter-envelope">Step 2 — Define the Dead-Letter Envelope</a></h3>
+<p>The envelope is the contract between the failing consumer and the eventual replay. A normal DLQ record carries the payload and an error string; a spatial one carries the geometry-validity detail, the failed stage, the CRS with its EPSG code, the idempotency key, and — crucially — a <code>GeometryRef</code> that is either the inline geometry or a pointer to an offloaded blob.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> datetime <span class="token keyword">import</span> datetime<span class="token punctuation">,</span> timezone
+<span class="token keyword">from</span> typing <span class="token keyword">import</span> Any<span class="token punctuation">,</span> Self
+<span class="token keyword">from</span> pydantic <span class="token keyword">import</span> BaseModel<span class="token punctuation">,</span> Field<span class="token punctuation">,</span> model_validator
+
+
+<span class="token keyword">class</span> <span class="token class-name">GeometryRef</span><span class="token punctuation">(</span>BaseModel<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Either the geometry is inline, or it lives in object storage and we
+    keep only a pointer. Exactly one of the two must be populated."""</span>
+    inline<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span>          <span class="token comment"># GeoJSON per RFC 7946</span>
+    offload_uri<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span>                <span class="token comment"># e.g. s3://dlq-geom/2026/…</span>
+    byte_size<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">0</span>
+    content_sha256<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span>             <span class="token comment"># integrity check for replay</span>
+
+    <span class="token decorator annotation punctuation">@model_validator</span><span class="token punctuation">(</span>mode<span class="token operator">=</span><span class="token string">"after"</span><span class="token punctuation">)</span>
+    <span class="token keyword">def</span> <span class="token function">exactly_one_source</span><span class="token punctuation">(</span>self<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> Self<span class="token punctuation">:</span>
+        <span class="token keyword">if</span> <span class="token builtin">bool</span><span class="token punctuation">(</span>self<span class="token punctuation">.</span>inline<span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token builtin">bool</span><span class="token punctuation">(</span>self<span class="token punctuation">.</span>offload_uri<span class="token punctuation">)</span><span class="token punctuation">:</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"set exactly one of inline / offload_uri"</span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> self
+
+
+<span class="token keyword">class</span> <span class="token class-name">GeometryError</span><span class="token punctuation">(</span>BaseModel<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""The specific validity problem that failed the geometry."""</span>
+    reason<span class="token punctuation">:</span> <span class="token builtin">str</span>                        <span class="token comment"># from shapely explain_validity()</span>
+    location<span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">float</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span>  <span class="token comment"># offending vertex [lon, lat]</span>
+    epsg<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span>            <span class="token comment"># populated on a CRS mismatch</span>
+
+
+<span class="token keyword">class</span> <span class="token class-name">DeadLetterEnvelope</span><span class="token punctuation">(</span>BaseModel<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Everything a replay job needs to act safely on a failed spatial event."""</span>
+    schema_version<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">=</span> <span class="token string">"dlq.v1"</span>
+    event_id<span class="token punctuation">:</span> <span class="token builtin">str</span>
+    idempotency_key<span class="token punctuation">:</span> <span class="token builtin">str</span>               <span class="token comment"># preserved verbatim from ingestion</span>
+    failure_class<span class="token punctuation">:</span> FailureClass
+    failed_stage<span class="token punctuation">:</span> PipelineStage
+    error_message<span class="token punctuation">:</span> <span class="token builtin">str</span>
+    geometry_error<span class="token punctuation">:</span> GeometryError <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span>
+    source_crs<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">=</span> <span class="token string">"EPSG:4326"</span>      <span class="token comment"># always carry the EPSG code</span>
+    geometry<span class="token punctuation">:</span> GeometryRef
+    raw_payload<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span>        <span class="token comment"># untouched original, minus offloaded geom</span>
+    attempts<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> Field<span class="token punctuation">(</span>ge<span class="token operator">=</span><span class="token number">1</span><span class="token punctuation">)</span>        <span class="token comment"># how many times it was tried before DLQ</span>
+    first_seen_at<span class="token punctuation">:</span> datetime
+    dead_lettered_at<span class="token punctuation">:</span> datetime <span class="token operator">=</span> Field<span class="token punctuation">(</span>
+        default_factory<span class="token operator">=</span><span class="token keyword">lambda</span><span class="token punctuation">:</span> datetime<span class="token punctuation">.</span>now<span class="token punctuation">(</span>timezone<span class="token punctuation">.</span>utc<span class="token punctuation">)</span>
+    <span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>Keeping <code>raw_payload</code> untouched (aside from swapping the geometry for a pointer) matters: replay must reconstruct the <em>exact</em> bytes the consumer originally saw, or the idempotency key derived from it will no longer match.</p>
+<hr>
+<h3 id="step-3-offload-oversized-geometries" tabindex="-1"><a class="heading-anchor" href="#step-3-offload-oversized-geometries">Step 3 — Offload Oversized Geometries</a></h3>
+<p>A single continent-scale <code>MultiPolygon</code> or a densely sampled sensor track can exceed Kafka’s default 1 MB message limit and will be rejected outright — meaning your dead-letter write itself fails, and the event is lost. Offload anything above a threshold to object storage and store only the pointer.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> hashlib
+<span class="token keyword">import</span> json
+
+OFFLOAD_THRESHOLD_BYTES <span class="token operator">=</span> <span class="token number">256</span> <span class="token operator">*</span> <span class="token number">1024</span>  <span class="token comment"># keep DLQ messages small and scannable</span>
+
+
+<span class="token keyword">def</span> <span class="token function">build_geometry_ref</span><span class="token punctuation">(</span>geometry<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">,</span> object_store<span class="token punctuation">,</span> key_prefix<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> GeometryRef<span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Inline small geometries; offload large ones to object storage and
+    return a pointer with a content hash for later integrity verification."""</span>
+    encoded <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>geometry<span class="token punctuation">,</span> sort_keys<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token string">"utf-8"</span><span class="token punctuation">)</span>
+    size <span class="token operator">=</span> <span class="token builtin">len</span><span class="token punctuation">(</span>encoded<span class="token punctuation">)</span>
+    digest <span class="token operator">=</span> hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">(</span>encoded<span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+    <span class="token keyword">if</span> size <span class="token operator">&lt;=</span> OFFLOAD_THRESHOLD_BYTES<span class="token punctuation">:</span>
+        <span class="token keyword">return</span> GeometryRef<span class="token punctuation">(</span>inline<span class="token operator">=</span>geometry<span class="token punctuation">,</span> byte_size<span class="token operator">=</span>size<span class="token punctuation">,</span> content_sha256<span class="token operator">=</span>digest<span class="token punctuation">)</span>
+
+    <span class="token comment"># Large geometry: write the blob, keep only a pointer in the envelope</span>
+    object_key <span class="token operator">=</span> <span class="token string-interpolation"><span class="token string">f"</span><span class="token interpolation"><span class="token punctuation">{</span>key_prefix<span class="token punctuation">}</span></span><span class="token string">/</span><span class="token interpolation"><span class="token punctuation">{</span>digest<span class="token punctuation">}</span></span><span class="token string">.geojson"</span></span>
+    object_store<span class="token punctuation">.</span>put_object<span class="token punctuation">(</span>Key<span class="token operator">=</span>object_key<span class="token punctuation">,</span> Body<span class="token operator">=</span>encoded<span class="token punctuation">)</span>  <span class="token comment"># e.g. boto3 client</span>
+    <span class="token keyword">return</span> GeometryRef<span class="token punctuation">(</span>
+        offload_uri<span class="token operator">=</span><span class="token string-interpolation"><span class="token string">f"s3://dlq-geom/</span><span class="token interpolation"><span class="token punctuation">{</span>object_key<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">,</span>
+        byte_size<span class="token operator">=</span>size<span class="token punctuation">,</span>
+        content_sha256<span class="token operator">=</span>digest<span class="token punctuation">,</span>
+    <span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>Using the content hash as the object key deduplicates identical failing geometries automatically and gives replay a way to detect a truncated or corrupted blob before it is re-injected.</p>
+<hr>
+<h3 id="step-4-route-a-failed-event-to-the-dead-letter-store" tabindex="-1"><a class="heading-anchor" href="#step-4-route-a-failed-event-to-the-dead-letter-store">Step 4 — Route a Failed Event to the Dead-Letter Store</a></h3>
+<p>This is the function the consumer calls when a stage raises. It classifies the error, extracts the geometry-specific detail, builds the envelope, and publishes it to the correct destination — a retryable dead-letter for transient failures, a poison store for deterministic ones.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> logging
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>validation <span class="token keyword">import</span> explain_validity
+
+logger <span class="token operator">=</span> logging<span class="token punctuation">.</span>getLogger<span class="token punctuation">(</span>__name__<span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">_extract_geometry_error</span><span class="token punctuation">(</span>
+    exc<span class="token punctuation">:</span> Exception<span class="token punctuation">,</span> raw_geometry<span class="token punctuation">:</span> <span class="token builtin">dict</span> <span class="token operator">|</span> <span class="token boolean">None</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> GeometryError <span class="token operator">|</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Pull a precise, human-readable validity error out of the exception."""</span>
+    <span class="token keyword">if</span> <span class="token builtin">isinstance</span><span class="token punctuation">(</span>exc<span class="token punctuation">,</span> CRSMismatchError<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> GeometryError<span class="token punctuation">(</span>reason<span class="token operator">=</span><span class="token builtin">str</span><span class="token punctuation">(</span>exc<span class="token punctuation">)</span><span class="token punctuation">,</span> epsg<span class="token operator">=</span>exc<span class="token punctuation">.</span>epsg<span class="token punctuation">)</span>
+    <span class="token keyword">if</span> <span class="token builtin">isinstance</span><span class="token punctuation">(</span>exc<span class="token punctuation">,</span> GeometryValidityError<span class="token punctuation">)</span> <span class="token keyword">and</span> raw_geometry <span class="token keyword">is</span> <span class="token keyword">not</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        geom <span class="token operator">=</span> shape<span class="token punctuation">(</span>raw_geometry<span class="token punctuation">)</span>
+        <span class="token comment"># explain_validity() returns e.g. "Self-intersection[12.5 41.9]"</span>
+        reason <span class="token operator">=</span> explain_validity<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>
+        <span class="token keyword">return</span> GeometryError<span class="token punctuation">(</span>reason<span class="token operator">=</span>reason<span class="token punctuation">)</span>
+    <span class="token keyword">return</span> <span class="token boolean">None</span>
+
+
+<span class="token keyword">def</span> <span class="token function">route_to_dead_letter</span><span class="token punctuation">(</span>
+    <span class="token operator">*</span><span class="token punctuation">,</span>
+    raw_payload<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">,</span>
+    idempotency_key<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span>
+    failed_stage<span class="token punctuation">:</span> PipelineStage<span class="token punctuation">,</span>
+    exc<span class="token punctuation">:</span> Exception<span class="token punctuation">,</span>
+    attempts<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">,</span>
+    first_seen_at<span class="token punctuation">:</span> datetime<span class="token punctuation">,</span>
+    object_store<span class="token punctuation">,</span>
+    dlq_publisher<span class="token punctuation">,</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> DeadLetterEnvelope<span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Wrap a failed spatial event with full context and publish it."""</span>
+    failure_class <span class="token operator">=</span> classify<span class="token punctuation">(</span>exc<span class="token punctuation">)</span>
+    raw_geometry <span class="token operator">=</span> raw_payload<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"geometry"</span><span class="token punctuation">)</span>
+
+    geom_ref <span class="token operator">=</span> build_geometry_ref<span class="token punctuation">(</span>
+        raw_geometry <span class="token keyword">or</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"GeometryCollection"</span><span class="token punctuation">,</span> <span class="token string">"geometries"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+        object_store<span class="token punctuation">,</span>
+        key_prefix<span class="token operator">=</span><span class="token string">"2026/dlq"</span><span class="token punctuation">,</span>
+    <span class="token punctuation">)</span>
+
+    <span class="token comment"># The raw payload we persist must not double-store a large offloaded geom</span>
+    persisted_payload <span class="token operator">=</span> <span class="token builtin">dict</span><span class="token punctuation">(</span>raw_payload<span class="token punctuation">)</span>
+    <span class="token keyword">if</span> geom_ref<span class="token punctuation">.</span>offload_uri <span class="token keyword">is</span> <span class="token keyword">not</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        persisted_payload<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"$ref"</span><span class="token punctuation">:</span> geom_ref<span class="token punctuation">.</span>offload_uri<span class="token punctuation">}</span>
+
+    envelope <span class="token operator">=</span> DeadLetterEnvelope<span class="token punctuation">(</span>
+        event_id<span class="token operator">=</span>raw_payload<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"event_id"</span><span class="token punctuation">,</span> <span class="token string">"unknown"</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+        idempotency_key<span class="token operator">=</span>idempotency_key<span class="token punctuation">,</span>
+        failure_class<span class="token operator">=</span>failure_class<span class="token punctuation">,</span>
+        failed_stage<span class="token operator">=</span>failed_stage<span class="token punctuation">,</span>
+        error_message<span class="token operator">=</span><span class="token builtin">str</span><span class="token punctuation">(</span>exc<span class="token punctuation">)</span><span class="token punctuation">,</span>
+        geometry_error<span class="token operator">=</span>_extract_geometry_error<span class="token punctuation">(</span>exc<span class="token punctuation">,</span> raw_geometry<span class="token punctuation">)</span><span class="token punctuation">,</span>
+        source_crs<span class="token operator">=</span>raw_payload<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"crs"</span><span class="token punctuation">,</span> <span class="token string">"EPSG:4326"</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+        geometry<span class="token operator">=</span>geom_ref<span class="token punctuation">,</span>
+        raw_payload<span class="token operator">=</span>persisted_payload<span class="token punctuation">,</span>
+        attempts<span class="token operator">=</span>attempts<span class="token punctuation">,</span>
+        first_seen_at<span class="token operator">=</span>first_seen_at<span class="token punctuation">,</span>
+    <span class="token punctuation">)</span>
+
+    <span class="token comment"># Deterministic failures never auto-retry; they go to a poison store + alert</span>
+    destination <span class="token operator">=</span> <span class="token punctuation">(</span>
+        <span class="token string">"spatial.events.retry.dlt"</span>
+        <span class="token keyword">if</span> failure_class <span class="token keyword">in</span> <span class="token punctuation">{</span>FailureClass<span class="token punctuation">.</span>TRANSIENT<span class="token punctuation">,</span> FailureClass<span class="token punctuation">.</span>UNKNOWN<span class="token punctuation">}</span>
+        <span class="token keyword">else</span> <span class="token string">"spatial.events.poison.dlt"</span>
+    <span class="token punctuation">)</span>
+    dlq_publisher<span class="token punctuation">.</span>publish<span class="token punctuation">(</span>destination<span class="token punctuation">,</span> envelope<span class="token punctuation">.</span>model_dump_json<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    logger<span class="token punctuation">.</span>warning<span class="token punctuation">(</span>
+        <span class="token string">"dead-lettered event %s at stage=%s class=%s -> %s"</span><span class="token punctuation">,</span>
+        envelope<span class="token punctuation">.</span>event_id<span class="token punctuation">,</span> failed_stage<span class="token punctuation">,</span> failure_class<span class="token punctuation">,</span> destination<span class="token punctuation">,</span>
+    <span class="token punctuation">)</span>
+    <span class="token keyword">return</span> envelope
+</code></pre>
+</div>
+<p>Because the idempotency key is assigned at ingestion and carried through unchanged, the dead-letter record inherits the exactly-once guarantee described in <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a> — replay does not have to reinvent it.</p>
+<hr>
+<h2 id="spatial-validation-and-error-handling" tabindex="-1"><a class="heading-anchor" href="#spatial-validation-and-error-handling">Spatial Validation and Error Handling</a></h2>
+<p>The envelope is only as trustworthy as the error detail it records. Two failure modes deserve explicit handling: a geometry that is <em>structurally</em> valid JSON but topologically broken, and a payload whose declared CRS does not match what the consumer expected.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> pyproj <span class="token keyword">import</span> CRS
+
+
+<span class="token keyword">def</span> <span class="token function">validate_before_dead_letter</span><span class="token punctuation">(</span>raw_geometry<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">,</span> declared_crs<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span>
+                                expected_epsg<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">4326</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Raise the precise, classifiable exception the DLQ envelope expects.
+    Call this inside the consumer's topology/CRS stages."""</span>
+    <span class="token comment"># --- CRS check: a mismatch must surface the EPSG code, not a vague string</span>
+    <span class="token keyword">try</span><span class="token punctuation">:</span>
+        crs <span class="token operator">=</span> CRS<span class="token punctuation">.</span>from_user_input<span class="token punctuation">(</span>declared_crs<span class="token punctuation">)</span>
+    <span class="token keyword">except</span> Exception <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> CRSMismatchError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"unparseable CRS </span><span class="token interpolation"><span class="token punctuation">{</span>declared_crs<span class="token conversion-option punctuation">!r</span><span class="token punctuation">}</span></span><span class="token string">: </span><span class="token interpolation"><span class="token punctuation">{</span>exc<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">,</span> epsg<span class="token operator">=</span><span class="token boolean">None</span><span class="token punctuation">)</span>
+    <span class="token keyword">if</span> crs<span class="token punctuation">.</span>to_epsg<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">!=</span> expected_epsg<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> CRSMismatchError<span class="token punctuation">(</span>
+            <span class="token string-interpolation"><span class="token string">f"payload CRS is EPSG:</span><span class="token interpolation"><span class="token punctuation">{</span>crs<span class="token punctuation">.</span>to_epsg<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string"> but pipeline expects "</span></span>
+            <span class="token string-interpolation"><span class="token string">f"EPSG:</span><span class="token interpolation"><span class="token punctuation">{</span>expected_epsg<span class="token punctuation">}</span></span><span class="token string"> (WGS84)"</span></span><span class="token punctuation">,</span>
+            epsg<span class="token operator">=</span>crs<span class="token punctuation">.</span>to_epsg<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+        <span class="token punctuation">)</span>
+
+    <span class="token comment"># --- Topology check: NaN coords and self-intersections both fail here</span>
+    geom <span class="token operator">=</span> shape<span class="token punctuation">(</span>raw_geometry<span class="token punctuation">)</span>
+    <span class="token keyword">if</span> geom<span class="token punctuation">.</span>is_empty<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> GeometryValidityError<span class="token punctuation">(</span><span class="token string">"geometry is empty"</span><span class="token punctuation">)</span>
+    <span class="token keyword">if</span> <span class="token keyword">not</span> geom<span class="token punctuation">.</span>is_valid<span class="token punctuation">:</span>
+        <span class="token comment"># explain_validity pinpoints e.g. "Self-intersection[12.500 41.900]"</span>
+        <span class="token keyword">raise</span> GeometryValidityError<span class="token punctuation">(</span>explain_validity<span class="token punctuation">(</span>geom<span class="token punctuation">)</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>A <code>crs_mismatch</code> such as a payload arriving in EPSG:3857 (Web Mercator) when the join layer is EPSG:4326 (WGS84) is deterministic: it will fail identically on every replay until the event is reprojected or the upstream provider is corrected. Recording the EPSG code in <code>GeometryError.epsg</code> lets a replay job decide whether it can auto-reproject or must escalate. Coordinates that arrive as <code>NaN</code> — common when a sensor drops a fix mid-stream — fail the topology check and are captured with the same precision.</p>
+<hr>
+<h2 id="retry-backoff-and-delivery-guarantees" tabindex="-1"><a class="heading-anchor" href="#retry-backoff-and-delivery-guarantees">Retry, Backoff, and Delivery Guarantees</a></h2>
+<p>A dead-letter queue is the <em>terminus</em> of the retry path, not a parallel one. Transient failures should be retried in place with exponential backoff and jitter; the event only crosses into the dead-letter store when the retry budget is spent. Conflating the two — dead-lettering on the first transient blip — floods the store with events that would have succeeded on the second attempt.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">import</span> random
+
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">process_with_retry_then_dead_letter</span><span class="token punctuation">(</span>
+    <span class="token operator">*</span><span class="token punctuation">,</span> raw_payload<span class="token punctuation">,</span> idempotency_key<span class="token punctuation">,</span> first_seen_at<span class="token punctuation">,</span>
+    consumer<span class="token punctuation">,</span> object_store<span class="token punctuation">,</span> dlq_publisher<span class="token punctuation">,</span>
+    max_attempts<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">5</span><span class="token punctuation">,</span> base_delay<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> <span class="token number">0.5</span><span class="token punctuation">,</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Retry transient failures with full jitter; on budget exhaustion or a
+    deterministic failure, hand the event to the dead-letter store."""</span>
+    <span class="token keyword">for</span> attempt <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">,</span> max_attempts <span class="token operator">+</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">try</span><span class="token punctuation">:</span>
+            <span class="token keyword">await</span> consumer<span class="token punctuation">.</span>handle<span class="token punctuation">(</span>raw_payload<span class="token punctuation">)</span>  <span class="token comment"># raises a classified exception</span>
+            <span class="token keyword">return</span>
+        <span class="token keyword">except</span> Exception <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+            failure_class <span class="token operator">=</span> classify<span class="token punctuation">(</span>exc<span class="token punctuation">)</span>
+            deterministic <span class="token operator">=</span> failure_class <span class="token keyword">not</span> <span class="token keyword">in</span> <span class="token punctuation">{</span>
+                FailureClass<span class="token punctuation">.</span>TRANSIENT<span class="token punctuation">,</span> FailureClass<span class="token punctuation">.</span>UNKNOWN
+            <span class="token punctuation">}</span>
+            budget_spent <span class="token operator">=</span> attempt <span class="token operator">==</span> max_attempts
+
+            <span class="token keyword">if</span> deterministic <span class="token keyword">or</span> budget_spent<span class="token punctuation">:</span>
+                route_to_dead_letter<span class="token punctuation">(</span>
+                    raw_payload<span class="token operator">=</span>raw_payload<span class="token punctuation">,</span>
+                    idempotency_key<span class="token operator">=</span>idempotency_key<span class="token punctuation">,</span>
+                    failed_stage<span class="token operator">=</span><span class="token builtin">getattr</span><span class="token punctuation">(</span>exc<span class="token punctuation">,</span> <span class="token string">"stage"</span><span class="token punctuation">,</span> PipelineStage<span class="token punctuation">.</span>SPATIAL_JOIN<span class="token punctuation">)</span><span class="token punctuation">,</span>
+                    exc<span class="token operator">=</span>exc<span class="token punctuation">,</span>
+                    attempts<span class="token operator">=</span>attempt<span class="token punctuation">,</span>
+                    first_seen_at<span class="token operator">=</span>first_seen_at<span class="token punctuation">,</span>
+                    object_store<span class="token operator">=</span>object_store<span class="token punctuation">,</span>
+                    dlq_publisher<span class="token operator">=</span>dlq_publisher<span class="token punctuation">,</span>
+                <span class="token punctuation">)</span>
+                <span class="token keyword">return</span>
+
+            <span class="token comment"># Transient with budget remaining: full jitter over [0, base·2^n]</span>
+            delay <span class="token operator">=</span> random<span class="token punctuation">.</span>uniform<span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> base_delay <span class="token operator">*</span> <span class="token punctuation">(</span><span class="token number">2</span> <span class="token operator">**</span> attempt<span class="token punctuation">)</span><span class="token punctuation">)</span>
+            <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span>delay<span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p><strong>How the guarantee holds:</strong> the consumer performs its atomic idempotency claim <em>before</em> any spatial side effect, so a replayed event whose work already completed short-circuits. Because the dead-letter envelope carries the original <code>idempotency_key</code>, replay is effectively-once end-to-end. The backoff-and-jitter mechanics that feed this path are detailed in <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a>, and the safe-replay procedure itself is covered in <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/replaying-dead-letter-spatial-events-safely/">Replaying Dead-Letter Spatial Events Safely</a>.</p>
+<hr>
+<h2 id="storage-backends" tabindex="-1"><a class="heading-anchor" href="#storage-backends">Storage Backends</a></h2>
+<p>The dead-letter store choice trades queryability against operational simplicity.</p>
+<div style="overflow-x:auto;">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Backend</th>
+<th>Strength</th>
+<th>Weakness</th>
+<th>Best for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Kafka <code>*.DLT</code> topic</td>
+<td>Same infra as the main stream; ordered; replay is a re-produce</td>
+<td>Poor ad-hoc querying; retention windows can drop old failures</td>
+<td>High-throughput pipelines already on Kafka</td>
+</tr>
+<tr>
+<td>PostGIS table</td>
+<td>Query by geometry, EPSG code, or failure class; inspect the broken shape directly</td>
+<td>Another system to operate; write throughput lower than a broker</td>
+<td>Analyst-driven triage of invalid geometries</td>
+</tr>
+<tr>
+<td>Redis Streams parked list</td>
+<td>Sub-millisecond writes; easy TTL</td>
+<td>Not durable enough as a system of record without AOF</td>
+<td>Short-lived transient failures awaiting fast replay</td>
+</tr>
+<tr>
+<td>Object storage + index</td>
+<td>Cheap for very large geometries; effectively unbounded retention</td>
+<td>No native querying without a separate index</td>
+<td>Archival of oversized offloaded payloads</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>A PostGIS table is the most operator-friendly choice because you can <code>SELECT</code> failed events by <code>failure_class</code>, filter by <code>source_crs</code>, or even map the invalid geometry to see the self-intersection. That end-to-end pattern — a PostGIS dead-letter table drained by a Celery replay task — is walked through in <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/building-a-spatial-dlq-with-postgis-and-celery/">Building a Spatial DLQ with PostGIS and Celery</a>.</p>
+<hr>
+<h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
+<p>Confirm the envelope captures the right context and that offload round-trips cleanly. Run with <code>pytest -v</code>.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> json
+<span class="token keyword">from</span> datetime <span class="token keyword">import</span> datetime<span class="token punctuation">,</span> timezone
+
+
+<span class="token keyword">class</span> <span class="token class-name">_FakeStore</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""In-memory stand-in for an S3 client."""</span>
+    <span class="token keyword">def</span> <span class="token function">__init__</span><span class="token punctuation">(</span>self<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        self<span class="token punctuation">.</span>objects<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> <span class="token builtin">bytes</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token punctuation">}</span>
+    <span class="token keyword">def</span> <span class="token function">put_object</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> Key<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> Body<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        self<span class="token punctuation">.</span>objects<span class="token punctuation">[</span>Key<span class="token punctuation">]</span> <span class="token operator">=</span> Body
+
+
+<span class="token keyword">class</span> <span class="token class-name">_FakePublisher</span><span class="token punctuation">:</span>
+    <span class="token keyword">def</span> <span class="token function">__init__</span><span class="token punctuation">(</span>self<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        self<span class="token punctuation">.</span>sent<span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">tuple</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> <span class="token builtin">str</span><span class="token punctuation">]</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+    <span class="token keyword">def</span> <span class="token function">publish</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> destination<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> body<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        self<span class="token punctuation">.</span>sent<span class="token punctuation">.</span>append<span class="token punctuation">(</span><span class="token punctuation">(</span>destination<span class="token punctuation">,</span> body<span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+
+BAD_GEOM <span class="token operator">=</span> <span class="token punctuation">{</span>  <span class="token comment"># bowtie polygon: self-intersecting</span>
+    <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Polygon"</span><span class="token punctuation">,</span>
+    <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token punctuation">[</span><span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">1</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">1</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+<span class="token punctuation">}</span>
+PAYLOAD <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"event_id"</span><span class="token punctuation">:</span> <span class="token string">"evt-9"</span><span class="token punctuation">,</span> <span class="token string">"crs"</span><span class="token punctuation">:</span> <span class="token string">"EPSG:4326"</span><span class="token punctuation">,</span> <span class="token string">"geometry"</span><span class="token punctuation">:</span> BAD_GEOM<span class="token punctuation">}</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_invalid_geometry_routes_to_poison_and_records_reason</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    pub<span class="token punctuation">,</span> store <span class="token operator">=</span> _FakePublisher<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> _FakeStore<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    route_to_dead_letter<span class="token punctuation">(</span>
+        raw_payload<span class="token operator">=</span>PAYLOAD<span class="token punctuation">,</span>
+        idempotency_key<span class="token operator">=</span><span class="token string">"idem:v1:abc"</span><span class="token punctuation">,</span>
+        failed_stage<span class="token operator">=</span>PipelineStage<span class="token punctuation">.</span>TOPOLOGY_VALIDATION<span class="token punctuation">,</span>
+        exc<span class="token operator">=</span>GeometryValidityError<span class="token punctuation">(</span><span class="token string">"Self-intersection[0.5 0.5]"</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+        attempts<span class="token operator">=</span><span class="token number">1</span><span class="token punctuation">,</span>
+        first_seen_at<span class="token operator">=</span>datetime<span class="token punctuation">.</span>now<span class="token punctuation">(</span>timezone<span class="token punctuation">.</span>utc<span class="token punctuation">)</span><span class="token punctuation">,</span>
+        object_store<span class="token operator">=</span>store<span class="token punctuation">,</span>
+        dlq_publisher<span class="token operator">=</span>pub<span class="token punctuation">,</span>
+    <span class="token punctuation">)</span>
+    destination<span class="token punctuation">,</span> body <span class="token operator">=</span> pub<span class="token punctuation">.</span>sent<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span>
+    env <span class="token operator">=</span> json<span class="token punctuation">.</span>loads<span class="token punctuation">(</span>body<span class="token punctuation">)</span>
+    <span class="token comment"># Deterministic failure must NOT land in the retryable topic</span>
+    <span class="token keyword">assert</span> destination <span class="token operator">==</span> <span class="token string">"spatial.events.poison.dlt"</span>
+    <span class="token keyword">assert</span> env<span class="token punctuation">[</span><span class="token string">"failure_class"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token string">"invalid_geometry"</span>
+    <span class="token keyword">assert</span> env<span class="token punctuation">[</span><span class="token string">"failed_stage"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token string">"topology_validation"</span>
+    <span class="token keyword">assert</span> <span class="token string">"Self-intersection"</span> <span class="token keyword">in</span> env<span class="token punctuation">[</span><span class="token string">"geometry_error"</span><span class="token punctuation">]</span><span class="token punctuation">[</span><span class="token string">"reason"</span><span class="token punctuation">]</span>
+    <span class="token comment"># The idempotency key survives verbatim for safe replay</span>
+    <span class="token keyword">assert</span> env<span class="token punctuation">[</span><span class="token string">"idempotency_key"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token string">"idem:v1:abc"</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_large_geometry_is_offloaded_not_inlined</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    pub<span class="token punctuation">,</span> store <span class="token operator">=</span> _FakePublisher<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> _FakeStore<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    big <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"MultiPoint"</span><span class="token punctuation">,</span>
+           <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token punctuation">[</span>i <span class="token operator">*</span> <span class="token number">1e-6</span><span class="token punctuation">,</span> i <span class="token operator">*</span> <span class="token number">1e-6</span><span class="token punctuation">]</span> <span class="token keyword">for</span> i <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span><span class="token number">60_000</span><span class="token punctuation">)</span><span class="token punctuation">]</span><span class="token punctuation">}</span>
+    ref <span class="token operator">=</span> build_geometry_ref<span class="token punctuation">(</span>big<span class="token punctuation">,</span> store<span class="token punctuation">,</span> key_prefix<span class="token operator">=</span><span class="token string">"test"</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> ref<span class="token punctuation">.</span>offload_uri <span class="token keyword">is</span> <span class="token keyword">not</span> <span class="token boolean">None</span> <span class="token keyword">and</span> ref<span class="token punctuation">.</span>inline <span class="token keyword">is</span> <span class="token boolean">None</span>
+    <span class="token keyword">assert</span> <span class="token builtin">len</span><span class="token punctuation">(</span>store<span class="token punctuation">.</span>objects<span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token number">1</span>  <span class="token comment"># blob written exactly once</span>
+    <span class="token comment"># content hash lets replay verify integrity before re-injecting</span>
+    <span class="token keyword">assert</span> ref<span class="token punctuation">.</span>content_sha256 <span class="token keyword">is</span> <span class="token keyword">not</span> <span class="token boolean">None</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_crs_mismatch_captures_epsg_code</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    err <span class="token operator">=</span> GeometryError<span class="token punctuation">(</span>reason<span class="token operator">=</span><span class="token string">"EPSG:3857 not EPSG:4326"</span><span class="token punctuation">,</span> epsg<span class="token operator">=</span><span class="token number">3857</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> err<span class="token punctuation">.</span>epsg <span class="token operator">==</span> <span class="token number">3857</span>
+</code></pre>
+</div>
+<p>The first test is the load-bearing one: it proves a deterministic geometry failure is diverted away from the auto-retry topic and that the idempotency key is preserved for a later exactly-once replay.</p>
+<hr>
+<h2 id="troubleshooting" tabindex="-1"><a class="heading-anchor" href="#troubleshooting">Troubleshooting</a></h2>
+<div style="overflow-x:auto;">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely spatial cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Poison loop: same event dead-lettered thousands of times</td>
+<td>Invalid geometry routed to a retryable topic and auto-replayed</td>
+<td>Classify <code>GeometryValidityError</code> as deterministic; send it to the poison store, not the retry DLT</td>
+</tr>
+<tr>
+<td>Dead-letter write itself fails with a message-size error</td>
+<td>Oversized <code>MultiPolygon</code> exceeds the broker’s 1 MB limit</td>
+<td>Offload geometries above the threshold to object storage; store only the pointer + hash</td>
+</tr>
+<tr>
+<td>Replay reprocesses events that already succeeded</td>
+<td>Idempotency key regenerated at replay from a re-serialised payload</td>
+<td>Reuse the stored <code>idempotency_key</code> verbatim; never re-derive it during replay</td>
+</tr>
+<tr>
+<td>Envelope error says “invalid geometry” but no location</td>
+<td><code>explain_validity</code> result discarded in favour of <code>str(exc)</code></td>
+<td>Store the full <code>explain_validity</code> string in <code>geometry_error.reason</code></td>
+</tr>
+<tr>
+<td>CRS failures can’t be auto-fixed on replay</td>
+<td>Mismatch recorded as a generic string without the EPSG code</td>
+<td>Populate <code>GeometryError.epsg</code> from <code>CRS.to_epsg()</code> so replay can decide to reproject</td>
+</tr>
+<tr>
+<td>Offloaded blob is truncated on replay</td>
+<td>No integrity check between write and read</td>
+<td>Compare <code>content_sha256</code> before re-injecting; discard and alert on mismatch</td>
+</tr>
+<tr>
+<td>Transient failures flood the dead-letter store</td>
+<td>Dead-lettering on the first attempt instead of after the retry budget</td>
+<td>Only route to DLQ once <code>attempts == max_attempts</code> for transient classes</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<hr>
+<h2 id="faq" tabindex="-1"><a class="heading-anchor" href="#faq">FAQ</a></h2>
+<details class="faq">
+<summary><strong>What should a spatial dead-letter record capture beyond a normal DLQ entry?</strong></summary>
+<p>Beyond the raw payload and error message that any dead-letter record holds, a spatial record must capture the pipeline stage that failed (parse, CRS transform, topology validation, or spatial join), the precise geometry-validity error including the offending vertex or ring, the CRS with its EPSG code when a mismatch caused the failure, the assigned idempotency key so replay stays exactly-once, and a size or offload pointer when the geometry is too large to store inline.</p>
+</details>
+<details class="faq">
+<summary><strong>How do I stop a dead-letter queue from replaying the same event twice?</strong></summary>
+<p>Carry the idempotency key assigned at ingestion into the dead-letter envelope and reuse it verbatim on replay. The consumer performs its normal atomic claim on that key before doing any spatial work, so a replayed event that was in fact already processed short-circuits harmlessly. Never regenerate the key at replay time, because a re-serialised payload can hash differently and defeat the guarantee.</p>
+</details>
+<details class="faq">
+<summary><strong>Should invalid geometries and transient broker errors go to the same dead-letter queue?</strong></summary>
+<p>Route them to separate destinations. Transient broker errors are worth retrying with exponential backoff and usually recover on their own, so they should only reach the dead-letter store after the retry budget is exhausted. Invalid geometry and schema violations are deterministic and will never succeed on replay without human or upstream correction, so they belong in a poison queue that triggers an alert rather than an automatic retry loop.</p>
+</details>
+<details class="faq">
+<summary><strong>How do I dead-letter a 40 MB MultiPolygon without bloating the queue?</strong></summary>
+<p>Offload the raw geometry to object storage such as S3 or a large-object column, and store only a pointer (bucket, key, byte size, and content hash) inside the dead-letter envelope. The broker message stays small and fast to scan, while the full payload remains recoverable for replay. Record the content hash so you can verify the offloaded blob was not truncated or corrupted before you re-inject it.</p>
+</details>
+<hr>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
+<ul>
+<li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a> — the parent section covering brokers, retries, ordering, and delivery guarantees for spatial event streams</li>
+<li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a> — the retry mechanics whose exhaustion feeds the dead-letter path</li>
+<li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/replaying-dead-letter-spatial-events-safely/">Replaying Dead-Letter Spatial Events Safely</a> — the step-by-step procedure for draining the store while preserving exactly-once semantics</li>
+<li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/building-a-spatial-dlq-with-postgis-and-celery/">Building a Spatial DLQ with PostGIS and Celery</a> — a concrete PostGIS-backed dead-letter table drained by a Celery replay task</li>
+<li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a> — where the geometry-validity errors captured in the envelope originate</li>
+</ul>
+
+        <h2 id="explore-this-section">Explore this section</h2>
+        <div class="children-grid">
+          <a class="card " href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/building-a-spatial-dlq-with-postgis-and-celery/">
+            <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19c0-8 6-14 14-14 0 8-6 14-14 14z"/><path d="M5 19l6-6"/></svg></span>
+            <h3 class="card__title">Building a Spatial DLQ with PostGIS and Celery</h3>
+            <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+          </a>
+          <a class="card card--mint" href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/replaying-dead-letter-spatial-events-safely/">
+            <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19c0-8 6-14 14-14 0 8-6 14-14 14z"/><path d="M5 19l6-6"/></svg></span>
+            <h3 class="card__title">Replaying Dead-Letter Spatial Events Safely</h3>
+            <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+          </a>
+        </div>
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        <div class="aside-card">
+          <h3>Related in this section</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+          </ul>
+        </div>
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a></li>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a></li>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a></li>
+            <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring &amp; Observability for Spatial Pipelines</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</article>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="https://www.geospatialwebhook.com/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/">Home</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queues &amp; Retries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Queues &amp; Retries</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Monitoring</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging &amp; Tracing for Spatial Events</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <a class="site-footer__gh" href="https://github.com/geospatialwebhook" target="_blank" rel="noopener" aria-label="Geospatial Webhook on GitHub">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5Z"/></svg><span>GitHub</span>
+      </a>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,739 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>Preventing Replay Attacks on Spatial Webhooks · Geo Webhook</title>
+  <meta name="description" content="Stop replayed spatial webhooks from re-triggering geometry mutations: sign a timestamp for freshness, then reject each nonce once via Redis SET NX."/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/preventing-replay-attacks-on-spatial-webhooks/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360"/>
+  <meta name="color-scheme" content="light"/>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/preventing-replay-attacks-on-spatial-webhooks/"/>
+  <meta property="og:title" content="Preventing Replay Attacks on Spatial Webhooks"/>
+  <meta property="og:description" content="Stop replayed spatial webhooks from re-triggering geometry mutations: sign a timestamp for freshness, then reject each nonce once via Redis SET NX."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Preventing Replay Attacks on Spatial Webhooks"/>
+  <meta name="twitter:description" content="Stop replayed spatial webhooks from re-triggering geometry mutations: sign a timestamp for freshness, then reject each nonce once via Redis SET NX."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },{ "@type": "ListItem", "position": 2, "name": "Core Event Fundamentals Architecture", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" },{ "@type": "ListItem", "position": 3, "name": "Webhook Security Boundaries", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/" },{ "@type": "ListItem", "position": 4, "name": "Preventing Replay Attacks On Spatial Webhooks", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/preventing-replay-attacks-on-spatial-webhooks/" }
+    ]
+  }
+  </script>
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/preventing-replay-attacks-on-spatial-webhooks/#article",
+    "mainEntityOfPage": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/preventing-replay-attacks-on-spatial-webhooks/",
+    "headline": "Preventing Replay Attacks on Spatial Webhooks",
+    "description": "Stop replayed spatial webhooks from re-triggering geometry mutations: sign a timestamp for freshness, then reject each nonce once via Redis SET NX.",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
+    "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
+    "image": "https://www.geospatialwebhook.com/og-image.png",
+    "url": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/preventing-replay-attacks-on-spatial-webhooks/",
+    "articleSection": "Core Event Fundamentals Architecture",
+    "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
+  }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="https://www.geospatialwebhook.com/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="https://www.geospatialwebhook.com/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Queues &amp; Retries</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
+      </a>
+    </nav>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="https://www.geospatialwebhook.com/">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals Architecture</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">Preventing Replay Attacks On Spatial Webhooks</span>
+    </nav>
+
+    <h1 class="page__title">Preventing Replay Attacks on Spatial Webhooks</h1>
+
+    <div class="page__layout">
+      <div class="markdown">
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Preventing Replay Attacks on Spatial Webhooks",
+      "description": "Stop an attacker from re-sending a previously valid, correctly-signed spatial webhook to re-trigger a geometry mutation: enforce a signed-timestamp freshness window and reject each delivery nonce exactly once with Redis SET NX.",
+      "url": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/preventing-replay-attacks-on-spatial-webhooks/",
+      "datePublished": "2025-05-01",
+      "dateModified": "2026-07-13",
+      "author": { "@type": "Organization", "name": "geospatialwebhook.com" },
+      "publisher": { "@type": "Organization", "name": "geospatialwebhook.com" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Core Event Fundamentals & Architecture", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" },
+        { "@type": "ListItem", "position": 2, "name": "Webhook Security Boundaries", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/" },
+        { "@type": "ListItem", "position": 3, "name": "Preventing Replay Attacks on Spatial Webhooks", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/preventing-replay-attacks-on-spatial-webhooks/" }
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Preventing Replay Attacks on Spatial Webhooks",
+      "step": [
+        { "@type": "HowToStep", "position": 1, "name": "Sign a timestamp into the payload", "text": "Include a Unix timestamp and a unique delivery id inside the bytes covered by the HMAC-SHA256 signature so neither can be altered without invalidating the signature." },
+        { "@type": "HowToStep", "position": 2, "name": "Verify the signature and freshness window", "text": "Recompute the HMAC over the signed bytes, compare in constant time, then reject the request if the timestamp is outside a short skew window such as five minutes." },
+        { "@type": "HowToStep", "position": 3, "name": "Claim the nonce exactly once", "text": "Call Redis SET NX on a key derived from the delivery id with a TTL matching the freshness window. If the key already exists, the message is a replay and must be rejected." },
+        { "@type": "HowToStep", "position": 4, "name": "Only then apply the geometry mutation", "text": "Perform the spatial state change after both the freshness check and the nonce claim succeed, so a replayed valid message can never re-trigger the mutation." }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Isn't a freshness window alone enough to stop replays?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. A signed timestamp bounds how long a captured message stays valid, but an attacker can replay it many times inside that window. You still need a per-message nonce, tracked in Redis with SET NX, so the same delivery id is accepted exactly once regardless of how fast it is resent." }
+        },
+        {
+          "@type": "Question",
+          "name": "How is replay prevention different from idempotency deduplication?",
+          "acceptedAnswer": { "@type": "Answer", "text": "They share Redis mechanics but differ in intent and TTL. Replay prevention is adversarial: a short window (minutes) and reject on a duplicate. Idempotency dedup is benign: it absorbs a provider's own retries over a long window (hours to days) by returning the original result. Do not collapse them into one key with one TTL." }
+        },
+        {
+          "@type": "Question",
+          "name": "Should the nonce store fail open or fail closed when Redis is down?",
+          "acceptedAnswer": { "@type": "Answer", "text": "For a security boundary that guards geometry mutations, fail closed: reject the webhook if you cannot verify the nonce, because a fail-open path lets an attacker replay freely during an outage. Reserve fail-open behavior for non-adversarial idempotency caches where a rare duplicate is acceptable." }
+        },
+        {
+          "@type": "Question",
+          "name": "What should the nonce TTL be relative to the freshness window?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Set the nonce TTL at least as long as the freshness window plus your maximum clock skew. If the nonce expires before the timestamp goes stale, a replay can slip through in the gap. Matching the window (for example 300 seconds plus skew) keeps the two defences aligned." }
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>Stop a replayed spatial webhook from re-triggering a geometry mutation by signing a timestamp into the payload and rejecting anything outside a short freshness window, then claiming a per-message nonce in Redis with <code>SET NX</code> so a valid, correctly-signed message is accepted exactly once.</strong> This how-to sits under <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries</a>, part of <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a>.</p>
+<p>A replay attack does not need to forge anything. The attacker captures one genuinely valid delivery — correct HMAC, correct coordinates, everything your signature check accepts — and simply sends it again. If that delivery said “move parcel boundary 42 to this new polygon” or “delete the geofence for zone A”, replaying it re-applies the mutation. Signature verification, covered in <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/signing-spatial-webhook-payloads-with-hmac-sha256/">Signing Spatial Webhook Payloads with HMAC-SHA256</a>, proves <em>who</em> sent the message and that it was not tampered with. It says nothing about <em>when</em> or <em>how many times</em>.</p>
+<h2 id="when-to-use-this-pattern" tabindex="-1"><a class="heading-anchor" href="#when-to-use-this-pattern">When to use this pattern</a></h2>
+<ul>
+<li>Your webhook triggers a <strong>state-changing spatial operation</strong> — writing a new geometry, mutating a feature’s bounds, toggling a geofence, or dispatching a physical asset — where re-applying the same event has real consequences.</li>
+<li>You accept webhooks over the public internet from a provider or edge fleet where a network path could <strong>capture and resend</strong> a valid delivery, or where a buggy client retries aggressively.</li>
+<li>You already sign payloads and now need the second half of the defence: <strong>freshness plus single-use</strong>, not just authenticity.</li>
+</ul>
+<p>This is <em>not</em> the right tool when the operation is naturally read-only or already commutative, or when your only concern is a provider’s own well-behaved retries. Benign duplicate suppression is idempotency deduplication, a different problem with a different TTL — see <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a>. The rest of this page is deliberate about keeping the two apart.</p>
+<h2 id="why-a-freshness-window-alone-is-not-enough" tabindex="-1"><a class="heading-anchor" href="#why-a-freshness-window-alone-is-not-enough">Why a freshness window alone is not enough</a></h2>
+<p>The instinct is to sign a timestamp and reject stale messages. That is necessary but insufficient. A freshness window bounds the <em>duration</em> an attacker can replay — but within that window, nothing stops them resending the same valid message a thousand times. If your window is five minutes, that is five minutes of unlimited re-triggering of a geometry mutation.</p>
+<p>So you need two orthogonal defences working together. The signed timestamp bounds <em>how long</em> a captured message is dangerous. The per-message nonce bounds <em>how many times</em> any single message is accepted — exactly once. Neither substitutes for the other.</p>
+<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two-gate replay defence: freshness window then single-use nonce claim in Redis" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+  <title>Replay defence: freshness gate then nonce gate</title>
+  <desc>An incoming signed webhook passes through a freshness window check on the signed timestamp, then a Redis SET NX nonce claim. A first delivery passes both gates and applies the geometry mutation. A replayed delivery passes the freshness gate but is rejected at the nonce gate because the key already exists.</desc>
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="currentColor"/>
+    </marker>
+    <marker id="arr-dash" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
+    </marker>
+  </defs>
+  <!-- Incoming -->
+  <rect x="10" y="120" width="118" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="69" y="142" text-anchor="middle" font-size="12" fill="currentColor" font-family="system-ui,sans-serif">Signed webhook</text>
+  <text x="69" y="158" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">ts + delivery-id</text>
+  <line x1="128" y1="146" x2="158" y2="146" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Gate 1 freshness -->
+  <rect x="160" y="118" width="150" height="56" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="235" y="140" text-anchor="middle" font-size="12" fill="currentColor" font-family="system-ui,sans-serif">1. Freshness</text>
+  <text x="235" y="156" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">|now − ts| ≤ 5 min</text>
+  <line x1="310" y1="146" x2="342" y2="146" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Gate 2 nonce -->
+  <rect x="344" y="118" width="164" height="56" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="426" y="140" text-anchor="middle" font-size="12" fill="currentColor" font-family="system-ui,sans-serif">2. Nonce claim</text>
+  <text x="426" y="156" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">Redis SET NX (TTL)</text>
+  <!-- Redis store -->
+  <rect x="372" y="30" width="108" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.55"/>
+  <text x="426" y="50" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.8">Redis</text>
+  <text x="426" y="65" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">seen delivery-ids</text>
+  <line x1="426" y1="74" x2="426" y2="116" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" opacity="0.55"/>
+  <!-- Accept path -->
+  <line x1="508" y1="146" x2="560" y2="146" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+  <rect x="562" y="120" width="186" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="655" y="142" text-anchor="middle" font-size="12" fill="currentColor" font-family="system-ui,sans-serif">Apply geometry</text>
+  <text x="655" y="158" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">mutation (once)</text>
+  <!-- Reject stale -->
+  <line x1="235" y1="174" x2="235" y2="238" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-dash)" opacity="0.7"/>
+  <text x="240" y="210" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.8">stale → 401</text>
+  <!-- Reject replay -->
+  <line x1="426" y1="174" x2="426" y2="238" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-dash)" opacity="0.7"/>
+  <text x="431" y="210" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.8">key exists → replay, 409</text>
+  <rect x="150" y="240" width="360" height="40" rx="6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="6,3" opacity="0.7"/>
+  <text x="330" y="264" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.85">Rejected — no mutation applied</text>
+</svg>
+<h2 id="complete-runnable-implementation" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-implementation">Complete runnable implementation</a></h2>
+<p>The module below is self-contained. It verifies an HMAC-SHA256 signature over the exact bytes that include the timestamp and delivery id, enforces a five-minute freshness window, and then claims the nonce with a single atomic <code>SET NX</code>. Only if both gates pass does it apply the geometry mutation. Install <code>redis</code> (the modern <code>redis-py</code>, which bundles async support); the payload is plain JSON following <a href="https://datatracker.ietf.org/doc/html/rfc7946">RFC 7946</a> GeoJSON structure.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> hashlib
+<span class="token keyword">import</span> hmac
+<span class="token keyword">import</span> json
+<span class="token keyword">import</span> time
+<span class="token keyword">from</span> typing <span class="token keyword">import</span> Any
+
+<span class="token keyword">import</span> redis  <span class="token comment"># redis-py >= 4.2 (bundles redis.asyncio)</span>
+
+<span class="token comment"># --- Configuration -----------------------------------------------------------</span>
+WEBHOOK_SECRET<span class="token punctuation">:</span> <span class="token builtin">bytes</span> <span class="token operator">=</span> <span class="token string">b"change-me-to-a-32-byte-env-secret"</span>
+<span class="token comment"># Freshness window for the SECURITY replay check: short and adversarial.</span>
+FRESHNESS_WINDOW_SECONDS<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">300</span>          <span class="token comment"># 5 minutes</span>
+<span class="token comment"># Allowance for NTP drift between sender and receiver clocks.</span>
+CLOCK_SKEW_SECONDS<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">30</span>
+<span class="token comment"># Nonce TTL must cover the whole window a replay could still look "fresh":</span>
+<span class="token comment"># freshness window + skew. Shorter than this leaves a replay gap.</span>
+NONCE_TTL_SECONDS<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> FRESHNESS_WINDOW_SECONDS <span class="token operator">+</span> CLOCK_SKEW_SECONDS
+NONCE_PREFIX <span class="token operator">=</span> <span class="token string">"replay:nonce:"</span>
+
+_redis <span class="token operator">=</span> redis<span class="token punctuation">.</span>Redis<span class="token punctuation">(</span>host<span class="token operator">=</span><span class="token string">"localhost"</span><span class="token punctuation">,</span> port<span class="token operator">=</span><span class="token number">6379</span><span class="token punctuation">,</span> decode_responses<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">class</span> <span class="token class-name">ReplayRejected</span><span class="token punctuation">(</span>Exception<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Raised when a message is stale, unsigned/invalid, or already seen."""</span>
+
+
+<span class="token keyword">def</span> <span class="token function">_expected_signature</span><span class="token punctuation">(</span>signed_bytes<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+    <span class="token keyword">return</span> hmac<span class="token punctuation">.</span>new<span class="token punctuation">(</span>WEBHOOK_SECRET<span class="token punctuation">,</span> signed_bytes<span class="token punctuation">,</span> hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">verify_fresh_and_signed</span><span class="token punctuation">(</span>body<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">,</span> signature_hex<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Verify the HMAC over the signed bytes, then enforce the freshness window.
+    The timestamp and delivery id are INSIDE the signed bytes, so an attacker
+    cannot slide the timestamp forward without breaking the signature.
+    Returns the delivery id (the nonce) on success; raises otherwise.
+    """</span>
+    ts <span class="token operator">=</span> <span class="token builtin">int</span><span class="token punctuation">(</span>body<span class="token punctuation">[</span><span class="token string">"ts"</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+    delivery_id <span class="token operator">=</span> <span class="token builtin">str</span><span class="token punctuation">(</span>body<span class="token punctuation">[</span><span class="token string">"delivery_id"</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+
+    <span class="token comment"># Sign over a canonical, sorted serialization so sender and receiver agree</span>
+    <span class="token comment"># on the exact bytes. The ts and delivery_id are part of this payload.</span>
+    signed_bytes <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>body<span class="token punctuation">,</span> sort_keys<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span> separators<span class="token operator">=</span><span class="token punctuation">(</span><span class="token string">","</span><span class="token punctuation">,</span> <span class="token string">":"</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    expected <span class="token operator">=</span> _expected_signature<span class="token punctuation">(</span>signed_bytes<span class="token punctuation">)</span>
+    <span class="token keyword">if</span> <span class="token keyword">not</span> hmac<span class="token punctuation">.</span>compare_digest<span class="token punctuation">(</span>signature_hex<span class="token punctuation">,</span> expected<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> ReplayRejected<span class="token punctuation">(</span><span class="token string">"bad signature"</span><span class="token punctuation">)</span>  <span class="token comment"># not authentic — reject</span>
+
+    <span class="token comment"># Freshness gate: reject anything outside the short adversarial window.</span>
+    <span class="token comment"># Allow a little skew on BOTH sides (early clock as well as late).</span>
+    age <span class="token operator">=</span> time<span class="token punctuation">.</span>time<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span> ts
+    <span class="token keyword">if</span> age <span class="token operator">></span> FRESHNESS_WINDOW_SECONDS <span class="token operator">+</span> CLOCK_SKEW_SECONDS<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> ReplayRejected<span class="token punctuation">(</span><span class="token string">"stale timestamp"</span><span class="token punctuation">)</span>
+    <span class="token keyword">if</span> age <span class="token operator">&lt;</span> <span class="token operator">-</span>CLOCK_SKEW_SECONDS<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> ReplayRejected<span class="token punctuation">(</span><span class="token string">"timestamp in the future"</span><span class="token punctuation">)</span>
+
+    <span class="token keyword">return</span> delivery_id
+
+
+<span class="token keyword">def</span> <span class="token function">claim_nonce</span><span class="token punctuation">(</span>delivery_id<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Claim the delivery id exactly once. SET NX is atomic: the first caller
+    creates the key and gets True; any replay finds it present and gets None.
+    We FAIL CLOSED — if Redis is unreachable, we reject rather than risk an
+    unbounded replay during the outage (this guards a geometry mutation).
+    """</span>
+    key <span class="token operator">=</span> NONCE_PREFIX <span class="token operator">+</span> delivery_id
+    <span class="token keyword">try</span><span class="token punctuation">:</span>
+        created <span class="token operator">=</span> _redis<span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">(</span>key<span class="token punctuation">,</span> <span class="token string">"1"</span><span class="token punctuation">,</span> nx<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span> ex<span class="token operator">=</span>NONCE_TTL_SECONDS<span class="token punctuation">)</span>
+    <span class="token keyword">except</span> redis<span class="token punctuation">.</span>RedisError <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> ReplayRejected<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"nonce store unavailable: </span><span class="token interpolation"><span class="token punctuation">{</span>exc<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span> <span class="token keyword">from</span> exc
+    <span class="token keyword">if</span> <span class="token keyword">not</span> created<span class="token punctuation">:</span>
+        <span class="token comment"># Key already existed within its TTL -> this is a replay.</span>
+        <span class="token keyword">raise</span> ReplayRejected<span class="token punctuation">(</span><span class="token string">"replayed delivery_id"</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">apply_geometry_mutation</span><span class="token punctuation">(</span>body<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""The protected side effect: mutate spatial state. Runs at most once
+    per delivery_id because both gates ran first."""</span>
+    feature_id <span class="token operator">=</span> body<span class="token punctuation">[</span><span class="token string">"feature_id"</span><span class="token punctuation">]</span>
+    geometry <span class="token operator">=</span> body<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span>  <span class="token comment"># GeoJSON geometry, WGS 84 (EPSG:4326)</span>
+    <span class="token comment"># ... persist the new geometry for feature_id here ...</span>
+    <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"feature_id"</span><span class="token punctuation">:</span> feature_id<span class="token punctuation">,</span> <span class="token string">"type"</span><span class="token punctuation">:</span> geometry<span class="token punctuation">[</span><span class="token string">"type"</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"applied"</span><span class="token punctuation">}</span>
+
+
+<span class="token keyword">def</span> <span class="token function">handle_webhook</span><span class="token punctuation">(</span>body<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">,</span> signature_hex<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Full ingress path. Order matters: authenticity, then freshness,
+    then single-use nonce, then — and only then — the mutation."""</span>
+    delivery_id <span class="token operator">=</span> verify_fresh_and_signed<span class="token punctuation">(</span>body<span class="token punctuation">,</span> signature_hex<span class="token punctuation">)</span>  <span class="token comment"># gates 1 + 2a</span>
+    claim_nonce<span class="token punctuation">(</span>delivery_id<span class="token punctuation">)</span>                                     <span class="token comment"># gate 2b</span>
+    <span class="token keyword">return</span> apply_geometry_mutation<span class="token punctuation">(</span>body<span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">sign_payload</span><span class="token punctuation">(</span>body<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Helper a legitimate sender uses to produce the signature header."""</span>
+    signed_bytes <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>body<span class="token punctuation">,</span> sort_keys<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span> separators<span class="token operator">=</span><span class="token punctuation">(</span><span class="token string">","</span><span class="token punctuation">,</span> <span class="token string">":"</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> _expected_signature<span class="token punctuation">(</span>signed_bytes<span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>The key discipline: the timestamp and <code>delivery_id</code> live <em>inside</em> the signed bytes. If they were unsigned header fields, an attacker could rewrite the timestamp to look fresh and swap the delivery id to dodge the nonce check while keeping a stolen signature. Signing them binds all three together.</p>
+<h2 id="replay-prevention-versus-idempotency-dedup" tabindex="-1"><a class="heading-anchor" href="#replay-prevention-versus-idempotency-dedup">Replay prevention versus idempotency dedup</a></h2>
+<p>These two use nearly identical Redis mechanics — a key, a TTL, a “have I seen this before” check — which is exactly why they get conflated. They are not the same job, and merging them weakens both.</p>
+<div style="overflow-x:auto;">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Replay prevention (this page)</th>
+<th>Idempotency deduplication</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Threat model</td>
+<td>Adversarial — attacker resends a valid capture</td>
+<td>Benign — provider retries after a timeout</td>
+</tr>
+<tr>
+<td>Goal</td>
+<td>Reject the duplicate</td>
+<td>Absorb it, return the original result</td>
+</tr>
+<tr>
+<td>Window / TTL</td>
+<td>Short (minutes), tied to freshness window</td>
+<td>Long (hours to days), tied to retry policy</td>
+</tr>
+<tr>
+<td>On duplicate</td>
+<td>Reject: <code>409</code> / <code>401</code>, no side effect</td>
+<td>Accept: replay the stored response, no re-mutation</td>
+</tr>
+<tr>
+<td>Failure mode</td>
+<td>Fail <strong>closed</strong> (reject if store is down)</td>
+<td>Often fail <strong>open</strong> (rare duplicate is tolerable)</td>
+</tr>
+<tr>
+<td>Key source</td>
+<td>Signed per-message nonce / delivery id</td>
+<td>Deterministic content or event key</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>If you try to serve both with one long-lived key, you either widen the replay window to hours (a security regression) or reject the provider’s legitimate retries (a reliability regression). Run them as two layers: the short adversarial nonce here, and a separate long-window dedup key downstream. The dedup side is covered in <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a>, whose deterministic keys and long TTLs are designed for benign retries rather than attacks.</p>
+<h2 id="parameter-reference" tabindex="-1"><a class="heading-anchor" href="#parameter-reference">Parameter reference</a></h2>
+<div style="overflow-x:auto;">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Constraint / intent</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>WEBHOOK_SECRET</code></td>
+<td><code>bytes</code></td>
+<td>Min 32 bytes; load from env var, never hard-code</td>
+<td>— (must be set)</td>
+</tr>
+<tr>
+<td><code>FRESHNESS_WINDOW_SECONDS</code></td>
+<td><code>int</code></td>
+<td>Short adversarial window; keep ≤ 900 s</td>
+<td><code>300</code></td>
+</tr>
+<tr>
+<td><code>CLOCK_SKEW_SECONDS</code></td>
+<td><code>int</code></td>
+<td>NTP drift allowance, applied to both sides</td>
+<td><code>30</code></td>
+</tr>
+<tr>
+<td><code>NONCE_TTL_SECONDS</code></td>
+<td><code>int</code></td>
+<td>Must be ≥ window + skew, or replays slip the gap</td>
+<td><code>330</code></td>
+</tr>
+<tr>
+<td><code>NONCE_PREFIX</code></td>
+<td><code>str</code></td>
+<td>Namespaces nonce keys away from dedup/idempotency keys</td>
+<td><code>&quot;replay:nonce:&quot;</code></td>
+</tr>
+<tr>
+<td><code>body[&quot;ts&quot;]</code></td>
+<td><code>int</code></td>
+<td>Unix epoch seconds; signed, not a header</td>
+<td>from payload</td>
+</tr>
+<tr>
+<td><code>body[&quot;delivery_id&quot;]</code></td>
+<td><code>str</code></td>
+<td>Globally unique per delivery (UUID/ULID); the nonce</td>
+<td>from payload</td>
+</tr>
+<tr>
+<td><code>body[&quot;geometry&quot;]</code></td>
+<td><code>dict</code></td>
+<td>GeoJSON geometry, WGS 84 (EPSG:4326), per RFC 7946</td>
+<td>from payload</td>
+</tr>
+<tr>
+<td><code>signature_hex</code></td>
+<td><code>str</code></td>
+<td>64-char lowercase hex, HMAC-SHA256 output</td>
+<td>from header</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<h2 id="gotchas-and-spatial-edge-cases" tabindex="-1"><a class="heading-anchor" href="#gotchas-and-spatial-edge-cases">Gotchas and spatial edge cases</a></h2>
+<ol>
+<li>
+<p><strong>Clock skew cuts both ways.</strong> If the sender’s clock runs fast, a genuinely fresh message can look like it is from the future; if slow, it looks stale on arrival. Allow <code>CLOCK_SKEW_SECONDS</code> on <em>both</em> sides of the comparison, as the code does, and keep receivers on NTP. Do not widen the window to paper over unsynchronized clocks — that just lengthens the replay window.</p>
+</li>
+<li>
+<p><strong>Freshness without a nonce is a false sense of security.</strong> The single most common mistake is shipping only the timestamp check. Inside a five-minute window an attacker replays freely. The nonce is not optional; it is the half that enforces <em>exactly once</em>.</p>
+</li>
+<li>
+<p><strong>Nonce TTL shorter than the freshness window opens a gap.</strong> If the nonce expires at 60 s but a timestamp stays “fresh” for 300 s, a replay sent at 90 s finds no nonce and passes both gates. Always set <code>NONCE_TTL_SECONDS &gt;= FRESHNESS_WINDOW_SECONDS + CLOCK_SKEW_SECONDS</code>.</p>
+</li>
+<li>
+<p><strong>Nonce store outage — fail open or fail closed?</strong> For a boundary guarding geometry mutations, fail <strong>closed</strong>: if Redis is unreachable you cannot prove the message is new, so reject it. A fail-open path turns a Redis outage into an open replay window. This is the opposite default from a benign idempotency cache, where a missed dedup is merely a rare duplicate.</p>
+</li>
+<li>
+<p><strong>The delivery id must be signed, not a bare header.</strong> If the nonce lives in an unsigned header, an attacker replays the stolen signature while mutating the delivery id to a fresh value and sails past the nonce gate. Put <code>delivery_id</code> inside the signed bytes so it cannot move independently of the signature. Signature construction is detailed in <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/signing-spatial-webhook-payloads-with-hmac-sha256/">Signing Spatial Webhook Payloads with HMAC-SHA256</a>.</p>
+</li>
+<li>
+<p><strong>Do not reuse the idempotency key as the replay nonce.</strong> A deterministic content-hash key is designed to be <em>identical</em> across legitimate retries — which is precisely what you want dedup to absorb and precisely what you must not silently absorb in a security context. Keep separate key namespaces and separate TTLs; conflating them is the subtle bug that quietly disables one defence.</p>
+</li>
+</ol>
+<h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
+<p>Run with <code>pytest</code> after <code>pip install redis fakeredis pytest</code>. The test proves the core property: the same signed message is accepted the first time and rejected the second.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> time
+<span class="token keyword">import</span> pytest
+<span class="token keyword">import</span> fakeredis
+
+<span class="token keyword">import</span> replay_guard <span class="token keyword">as</span> g  <span class="token comment"># the module above, saved as replay_guard.py</span>
+
+
+<span class="token decorator annotation punctuation">@pytest<span class="token punctuation">.</span>fixture</span><span class="token punctuation">(</span>autouse<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span>
+<span class="token keyword">def</span> <span class="token function">fake_redis</span><span class="token punctuation">(</span>monkeypatch<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    monkeypatch<span class="token punctuation">.</span><span class="token builtin">setattr</span><span class="token punctuation">(</span>g<span class="token punctuation">,</span> <span class="token string">"_redis"</span><span class="token punctuation">,</span> fakeredis<span class="token punctuation">.</span>FakeStrictRedis<span class="token punctuation">(</span>decode_responses<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">_signed_message</span><span class="token punctuation">(</span>delivery_id<span class="token operator">=</span><span class="token string">"del-abc-123"</span><span class="token punctuation">,</span> ts<span class="token operator">=</span><span class="token boolean">None</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    body <span class="token operator">=</span> <span class="token punctuation">{</span>
+        <span class="token string">"delivery_id"</span><span class="token punctuation">:</span> delivery_id<span class="token punctuation">,</span>
+        <span class="token string">"ts"</span><span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">(</span>ts <span class="token keyword">if</span> ts <span class="token keyword">is</span> <span class="token keyword">not</span> <span class="token boolean">None</span> <span class="token keyword">else</span> time<span class="token punctuation">.</span>time<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+        <span class="token string">"feature_id"</span><span class="token punctuation">:</span> <span class="token string">"parcel-42"</span><span class="token punctuation">,</span>
+        <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">122.4194</span><span class="token punctuation">,</span> <span class="token number">37.7749</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">,</span>  <span class="token comment"># EPSG:4326</span>
+    <span class="token punctuation">}</span>
+    <span class="token keyword">return</span> body<span class="token punctuation">,</span> g<span class="token punctuation">.</span>sign_payload<span class="token punctuation">(</span>body<span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_first_delivery_applies_mutation</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    body<span class="token punctuation">,</span> sig <span class="token operator">=</span> _signed_message<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    result <span class="token operator">=</span> g<span class="token punctuation">.</span>handle_webhook<span class="token punctuation">(</span>body<span class="token punctuation">,</span> sig<span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> result<span class="token punctuation">[</span><span class="token string">"status"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token string">"applied"</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_replay_of_same_message_is_rejected</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    body<span class="token punctuation">,</span> sig <span class="token operator">=</span> _signed_message<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    g<span class="token punctuation">.</span>handle_webhook<span class="token punctuation">(</span>body<span class="token punctuation">,</span> sig<span class="token punctuation">)</span>                      <span class="token comment"># first time: accepted</span>
+    <span class="token keyword">with</span> pytest<span class="token punctuation">.</span>raises<span class="token punctuation">(</span>g<span class="token punctuation">.</span>ReplayRejected<span class="token punctuation">,</span> <span class="token keyword">match</span><span class="token operator">=</span><span class="token string">"replayed delivery_id"</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        g<span class="token punctuation">.</span>handle_webhook<span class="token punctuation">(</span>body<span class="token punctuation">,</span> sig<span class="token punctuation">)</span>                  <span class="token comment"># exact replay: rejected</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_stale_timestamp_rejected</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    body<span class="token punctuation">,</span> sig <span class="token operator">=</span> _signed_message<span class="token punctuation">(</span>ts<span class="token operator">=</span>time<span class="token punctuation">.</span>time<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span> <span class="token number">3600</span><span class="token punctuation">)</span>  <span class="token comment"># an hour old</span>
+    <span class="token keyword">with</span> pytest<span class="token punctuation">.</span>raises<span class="token punctuation">(</span>g<span class="token punctuation">.</span>ReplayRejected<span class="token punctuation">,</span> <span class="token keyword">match</span><span class="token operator">=</span><span class="token string">"stale timestamp"</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        g<span class="token punctuation">.</span>handle_webhook<span class="token punctuation">(</span>body<span class="token punctuation">,</span> sig<span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_tampered_timestamp_breaks_signature</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    body<span class="token punctuation">,</span> sig <span class="token operator">=</span> _signed_message<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    body<span class="token punctuation">[</span><span class="token string">"ts"</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token builtin">int</span><span class="token punctuation">(</span>time<span class="token punctuation">.</span>time<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span>  <span class="token comment"># slide ts after signing -> signature no longer matches</span>
+    body<span class="token punctuation">[</span><span class="token string">"ts"</span><span class="token punctuation">]</span> <span class="token operator">+=</span> <span class="token number">1</span>
+    <span class="token keyword">with</span> pytest<span class="token punctuation">.</span>raises<span class="token punctuation">(</span>g<span class="token punctuation">.</span>ReplayRejected<span class="token punctuation">,</span> <span class="token keyword">match</span><span class="token operator">=</span><span class="token string">"bad signature"</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        g<span class="token punctuation">.</span>handle_webhook<span class="token punctuation">(</span>body<span class="token punctuation">,</span> sig<span class="token punctuation">)</span>
+</code></pre>
+</div>
+<h2 id="faq" tabindex="-1"><a class="heading-anchor" href="#faq">FAQ</a></h2>
+<details class="faq">
+<summary><strong>Isn't a freshness window alone enough to stop replays?</strong></summary>
+<p>No. A signed timestamp bounds how long a captured message stays valid, but an attacker can replay it many times inside that window. You still need a per-message nonce, tracked in Redis with <code>SET NX</code>, so the same delivery id is accepted exactly once regardless of how fast it is resent.</p>
+</details>
+<details class="faq">
+<summary><strong>How is replay prevention different from idempotency deduplication?</strong></summary>
+<p>They share Redis mechanics but differ in intent and TTL. Replay prevention is adversarial: a short window (minutes) and reject on a duplicate. Idempotency dedup is benign: it absorbs a provider’s own retries over a long window (hours to days) by returning the original result. Do not collapse them into one key with one TTL — see <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a> for the dedup side.</p>
+</details>
+<details class="faq">
+<summary><strong>Should the nonce store fail open or fail closed when Redis is down?</strong></summary>
+<p>For a security boundary that guards geometry mutations, fail closed: reject the webhook if you cannot verify the nonce, because a fail-open path lets an attacker replay freely during an outage. Reserve fail-open behavior for non-adversarial idempotency caches where a rare duplicate is acceptable.</p>
+</details>
+<details class="faq">
+<summary><strong>What should the nonce TTL be relative to the freshness window?</strong></summary>
+<p>Set the nonce TTL at least as long as the freshness window plus your maximum clock skew. If the nonce expires before the timestamp goes stale, a replay can slip through in the gap. Matching the window (for example 300 seconds plus skew) keeps the two defences aligned.</p>
+</details>
+<hr>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
+<ul>
+<li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries</a> — parent overview of the trust model for geospatial event ingress, of which replay prevention is one gate</li>
+<li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/signing-spatial-webhook-payloads-with-hmac-sha256/">Signing Spatial Webhook Payloads with HMAC-SHA256</a> — how to construct the signature whose bytes must include the timestamp and delivery id</li>
+<li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a> — the benign, long-window counterpart to adversarial replay prevention, for absorbing a provider’s own retries</li>
+</ul>
+
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        <div class="aside-card">
+          <h3>Related in this section</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/ip-allowlisting-patterns-for-geospatial-webhook-receivers/">IP Allowlisting Patterns for Geospatial Webhook Receivers</a></li>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/securing-webhook-endpoints-with-spatial-token-validation/">Securing Webhook Endpoints with Spatial Token Validation</a></li>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/signing-spatial-webhook-payloads-with-hmac-sha256/">Signing Spatial Webhook Payloads with HMAC-SHA256</a></li>
+          </ul>
+        </div>
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a></li>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a></li>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a></li>
+            <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring &amp; Observability for Spatial Pipelines</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</article>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="https://www.geospatialwebhook.com/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/">Home</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queues &amp; Retries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Queues &amp; Retries</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Monitoring</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging &amp; Tracing for Spatial Events</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <a class="site-footer__gh" href="https://github.com/geospatialwebhook" target="_blank" rel="noopener" aria-label="Geospatial Webhook on GitHub">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5Z"/></svg><span>GitHub</span>
+      </a>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

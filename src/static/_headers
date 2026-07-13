@@ -1,0 +1,43 @@
+# Cloudflare Pages _headers — sets cache + security headers per path.
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: interest-cohort=()
+  X-Frame-Options: SAMEORIGIN
+
+# HTML — short cache so updates propagate quickly
+/*.html
+  Cache-Control: public, max-age=300, must-revalidate
+
+/
+  Cache-Control: public, max-age=300, must-revalidate
+
+# Service worker must not be cached
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+  Service-Worker-Allowed: /
+
+# Manifest
+/manifest.json
+  Cache-Control: public, max-age=3600
+
+# Long-cache static assets (content-addressable)
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Icons & images
+/favicon.ico
+  Cache-Control: public, max-age=604800
+/favicon.svg
+  Cache-Control: public, max-age=604800
+/apple-touch-icon.png
+  Cache-Control: public, max-age=604800
+/icon-*.png
+  Cache-Control: public, max-age=604800
+
+# Sitemap & robots
+/sitemap.xml
+  Cache-Control: public, max-age=3600
+/robots.txt
+  Cache-Control: public, max-age=3600

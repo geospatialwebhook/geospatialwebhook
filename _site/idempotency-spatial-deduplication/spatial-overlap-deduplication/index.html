@@ -1,0 +1,929 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>Spatial Overlap Deduplication for Geospatial Webhooks · Geo Webhook</title>
+  <meta name="description" content="Suppress redundant geospatial webhook events in Python using Shapely spatial predicates, Redis caching, and configurable area overlap thresholds."/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360"/>
+  <meta name="color-scheme" content="light"/>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/"/>
+  <meta property="og:title" content="Spatial Overlap Deduplication for Geospatial Webhooks"/>
+  <meta property="og:description" content="Suppress redundant geospatial webhook events in Python using Shapely spatial predicates, Redis caching, and configurable area overlap thresholds."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Spatial Overlap Deduplication for Geospatial Webhooks"/>
+  <meta name="twitter:description" content="Suppress redundant geospatial webhook events in Python using Shapely spatial predicates, Redis caching, and configurable area overlap thresholds."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },{ "@type": "ListItem", "position": 2, "name": "Idempotency Spatial Deduplication", "item": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" },{ "@type": "ListItem", "position": 3, "name": "Spatial Overlap Deduplication", "item": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/" }
+    ]
+  }
+  </script>
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/#article",
+    "mainEntityOfPage": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/",
+    "headline": "Spatial Overlap Deduplication for Geospatial Webhooks",
+    "description": "Suppress redundant geospatial webhook events in Python using Shapely spatial predicates, Redis caching, and configurable area overlap thresholds.",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
+    "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
+    "image": "https://www.geospatialwebhook.com/og-image.png",
+    "url": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/",
+    "articleSection": "Idempotency Spatial Deduplication",
+    "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
+  }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="https://www.geospatialwebhook.com/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="https://www.geospatialwebhook.com/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Queues &amp; Retries</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
+      </a>
+    </nav>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="https://www.geospatialwebhook.com/">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency Spatial Deduplication</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">Spatial Overlap Deduplication</span>
+    </nav>
+
+    <h1 class="page__title">Spatial Overlap Deduplication for Geospatial Webhooks</h1>
+
+    <div class="page__layout">
+      <div class="markdown">
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Spatial Overlap Deduplication for Geospatial Webhooks",
+      "description": "Implement spatial overlap deduplication in Python to suppress redundant geospatial webhook events using Shapely predicates, Redis caching, and configurable area thresholds.",
+      "datePublished": "2025-08-01",
+      "dateModified": "2026-06-25",
+      "author": {"@type": "Organization", "name": "geospatialwebhook.com"}
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Idempotency & Spatial Deduplication", "item": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/"},
+        {"@type": "ListItem", "position": 2, "name": "Spatial Overlap Deduplication", "item": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/"}
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Implement Spatial Overlap Deduplication for Geospatial Webhooks",
+      "step": [
+        {"@type": "HowToStep", "position": 1, "name": "Normalize Inbound Payloads", "text": "Extract geometry, validate against GeoJSON standards, and enforce a single CRS before spatial evaluation."},
+        {"@type": "HowToStep", "position": 2, "name": "Generate Deterministic Spatial Keys", "text": "Derive stable grid-aligned cache keys from geometry bounding boxes combined with a temporal window."},
+        {"@type": "HowToStep", "position": 3, "name": "Execute Cache-Backed Idempotency Check", "text": "Perform a Redis SET NX lookup to short-circuit processing before touching the spatial predicate engine."},
+        {"@type": "HowToStep", "position": 4, "name": "Evaluate Spatial Overlap", "text": "Run Shapely intersection predicates against spatially indexed candidates to apply configurable area thresholds."},
+        {"@type": "HowToStep", "position": 5, "name": "Apply Conflict Resolution Policy", "text": "Suppress, merge, or escalate events based on overlap ratio, temporal decay, and geometry complexity rules."}
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Why does exact-hash deduplication fail for geospatial payloads?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Coordinate precision drift, CRS transformations, and topology normalization by GIS libraries all change the raw bytes of a geometry without changing its spatial footprint. Hash-based filters therefore treat functionally identical shapes as distinct events."}
+        },
+        {
+          "@type": "Question",
+          "name": "What overlap ratio threshold should I use in production?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Start at 0.85 (85% area intersection) for tight deduplication. Telemetry with GPS drift may need 0.70–0.75. Always measure false-positive suppression rates against a labelled sample before deploying a threshold to production."}
+        },
+        {
+          "@type": "Question",
+          "name": "How do I compute overlap ratios without projection errors?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Area calculations in EPSG:4326 (degrees squared) are not meaningful for ratio comparisons. Project both geometries to an equal-area CRS such as EPSG:6933 or a local UTM zone before computing intersection.area / new_geom.area."}
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use PostGIS instead of Shapely for overlap checks?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Yes. ST_Intersects + ST_Area(ST_Intersection(...)) / ST_Area(...) express the same predicate and benefit from GiST index acceleration at database scale. The Python layer then only needs to interpret the boolean result rather than loading full geometry objects."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>Spatial overlap deduplication suppresses redundant geospatial webhook events by evaluating geometric intersection and configurable area thresholds rather than exact byte-for-byte payload hashes — making it resilient to coordinate precision drift, CRS variance, and topology normalization artifacts.</strong></p>
+<p>This topic is part of <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a>, which covers the full range of strategies for ensuring geospatial event pipelines process each unique spatial footprint exactly once.</p>
+<hr>
+<h2 id="prerequisites" tabindex="-1"><a class="heading-anchor" href="#prerequisites">Prerequisites</a></h2>
+<p>Verify these dependencies before implementing the pattern:</p>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> Python 3.9+ with an async-capable framework: FastAPI, Starlette, or aiohttp</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <code>shapely&gt;=2.0</code> — vector geometry operations, spatial predicates, topology validation</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <code>pyproj&gt;=3.4</code> — coordinate reference system transformations</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <code>pydantic&gt;=2.0</code> — payload schema validation with GeoJSON model support</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <code>redis[asyncio]&gt;=4.5</code> — sub-millisecond cache lookups with atomic SET NX support</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> Redis 6.2+ (or compatible store) with TTL management enabled</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> A message broker (Kafka, RabbitMQ, or AWS SQS) to decouple ingestion from evaluation workers</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> All inbound webhook sources documented with their native CRS (EPSG code)</label></li>
+</ul>
+<hr>
+<h2 id="why-exact-hash-deduplication-fails-for-spatial-payloads" tabindex="-1"><a class="heading-anchor" href="#why-exact-hash-deduplication-fails-for-spatial-payloads">Why Exact-Hash Deduplication Fails for Spatial Payloads</a></h2>
+<p>Standard idempotency patterns rely on deterministic identifiers: request IDs, transaction hashes, or exact payload checksums. Geospatial data systematically violates these assumptions through four mechanisms:</p>
+<p><strong>Floating-point precision drift.</strong> A polygon serialized to 6 decimal places in one system may arrive at 8 decimal places after a CRS transformation, breaking exact string matches while representing the same physical boundary.</p>
+<p><strong>CRS mismatch.</strong> Inbound payloads commonly mix EPSG:4326 (WGS 84), EPSG:3857 (Web Mercator), and local projected systems. Identical physical areas yield completely different coordinate arrays depending on projection. Normalizing coordinates to a canonical CRS — as detailed in <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a> — is a prerequisite for any comparison.</p>
+<p><strong>Topology normalization.</strong> GIS libraries automatically close rings, reorder vertices, or snap coordinates to grid tolerances. Two payloads representing the same delivery zone or sensor coverage area rarely produce identical JSON bytes.</p>
+<p><strong>Temporal overlap.</strong> Mobile telemetry and IoT pings frequently report overlapping bounding boxes as devices move or sensors aggregate readings over sliding windows, producing streams of near-identical geometries that differ only in sub-metre vertex positions.</p>
+<p>Hash-based filters either drop legitimate updates or let duplicates through. Spatial predicate evaluation is resilient to these variances because it asks whether two geometries occupy the same footprint, not whether their byte representations match.</p>
+<hr>
+<h2 id="architecture-four-layer-deduplication-pipeline" tabindex="-1"><a class="heading-anchor" href="#architecture-four-layer-deduplication-pipeline">Architecture: Four-Layer Deduplication Pipeline</a></h2>
+<p>The pipeline separates concerns across four layers to keep expensive spatial computation off the hot path.</p>
+<svg viewBox="0 0 740 400" role="img" aria-label="Four-layer spatial overlap deduplication pipeline diagram" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:740px;height:auto;font-family:inherit;display:block;margin:1.5rem auto;">
+  <title>Spatial Overlap Deduplication Pipeline</title>
+  <desc>Data flows left to right through four layers: Webhook Ingress, Payload Normalisation, Cache Lookup, and Spatial Predicate. A cache hit suppresses the event immediately. An overlap above threshold suppresses and logs. A cache miss combined with overlap below threshold forwards the event to the downstream processor.</desc>
+  <defs>
+    <marker id="sodp-arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
+    </marker>
+  </defs>
+  <!-- Layer 1: Ingress -->
+  <rect x="10" y="30" width="148" height="70" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+  <text x="84" y="54" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Layer 1</text>
+  <text x="84" y="72" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Webhook Ingress</text>
+  <text x="84" y="89" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">FastAPI endpoint</text>
+  <!-- Arrow 1→2 -->
+  <line x1="158" y1="65" x2="186" y2="65" stroke="currentColor" stroke-width="1.5" opacity="0.6" marker-end="url(#sodp-arr)"/>
+  <!-- Layer 2: Normalisation -->
+  <rect x="186" y="30" width="148" height="70" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+  <text x="260" y="54" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Layer 2</text>
+  <text x="260" y="72" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Payload Normalise</text>
+  <text x="260" y="89" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">CRS → EPSG:4326</text>
+  <!-- Arrow 2→3 -->
+  <line x1="334" y1="65" x2="362" y2="65" stroke="currentColor" stroke-width="1.5" opacity="0.6" marker-end="url(#sodp-arr)"/>
+  <!-- Layer 3: Cache -->
+  <rect x="362" y="30" width="148" height="70" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+  <text x="436" y="54" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Layer 3</text>
+  <text x="436" y="72" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Cache Lookup</text>
+  <text x="436" y="89" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">Redis SET NX</text>
+  <!-- Arrow 3→4 -->
+  <line x1="510" y1="65" x2="538" y2="65" stroke="currentColor" stroke-width="1.5" opacity="0.6" marker-end="url(#sodp-arr)"/>
+  <!-- Layer 4: Predicate -->
+  <rect x="538" y="30" width="190" height="70" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+  <text x="633" y="54" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Layer 4</text>
+  <text x="633" y="72" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">Spatial Predicate</text>
+  <text x="633" y="89" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">Shapely STRtree</text>
+  <!-- Cache HIT → suppress (down from Layer 3) -->
+  <line x1="436" y1="100" x2="436" y2="166" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" opacity="0.5" marker-end="url(#sodp-arr)"/>
+  <rect x="356" y="166" width="160" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3"/>
+  <text x="436" y="184" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" opacity="0.8">Cache HIT</text>
+  <text x="436" y="200" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">suppress · return 200</text>
+  <!-- Overlap ≥ threshold → suppress (down from Layer 4) -->
+  <line x1="633" y1="100" x2="633" y2="166" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" opacity="0.5" marker-end="url(#sodp-arr)"/>
+  <rect x="545" y="166" width="176" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3"/>
+  <text x="633" y="184" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" opacity="0.8">Overlap &#8805; threshold</text>
+  <text x="633" y="200" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">suppress · log audit</text>
+  <!-- Downstream: novel event (bottom) -->
+  <rect x="186" y="312" width="368" height="52" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+  <text x="370" y="334" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Downstream Processor</text>
+  <text x="370" y="352" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">Cache MISS + overlap below threshold &#8594; publish unique event</text>
+  <!-- Arrows to downstream -->
+  <line x1="436" y1="210" x2="352" y2="312" stroke="currentColor" stroke-width="1.5" opacity="0.6" marker-end="url(#sodp-arr)"/>
+  <line x1="633" y1="210" x2="500" y2="312" stroke="currentColor" stroke-width="1.5" opacity="0.6" marker-end="url(#sodp-arr)"/>
+  <!-- MISS label on first arrow -->
+  <text x="372" y="268" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">MISS</text>
+  <text x="582" y="268" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">below threshold</text>
+</svg>
+<p><strong>Layer 1 — Webhook ingress:</strong> FastAPI or aiohttp receives the raw POST and immediately validates the HTTP signature (see <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/securing-webhook-endpoints-with-spatial-token-validation/">Securing Webhook Endpoints with Spatial Token Validation</a>). The raw body is enqueued for async processing without blocking the HTTP response.</p>
+<p><strong>Layer 2 — Payload normalisation:</strong> Extract the GeoJSON geometry, validate topology with <code>shapely.validation.make_valid</code>, and reproject to a canonical CRS (EPSG:4326) before any comparison. This step also validates the payload schema via Pydantic to reject malformed geometry types early.</p>
+<p><strong>Layer 3 — Cache-backed fast path:</strong> Generate a grid-aligned spatial key and issue an atomic Redis SET NX. On a cache hit, the event is a known duplicate: return 200 immediately, no predicate evaluation needed. This layer typically eliminates 60–80 % of retry traffic before geometry is loaded.</p>
+<p><strong>Layer 4 — Spatial predicate evaluation:</strong> For cache misses, load candidate geometries from a recent event store (spatial index or PostGIS query) and evaluate overlap with Shapely predicates. Events whose intersection area exceeds the configured threshold are suppressed and logged to an audit trail; those below it are novel and forwarded to the downstream processor.</p>
+<hr>
+<h2 id="step-by-step-implementation" tabindex="-1"><a class="heading-anchor" href="#step-by-step-implementation">Step-by-Step Implementation</a></h2>
+<h3 id="1-validate-and-normalise-inbound-payloads" tabindex="-1"><a class="heading-anchor" href="#1-validate-and-normalise-inbound-payloads">1. Validate and Normalise Inbound Payloads</a></h3>
+<p>Webhook sources rarely emit uniform geometry. Before any comparison, enforce a single CRS, close polygon rings, and repair invalid topology. This is the same normalisation foundation described in <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a>.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>ops <span class="token keyword">import</span> transform
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>validation <span class="token keyword">import</span> make_valid
+<span class="token keyword">import</span> pyproj
+<span class="token keyword">from</span> pydantic <span class="token keyword">import</span> BaseModel<span class="token punctuation">,</span> field_validator
+<span class="token keyword">from</span> typing <span class="token keyword">import</span> Any
+
+<span class="token keyword">class</span> <span class="token class-name">SpatialWebhookPayload</span><span class="token punctuation">(</span>BaseModel<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    event_id<span class="token punctuation">:</span> <span class="token builtin">str</span>
+    source_crs<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">=</span> <span class="token string">"EPSG:4326"</span>
+    geometry<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span>
+
+    <span class="token decorator annotation punctuation">@field_validator</span><span class="token punctuation">(</span><span class="token string">"geometry"</span><span class="token punctuation">)</span>
+    <span class="token decorator annotation punctuation">@classmethod</span>
+    <span class="token keyword">def</span> <span class="token function">geometry_must_be_valid_geojson</span><span class="token punctuation">(</span>cls<span class="token punctuation">,</span> v<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">:</span>
+        allowed <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"MultiPoint"</span><span class="token punctuation">,</span> <span class="token string">"LineString"</span><span class="token punctuation">,</span> <span class="token string">"MultiLineString"</span><span class="token punctuation">,</span>
+                   <span class="token string">"Polygon"</span><span class="token punctuation">,</span> <span class="token string">"MultiPolygon"</span><span class="token punctuation">,</span> <span class="token string">"GeometryCollection"</span><span class="token punctuation">}</span>
+        <span class="token keyword">if</span> v<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"type"</span><span class="token punctuation">)</span> <span class="token keyword">not</span> <span class="token keyword">in</span> allowed<span class="token punctuation">:</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Unsupported geometry type: </span><span class="token interpolation"><span class="token punctuation">{</span>v<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">'type'</span><span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> v
+
+
+TARGET_CRS <span class="token operator">=</span> <span class="token string">"EPSG:4326"</span>
+
+
+<span class="token keyword">def</span> <span class="token function">normalize_geometry</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> SpatialWebhookPayload<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Return a valid Shapely geometry normalised to EPSG:4326.
+    Projects from the payload's declared source CRS when needed.
+    """</span>
+    geom <span class="token operator">=</span> shape<span class="token punctuation">(</span>payload<span class="token punctuation">.</span>geometry<span class="token punctuation">)</span>
+
+    <span class="token comment"># Repair self-intersections and unclosed rings before any predicate</span>
+    <span class="token keyword">if</span> <span class="token keyword">not</span> geom<span class="token punctuation">.</span>is_valid<span class="token punctuation">:</span>
+        geom <span class="token operator">=</span> make_valid<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>
+
+    <span class="token keyword">if</span> payload<span class="token punctuation">.</span>source_crs <span class="token operator">!=</span> TARGET_CRS<span class="token punctuation">:</span>
+        transformer <span class="token operator">=</span> pyproj<span class="token punctuation">.</span>Transformer<span class="token punctuation">.</span>from_crs<span class="token punctuation">(</span>
+            payload<span class="token punctuation">.</span>source_crs<span class="token punctuation">,</span> TARGET_CRS<span class="token punctuation">,</span> always_xy<span class="token operator">=</span><span class="token boolean">True</span>
+        <span class="token punctuation">)</span>
+        geom <span class="token operator">=</span> transform<span class="token punctuation">(</span>transformer<span class="token punctuation">.</span>transform<span class="token punctuation">,</span> geom<span class="token punctuation">)</span>
+
+    <span class="token keyword">return</span> geom
+</code></pre>
+</div>
+<p>Always call <code>make_valid</code> before storing or comparing; Shapely 2.x raises <code>TopologicalError</code> on predicates against invalid geometries rather than silently returning incorrect results.</p>
+<h3 id="2-generate-a-grid-aligned-spatial-cache-key" tabindex="-1"><a class="heading-anchor" href="#2-generate-a-grid-aligned-spatial-cache-key">2. Generate a Grid-Aligned Spatial Cache Key</a></h3>
+<p>Raw coordinate strings are unsuitable as cache keys because floating-point variance produces distinct strings for the same physical location. Round the bounding box centroid to a fixed grid precision and combine it with a temporal window bucket. This approach aligns with the broader key-derivation patterns in <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a>.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> hashlib
+<span class="token keyword">from</span> datetime <span class="token keyword">import</span> datetime<span class="token punctuation">,</span> timezone
+
+<span class="token comment"># Spatial grid precision in decimal degrees.</span>
+<span class="token comment"># Precision 4 = ~11 m grid cell; precision 3 = ~111 m grid cell.</span>
+GRID_PRECISION <span class="token operator">=</span> <span class="token number">4</span>
+<span class="token comment"># Temporal window width in minutes (events within the same window share a bucket).</span>
+WINDOW_MINUTES <span class="token operator">=</span> <span class="token number">60</span>
+
+
+<span class="token keyword">def</span> <span class="token function">spatial_cache_key</span><span class="token punctuation">(</span>geom<span class="token punctuation">,</span> event_time<span class="token punctuation">:</span> datetime <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Derive a deterministic cache key from a geometry's centroid grid cell
+    and an hourly time bucket.
+    """</span>
+    <span class="token keyword">if</span> event_time <span class="token keyword">is</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        event_time <span class="token operator">=</span> datetime<span class="token punctuation">.</span>now<span class="token punctuation">(</span>tz<span class="token operator">=</span>timezone<span class="token punctuation">.</span>utc<span class="token punctuation">)</span>
+
+    centroid <span class="token operator">=</span> geom<span class="token punctuation">.</span>centroid
+    grid_lat <span class="token operator">=</span> <span class="token builtin">round</span><span class="token punctuation">(</span>centroid<span class="token punctuation">.</span>y<span class="token punctuation">,</span> GRID_PRECISION<span class="token punctuation">)</span>
+    grid_lon <span class="token operator">=</span> <span class="token builtin">round</span><span class="token punctuation">(</span>centroid<span class="token punctuation">.</span>x<span class="token punctuation">,</span> GRID_PRECISION<span class="token punctuation">)</span>
+    <span class="token comment"># Bucket by hour (or subdivide by WINDOW_MINUTES for sub-hour windows)</span>
+    bucket <span class="token operator">=</span> event_time<span class="token punctuation">.</span>strftime<span class="token punctuation">(</span><span class="token string">"%Y%m%dT%H"</span><span class="token punctuation">)</span>
+
+    raw <span class="token operator">=</span> <span class="token string-interpolation"><span class="token string">f"</span><span class="token interpolation"><span class="token punctuation">{</span>grid_lat<span class="token punctuation">}</span></span><span class="token string">:</span><span class="token interpolation"><span class="token punctuation">{</span>grid_lon<span class="token punctuation">}</span></span><span class="token string">:</span><span class="token interpolation"><span class="token punctuation">{</span>bucket<span class="token punctuation">}</span></span><span class="token string">"</span></span>
+    <span class="token keyword">return</span> <span class="token string">"sodp:"</span> <span class="token operator">+</span> hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">(</span>raw<span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">[</span><span class="token punctuation">:</span><span class="token number">20</span><span class="token punctuation">]</span>
+</code></pre>
+</div>
+<p>Grid-aligned keys ensure that geometries falling in the same spatial cell and time window share a cache namespace, enabling fast overlap lookup without scanning the full event history.</p>
+<h3 id="3-cache-backed-fast-path-check" tabindex="-1"><a class="heading-anchor" href="#3-cache-backed-fast-path-check">3. Cache-Backed Fast-Path Check</a></h3>
+<p>Perform a Redis SET NX before loading any geometry objects. The vast majority of webhook retries are caught here, keeping the spatial predicate engine off the critical path. The implementation mirrors the atomic locking approach described in <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks</a>.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> redis<span class="token punctuation">.</span>asyncio <span class="token keyword">as</span> aioredis
+
+CACHE_TTL_SECONDS <span class="token operator">=</span> <span class="token number">3600</span>  <span class="token comment"># 1-hour deduplication window</span>
+
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">is_duplicate_via_cache</span><span class="token punctuation">(</span>
+    client<span class="token punctuation">:</span> aioredis<span class="token punctuation">.</span>Redis<span class="token punctuation">,</span>
+    key<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Atomically claim the cache key.
+    Returns True  → key already existed  → event is a duplicate.
+    Returns False → key was absent       → event may be novel (proceed to predicate).
+    """</span>
+    <span class="token comment"># SET key value NX EX ttl — atomic; no race between GET and SET</span>
+    acquired <span class="token operator">=</span> <span class="token keyword">await</span> client<span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">(</span>key<span class="token punctuation">,</span> <span class="token string">"1"</span><span class="token punctuation">,</span> nx<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span> ex<span class="token operator">=</span>CACHE_TTL_SECONDS<span class="token punctuation">)</span>
+    <span class="token keyword">return</span> <span class="token keyword">not</span> <span class="token builtin">bool</span><span class="token punctuation">(</span>acquired<span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>Use <code>nx=True</code> (SET NX) rather than a GET + SET sequence to prevent a TOCTOU race where two concurrent retries both pass the cache check and both reach the expensive predicate layer.</p>
+<h3 id="4-spatial-predicate-evaluation-with-area-threshold" tabindex="-1"><a class="heading-anchor" href="#4-spatial-predicate-evaluation-with-area-threshold">4. Spatial Predicate Evaluation with Area Threshold</a></h3>
+<p>For cache misses, retrieve candidate geometries from the recent event store and evaluate overlap with Shapely. Use an R-tree (<code>STRtree</code>) to avoid pairwise O(n²) comparisons — the R-tree filters candidates to those whose bounding boxes intersect before the exact predicate runs.</p>
+<p>The decision itself is a single ratio: project both shapes to an equal-area CRS, divide the intersection area by the incoming geometry’s area, and compare against the threshold. The diagram below shows why a near-identical retry is suppressed while a genuinely shifted footprint passes through.</p>
+<svg viewBox="0 0 720 250" role="img" aria-label="Equal-area overlap ratio comparison: a near-duplicate geometry above threshold is suppressed, a shifted geometry below threshold passes" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;height:auto;font-family:inherit;display:block;margin:1.5rem auto;">
+  <title>Overlap Ratio Decides Suppression</title>
+  <desc>Two scenarios. On the left, an incoming polygon overlaps a stored polygon by 0.91 of its area, exceeding the 0.85 threshold, so the event is suppressed. On the right, the incoming polygon overlaps by only 0.42, below the threshold, so the event is forwarded as a novel spatial update.</desc>
+  <!-- Left scenario: high overlap, suppressed -->
+  <text x="170" y="28" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Near-duplicate retry</text>
+  <!-- stored polygon -->
+  <rect x="70" y="48" width="150" height="110" rx="4" fill="currentColor" opacity="0.12" stroke="currentColor" stroke-width="1.4"/>
+  <!-- incoming polygon, slightly shifted -->
+  <rect x="84" y="58" width="150" height="110" rx="4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="5,3" opacity="0.85"/>
+  <text x="170" y="192" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">overlap ratio = 0.91</text>
+  <text x="170" y="210" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor">&#8805; 0.85 &#8594; suppress</text>
+  <!-- divider -->
+  <line x1="360" y1="40" x2="360" y2="220" stroke="currentColor" stroke-width="1" opacity="0.2"/>
+  <!-- Right scenario: low overlap, forwarded -->
+  <text x="540" y="28" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Shifted footprint</text>
+  <rect x="430" y="48" width="130" height="110" rx="4" fill="currentColor" opacity="0.12" stroke="currentColor" stroke-width="1.4"/>
+  <rect x="520" y="58" width="130" height="110" rx="4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="5,3" opacity="0.85"/>
+  <text x="540" y="192" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">overlap ratio = 0.42</text>
+  <text x="540" y="210" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor">&lt; 0.85 &#8594; forward</text>
+  <!-- legend -->
+  <rect x="70" y="232" width="16" height="10" fill="currentColor" opacity="0.12" stroke="currentColor" stroke-width="1"/>
+  <text x="94" y="241" font-size="10" fill="currentColor" opacity="0.7">stored geometry</text>
+  <rect x="240" y="232" width="16" height="10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="4,2"/>
+  <text x="264" y="241" font-size="10" fill="currentColor" opacity="0.7">incoming geometry</text>
+</svg>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> shapely<span class="token punctuation">.</span>strtree <span class="token keyword">import</span> STRtree
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry<span class="token punctuation">.</span>base <span class="token keyword">import</span> BaseGeometry
+<span class="token keyword">import</span> pyproj
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>ops <span class="token keyword">import</span> transform <span class="token keyword">as</span> shp_transform
+
+<span class="token comment"># Minimum fractional area overlap to treat two geometries as duplicates.</span>
+OVERLAP_THRESHOLD <span class="token operator">=</span> <span class="token number">0.85</span>
+
+<span class="token comment"># Project to equal-area CRS for meaningful area ratios.</span>
+<span class="token comment"># EPSG:6933 covers the full globe; swap for a local UTM zone for higher accuracy.</span>
+_AREA_CRS_TRANSFORMER <span class="token operator">=</span> pyproj<span class="token punctuation">.</span>Transformer<span class="token punctuation">.</span>from_crs<span class="token punctuation">(</span>
+    <span class="token string">"EPSG:4326"</span><span class="token punctuation">,</span> <span class="token string">"EPSG:6933"</span><span class="token punctuation">,</span> always_xy<span class="token operator">=</span><span class="token boolean">True</span>
+<span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">_project_for_area</span><span class="token punctuation">(</span>geom<span class="token punctuation">:</span> BaseGeometry<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> BaseGeometry<span class="token punctuation">:</span>
+    <span class="token keyword">return</span> shp_transform<span class="token punctuation">(</span>_AREA_CRS_TRANSFORMER<span class="token punctuation">.</span>transform<span class="token punctuation">,</span> geom<span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">is_duplicate_via_overlap</span><span class="token punctuation">(</span>
+    new_geom<span class="token punctuation">:</span> BaseGeometry<span class="token punctuation">,</span>
+    candidates<span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">[</span>BaseGeometry<span class="token punctuation">]</span><span class="token punctuation">,</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Return True if any candidate overlaps new_geom by >= OVERLAP_THRESHOLD.
+    All geometries must be in EPSG:4326; area comparison projects to EPSG:6933.
+    """</span>
+    <span class="token keyword">if</span> <span class="token keyword">not</span> candidates<span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token boolean">False</span>
+
+    tree <span class="token operator">=</span> STRtree<span class="token punctuation">(</span>candidates<span class="token punctuation">)</span>
+    <span class="token comment"># R-tree pre-filter: only intersecting bounding boxes proceed to exact check</span>
+    hits <span class="token operator">=</span> tree<span class="token punctuation">.</span>query<span class="token punctuation">(</span>new_geom<span class="token punctuation">,</span> predicate<span class="token operator">=</span><span class="token string">"intersects"</span><span class="token punctuation">)</span>
+
+    new_geom_area <span class="token operator">=</span> _project_for_area<span class="token punctuation">(</span>new_geom<span class="token punctuation">)</span><span class="token punctuation">.</span>area
+    <span class="token keyword">if</span> new_geom_area <span class="token operator">==</span> <span class="token number">0</span><span class="token punctuation">:</span>
+        <span class="token comment"># Point or line — fall back to exact-contains check</span>
+        <span class="token keyword">return</span> <span class="token builtin">any</span><span class="token punctuation">(</span>candidates<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>contains<span class="token punctuation">(</span>new_geom<span class="token punctuation">)</span> <span class="token keyword">for</span> i <span class="token keyword">in</span> hits<span class="token punctuation">)</span>
+
+    <span class="token keyword">for</span> idx <span class="token keyword">in</span> hits<span class="token punctuation">:</span>
+        candidate <span class="token operator">=</span> candidates<span class="token punctuation">[</span>idx<span class="token punctuation">]</span>
+        intersection <span class="token operator">=</span> new_geom<span class="token punctuation">.</span>intersection<span class="token punctuation">(</span>candidate<span class="token punctuation">)</span>
+        <span class="token keyword">if</span> intersection<span class="token punctuation">.</span>is_empty<span class="token punctuation">:</span>
+            <span class="token keyword">continue</span>
+        overlap_ratio <span class="token operator">=</span> _project_for_area<span class="token punctuation">(</span>intersection<span class="token punctuation">)</span><span class="token punctuation">.</span>area <span class="token operator">/</span> new_geom_area
+        <span class="token keyword">if</span> overlap_ratio <span class="token operator">>=</span> OVERLAP_THRESHOLD<span class="token punctuation">:</span>
+            <span class="token keyword">return</span> <span class="token boolean">True</span>
+
+    <span class="token keyword">return</span> <span class="token boolean">False</span>
+</code></pre>
+</div>
+<p>Never compute area ratios in EPSG:4326 — degree-squared values are not proportional to real-world area, particularly at latitudes above 45°. Always project to an equal-area CRS first.</p>
+<h3 id="5-compose-the-full-async-pipeline" tabindex="-1"><a class="heading-anchor" href="#5-compose-the-full-async-pipeline">5. Compose the Full Async Pipeline</a></h3>
+<p>Wire the layers together in a FastAPI endpoint. The webhook receiver returns 200 immediately after accepting the event; the deduplication logic runs in a background task.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> fastapi <span class="token keyword">import</span> FastAPI<span class="token punctuation">,</span> Request<span class="token punctuation">,</span> BackgroundTasks<span class="token punctuation">,</span> HTTPException
+<span class="token keyword">from</span> fastapi<span class="token punctuation">.</span>responses <span class="token keyword">import</span> JSONResponse
+<span class="token keyword">import</span> redis<span class="token punctuation">.</span>asyncio <span class="token keyword">as</span> aioredis
+<span class="token keyword">from</span> contextlib <span class="token keyword">import</span> asynccontextmanager
+<span class="token keyword">import</span> json
+
+app <span class="token operator">=</span> FastAPI<span class="token punctuation">(</span><span class="token punctuation">)</span>
+redis_client<span class="token punctuation">:</span> aioredis<span class="token punctuation">.</span>Redis <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span>
+
+<span class="token decorator annotation punctuation">@asynccontextmanager</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">lifespan</span><span class="token punctuation">(</span>app_<span class="token punctuation">:</span> FastAPI<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">global</span> redis_client
+    redis_client <span class="token operator">=</span> aioredis<span class="token punctuation">.</span>from_url<span class="token punctuation">(</span><span class="token string">"redis://localhost:6379"</span><span class="token punctuation">,</span> decode_responses<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span>
+    <span class="token keyword">yield</span>
+    <span class="token keyword">await</span> redis_client<span class="token punctuation">.</span>aclose<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+app <span class="token operator">=</span> FastAPI<span class="token punctuation">(</span>lifespan<span class="token operator">=</span>lifespan<span class="token punctuation">)</span>
+
+<span class="token comment"># In production, load recent event geometries from a PostGIS query or</span>
+<span class="token comment"># a shared in-memory spatial index refreshed by a background worker.</span>
+recent_geometries<span class="token punctuation">:</span> <span class="token builtin">list</span> <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">process_spatial_event</span><span class="token punctuation">(</span>raw_body<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    payload_dict <span class="token operator">=</span> json<span class="token punctuation">.</span>loads<span class="token punctuation">(</span>raw_body<span class="token punctuation">)</span>
+    <span class="token keyword">try</span><span class="token punctuation">:</span>
+        payload <span class="token operator">=</span> SpatialWebhookPayload<span class="token punctuation">(</span><span class="token operator">**</span>payload_dict<span class="token punctuation">)</span>
+    <span class="token keyword">except</span> Exception <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+        <span class="token comment"># Schema validation failure — route to DLQ</span>
+        <span class="token keyword">print</span><span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"[DLQ] invalid payload: </span><span class="token interpolation"><span class="token punctuation">{</span>exc<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span>
+
+    geom <span class="token operator">=</span> normalize_geometry<span class="token punctuation">(</span>payload<span class="token punctuation">)</span>
+    key <span class="token operator">=</span> spatial_cache_key<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>
+
+    <span class="token keyword">if</span> <span class="token keyword">await</span> is_duplicate_via_cache<span class="token punctuation">(</span>redis_client<span class="token punctuation">,</span> key<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">print</span><span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"[DEDUP] cache hit: </span><span class="token interpolation"><span class="token punctuation">{</span>key<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span>
+
+    <span class="token keyword">if</span> is_duplicate_via_overlap<span class="token punctuation">(</span>geom<span class="token punctuation">,</span> recent_geometries<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">print</span><span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"[DEDUP] overlap threshold exceeded for event </span><span class="token interpolation"><span class="token punctuation">{</span>payload<span class="token punctuation">.</span>event_id<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+        <span class="token comment"># Persist audit record: original event_id, overlap ratio, canonical event ref</span>
+        <span class="token keyword">return</span>
+
+    <span class="token comment"># Novel event — forward to downstream processor</span>
+    recent_geometries<span class="token punctuation">.</span>append<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>  <span class="token comment"># update in-memory index</span>
+    <span class="token keyword">print</span><span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"[PUBLISH] forwarding unique event </span><span class="token interpolation"><span class="token punctuation">{</span>payload<span class="token punctuation">.</span>event_id<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+
+
+<span class="token decorator annotation punctuation">@app<span class="token punctuation">.</span>post</span><span class="token punctuation">(</span><span class="token string">"/webhook/spatial"</span><span class="token punctuation">)</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">receive_spatial_event</span><span class="token punctuation">(</span>request<span class="token punctuation">:</span> Request<span class="token punctuation">,</span> background_tasks<span class="token punctuation">:</span> BackgroundTasks<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    body <span class="token operator">=</span> <span class="token keyword">await</span> request<span class="token punctuation">.</span>body<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">if</span> <span class="token keyword">not</span> body<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> HTTPException<span class="token punctuation">(</span>status_code<span class="token operator">=</span><span class="token number">400</span><span class="token punctuation">,</span> detail<span class="token operator">=</span><span class="token string">"Empty body"</span><span class="token punctuation">)</span>
+    background_tasks<span class="token punctuation">.</span>add_task<span class="token punctuation">(</span>process_spatial_event<span class="token punctuation">,</span> body<span class="token punctuation">)</span>
+    <span class="token keyword">return</span> JSONResponse<span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"accepted"</span><span class="token punctuation">}</span><span class="token punctuation">,</span> status_code<span class="token operator">=</span><span class="token number">200</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<hr>
+<h2 id="spatial-validation-and-error-handling" tabindex="-1"><a class="heading-anchor" href="#spatial-validation-and-error-handling">Spatial Validation and Error Handling</a></h2>
+<p>Wrap the normalisation step in explicit error handling to prevent a single malformed payload from stalling the pipeline:</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> shapely<span class="token punctuation">.</span>errors <span class="token keyword">import</span> TopologicalError<span class="token punctuation">,</span> GEOSException
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">safe_normalize</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> SpatialWebhookPayload<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">try</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> normalize_geometry<span class="token punctuation">(</span>payload<span class="token punctuation">)</span>
+    <span class="token keyword">except</span> <span class="token punctuation">(</span>TopologicalError<span class="token punctuation">,</span> GEOSException<span class="token punctuation">,</span> ValueError<span class="token punctuation">)</span> <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+        <span class="token comment"># Route to dead-letter queue with original payload and error context</span>
+        <span class="token keyword">print</span><span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"[DLQ] geometry error for event </span><span class="token interpolation"><span class="token punctuation">{</span>payload<span class="token punctuation">.</span>event_id<span class="token punctuation">}</span></span><span class="token string">: </span><span class="token interpolation"><span class="token punctuation">{</span>exc<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> <span class="token boolean">None</span>
+</code></pre>
+</div>
+<p>Apply Pydantic validation at the HTTP boundary (as shown in <code>SpatialWebhookPayload</code>) and a second topology check inside the worker after normalisation. This two-stage approach catches both malformed JSON and geometrically invalid shapes that pass JSON schema validation.</p>
+<p>For <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">async processing of heavy geometries</a>, offload normalisation of complex multi-polygon payloads to a dedicated worker pool to prevent a large geometry from monopolising the async event loop. When upstream sources send conflicting representations of the same region, consult the <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies</a> patterns for merge and escalation policies.</p>
+<hr>
+<h2 id="retry-backoff-and-delivery-guarantees" tabindex="-1"><a class="heading-anchor" href="#retry-backoff-and-delivery-guarantees">Retry, Backoff, and Delivery Guarantees</a></h2>
+<p>The spatial deduplication layer is designed for <strong>at-least-once delivery</strong> from the broker side combined with <strong>exactly-once processing</strong> enforced by the cache. At high throughput, a few edge cases require explicit handling:</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">import</span> random
+
+MAX_RETRIES <span class="token operator">=</span> <span class="token number">4</span>
+BASE_DELAY_SECONDS <span class="token operator">=</span> <span class="token number">0.25</span>
+
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">publish_with_backoff</span><span class="token punctuation">(</span>event_id<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> payload<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Retry forwarding a novel event to the downstream processor with
+    exponential backoff and full jitter to avoid retry storms.
+    """</span>
+    <span class="token keyword">for</span> attempt <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span>MAX_RETRIES<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">try</span><span class="token punctuation">:</span>
+            <span class="token comment"># Replace with your broker client (aiokafka, aio-pika, etc.)</span>
+            <span class="token keyword">await</span> downstream_publish<span class="token punctuation">(</span>event_id<span class="token punctuation">,</span> payload<span class="token punctuation">)</span>
+            <span class="token keyword">return</span>
+        <span class="token keyword">except</span> Exception <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+            <span class="token keyword">if</span> attempt <span class="token operator">==</span> MAX_RETRIES <span class="token operator">-</span> <span class="token number">1</span><span class="token punctuation">:</span>
+                <span class="token keyword">print</span><span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"[DLQ] exhausted retries for </span><span class="token interpolation"><span class="token punctuation">{</span>event_id<span class="token punctuation">}</span></span><span class="token string">: </span><span class="token interpolation"><span class="token punctuation">{</span>exc<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+                <span class="token keyword">await</span> send_to_dlq<span class="token punctuation">(</span>event_id<span class="token punctuation">,</span> payload<span class="token punctuation">,</span> reason<span class="token operator">=</span><span class="token builtin">str</span><span class="token punctuation">(</span>exc<span class="token punctuation">)</span><span class="token punctuation">)</span>
+                <span class="token keyword">return</span>
+            delay <span class="token operator">=</span> BASE_DELAY_SECONDS <span class="token operator">*</span> <span class="token punctuation">(</span><span class="token number">2</span> <span class="token operator">**</span> attempt<span class="token punctuation">)</span> <span class="token operator">*</span> random<span class="token punctuation">.</span>random<span class="token punctuation">(</span><span class="token punctuation">)</span>
+            <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span>delay<span class="token punctuation">)</span>
+
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">downstream_publish</span><span class="token punctuation">(</span>event_id<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> payload<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token comment"># Placeholder for aiokafka / aio-pika / SQS publish call</span>
+    <span class="token keyword">pass</span>
+
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">send_to_dlq</span><span class="token punctuation">(</span>event_id<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> payload<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">,</span> reason<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token comment"># Persist to append-only DLQ with geometry snapshot and reason code</span>
+    <span class="token keyword">pass</span>
+</code></pre>
+</div>
+<p><strong>At-least-once vs. exactly-once tradeoffs:</strong> The Redis SET NX provides exactly-once semantics within the cache TTL window. Events that arrive after TTL expiry are treated as novel — intentional, because a geometry change 25 hours later likely represents a genuine spatial update. For stricter exactly-once guarantees across longer windows, persist the spatial key to a durable store (PostgreSQL with a GiST index on the geometry column) rather than relying solely on Redis TTL. The broader delivery guarantee patterns are covered in <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/">Implementing At-Least-Once Delivery for GIS Webhooks</a>.</p>
+<hr>
+<h2 id="conflict-resolution-and-tolerance-thresholds" tabindex="-1"><a class="heading-anchor" href="#conflict-resolution-and-tolerance-thresholds">Conflict Resolution and Tolerance Thresholds</a></h2>
+<p>Spatial overlap evaluation introduces edge cases that require explicit, documented resolution policies:</p>
+<p><strong>Partial overlaps below threshold:</strong> Events whose intersection falls below <code>OVERLAP_THRESHOLD</code> are treated as distinct spatial updates even if they share significant area. Keep the threshold configurable per event source type — GPS tracks need a lower threshold (0.70–0.75) than static delivery zone polygons (0.90+).</p>
+<p><strong>Multi-polygon payloads:</strong> Normalise complex geometries using <code>shapely.ops.unary_union</code> before evaluation. Fragmented multi-part geometries can produce misleading overlap ratios when evaluated part-by-part.</p>
+<p><strong>Temporal decay:</strong> Sliding-window deduplication prevents over-suppression. An event overlapping with a 48-hour-old geometry may represent a legitimate state change. Set TTL values that reflect the expected update frequency for each event source.</p>
+<p><strong>Area calculations in geographic CRS:</strong> Ratios computed in EPSG:4326 are mathematically invalid — always project to EPSG:6933 or a local UTM zone before <code>intersection.area / new_geom.area</code>. Document the CRS used in your runbooks so threshold values can be recalibrated consistently.</p>
+<hr>
+<h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
+<p>Run this test harness after deployment to confirm the pipeline correctly classifies overlapping and non-overlapping events:</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">import</span> pytest
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> Polygon<span class="token punctuation">,</span> mapping
+
+<span class="token comment"># A base polygon covering a 0.01° × 0.01° cell</span>
+BASE <span class="token operator">=</span> Polygon<span class="token punctuation">(</span><span class="token punctuation">[</span><span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token number">0.01</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token number">0.01</span><span class="token punctuation">,</span> <span class="token number">0.01</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">0.01</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">)</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+<span class="token comment"># 90 % overlap — should be suppressed</span>
+NEAR_DUPE <span class="token operator">=</span> Polygon<span class="token punctuation">(</span><span class="token punctuation">[</span><span class="token punctuation">(</span><span class="token number">0.001</span><span class="token punctuation">,</span> <span class="token number">0.001</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token number">0.011</span><span class="token punctuation">,</span> <span class="token number">0.001</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token number">0.011</span><span class="token punctuation">,</span> <span class="token number">0.011</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token number">0.001</span><span class="token punctuation">,</span> <span class="token number">0.011</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token number">0.001</span><span class="token punctuation">,</span> <span class="token number">0.001</span><span class="token punctuation">)</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+<span class="token comment"># Distant polygon — should be forwarded</span>
+DISTANT <span class="token operator">=</span> Polygon<span class="token punctuation">(</span><span class="token punctuation">[</span><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token number">1.01</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token number">1.01</span><span class="token punctuation">,</span> <span class="token number">1.01</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">,</span> <span class="token number">1.01</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+
+
+<span class="token decorator annotation punctuation">@pytest<span class="token punctuation">.</span>mark<span class="token punctuation">.</span>asyncio</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">test_overlap_suppression</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Events with >= 85 % area overlap are classified as duplicates."""</span>
+    result <span class="token operator">=</span> is_duplicate_via_overlap<span class="token punctuation">(</span>NEAR_DUPE<span class="token punctuation">,</span> <span class="token punctuation">[</span>BASE<span class="token punctuation">]</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> result <span class="token keyword">is</span> <span class="token boolean">True</span><span class="token punctuation">,</span> <span class="token string">"Near-duplicate polygon should be suppressed"</span>
+
+
+<span class="token decorator annotation punctuation">@pytest<span class="token punctuation">.</span>mark<span class="token punctuation">.</span>asyncio</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">test_distant_event_passes</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Events with no spatial intersection are classified as novel."""</span>
+    result <span class="token operator">=</span> is_duplicate_via_overlap<span class="token punctuation">(</span>DISTANT<span class="token punctuation">,</span> <span class="token punctuation">[</span>BASE<span class="token punctuation">]</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> result <span class="token keyword">is</span> <span class="token boolean">False</span><span class="token punctuation">,</span> <span class="token string">"Distant polygon should be forwarded"</span>
+
+
+<span class="token decorator annotation punctuation">@pytest<span class="token punctuation">.</span>mark<span class="token punctuation">.</span>asyncio</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">test_cache_deduplication</span><span class="token punctuation">(</span>monkeypatch<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Second call with the same key returns duplicate=True."""</span>
+    seen <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token punctuation">}</span>
+
+    <span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">fake_set</span><span class="token punctuation">(</span>key<span class="token punctuation">,</span> val<span class="token punctuation">,</span> <span class="token operator">*</span><span class="token punctuation">,</span> nx<span class="token punctuation">,</span> ex<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">if</span> key <span class="token keyword">in</span> seen<span class="token punctuation">:</span>
+            <span class="token keyword">return</span> <span class="token boolean">None</span>  <span class="token comment"># NX fails — key exists</span>
+        seen<span class="token punctuation">[</span>key<span class="token punctuation">]</span> <span class="token operator">=</span> val
+        <span class="token keyword">return</span> <span class="token boolean">True</span>
+
+    <span class="token keyword">class</span> <span class="token class-name">FakeRedis</span><span class="token punctuation">:</span>
+        <span class="token builtin">set</span> <span class="token operator">=</span> fake_set
+
+    client <span class="token operator">=</span> FakeRedis<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    key <span class="token operator">=</span> <span class="token string">"sodp:test-key-abc123"</span>
+    first <span class="token operator">=</span> <span class="token keyword">await</span> is_duplicate_via_cache<span class="token punctuation">(</span>client<span class="token punctuation">,</span> key<span class="token punctuation">)</span>
+    second <span class="token operator">=</span> <span class="token keyword">await</span> is_duplicate_via_cache<span class="token punctuation">(</span>client<span class="token punctuation">,</span> key<span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> first <span class="token keyword">is</span> <span class="token boolean">False</span><span class="token punctuation">,</span> <span class="token string">"First call should not be a duplicate"</span>
+    <span class="token keyword">assert</span> second <span class="token keyword">is</span> <span class="token boolean">True</span><span class="token punctuation">,</span> <span class="token string">"Second call with same key should be a duplicate"</span>
+</code></pre>
+</div>
+<hr>
+<h2 id="troubleshooting" tabindex="-1"><a class="heading-anchor" href="#troubleshooting">Troubleshooting</a></h2>
+<div style="overflow-x:auto;">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely Spatial Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Identical events pass through deduplication</td>
+<td>Grid precision too coarse; centroids hash to different buckets</td>
+<td>Increase <code>GRID_PRECISION</code> from 3 to 4–5; verify centroid calculation on the normalised geometry, not the raw input</td>
+</tr>
+<tr>
+<td>Legitimate updates suppressed</td>
+<td>Overlap threshold too high for the source’s GPS jitter</td>
+<td>Lower <code>OVERLAP_THRESHOLD</code> per source type; add a temporal decay check before suppression</td>
+</tr>
+<tr>
+<td>Area overlap ratios always 0</td>
+<td>Geometries in different CRS; intersection produces empty geometry</td>
+<td>Confirm all geometries are reprojected to EPSG:4326 before predicate; call <code>make_valid</code> post-transform</td>
+</tr>
+<tr>
+<td><code>TopologicalError</code> on <code>.intersection()</code></td>
+<td>Invalid topology not caught at ingress</td>
+<td>Call <code>make_valid(geom)</code> inside <code>normalize_geometry</code>; add a post-transform validity assertion</td>
+</tr>
+<tr>
+<td>Redis memory grows unbounded</td>
+<td>TTL not applied; key namespace collision</td>
+<td>Ensure <code>ex=CACHE_TTL_SECONDS</code> is passed to every SET; prefix keys with <code>sodp:</code> to isolate the namespace</td>
+</tr>
+<tr>
+<td>STRtree queries slow at scale</td>
+<td>Candidates list rebuilt per request</td>
+<td>Build the R-tree once per worker, refresh on a background schedule, and pass it as a shared dependency</td>
+</tr>
+<tr>
+<td>Duplicate events in audit log</td>
+<td>Cache TTL expired before retry arrived</td>
+<td>Increase TTL or switch to a durable store (PostgreSQL) for long-window deduplication requirements</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<hr>
+<h2 id="faq" tabindex="-1"><a class="heading-anchor" href="#faq">FAQ</a></h2>
+<details class="faq">
+<summary><strong>Why does exact-hash deduplication fail for geospatial payloads?</strong></summary>
+<p>Coordinate precision drift, CRS transformations, and automatic topology normalization by GIS libraries all change the raw bytes of a geometry without changing its spatial footprint. A polygon serialised at 6-decimal precision by one source may arrive at 8 decimal places after a reprojection step in a middleware layer, producing a completely different SHA-256 hash despite representing the same physical boundary. Hash-based filters therefore treat functionally identical shapes as distinct events, either duplicating processing or blocking legitimate updates.</p>
+</details>
+<details class="faq">
+<summary><strong>What overlap threshold should I use in production?</strong></summary>
+<p>Start at 0.85 (85 % area intersection) and measure false-positive suppression rates against a labelled sample of your real event stream before promoting to production. IoT telemetry with GPS drift typically needs a lower threshold — 0.70 to 0.75 — while static administrative boundary updates can safely use 0.90 or higher. Store the threshold in configuration, not code, so it can be tuned per event source without a deployment.</p>
+</details>
+<details class="faq">
+<summary><strong>How do I avoid incorrect area ratios?</strong></summary>
+<p>Always project both geometries to an equal-area CRS — EPSG:6933 (World Equal Area) covers the full globe; a local UTM zone gives higher accuracy within a constrained region — before computing <code>intersection.area / new_geom.area</code>. In EPSG:4326, the unit is degrees squared, which is not proportional to real-world area and produces ratios that vary by latitude. A 0.85 threshold applied in geographic coordinates could suppress events in equatorial regions while allowing duplicates at polar latitudes.</p>
+</details>
+<details class="faq">
+<summary><strong>Can I use PostGIS instead of Shapely for the overlap check?</strong></summary>
+<p>Yes. <code>ST_Intersects(geom_a, geom_b)</code> combined with <code>ST_Area(ST_Intersection(geom_a, geom_b)) / ST_Area(geom_a)</code> expresses the same predicate inside the database, where a GiST index on the geometry column accelerates the spatial filter automatically. The Python layer then only needs to interpret the boolean result. PostGIS is the right choice when candidates are already stored in PostgreSQL and you want to avoid loading full geometry objects into Python memory for every evaluation.</p>
+</details>
+<hr>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
+<ul>
+<li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a> — parent section covering the full idempotency strategy for geospatial event pipelines</li>
+<li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a> — deterministic idempotency key derivation from GeoJSON feature hashes</li>
+<li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks</a> — Redis data structures, atomic SET NX patterns, and cache invalidation strategies</li>
+<li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies</a> — merge and escalation policies when overlapping events represent genuine spatial state changes</li>
+<li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a> — normalising mixed-CRS payloads to a canonical projection before comparison</li>
+<li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a> — topology checks, ring orientation enforcement, and GeoJSON schema validation</li>
+</ul>
+
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        <div class="aside-card">
+          <h3>Related in this section</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          </ul>
+        </div>
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a></li>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a></li>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a></li>
+            <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring &amp; Observability for Spatial Pipelines</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</article>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="https://www.geospatialwebhook.com/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/">Home</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queues &amp; Retries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Queues &amp; Retries</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Monitoring</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging &amp; Tracing for Spatial Events</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <a class="site-footer__gh" href="https://github.com/geospatialwebhook" target="_blank" rel="noopener" aria-label="Geospatial Webhook on GitHub">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5Z"/></svg><span>GitHub</span>
+      </a>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+---
+permalink: /sitemap.xml
+eleventyExcludeFromCollections: true
+layout: null
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>{{ site.url }}/</loc>
+    <lastmod>{{ "" | isoDate }}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  {%- for item in collections.content %}
+  <url>
+    <loc>{{ site.url }}{{ item.url }}</loc>
+    <lastmod>{{ item.page.inputPath | fileDate }}</lastmod>
+    {%- if item.data.depth == 1 %}
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    {%- elif item.data.depth == 2 %}
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    {%- else %}
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+    {%- endif %}
+  </url>
+  {%- endfor %}
+</urlset>

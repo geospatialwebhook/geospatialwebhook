@@ -1,0 +1,781 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>Replaying Dead-Letter Spatial Events Safely · Geo Webhook</title>
+  <meta name="description" content="Replay spatial events out of a dead-letter queue without double-applying them: preserve the original idempotency key, re-validate geometry, rate-limit, and order by observation time."/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/replaying-dead-letter-spatial-events-safely/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360"/>
+  <meta name="color-scheme" content="light"/>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/replaying-dead-letter-spatial-events-safely/"/>
+  <meta property="og:title" content="Replaying Dead-Letter Spatial Events Safely"/>
+  <meta property="og:description" content="Replay spatial events out of a dead-letter queue without double-applying them: preserve the original idempotency key, re-validate geometry, rate-limit, and order by observation time."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Replaying Dead-Letter Spatial Events Safely"/>
+  <meta name="twitter:description" content="Replay spatial events out of a dead-letter queue without double-applying them: preserve the original idempotency key, re-validate geometry, rate-limit, and order by observation time."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },{ "@type": "ListItem", "position": 2, "name": "Queue Management Retry Delivery", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/" },{ "@type": "ListItem", "position": 3, "name": "Dead Letter Queues Spatial", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/" },{ "@type": "ListItem", "position": 4, "name": "Replaying Dead Letter Spatial Events Safely", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/replaying-dead-letter-spatial-events-safely/" }
+    ]
+  }
+  </script>
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/replaying-dead-letter-spatial-events-safely/#article",
+    "mainEntityOfPage": "https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/replaying-dead-letter-spatial-events-safely/",
+    "headline": "Replaying Dead-Letter Spatial Events Safely",
+    "description": "Replay spatial events out of a dead-letter queue without double-applying them: preserve the original idempotency key, re-validate geometry, rate-limit, and order by observation time.",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
+    "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
+    "image": "https://www.geospatialwebhook.com/og-image.png",
+    "url": "https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/replaying-dead-letter-spatial-events-safely/",
+    "articleSection": "Queue Management Retry Delivery",
+    "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
+  }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="https://www.geospatialwebhook.com/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="https://www.geospatialwebhook.com/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Queues &amp; Retries</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
+      </a>
+    </nav>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="https://www.geospatialwebhook.com/">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management Retry Delivery</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead Letter Queues Spatial</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">Replaying Dead Letter Spatial Events Safely</span>
+    </nav>
+
+    <h1 class="page__title">Replaying Dead-Letter Spatial Events Safely</h1>
+
+    <div class="page__layout">
+      <div class="markdown">
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Replaying Dead-Letter Spatial Events Safely",
+      "description": "Replay spatial events out of a dead-letter queue without double-applying them: preserve the original idempotency key, re-validate geometry with shapely.make_valid, rate-limit the drain, and order by observation time.",
+      "url": "https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/replaying-dead-letter-spatial-events-safely/",
+      "datePublished": "2025-05-01",
+      "dateModified": "2026-07-13",
+      "author": { "@type": "Organization", "name": "geospatialwebhook.com" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Queue Management, Retries & Delivery Guarantees", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/" },
+        { "@type": "ListItem", "position": 2, "name": "Dead-Letter Queues for Spatial Payloads", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/" },
+        { "@type": "ListItem", "position": 3, "name": "Replaying Dead-Letter Spatial Events Safely", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/replaying-dead-letter-spatial-events-safely/" }
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Replay Dead-Letter Spatial Events Safely",
+      "step": [
+        { "@type": "HowToStep", "position": 1, "name": "Preserve the original idempotency key", "text": "Read the idempotency key that was computed at first ingest from the DLQ envelope and re-submit under that exact key so the pipeline's deduplication gate absorbs any event that was already applied before it dead-lettered." },
+        { "@type": "HowToStep", "position": 2, "name": "Re-validate geometry before replay", "text": "Run each geometry through shapely.make_valid so payloads that dead-lettered on a topology error are repaired, and drop any that are still unrecoverable rather than re-poisoning the pipeline." },
+        { "@type": "HowToStep", "position": 3, "name": "Order by observation time", "text": "Sort the drained batch by the event's observation timestamp so older readings are replayed before newer ones and cannot overwrite fresher state that landed while the events sat in the DLQ." },
+        { "@type": "HowToStep", "position": 4, "name": "Rate-limit the drain", "text": "Emit re-submissions through a token-bucket or fixed-interval limiter so a large DLQ backlog does not become a self-inflicted load spike against the same consumers that were already struggling." }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Why must I reuse the original idempotency key instead of generating a new one on replay?",
+          "acceptedAnswer": { "@type": "Answer", "text": "An event can dead-letter after it was partially or fully applied — for example the write to PostGIS succeeded but an acknowledgement timed out. If you generate a fresh key on replay, the deduplication gate sees a brand-new event and applies it a second time, double-writing state. Reusing the key computed at first ingest lets the gate recognise the replay as a duplicate and absorb it." }
+        },
+        {
+          "@type": "Question",
+          "name": "Should I re-validate geometry on replay if it was already validated at ingest?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Many events dead-letter precisely because their geometry failed validation. Running shapely.make_valid on replay repairs self-intersections and other topology faults that can be fixed deterministically, so the repaired event now passes the same validation gate that rejected it. Events that are still invalid after make_valid should be dropped or escalated, never re-submitted in a loop." }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I stop a mass replay from overwhelming my consumers?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Rate-limit the replay with a token bucket or fixed inter-message delay tuned below the steady-state capacity of the downstream consumers, and drain in bounded batches rather than flushing the whole DLQ at once. The events already failed once; there is no benefit to replaying them faster than the pipeline can safely absorb." }
+        },
+        {
+          "@type": "Question",
+          "name": "Why replay in observation-time order rather than DLQ insertion order?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Events can sit in a DLQ for minutes or hours while newer events for the same feature flow through normally. Replaying a stale reading after fresher state has already been written would roll the feature backwards. Ordering the drained batch by observation timestamp ensures older readings are applied first and a last-write-wins consumer keeps the newest value." }
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>To replay spatial events out of a dead-letter queue safely, re-submit each event under the idempotency key it was assigned at first ingest so the pipeline’s deduplication gate absorbs anything already applied, re-validate the geometry with <code>shapely.make_valid</code> before replay, sort the drained batch into observation-time order, and emit through a rate limiter so the drain never becomes a self-inflicted load spike.</strong> A DLQ replay is not a fresh delivery — it is a controlled re-injection of events that already failed once, and every one of those four controls exists to stop the replay from corrupting state or re-poisoning the pipeline.</p>
+<p>This page is part of <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a>, which sits within the <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a> — the reference section for building spatial webhook pipelines that survive retries, backpressure, and failure.</p>
+<hr>
+<h2 id="when-to-use-this-pattern" tabindex="-1"><a class="heading-anchor" href="#when-to-use-this-pattern">When to use this pattern</a></h2>
+<p>Reach for a deliberate, controlled replay when:</p>
+<ul>
+<li>You have accumulated a backlog in a spatial DLQ after a downstream outage (PostGIS unavailable, a schema migration, an expired credential) and the events are still valid and worth re-processing once the cause is fixed.</li>
+<li>Events dead-lettered on transient geometry validation failures — a producer briefly emitted self-intersecting polygons — and you want to repair and re-submit them rather than discard real observations.</li>
+<li>You need an auditable, rate-limited drain rather than an ad-hoc “requeue everything” button that risks a thundering herd against consumers that just recovered.</li>
+</ul>
+<p>It is not the right tool when the DLQ contains genuinely unprocessable events (malformed envelopes, geometries that cannot be repaired, events for deleted features). Those are poison pills — replaying them only produces another dead-letter and, if you loop, an infinite cycle. Triage and drop those first.</p>
+<hr>
+<h2 id="why-replaying-spatial-events-naively-corrupts-state" tabindex="-1"><a class="heading-anchor" href="#why-replaying-spatial-events-naively-corrupts-state">Why replaying spatial events naively corrupts state</a></h2>
+<p>A dead-letter queue is the terminal stop for events that exhausted their retry budget. The dangerous assumption is that a dead-lettered event was <em>never applied</em>. That is frequently false. An event commonly reaches the DLQ after its side effect partially succeeded — the row was written to PostGIS but the broker never saw the acknowledgement, so the delivery was retried, re-failed on a downstream timeout, and eventually dead-lettered. If you replay that event as if it were new, you apply it a second time: a double-write, a duplicated feature, or a doubled counter.</p>
+<p>The defence is the same deduplication gate the pipeline already runs at ingest. If you re-submit under the <em>same</em> idempotency key the event carried at first ingest, the gate recognises the replay as a duplicate and drops it — the replay becomes a no-op for anything already applied, and a normal apply for anything that never landed. This is exactly why the key must be computed once, at ingest, and then travel with the event into the DLQ envelope. Regenerating it on replay defeats the entire mechanism. The canonical, content-derived keys described in <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/">generating deterministic idempotency keys for GeoJSON events</a> are ideal here because they are reproducible, but on replay you should still prefer the <em>stored</em> key over recomputing, so that a change in canonicalization logic between ingest and replay cannot shift it.</p>
+<p>Two spatial-specific hazards ride alongside the double-write problem. First, geometry: many events dead-letter <em>because</em> their geometry was invalid, so blindly replaying them reproduces the same failure. Second, ordering: an event can sit in the DLQ while newer events for the same feature flow through, so a naive replay can overwrite fresh state with a stale reading.</p>
+<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Safe dead-letter replay pipeline for spatial events" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+  <title>Safe dead-letter replay pipeline for spatial events</title>
+  <desc>A data-flow diagram: the spatial DLQ feeds a replay worker that sorts events by observation time, repairs geometry with shapely.make_valid, and emits through a rate limiter back into the ingest pipeline, whose deduplication gate absorbs any duplicate before the consumer applies state.</desc>
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L8,3.5 Z" fill="currentColor" opacity="0.55"/>
+    </marker>
+  </defs>
+  <!-- Box 1: DLQ -->
+  <rect x="8" y="110" width="120" height="80" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.25" stroke-width="1.5"/>
+  <text x="68" y="140" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Spatial DLQ</text>
+  <text x="68" y="156" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">envelopes +</text>
+  <text x="68" y="169" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">stored key</text>
+  <line x1="128" y1="150" x2="150" y2="150" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Box 2: Replay worker (sort + repair + limit) -->
+  <rect x="152" y="70" width="196" height="160" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5"/>
+  <text x="250" y="94" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Replay worker</text>
+  <text x="250" y="120" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">1. sort by observation time</text>
+  <text x="250" y="140" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">2. make_valid(geometry)</text>
+  <text x="250" y="160" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">3. drop poison pills</text>
+  <text x="250" y="180" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">4. rate-limit emit</text>
+  <text x="250" y="212" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.6">preserves original key</text>
+  <line x1="348" y1="150" x2="370" y2="150" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Box 3: Dedup gate -->
+  <rect x="372" y="110" width="150" height="80" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5"/>
+  <text x="447" y="138" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Dedup gate</text>
+  <text x="447" y="156" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">SET NX on key</text>
+  <text x="447" y="170" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">absorbs duplicate</text>
+  <line x1="522" y1="150" x2="544" y2="150" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Box 4: Consumer -->
+  <rect x="546" y="110" width="150" height="80" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.25" stroke-width="1.5"/>
+  <text x="621" y="138" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Consumer</text>
+  <text x="621" y="156" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">applies state</text>
+  <text x="621" y="170" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">last-write-wins</text>
+</svg>
+<hr>
+<h2 id="complete-runnable-implementation" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-implementation">Complete runnable implementation</a></h2>
+<p>The replay worker below is self-contained and runnable. It models the DLQ as an in-memory list of envelopes so you can run it directly, but <code>pull_dlq_batch</code> and <code>submit_to_pipeline</code> are the two seams you replace with your real broker (Redis Streams <code>XAUTOCLAIM</code>, a Kafka DLQ topic, or a PostGIS-backed queue). It preserves the stored idempotency key, repairs geometry with <code>shapely.make_valid</code>, drops unrecoverable poison pills, orders by observation time, and paces emission with a simple token-bucket limiter.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token triple-quoted-string string">"""
+Safe dead-letter replay worker for spatial webhook events.
+
+Run: python replay_worker.py   (requires: shapely>=2.0)
+"""</span>
+<span class="token keyword">from</span> __future__ <span class="token keyword">import</span> annotations
+
+<span class="token keyword">import</span> time
+<span class="token keyword">import</span> json
+<span class="token keyword">import</span> logging
+<span class="token keyword">from</span> dataclasses <span class="token keyword">import</span> dataclass<span class="token punctuation">,</span> field
+<span class="token keyword">from</span> typing <span class="token keyword">import</span> Any<span class="token punctuation">,</span> Callable<span class="token punctuation">,</span> Iterable
+
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape<span class="token punctuation">,</span> mapping
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>validation <span class="token keyword">import</span> make_valid<span class="token punctuation">,</span> explain_validity
+
+log <span class="token operator">=</span> logging<span class="token punctuation">.</span>getLogger<span class="token punctuation">(</span><span class="token string">"dlq_replay"</span><span class="token punctuation">)</span>
+logging<span class="token punctuation">.</span>basicConfig<span class="token punctuation">(</span>level<span class="token operator">=</span>logging<span class="token punctuation">.</span>INFO<span class="token punctuation">,</span> <span class="token builtin">format</span><span class="token operator">=</span><span class="token string">"%(message)s"</span><span class="token punctuation">)</span>
+
+
+<span class="token decorator annotation punctuation">@dataclass</span>
+<span class="token keyword">class</span> <span class="token class-name">DLQEnvelope</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""A dead-lettered event exactly as it was stored when it gave up retrying."""</span>
+    idempotency_key<span class="token punctuation">:</span> <span class="token builtin">str</span>          <span class="token comment"># computed at FIRST ingest — never regenerated here</span>
+    observed_at<span class="token punctuation">:</span> <span class="token builtin">float</span>            <span class="token comment"># event observation time (epoch seconds), for ordering</span>
+    feature<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span>       <span class="token comment"># a GeoJSON Feature (RFC 7946), geometry may be invalid</span>
+    dead_letter_reason<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">=</span> <span class="token string">""</span>  <span class="token comment"># why it landed here (diagnostics only)</span>
+    replay_count<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">0</span>         <span class="token comment"># guards against poison-pill loops</span>
+
+
+<span class="token keyword">class</span> <span class="token class-name">TokenBucket</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Minimal rate limiter: allow `rate` replays per second, smoothed."""</span>
+
+    <span class="token keyword">def</span> <span class="token function">__init__</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> rate_per_sec<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">,</span> burst<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">1</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        self<span class="token punctuation">.</span>rate <span class="token operator">=</span> rate_per_sec
+        self<span class="token punctuation">.</span>capacity <span class="token operator">=</span> burst
+        self<span class="token punctuation">.</span>tokens <span class="token operator">=</span> <span class="token builtin">float</span><span class="token punctuation">(</span>burst<span class="token punctuation">)</span>
+        self<span class="token punctuation">.</span>updated <span class="token operator">=</span> time<span class="token punctuation">.</span>monotonic<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+    <span class="token keyword">def</span> <span class="token function">take</span><span class="token punctuation">(</span>self<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        <span class="token keyword">while</span> <span class="token boolean">True</span><span class="token punctuation">:</span>
+            now <span class="token operator">=</span> time<span class="token punctuation">.</span>monotonic<span class="token punctuation">(</span><span class="token punctuation">)</span>
+            self<span class="token punctuation">.</span>tokens <span class="token operator">=</span> <span class="token builtin">min</span><span class="token punctuation">(</span>self<span class="token punctuation">.</span>capacity<span class="token punctuation">,</span> self<span class="token punctuation">.</span>tokens <span class="token operator">+</span> <span class="token punctuation">(</span>now <span class="token operator">-</span> self<span class="token punctuation">.</span>updated<span class="token punctuation">)</span> <span class="token operator">*</span> self<span class="token punctuation">.</span>rate<span class="token punctuation">)</span>
+            self<span class="token punctuation">.</span>updated <span class="token operator">=</span> now
+            <span class="token keyword">if</span> self<span class="token punctuation">.</span>tokens <span class="token operator">>=</span> <span class="token number">1.0</span><span class="token punctuation">:</span>
+                self<span class="token punctuation">.</span>tokens <span class="token operator">-=</span> <span class="token number">1.0</span>
+                <span class="token keyword">return</span>
+            time<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token number">1.0</span> <span class="token operator">-</span> self<span class="token punctuation">.</span>tokens<span class="token punctuation">)</span> <span class="token operator">/</span> self<span class="token punctuation">.</span>rate<span class="token punctuation">)</span>
+
+
+<span class="token comment"># ---- Geometry re-validation ------------------------------------------------</span>
+
+MAX_REPLAYS <span class="token operator">=</span> <span class="token number">3</span>  <span class="token comment"># after this many attempts, a stuck event is a poison pill</span>
+
+
+<span class="token keyword">def</span> <span class="token function">revalidate_geometry</span><span class="token punctuation">(</span>feature<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Repair the feature's geometry with shapely.make_valid.
+
+    Returns the feature with a valid geometry, or None if it is still
+    unrecoverable after repair (self-intersections that collapse to empty,
+    null geometry, non-GeoJSON input). None means: do NOT replay — this is
+    a poison pill for the geometry validation gate.
+    """</span>
+    geom_dict <span class="token operator">=</span> feature<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"geometry"</span><span class="token punctuation">)</span>
+    <span class="token keyword">if</span> geom_dict <span class="token keyword">is</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        log<span class="token punctuation">.</span>warning<span class="token punctuation">(</span><span class="token string">"drop: null geometry, cannot repair"</span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> <span class="token boolean">None</span>
+    <span class="token keyword">try</span><span class="token punctuation">:</span>
+        geom <span class="token operator">=</span> shape<span class="token punctuation">(</span>geom_dict<span class="token punctuation">)</span>             <span class="token comment"># GeoJSON dict -> shapely geometry</span>
+    <span class="token keyword">except</span> <span class="token punctuation">(</span>ValueError<span class="token punctuation">,</span> TypeError<span class="token punctuation">)</span> <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+        log<span class="token punctuation">.</span>warning<span class="token punctuation">(</span><span class="token string">"drop: unparseable geometry (%s)"</span><span class="token punctuation">,</span> exc<span class="token punctuation">)</span>
+        <span class="token keyword">return</span> <span class="token boolean">None</span>
+
+    <span class="token keyword">if</span> <span class="token keyword">not</span> geom<span class="token punctuation">.</span>is_valid<span class="token punctuation">:</span>
+        repaired <span class="token operator">=</span> make_valid<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>         <span class="token comment"># fixes self-intersections, bowties, etc.</span>
+        <span class="token keyword">if</span> repaired<span class="token punctuation">.</span>is_empty <span class="token keyword">or</span> <span class="token keyword">not</span> repaired<span class="token punctuation">.</span>is_valid<span class="token punctuation">:</span>
+            log<span class="token punctuation">.</span>warning<span class="token punctuation">(</span><span class="token string">"drop: irreparable geometry (%s)"</span><span class="token punctuation">,</span> explain_validity<span class="token punctuation">(</span>geom<span class="token punctuation">)</span><span class="token punctuation">)</span>
+            <span class="token keyword">return</span> <span class="token boolean">None</span>
+        log<span class="token punctuation">.</span>info<span class="token punctuation">(</span><span class="token string">"repaired geometry via make_valid"</span><span class="token punctuation">)</span>
+        geom <span class="token operator">=</span> repaired
+
+    fixed <span class="token operator">=</span> <span class="token builtin">dict</span><span class="token punctuation">(</span>feature<span class="token punctuation">)</span>
+    fixed<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span> <span class="token operator">=</span> mapping<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>       <span class="token comment"># shapely geometry -> GeoJSON dict</span>
+    <span class="token keyword">return</span> fixed
+
+
+<span class="token comment"># ---- The replay worker -----------------------------------------------------</span>
+
+<span class="token decorator annotation punctuation">@dataclass</span>
+<span class="token keyword">class</span> <span class="token class-name">ReplayWorker</span><span class="token punctuation">:</span>
+    pull_dlq_batch<span class="token punctuation">:</span> Callable<span class="token punctuation">[</span><span class="token punctuation">[</span><span class="token builtin">int</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token builtin">list</span><span class="token punctuation">[</span>DLQEnvelope<span class="token punctuation">]</span><span class="token punctuation">]</span>
+    submit_to_pipeline<span class="token punctuation">:</span> Callable<span class="token punctuation">[</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token builtin">bool</span><span class="token punctuation">]</span>  <span class="token comment"># (key, feature) -> applied?</span>
+    rate_per_sec<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> <span class="token number">5.0</span>
+    batch_size<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">100</span>
+    limiter<span class="token punctuation">:</span> TokenBucket <span class="token operator">=</span> field<span class="token punctuation">(</span>init<span class="token operator">=</span><span class="token boolean">False</span><span class="token punctuation">)</span>
+
+    <span class="token keyword">def</span> <span class="token function">__post_init__</span><span class="token punctuation">(</span>self<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        self<span class="token punctuation">.</span>limiter <span class="token operator">=</span> TokenBucket<span class="token punctuation">(</span>self<span class="token punctuation">.</span>rate_per_sec<span class="token punctuation">,</span> burst<span class="token operator">=</span><span class="token number">1</span><span class="token punctuation">)</span>
+
+    <span class="token keyword">def</span> <span class="token function">replay_once</span><span class="token punctuation">(</span>self<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> <span class="token builtin">int</span><span class="token punctuation">]</span><span class="token punctuation">:</span>
+        stats <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"applied"</span><span class="token punctuation">:</span> <span class="token number">0</span><span class="token punctuation">,</span> <span class="token string">"deduped"</span><span class="token punctuation">:</span> <span class="token number">0</span><span class="token punctuation">,</span> <span class="token string">"dropped"</span><span class="token punctuation">:</span> <span class="token number">0</span><span class="token punctuation">,</span> <span class="token string">"poison"</span><span class="token punctuation">:</span> <span class="token number">0</span><span class="token punctuation">}</span>
+        batch <span class="token operator">=</span> self<span class="token punctuation">.</span>pull_dlq_batch<span class="token punctuation">(</span>self<span class="token punctuation">.</span>batch_size<span class="token punctuation">)</span>
+
+        <span class="token comment"># Observation-time order: oldest readings first so stale events can never</span>
+        <span class="token comment"># overwrite fresher state written while they sat in the DLQ.</span>
+        batch<span class="token punctuation">.</span>sort<span class="token punctuation">(</span>key<span class="token operator">=</span><span class="token keyword">lambda</span> e<span class="token punctuation">:</span> e<span class="token punctuation">.</span>observed_at<span class="token punctuation">)</span>
+
+        <span class="token keyword">for</span> env <span class="token keyword">in</span> batch<span class="token punctuation">:</span>
+            <span class="token keyword">if</span> env<span class="token punctuation">.</span>replay_count <span class="token operator">>=</span> MAX_REPLAYS<span class="token punctuation">:</span>
+                log<span class="token punctuation">.</span>error<span class="token punctuation">(</span><span class="token string">"poison pill after %d replays, key=%s"</span><span class="token punctuation">,</span> env<span class="token punctuation">.</span>replay_count<span class="token punctuation">,</span>
+                          env<span class="token punctuation">.</span>idempotency_key<span class="token punctuation">)</span>
+                stats<span class="token punctuation">[</span><span class="token string">"poison"</span><span class="token punctuation">]</span> <span class="token operator">+=</span> <span class="token number">1</span>
+                <span class="token keyword">continue</span>
+
+            fixed <span class="token operator">=</span> revalidate_geometry<span class="token punctuation">(</span>env<span class="token punctuation">.</span>feature<span class="token punctuation">)</span>
+            <span class="token keyword">if</span> fixed <span class="token keyword">is</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+                stats<span class="token punctuation">[</span><span class="token string">"dropped"</span><span class="token punctuation">]</span> <span class="token operator">+=</span> <span class="token number">1</span>
+                <span class="token keyword">continue</span>
+
+            self<span class="token punctuation">.</span>limiter<span class="token punctuation">.</span>take<span class="token punctuation">(</span><span class="token punctuation">)</span>  <span class="token comment"># pace emission — never a self-inflicted load spike</span>
+
+            <span class="token comment"># CRITICAL: submit under the ORIGINAL key. The pipeline's dedup gate</span>
+            <span class="token comment"># returns False when the key already exists, so anything applied</span>
+            <span class="token comment"># before dead-lettering is absorbed as a no-op instead of double-written.</span>
+            applied <span class="token operator">=</span> self<span class="token punctuation">.</span>submit_to_pipeline<span class="token punctuation">(</span>env<span class="token punctuation">.</span>idempotency_key<span class="token punctuation">,</span> fixed<span class="token punctuation">)</span>
+            stats<span class="token punctuation">[</span><span class="token string">"applied"</span> <span class="token keyword">if</span> applied <span class="token keyword">else</span> <span class="token string">"deduped"</span><span class="token punctuation">]</span> <span class="token operator">+=</span> <span class="token number">1</span>
+
+        log<span class="token punctuation">.</span>info<span class="token punctuation">(</span><span class="token string">"replay batch complete: %s"</span><span class="token punctuation">,</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>stats<span class="token punctuation">)</span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> stats
+
+
+<span class="token comment"># ---- Demo wiring: an in-memory pipeline with a real dedup gate -------------</span>
+
+<span class="token keyword">if</span> __name__ <span class="token operator">==</span> <span class="token string">"__main__"</span><span class="token punctuation">:</span>
+    seen_keys<span class="token punctuation">:</span> <span class="token builtin">set</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token builtin">set</span><span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+    <span class="token keyword">def</span> <span class="token function">fake_pipeline</span><span class="token punctuation">(</span>key<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> feature<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+        <span class="token triple-quoted-string string">"""SET-NX-style dedup gate. Returns True only on first sight of a key."""</span>
+        <span class="token keyword">if</span> key <span class="token keyword">in</span> seen_keys<span class="token punctuation">:</span>
+            <span class="token keyword">return</span> <span class="token boolean">False</span>        <span class="token comment"># duplicate absorbed</span>
+        seen_keys<span class="token punctuation">.</span>add<span class="token punctuation">(</span>key<span class="token punctuation">)</span>
+        <span class="token keyword">return</span> <span class="token boolean">True</span>             <span class="token comment"># first time — state applied</span>
+
+    <span class="token comment"># Pretend one of these was already applied before it dead-lettered.</span>
+    seen_keys<span class="token punctuation">.</span>add<span class="token punctuation">(</span><span class="token string">"evt-already-applied"</span><span class="token punctuation">)</span>
+
+    <span class="token comment"># A self-intersecting "bowtie" polygon that make_valid can repair.</span>
+    bowtie <span class="token operator">=</span> <span class="token punctuation">{</span>
+        <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Feature"</span><span class="token punctuation">,</span>
+        <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"sensor"</span><span class="token punctuation">:</span> <span class="token string">"SN-9"</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+        <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span>
+            <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Polygon"</span><span class="token punctuation">,</span>
+            <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token punctuation">[</span><span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">2</span><span class="token punctuation">,</span> <span class="token number">2</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">2</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">2</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">,</span>  <span class="token comment"># invalid</span>
+        <span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token punctuation">}</span>
+    dlq<span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">[</span>DLQEnvelope<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">[</span>
+        DLQEnvelope<span class="token punctuation">(</span><span class="token string">"evt-already-applied"</span><span class="token punctuation">,</span> observed_at<span class="token operator">=</span><span class="token number">100.0</span><span class="token punctuation">,</span> feature<span class="token operator">=</span>bowtie<span class="token punctuation">,</span>
+                    dead_letter_reason<span class="token operator">=</span><span class="token string">"downstream 503"</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+        DLQEnvelope<span class="token punctuation">(</span><span class="token string">"evt-new-002"</span><span class="token punctuation">,</span> observed_at<span class="token operator">=</span><span class="token number">250.0</span><span class="token punctuation">,</span> feature<span class="token operator">=</span>bowtie<span class="token punctuation">,</span>
+                    dead_letter_reason<span class="token operator">=</span><span class="token string">"invalid geometry"</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+        DLQEnvelope<span class="token punctuation">(</span><span class="token string">"evt-new-001"</span><span class="token punctuation">,</span> observed_at<span class="token operator">=</span><span class="token number">150.0</span><span class="token punctuation">,</span> feature<span class="token operator">=</span>bowtie<span class="token punctuation">,</span>
+                    dead_letter_reason<span class="token operator">=</span><span class="token string">"invalid geometry"</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+    <span class="token punctuation">]</span>
+
+    worker <span class="token operator">=</span> ReplayWorker<span class="token punctuation">(</span>
+        pull_dlq_batch<span class="token operator">=</span><span class="token keyword">lambda</span> n<span class="token punctuation">:</span> dlq<span class="token punctuation">[</span><span class="token punctuation">:</span>n<span class="token punctuation">]</span><span class="token punctuation">,</span>
+        submit_to_pipeline<span class="token operator">=</span>fake_pipeline<span class="token punctuation">,</span>
+        rate_per_sec<span class="token operator">=</span><span class="token number">10.0</span><span class="token punctuation">,</span>
+    <span class="token punctuation">)</span>
+    result <span class="token operator">=</span> worker<span class="token punctuation">.</span>replay_once<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token comment"># evt-already-applied is absorbed (deduped); the two new events apply in</span>
+    <span class="token comment"># observation-time order (150 before 250) after geometry repair.</span>
+    <span class="token keyword">assert</span> result <span class="token operator">==</span> <span class="token punctuation">{</span><span class="token string">"applied"</span><span class="token punctuation">:</span> <span class="token number">2</span><span class="token punctuation">,</span> <span class="token string">"deduped"</span><span class="token punctuation">:</span> <span class="token number">1</span><span class="token punctuation">,</span> <span class="token string">"dropped"</span><span class="token punctuation">:</span> <span class="token number">0</span><span class="token punctuation">,</span> <span class="token string">"poison"</span><span class="token punctuation">:</span> <span class="token number">0</span><span class="token punctuation">}</span>
+    <span class="token keyword">print</span><span class="token punctuation">(</span><span class="token string">"OK"</span><span class="token punctuation">,</span> result<span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>The worker keeps geometry in the EPSG:4326 (WGS84) frame that RFC 7946 mandates for GeoJSON; if your DLQ stores payloads in another CRS such as EPSG:3857 (Web Mercator), reproject to EPSG:4326 before <code>make_valid</code> so the repaired coordinates match what the ingest pipeline expects.</p>
+<hr>
+<h2 id="parameter-reference" tabindex="-1"><a class="heading-anchor" href="#parameter-reference">Parameter reference</a></h2>
+<div style="overflow-x:auto;">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Spatial constraint</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>idempotency_key</code></td>
+<td><code>str</code></td>
+<td>Must be the key computed at first ingest and stored in the envelope; never recomputed on replay</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>observed_at</code></td>
+<td><code>float</code></td>
+<td>Event observation epoch seconds; drives replay ordering so stale readings never overwrite fresher state</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>feature</code></td>
+<td><code>dict</code></td>
+<td>A GeoJSON Feature (RFC 7946); geometry may be invalid on entry and is repaired before submit</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>rate_per_sec</code></td>
+<td><code>float</code></td>
+<td>Replays per second; set below steady-state consumer capacity to avoid a self-inflicted spike</td>
+<td><code>5.0</code></td>
+</tr>
+<tr>
+<td><code>batch_size</code></td>
+<td><code>int</code></td>
+<td>Envelopes drained per <code>replay_once</code> call; bound it so one pass cannot flush the whole DLQ</td>
+<td><code>100</code></td>
+</tr>
+<tr>
+<td><code>MAX_REPLAYS</code></td>
+<td><code>int</code></td>
+<td>Replay attempts before an event is treated as a poison pill and skipped</td>
+<td><code>3</code></td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<hr>
+<h2 id="gotchas-and-spatial-edge-cases" tabindex="-1"><a class="heading-anchor" href="#gotchas-and-spatial-edge-cases">Gotchas and spatial edge cases</a></h2>
+<ol>
+<li>
+<p><strong>Replaying without the original key double-writes.</strong> This is the headline failure. If the replay path recomputes or invents a key, the deduplication gate treats a previously applied event as new and applies it again. Always carry the ingest-time key in the DLQ envelope and submit under it verbatim. See the reproducible key scheme in <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a>.</p>
+</li>
+<li>
+<p><strong>Replaying stale events over newer state.</strong> An event that dead-lettered an hour ago may describe an older observation than what your consumer has since written for the same feature. Sort the drained batch by <code>observed_at</code> so oldest-first, and pair it with a last-write-wins or version-guarded consumer. Without ordering, a replay can silently roll a feature backwards.</p>
+</li>
+<li>
+<p><strong>Poison-pill loops.</strong> An event whose geometry cannot be repaired, or whose target feature no longer exists, will dead-letter again on every replay. Track <code>replay_count</code> in the envelope and stop after a bounded number of attempts, routing the event to a quarantine store for human triage instead of an infinite DLQ ↔ pipeline cycle.</p>
+</li>
+<li>
+<p><strong>Mass replay overwhelming consumers.</strong> Flushing a large DLQ at line rate re-creates the exact overload that caused the dead-lettering. Rate-limit with a token bucket tuned below downstream capacity and drain in bounded batches. The events already failed once — there is no value in replaying them faster than the pipeline can absorb.</p>
+</li>
+<li>
+<p><strong>Geometry validity is frame-dependent.</strong> <code>make_valid</code> operates on planar coordinates. A polygon that is valid in EPSG:4326 (WGS84) degrees may behave differently once reprojected to EPSG:3857 (Web Mercator) metres, and antimeridian-crossing geometries can appear self-intersecting. Reproject to your canonical CRS <em>before</em> repair, and treat the repaired result as authoritative only in that frame. The full ruleset lives in <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a>.</p>
+</li>
+<li>
+<p><strong><code>make_valid</code> can change geometry type.</strong> Repairing an invalid Polygon can yield a GeometryCollection or MultiPolygon. If your consumer or schema expects a single Polygon, decide explicitly whether to accept the collection, extract the largest part, or drop the event — do not let a silently widened type break a downstream <code>INSERT</code>.</p>
+</li>
+</ol>
+<hr>
+<h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
+<p>Save as <code>test_replay.py</code> next to the worker module and run with <code>pytest</code>. The key test proves that replaying an already-applied event is a no-op: the deduplication gate absorbs it rather than double-writing.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> pytest
+<span class="token keyword">from</span> replay_worker <span class="token keyword">import</span> ReplayWorker<span class="token punctuation">,</span> DLQEnvelope<span class="token punctuation">,</span> revalidate_geometry
+
+
+<span class="token keyword">def</span> <span class="token function">make_gate</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""A SET-NX-style dedup gate plus the set of keys it has applied."""</span>
+    seen<span class="token punctuation">:</span> <span class="token builtin">set</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token builtin">set</span><span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+    <span class="token keyword">def</span> <span class="token function">gate</span><span class="token punctuation">(</span>key<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> feature<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+        <span class="token keyword">if</span> key <span class="token keyword">in</span> seen<span class="token punctuation">:</span>
+            <span class="token keyword">return</span> <span class="token boolean">False</span>           <span class="token comment"># duplicate — absorbed</span>
+        seen<span class="token punctuation">.</span>add<span class="token punctuation">(</span>key<span class="token punctuation">)</span>
+        <span class="token keyword">return</span> <span class="token boolean">True</span>                <span class="token comment"># first application</span>
+    <span class="token keyword">return</span> gate<span class="token punctuation">,</span> seen
+
+
+VALID_POINT <span class="token operator">=</span> <span class="token punctuation">{</span>
+    <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Feature"</span><span class="token punctuation">,</span>
+    <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">73.965355</span><span class="token punctuation">,</span> <span class="token number">40.782865</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+<span class="token punctuation">}</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_duplicate_replay_is_idempotent</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Replaying an event already applied at ingest must NOT re-apply it."""</span>
+    gate<span class="token punctuation">,</span> seen <span class="token operator">=</span> make_gate<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    seen<span class="token punctuation">.</span>add<span class="token punctuation">(</span><span class="token string">"evt-1"</span><span class="token punctuation">)</span>  <span class="token comment"># pretend evt-1 was applied before it dead-lettered</span>
+
+    dlq <span class="token operator">=</span> <span class="token punctuation">[</span>DLQEnvelope<span class="token punctuation">(</span><span class="token string">"evt-1"</span><span class="token punctuation">,</span> observed_at<span class="token operator">=</span><span class="token number">100.0</span><span class="token punctuation">,</span> feature<span class="token operator">=</span>VALID_POINT<span class="token punctuation">)</span><span class="token punctuation">]</span>
+    worker <span class="token operator">=</span> ReplayWorker<span class="token punctuation">(</span><span class="token keyword">lambda</span> n<span class="token punctuation">:</span> dlq<span class="token punctuation">[</span><span class="token punctuation">:</span>n<span class="token punctuation">]</span><span class="token punctuation">,</span> gate<span class="token punctuation">,</span> rate_per_sec<span class="token operator">=</span><span class="token number">1000.0</span><span class="token punctuation">)</span>
+
+    stats <span class="token operator">=</span> worker<span class="token punctuation">.</span>replay_once<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> stats<span class="token punctuation">[</span><span class="token string">"deduped"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token number">1</span>     <span class="token comment"># absorbed by the gate</span>
+    <span class="token keyword">assert</span> stats<span class="token punctuation">[</span><span class="token string">"applied"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token number">0</span>     <span class="token comment"># no double-write</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_replay_applies_only_once_across_two_passes</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""A second replay of the same key stays idempotent."""</span>
+    gate<span class="token punctuation">,</span> _ <span class="token operator">=</span> make_gate<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    dlq <span class="token operator">=</span> <span class="token punctuation">[</span>DLQEnvelope<span class="token punctuation">(</span><span class="token string">"evt-2"</span><span class="token punctuation">,</span> observed_at<span class="token operator">=</span><span class="token number">100.0</span><span class="token punctuation">,</span> feature<span class="token operator">=</span>VALID_POINT<span class="token punctuation">)</span><span class="token punctuation">]</span>
+    worker <span class="token operator">=</span> ReplayWorker<span class="token punctuation">(</span><span class="token keyword">lambda</span> n<span class="token punctuation">:</span> dlq<span class="token punctuation">[</span><span class="token punctuation">:</span>n<span class="token punctuation">]</span><span class="token punctuation">,</span> gate<span class="token punctuation">,</span> rate_per_sec<span class="token operator">=</span><span class="token number">1000.0</span><span class="token punctuation">)</span>
+
+    first <span class="token operator">=</span> worker<span class="token punctuation">.</span>replay_once<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    second <span class="token operator">=</span> worker<span class="token punctuation">.</span>replay_once<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> first<span class="token punctuation">[</span><span class="token string">"applied"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token number">1</span>     <span class="token comment"># applied on the first pass</span>
+    <span class="token keyword">assert</span> second<span class="token punctuation">[</span><span class="token string">"deduped"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token number">1</span>    <span class="token comment"># absorbed on the second</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_observation_time_ordering</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Events are submitted oldest-first regardless of DLQ order."""</span>
+    order<span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+    gate <span class="token operator">=</span> <span class="token keyword">lambda</span> key<span class="token punctuation">,</span> feature<span class="token punctuation">:</span> <span class="token punctuation">(</span>order<span class="token punctuation">.</span>append<span class="token punctuation">(</span>key<span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token boolean">True</span><span class="token punctuation">)</span><span class="token punctuation">[</span><span class="token number">1</span><span class="token punctuation">]</span>
+    dlq <span class="token operator">=</span> <span class="token punctuation">[</span>
+        DLQEnvelope<span class="token punctuation">(</span><span class="token string">"late"</span><span class="token punctuation">,</span> observed_at<span class="token operator">=</span><span class="token number">300.0</span><span class="token punctuation">,</span> feature<span class="token operator">=</span>VALID_POINT<span class="token punctuation">)</span><span class="token punctuation">,</span>
+        DLQEnvelope<span class="token punctuation">(</span><span class="token string">"early"</span><span class="token punctuation">,</span> observed_at<span class="token operator">=</span><span class="token number">100.0</span><span class="token punctuation">,</span> feature<span class="token operator">=</span>VALID_POINT<span class="token punctuation">)</span><span class="token punctuation">,</span>
+    <span class="token punctuation">]</span>
+    ReplayWorker<span class="token punctuation">(</span><span class="token keyword">lambda</span> n<span class="token punctuation">:</span> dlq<span class="token punctuation">[</span><span class="token punctuation">:</span>n<span class="token punctuation">]</span><span class="token punctuation">,</span> gate<span class="token punctuation">,</span> rate_per_sec<span class="token operator">=</span><span class="token number">1000.0</span><span class="token punctuation">)</span><span class="token punctuation">.</span>replay_once<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> order <span class="token operator">==</span> <span class="token punctuation">[</span><span class="token string">"early"</span><span class="token punctuation">,</span> <span class="token string">"late"</span><span class="token punctuation">]</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_irreparable_geometry_is_dropped</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Null geometry cannot be repaired and must not be replayed."""</span>
+    broken <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Feature"</span><span class="token punctuation">,</span> <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token boolean">None</span><span class="token punctuation">}</span>
+    <span class="token keyword">assert</span> revalidate_geometry<span class="token punctuation">(</span>broken<span class="token punctuation">)</span> <span class="token keyword">is</span> <span class="token boolean">None</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_bowtie_polygon_is_repaired</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""A self-intersecting polygon is repaired instead of dropped."""</span>
+    bowtie <span class="token operator">=</span> <span class="token punctuation">{</span>
+        <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Feature"</span><span class="token punctuation">,</span> <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+        <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Polygon"</span><span class="token punctuation">,</span>
+                     <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token punctuation">[</span><span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">2</span><span class="token punctuation">,</span> <span class="token number">2</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">2</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">2</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token punctuation">}</span>
+    fixed <span class="token operator">=</span> revalidate_geometry<span class="token punctuation">(</span>bowtie<span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> fixed <span class="token keyword">is</span> <span class="token keyword">not</span> <span class="token boolean">None</span>                      <span class="token comment"># repaired, not dropped</span>
+    <span class="token keyword">assert</span> fixed<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span><span class="token punctuation">[</span><span class="token string">"type"</span><span class="token punctuation">]</span> <span class="token operator">!=</span> <span class="token string">"Polygon"</span> <span class="token keyword">or</span> fixed<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span>  <span class="token comment"># valid output</span>
+</code></pre>
+</div>
+<hr>
+<h2 id="faq" tabindex="-1"><a class="heading-anchor" href="#faq">FAQ</a></h2>
+<details class="faq">
+<summary><strong>Why must I reuse the original idempotency key instead of generating a new one on replay?</strong></summary>
+<p>An event can dead-letter after it was partially or fully applied — for example the write to PostGIS succeeded but an acknowledgement timed out. If you generate a fresh key on replay, the deduplication gate sees a brand-new event and applies it a second time, double-writing state. Reusing the key computed at first ingest lets the gate recognise the replay as a duplicate and absorb it.</p>
+</details>
+<details class="faq">
+<summary><strong>Should I re-validate geometry on replay if it was already validated at ingest?</strong></summary>
+<p>Yes. Many events dead-letter precisely because their geometry failed validation. Running <code>shapely.make_valid</code> on replay repairs self-intersections and other topology faults that can be fixed deterministically, so the repaired event now passes the same validation gate that rejected it. Events that are still invalid after <code>make_valid</code> should be dropped or escalated, never re-submitted in a loop.</p>
+</details>
+<details class="faq">
+<summary><strong>How do I stop a mass replay from overwhelming my consumers?</strong></summary>
+<p>Rate-limit the replay with a token bucket or fixed inter-message delay tuned below the steady-state capacity of the downstream consumers, and drain in bounded batches rather than flushing the whole DLQ at once. The events already failed once; there is no benefit to replaying them faster than the pipeline can safely absorb.</p>
+</details>
+<details class="faq">
+<summary><strong>Why replay in observation-time order rather than DLQ insertion order?</strong></summary>
+<p>Events can sit in a DLQ for minutes or hours while newer events for the same feature flow through normally. Replaying a stale reading after fresher state has already been written would roll the feature backwards. Ordering the drained batch by observation timestamp ensures older readings are applied first and a last-write-wins consumer keeps the newest value.</p>
+</details>
+<hr>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
+<ul>
+<li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a> — parent: designing and operating the spatial DLQ this page drains</li>
+<li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a> — the full delivery-guarantee architecture for spatial webhook pipelines</li>
+<li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a> — the deduplication gate that makes duplicate replays safe</li>
+<li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a> — the validation and <code>make_valid</code> repair rules applied before re-submission</li>
+</ul>
+
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        <div class="aside-card">
+          <h3>Related in this section</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/building-a-spatial-dlq-with-postgis-and-celery/">Building a Spatial DLQ with PostGIS and Celery</a></li>
+          </ul>
+        </div>
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a></li>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a></li>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a></li>
+            <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring &amp; Observability for Spatial Pipelines</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</article>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="https://www.geospatialwebhook.com/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/">Home</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queues &amp; Retries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Queues &amp; Retries</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Monitoring</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging &amp; Tracing for Spatial Events</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <a class="site-footer__gh" href="https://github.com/geospatialwebhook" target="_blank" rel="noopener" aria-label="Geospatial Webhook on GitHub">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5Z"/></svg><span>GitHub</span>
+      </a>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

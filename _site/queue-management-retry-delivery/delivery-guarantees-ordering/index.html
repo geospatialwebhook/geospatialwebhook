@@ -1,0 +1,820 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>Delivery Guarantees &amp; Event Ordering · Geo Webhook</title>
+  <meta name="description" content="Choose delivery semantics (at-most-once, at-least-once, effectively-once) for spatial webhooks and enforce per-feature ordering so geometry states never go stale."/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360"/>
+  <meta name="color-scheme" content="light"/>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/"/>
+  <meta property="og:title" content="Delivery Guarantees &amp; Event Ordering"/>
+  <meta property="og:description" content="Choose delivery semantics (at-most-once, at-least-once, effectively-once) for spatial webhooks and enforce per-feature ordering so geometry states never go stale."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Delivery Guarantees &amp; Event Ordering"/>
+  <meta name="twitter:description" content="Choose delivery semantics (at-most-once, at-least-once, effectively-once) for spatial webhooks and enforce per-feature ordering so geometry states never go stale."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },{ "@type": "ListItem", "position": 2, "name": "Queue Management Retry Delivery", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/" },{ "@type": "ListItem", "position": 3, "name": "Delivery Guarantees Ordering", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/" }
+    ]
+  }
+  </script>
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/#article",
+    "mainEntityOfPage": "https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/",
+    "headline": "Delivery Guarantees &amp; Event Ordering",
+    "description": "Choose delivery semantics (at-most-once, at-least-once, effectively-once) for spatial webhooks and enforce per-feature ordering so geometry states never go stale.",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
+    "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
+    "image": "https://www.geospatialwebhook.com/og-image.png",
+    "url": "https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/",
+    "articleSection": "Queue Management Retry Delivery",
+    "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
+  }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="https://www.geospatialwebhook.com/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="https://www.geospatialwebhook.com/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Queues &amp; Retries</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
+      </a>
+    </nav>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="https://www.geospatialwebhook.com/">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management Retry Delivery</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">Delivery Guarantees Ordering</span>
+    </nav>
+
+    <h1 class="page__title">Delivery Guarantees &amp; Event Ordering</h1>
+
+    <div class="page__layout">
+      <div class="markdown">
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Delivery Guarantees & Event Ordering",
+      "description": "How to pick delivery semantics for spatial webhook pipelines and enforce per-feature and per-cell ordering so out-of-order geospatial events never corrupt geometry state.",
+      "url": "https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/",
+      "datePublished": "2025-02-10",
+      "dateModified": "2026-07-13",
+      "author": {"@type": "Organization", "name": "geospatialwebhook.com"},
+      "publisher": {"@type": "Organization", "name": "geospatialwebhook.com"}
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/"},
+        {"@type": "ListItem", "position": 2, "name": "Queue Management, Retries & Delivery Guarantees", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/"},
+        {"@type": "ListItem", "position": 3, "name": "Delivery Guarantees & Event Ordering", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/"}
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Enforce delivery guarantees and ordering for spatial webhooks",
+      "step": [
+        {"@type": "HowToStep", "position": 1, "name": "Choose a delivery guarantee and a stable ordering key"},
+        {"@type": "HowToStep", "position": 2, "name": "Stamp every event with an observation time and monotonic version"},
+        {"@type": "HowToStep", "position": 3, "name": "Reject stale events in an idempotent consumer by comparing version"},
+        {"@type": "HowToStep", "position": 4, "name": "Buffer and reorder near-simultaneous events per key"},
+        {"@type": "HowToStep", "position": 5, "name": "Handle redelivery, backoff, and reconciliation"}
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Do I need global ordering across all spatial webhook events?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Almost never. Global ordering forces a single partition, which caps throughput at one consumer and destroys the parallelism that spatial pipelines depend on. What matters is per-key ordering: all events for one feature ID or one H3 cell must be applied in the order they occurred. Events for unrelated features can be processed concurrently and out of order with no correctness impact, because their state is disjoint."}
+        },
+        {
+          "@type": "Question",
+          "name": "Why can an at-least-once pipeline still corrupt geometry state?",
+          "acceptedAnswer": {"@type": "Answer", "text": "At-least-once guarantees an event is delivered, not that it is delivered in order or only once. A retried create event can arrive after the update that superseded it, so a naive consumer overwrites current geometry with a resurrected older shape. The fix is not stronger delivery but a stale-write guard: compare each event's version or observation_time against the version already stored, and drop anything older."}
+        },
+        {
+          "@type": "Question",
+          "name": "Should I use event time or arrival time to order spatial events?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Order by the observation_time recorded at the source (when the sensor measured the geometry), never by broker arrival time. Arrival time reflects network and retry jitter, not the real-world sequence of edits. Pair observation_time with a monotonic per-feature version counter so that two edits sharing a millisecond timestamp still have a deterministic order."}
+        },
+        {
+          "@type": "Question",
+          "name": "What is effectively-once and is it enough for spatial webhooks?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Effectively-once means the broker delivers at-least-once and the consumer is idempotent, so duplicate and out-of-order deliveries produce the same final state as a single in-order delivery. For the vast majority of geospatial pipelines this is the correct target: it needs no distributed transaction coordinator, tolerates retries, and — when combined with a per-key version guard — makes phantom geometry states impossible."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>Spatial webhook pipelines rarely need global ordering, but they always need per-feature ordering: a feature-update event applied before its create, or an old create replayed after a delete, silently resurrects stale geometry — and the fix is a version-guarded idempotent consumer, not a stronger broker.</strong></p>
+<p>This topic sits within <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a>, the section covering how spatial events move reliably from producer to consumer once you accept that networks drop, reorder, and duplicate messages.</p>
+<hr>
+<h2 id="prerequisites" tabindex="-1"><a class="heading-anchor" href="#prerequisites">Prerequisites</a></h2>
+<p>Before wiring ordering guarantees into your consumer, confirm your stack and mental model are in place. Check off each item:</p>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Python 3.11+</strong> — required for <code>tomllib</code>, precise <code>datetime</code> handling, and modern <code>asyncio</code> task groups</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>A partitioned broker</strong> — Kafka 3.x, Redis Streams, or equivalent that preserves order <em>within</em> a partition</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>A stable ordering key per event</strong> — a feature ID, asset ID, or H3 cell that groups all mutations of one spatial entity</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong><code>pydantic</code> 2.x</strong> — strict validation of <code>observation_time</code> and <code>version</code> before any state write</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>A versioned state store</strong> — PostgreSQL/PostGIS row with a <code>version</code> column, or any store supporting conditional writes</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Clock discipline at the source</strong> — producers stamp <code>observation_time</code>; consumers never trust arrival time for ordering</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>An idempotency layer</strong> — see <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a> for the duplicate-suppression half of the problem</label></li>
+</ul>
+<hr>
+<h2 id="architecture" tabindex="-1"><a class="heading-anchor" href="#architecture">Architecture</a></h2>
+<p>The design separates three concerns that are often conflated: the <em>delivery guarantee</em> (how many times an event may arrive), the <em>ordering key</em> (which events must be sequenced relative to each other), and the <em>staleness guard</em> (how the consumer decides an arriving event is older than current state). Get these three right and the specific broker becomes an implementation detail.</p>
+<svg viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two producers publish feature events into a partition keyed by feature ID; the partition preserves per-key order, and an out-of-order create arriving after an update is rejected by a version guard" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+  <title>Per-key ordering with a version guard reconciling an out-of-order arrival</title>
+  <desc>Two producers emit events for feature F7. A partition keyed by feature ID preserves order for events that travel together, but a retried create v1 arrives after update v2. The consumer's version guard compares versions and rejects the stale create, keeping the stored geometry at v2.</desc>
+  <defs>
+    <marker id="dg-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.6"/>
+    </marker>
+  </defs>
+  <!-- Producers -->
+  <rect x="12" y="40" width="120" height="46" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
+  <text x="72" y="60" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Producer A</text>
+  <text x="72" y="76" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">F7 create · v1</text>
+  <rect x="12" y="120" width="120" height="46" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
+  <text x="72" y="140" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Producer B</text>
+  <text x="72" y="156" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">F7 update · v2</text>
+  <!-- Arrows into partition -->
+  <line x1="134" y1="63" x2="228" y2="95" stroke="currentColor" stroke-width="1.4" marker-end="url(#dg-arr)" opacity="0.5"/>
+  <line x1="134" y1="143" x2="228" y2="112" stroke="currentColor" stroke-width="1.4" marker-end="url(#dg-arr)" opacity="0.5"/>
+  <!-- Partition (keyed by feature id) -->
+  <rect x="232" y="70" width="180" height="70" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
+  <text x="322" y="92" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Partition</text>
+  <text x="322" y="108" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.75">key = hash(feature_id)</text>
+  <text x="322" y="124" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.6">preserves per-key order</text>
+  <text x="322" y="60" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.5">SAME KEY → SAME PARTITION</text>
+  <!-- Out-of-order note -->
+  <line x1="412" y1="105" x2="500" y2="105" stroke="currentColor" stroke-width="1.5" marker-end="url(#dg-arr)" opacity="0.55"/>
+  <text x="456" y="97" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">retry reorders:</text>
+  <text x="456" y="124" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">v2 then v1</text>
+  <!-- Consumer / version guard -->
+  <rect x="504" y="60" width="150" height="90" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
+  <text x="579" y="84" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Consumer</text>
+  <text x="579" y="100" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.8">version guard</text>
+  <text x="579" y="116" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">apply if v &gt; stored</text>
+  <text x="579" y="132" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">else drop as stale</text>
+  <!-- Outcomes -->
+  <line x1="579" y1="150" x2="579" y2="196" stroke="currentColor" stroke-width="1.5" marker-end="url(#dg-arr)" opacity="0.55"/>
+  <rect x="470" y="200" width="100" height="46" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
+  <text x="520" y="220" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">v2 applied</text>
+  <text x="520" y="235" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">state = v2</text>
+  <line x1="579" y1="150" x2="640" y2="196" stroke="currentColor" stroke-width="1.2" marker-end="url(#dg-arr)" opacity="0.45" stroke-dasharray="4,3"/>
+  <rect x="588" y="200" width="120" height="46" rx="8" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.4"/>
+  <text x="648" y="220" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">v1 rejected</text>
+  <text x="648" y="235" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">stale create dropped</text>
+  <text x="380" y="290" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.55">Result: stored geometry stays at v2 despite the create arriving last — no phantom resurrection.</text>
+</svg>
+<p><strong>Layer breakdown:</strong></p>
+<ol>
+<li><strong>Delivery guarantee</strong> — the broker and consumer contract on how many times an event may surface: <em>at-most-once</em> (fire-and-forget, may lose events), <em>at-least-once</em> (retried until acknowledged, may duplicate), or <em>effectively-once</em> (at-least-once delivery plus an idempotent consumer). Spatial ingestion almost always targets effectively-once; losing a parcel edit is worse than reprocessing one.</li>
+<li><strong>Partitioning and ordering key</strong> — the producer sets a partition key equal to the spatial entity’s stable identifier (feature ID or H3 cell). All events for one entity land on one partition and preserve relative order there. Unrelated entities scale out across partitions. Partition strategy is covered in <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a>.</li>
+<li><strong>Staleness guard</strong> — even within a partition, a retry can reorder events across a rebalance or across two producers. The consumer stamps and compares a monotonic <code>version</code> (and <code>observation_time</code> as a tiebreaker) and applies an event only if it is newer than stored state.</li>
+<li><strong>Reconciliation buffer</strong> — for the narrow window where two events for the same key arrive nearly simultaneously and slightly out of order, a short per-key buffer sorts them before they hit the state store, avoiding needless rejections and re-fetches.</li>
+</ol>
+<hr>
+<h2 id="step-by-step-implementation" tabindex="-1"><a class="heading-anchor" href="#step-by-step-implementation">Step-by-Step Implementation</a></h2>
+<h3 id="step-1-model-the-event-with-ordering-metadata" tabindex="-1"><a class="heading-anchor" href="#step-1-model-the-event-with-ordering-metadata">Step 1 — Model the Event with Ordering Metadata</a></h3>
+<p>Every spatial event must carry the two fields ordering depends on: <code>observation_time</code> (when the source measured the geometry, per the sensor clock) and <code>version</code> (a monotonic counter per feature). Validate both before the event reaches any state logic. Coordinates are EPSG:4326 (WGS84) per RFC 7946 (<a href="https://datatracker.ietf.org/doc/html/rfc7946">spec</a>).</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> datetime <span class="token keyword">import</span> datetime<span class="token punctuation">,</span> timezone
+<span class="token keyword">from</span> typing <span class="token keyword">import</span> Any<span class="token punctuation">,</span> Literal
+<span class="token keyword">from</span> pydantic <span class="token keyword">import</span> BaseModel<span class="token punctuation">,</span> Field<span class="token punctuation">,</span> field_validator
+
+
+<span class="token keyword">class</span> <span class="token class-name">SpatialEvent</span><span class="token punctuation">(</span>BaseModel<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    feature_id<span class="token punctuation">:</span> <span class="token builtin">str</span>                      <span class="token comment"># stable ordering key for one entity</span>
+    version<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> Field<span class="token punctuation">(</span>ge<span class="token operator">=</span><span class="token number">0</span><span class="token punctuation">)</span>           <span class="token comment"># monotonic per feature_id</span>
+    op<span class="token punctuation">:</span> Literal<span class="token punctuation">[</span><span class="token string">"create"</span><span class="token punctuation">,</span> <span class="token string">"update"</span><span class="token punctuation">,</span> <span class="token string">"delete"</span><span class="token punctuation">]</span>
+    observation_time<span class="token punctuation">:</span> datetime           <span class="token comment"># source clock, NOT arrival time</span>
+    crs<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">=</span> <span class="token string">"EPSG:4326"</span>               <span class="token comment"># WGS84 per RFC 7946</span>
+    geometry<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token boolean">None</span>      <span class="token comment"># None only for delete</span>
+
+    <span class="token decorator annotation punctuation">@field_validator</span><span class="token punctuation">(</span><span class="token string">"observation_time"</span><span class="token punctuation">)</span>
+    <span class="token decorator annotation punctuation">@classmethod</span>
+    <span class="token keyword">def</span> <span class="token function">must_be_tz_aware</span><span class="token punctuation">(</span>cls<span class="token punctuation">,</span> v<span class="token punctuation">:</span> datetime<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> datetime<span class="token punctuation">:</span>
+        <span class="token comment"># Naive timestamps make cross-source ordering ambiguous; force UTC.</span>
+        <span class="token keyword">if</span> v<span class="token punctuation">.</span>tzinfo <span class="token keyword">is</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"observation_time must be timezone-aware (UTC)"</span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> v<span class="token punctuation">.</span>astimezone<span class="token punctuation">(</span>timezone<span class="token punctuation">.</span>utc<span class="token punctuation">)</span>
+
+    <span class="token decorator annotation punctuation">@field_validator</span><span class="token punctuation">(</span><span class="token string">"geometry"</span><span class="token punctuation">)</span>
+    <span class="token decorator annotation punctuation">@classmethod</span>
+    <span class="token keyword">def</span> <span class="token function">geometry_present_unless_delete</span><span class="token punctuation">(</span>cls<span class="token punctuation">,</span> v<span class="token punctuation">,</span> info<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">if</span> info<span class="token punctuation">.</span>data<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"op"</span><span class="token punctuation">)</span> <span class="token operator">!=</span> <span class="token string">"delete"</span> <span class="token keyword">and</span> <span class="token keyword">not</span> v<span class="token punctuation">:</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"geometry required for create/update"</span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> v
+</code></pre>
+</div>
+<p>The <code>version</code> field is what makes ordering deterministic when timestamps collide. Two edits made in the same millisecond by different operators still have a strict order if the producer assigns versions from a per-feature counter.</p>
+<hr>
+<h3 id="step-2-publish-with-a-partition-key-equal-to-the-ordering-key" tabindex="-1"><a class="heading-anchor" href="#step-2-publish-with-a-partition-key-equal-to-the-ordering-key">Step 2 — Publish with a Partition Key Equal to the Ordering Key</a></h3>
+<p>Ordering is only preserved <em>within</em> a partition, so the producer must route every event for one feature to the same partition by keying on <code>feature_id</code>. Using the H3 cell as the key instead groups all edits within a cell — appropriate when your consumer’s state is per-cell rather than per-feature. H3, S2, and Quadkey tradeoffs are compared in <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/h3-vs-s2-vs-quadkey-for-spatial-partitioning/">H3 vs S2 vs Quadkey for Spatial Partitioning</a>.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> json
+<span class="token keyword">from</span> aiokafka <span class="token keyword">import</span> AIOKafkaProducer
+
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">publish_event</span><span class="token punctuation">(</span>producer<span class="token punctuation">:</span> AIOKafkaProducer<span class="token punctuation">,</span> event<span class="token punctuation">:</span> SpatialEvent<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Publish keyed by feature_id so all mutations of one entity share a
+    partition and therefore a preserved relative order. Kafka hashes the
+    key to select the partition; the same key always maps to the same one.
+    """</span>
+    payload <span class="token operator">=</span> event<span class="token punctuation">.</span>model_dump_json<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token string">"utf-8"</span><span class="token punctuation">)</span>
+    key <span class="token operator">=</span> event<span class="token punctuation">.</span>feature_id<span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token string">"utf-8"</span><span class="token punctuation">)</span>   <span class="token comment"># &lt;-- ordering key == partition key</span>
+    <span class="token keyword">await</span> producer<span class="token punctuation">.</span>send_and_wait<span class="token punctuation">(</span><span class="token string">"spatial-events"</span><span class="token punctuation">,</span> value<span class="token operator">=</span>payload<span class="token punctuation">,</span> key<span class="token operator">=</span>key<span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>Do not key on a random UUID or the event ID — that scatters a feature’s events across partitions and destroys any ordering the broker could have given you. The single most common ordering bug is a partition key that is finer-grained than the entity you actually need ordered.</p>
+<hr>
+<h3 id="step-3-reject-stale-events-in-an-idempotent-consumer" tabindex="-1"><a class="heading-anchor" href="#step-3-reject-stale-events-in-an-idempotent-consumer">Step 3 — Reject Stale Events in an Idempotent Consumer</a></h3>
+<p>The core of the design: before applying an event, compare its <code>version</code> (with <code>observation_time</code> as a tiebreaker) against the version already stored for that feature. Apply only if strictly newer; otherwise drop it as stale. This single guard neutralizes both duplicates and out-of-order arrivals, and it is the pattern detailed further in <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/idempotent-consumers-for-out-of-order-spatial-events/">Idempotent Consumers for Out-of-Order Spatial Events</a>.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncpg
+
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">apply_event</span><span class="token punctuation">(</span>pool<span class="token punctuation">:</span> asyncpg<span class="token punctuation">.</span>Pool<span class="token punctuation">,</span> event<span class="token punctuation">:</span> SpatialEvent<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Conditionally upsert feature state. The WHERE clause makes the write a
+    no-op when an equal-or-newer version already exists, so a replayed
+    create (v1) arriving after an update (v2) cannot resurrect old geometry.
+    Returns 'applied' or 'stale'.
+    """</span>
+    geom_json <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>event<span class="token punctuation">.</span>geometry<span class="token punctuation">)</span> <span class="token keyword">if</span> event<span class="token punctuation">.</span>geometry <span class="token keyword">else</span> <span class="token boolean">None</span>
+    row <span class="token operator">=</span> <span class="token keyword">await</span> pool<span class="token punctuation">.</span>fetchrow<span class="token punctuation">(</span>
+        <span class="token triple-quoted-string string">"""
+        INSERT INTO feature_state
+            (feature_id, version, op, observation_time, geometry)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (feature_id) DO UPDATE
+            SET version          = EXCLUDED.version,
+                op               = EXCLUDED.op,
+                observation_time = EXCLUDED.observation_time,
+                geometry         = EXCLUDED.geometry
+            WHERE EXCLUDED.version > feature_state.version
+               OR (EXCLUDED.version = feature_state.version
+                   AND EXCLUDED.observation_time > feature_state.observation_time)
+        RETURNING version
+        """</span><span class="token punctuation">,</span>
+        event<span class="token punctuation">.</span>feature_id<span class="token punctuation">,</span> event<span class="token punctuation">.</span>version<span class="token punctuation">,</span> event<span class="token punctuation">.</span>op<span class="token punctuation">,</span>
+        event<span class="token punctuation">.</span>observation_time<span class="token punctuation">,</span> geom_json<span class="token punctuation">,</span>
+    <span class="token punctuation">)</span>
+    <span class="token keyword">return</span> <span class="token string">"applied"</span> <span class="token keyword">if</span> row <span class="token keyword">is</span> <span class="token keyword">not</span> <span class="token boolean">None</span> <span class="token keyword">else</span> <span class="token string">"stale"</span>
+</code></pre>
+</div>
+<p>The conditional <code>WHERE</code> on the <code>ON CONFLICT</code> branch is doing the real work: PostgreSQL performs the comparison and the write atomically, so two concurrent consumers processing the same feature cannot interleave a lost update. When <code>apply_event</code> returns <code>&quot;stale&quot;</code>, the event was older than current state and was correctly ignored — this is the moment a phantom geometry state would otherwise have been created.</p>
+<hr>
+<h3 id="step-4-buffer-near-simultaneous-events-per-key" tabindex="-1"><a class="heading-anchor" href="#step-4-buffer-near-simultaneous-events-per-key">Step 4 — Buffer Near-Simultaneous Events per Key</a></h3>
+<p>A version guard rejects genuinely stale events, but for two events that arrive within milliseconds slightly out of order, rejection forces the producer to re-send. A short per-key reordering buffer sorts a small window by <code>version</code> before applying, so the natural case resolves without redelivery.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">from</span> collections <span class="token keyword">import</span> defaultdict
+
+
+<span class="token keyword">class</span> <span class="token class-name">PerKeyOrderingBuffer</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Holds events per feature_id for up to `window` seconds, then flushes them
+    in version order. Bounds reordering work to one small buffer per active
+    key rather than sorting the whole stream (which would need global order).
+    """</span>
+
+    <span class="token keyword">def</span> <span class="token function">__init__</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> window<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> <span class="token number">0.25</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        self<span class="token punctuation">.</span>window <span class="token operator">=</span> window
+        self<span class="token punctuation">.</span>_buffers<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> <span class="token builtin">list</span><span class="token punctuation">[</span>SpatialEvent<span class="token punctuation">]</span><span class="token punctuation">]</span> <span class="token operator">=</span> defaultdict<span class="token punctuation">(</span><span class="token builtin">list</span><span class="token punctuation">)</span>
+        self<span class="token punctuation">.</span>_timers<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> asyncio<span class="token punctuation">.</span>Task<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token punctuation">}</span>
+
+    <span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">submit</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> event<span class="token punctuation">:</span> SpatialEvent<span class="token punctuation">,</span> <span class="token builtin">apply</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        key <span class="token operator">=</span> event<span class="token punctuation">.</span>feature_id
+        self<span class="token punctuation">.</span>_buffers<span class="token punctuation">[</span>key<span class="token punctuation">]</span><span class="token punctuation">.</span>append<span class="token punctuation">(</span>event<span class="token punctuation">)</span>
+        <span class="token comment"># (Re)start the flush timer for this key only.</span>
+        <span class="token keyword">if</span> key <span class="token keyword">in</span> self<span class="token punctuation">.</span>_timers<span class="token punctuation">:</span>
+            self<span class="token punctuation">.</span>_timers<span class="token punctuation">[</span>key<span class="token punctuation">]</span><span class="token punctuation">.</span>cancel<span class="token punctuation">(</span><span class="token punctuation">)</span>
+        self<span class="token punctuation">.</span>_timers<span class="token punctuation">[</span>key<span class="token punctuation">]</span> <span class="token operator">=</span> asyncio<span class="token punctuation">.</span>create_task<span class="token punctuation">(</span>self<span class="token punctuation">.</span>_flush_later<span class="token punctuation">(</span>key<span class="token punctuation">,</span> <span class="token builtin">apply</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+    <span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">_flush_later</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> key<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> <span class="token builtin">apply</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        <span class="token keyword">try</span><span class="token punctuation">:</span>
+            <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span>self<span class="token punctuation">.</span>window<span class="token punctuation">)</span>
+        <span class="token keyword">except</span> asyncio<span class="token punctuation">.</span>CancelledError<span class="token punctuation">:</span>
+            <span class="token keyword">return</span>
+        events <span class="token operator">=</span> <span class="token builtin">sorted</span><span class="token punctuation">(</span>
+            self<span class="token punctuation">.</span>_buffers<span class="token punctuation">.</span>pop<span class="token punctuation">(</span>key<span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+            key<span class="token operator">=</span><span class="token keyword">lambda</span> e<span class="token punctuation">:</span> <span class="token punctuation">(</span>e<span class="token punctuation">.</span>version<span class="token punctuation">,</span> e<span class="token punctuation">.</span>observation_time<span class="token punctuation">)</span><span class="token punctuation">,</span>
+        <span class="token punctuation">)</span>
+        self<span class="token punctuation">.</span>_timers<span class="token punctuation">.</span>pop<span class="token punctuation">(</span>key<span class="token punctuation">,</span> <span class="token boolean">None</span><span class="token punctuation">)</span>
+        <span class="token keyword">for</span> event <span class="token keyword">in</span> events<span class="token punctuation">:</span>          <span class="token comment"># apply() is itself the Step 3 guard</span>
+            <span class="token keyword">await</span> <span class="token builtin">apply</span><span class="token punctuation">(</span>event<span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>Keep the window tight — 100-500 ms is typical. The buffer is an optimization that reduces redelivery churn, not a correctness mechanism: the Step 3 version guard remains the authority, so even if the buffer flushes out of order, stale events are still rejected downstream.</p>
+<hr>
+<h2 id="spatial-validation-and-error-handling" tabindex="-1"><a class="heading-anchor" href="#spatial-validation-and-error-handling">Spatial Validation and Error Handling</a></h2>
+<p>Ordering metadata can be valid while the geometry is not. Validate topology and CRS <em>after</em> the version guard admits an event but <em>before</em> it becomes stored state, so you never persist an invalid shape or waste validation cycles on events you will reject.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>validation <span class="token keyword">import</span> explain_validity
+<span class="token keyword">from</span> pyproj <span class="token keyword">import</span> CRS
+
+
+<span class="token keyword">def</span> <span class="token function">validate_spatial_payload</span><span class="token punctuation">(</span>event<span class="token punctuation">:</span> SpatialEvent<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Confirm CRS is the expected EPSG:4326 (WGS84) and the geometry is
+    topologically valid before it is written as current feature state.
+    Deletes carry no geometry and are skipped.
+    """</span>
+    <span class="token keyword">if</span> event<span class="token punctuation">.</span>op <span class="token operator">==</span> <span class="token string">"delete"</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span>
+    <span class="token keyword">if</span> CRS<span class="token punctuation">.</span>from_user_input<span class="token punctuation">(</span>event<span class="token punctuation">.</span>crs<span class="token punctuation">)</span><span class="token punctuation">.</span>to_epsg<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">!=</span> <span class="token number">4326</span><span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"expected EPSG:4326 (WGS84), got </span><span class="token interpolation"><span class="token punctuation">{</span>event<span class="token punctuation">.</span>crs<span class="token conversion-option punctuation">!r</span><span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+
+    geom <span class="token operator">=</span> shape<span class="token punctuation">(</span>event<span class="token punctuation">.</span>geometry<span class="token punctuation">)</span>
+    <span class="token keyword">if</span> geom<span class="token punctuation">.</span>is_empty<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"geometry empty after parsing"</span><span class="token punctuation">)</span>
+    <span class="token keyword">if</span> <span class="token keyword">not</span> geom<span class="token punctuation">.</span>is_valid<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"invalid topology: </span><span class="token interpolation"><span class="token punctuation">{</span>explain_validity<span class="token punctuation">(</span>geom<span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>Route validation failures to a dead-letter path rather than dropping them, so a malformed producer does not silently lose data. A rejected-as-<em>stale</em> event is a normal, expected outcome and should be counted, not alerted on; a rejected-as-<em>invalid</em> event is a producer defect and deserves an alert. Distinguishing the two in your metrics is what keeps on-call noise low.</p>
+<hr>
+<h2 id="retry-backoff-and-delivery-guarantees" tabindex="-1"><a class="heading-anchor" href="#retry-backoff-and-delivery-guarantees">Retry, Backoff, and Delivery Guarantees</a></h2>
+<p>At-least-once delivery means the broker will redeliver on any un-acknowledged event, and those redeliveries are exactly what reorder your stream. The consumer must therefore be safe to run repeatedly on the same event — which the Step 3 guard already guarantees — and retries of <em>processing</em> failures should use exponential backoff with jitter to avoid synchronized retry storms across partitions. The dedicated mechanics live in <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a>.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> random
+
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">consume_with_retry</span><span class="token punctuation">(</span><span class="token builtin">buffer</span><span class="token punctuation">:</span> PerKeyOrderingBuffer<span class="token punctuation">,</span> pool<span class="token punctuation">,</span> event<span class="token punctuation">:</span> SpatialEvent<span class="token punctuation">,</span>
+                             max_attempts<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">5</span><span class="token punctuation">,</span> base<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> <span class="token number">0.3</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Apply an event through the ordering buffer with retry. Because apply_event
+    is version-guarded, re-running it after a transient failure is safe:
+    a duplicate or reordered redelivery converges to the same final state.
+    """</span>
+    <span class="token keyword">for</span> attempt <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">,</span> max_attempts <span class="token operator">+</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">try</span><span class="token punctuation">:</span>
+            validate_spatial_payload<span class="token punctuation">(</span>event<span class="token punctuation">)</span>
+            <span class="token keyword">await</span> <span class="token builtin">buffer</span><span class="token punctuation">.</span>submit<span class="token punctuation">(</span>event<span class="token punctuation">,</span> <span class="token keyword">lambda</span> e<span class="token punctuation">:</span> apply_event<span class="token punctuation">(</span>pool<span class="token punctuation">,</span> e<span class="token punctuation">)</span><span class="token punctuation">)</span>
+            <span class="token keyword">return</span>
+        <span class="token keyword">except</span> ValueError<span class="token punctuation">:</span>
+            <span class="token keyword">raise</span>                                   <span class="token comment"># invalid payload: do not retry, dead-letter</span>
+        <span class="token keyword">except</span> <span class="token punctuation">(</span>asyncpg<span class="token punctuation">.</span>PostgresError<span class="token punctuation">,</span> ConnectionError<span class="token punctuation">)</span> <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+            <span class="token keyword">if</span> attempt <span class="token operator">==</span> max_attempts<span class="token punctuation">:</span>
+                <span class="token keyword">raise</span>
+            delay <span class="token operator">=</span> random<span class="token punctuation">.</span>uniform<span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> base <span class="token operator">*</span> <span class="token punctuation">(</span><span class="token number">2</span> <span class="token operator">**</span> attempt<span class="token punctuation">)</span><span class="token punctuation">)</span>   <span class="token comment"># full jitter</span>
+            <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span>delay<span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>The guarantees form a ladder — pick the lowest rung that meets your correctness bar, since each step up costs latency or throughput:</p>
+<div style="overflow-x:auto;">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Guarantee</th>
+<th>Mechanism</th>
+<th>Ordering behaviour for spatial state</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>At-most-once</td>
+<td>Fire-and-forget, no ack, no retry</td>
+<td>Lost edits leave stale geometry with no recovery; unacceptable for authoritative feature stores</td>
+</tr>
+<tr>
+<td>At-least-once</td>
+<td>Redeliver until acked, no dedup</td>
+<td>Retries reorder and duplicate; a replayed create can resurrect deleted geometry unless guarded</td>
+</tr>
+<tr>
+<td>Effectively-once</td>
+<td>At-least-once + version-guarded idempotent consumer</td>
+<td>Duplicates and reorderings converge to the correct final state per key; the right default</td>
+</tr>
+<tr>
+<td>Exactly-once</td>
+<td>Broker transactions + transactional sink</td>
+<td>Strong, but couples producer, broker, and sink; latency rarely justified for spatial ingestion</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>For nearly every geospatial webhook pipeline, effectively-once with a per-key version guard is the correct target. It requires no distributed transaction coordinator, tolerates the reordering that retries inevitably introduce, and — crucially for spatial data — makes it impossible for an old create or update to overwrite newer geometry. When two <em>concurrent</em> edits genuinely conflict (not merely arrive out of order), version comparison alone is insufficient and you must escalate to a merge policy; those semantics are covered in <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies</a>.</p>
+<hr>
+<h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
+<p>Prove the guard behaves under the exact failure it exists to stop: a create arriving <em>after</em> the update that superseded it. The final state must reflect the newest version regardless of arrival order.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> pytest
+<span class="token keyword">from</span> datetime <span class="token keyword">import</span> datetime<span class="token punctuation">,</span> timezone
+
+
+<span class="token keyword">def</span> <span class="token function">_evt</span><span class="token punctuation">(</span>version<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">,</span> op<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> secs<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> SpatialEvent<span class="token punctuation">:</span>
+    <span class="token keyword">return</span> SpatialEvent<span class="token punctuation">(</span>
+        feature_id<span class="token operator">=</span><span class="token string">"F7"</span><span class="token punctuation">,</span>
+        version<span class="token operator">=</span>version<span class="token punctuation">,</span>
+        op<span class="token operator">=</span>op<span class="token punctuation">,</span>
+        observation_time<span class="token operator">=</span>datetime<span class="token punctuation">(</span><span class="token number">2026</span><span class="token punctuation">,</span> <span class="token number">7</span><span class="token punctuation">,</span> <span class="token number">13</span><span class="token punctuation">,</span> <span class="token number">12</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">,</span> secs<span class="token punctuation">,</span> tzinfo<span class="token operator">=</span>timezone<span class="token punctuation">.</span>utc<span class="token punctuation">)</span><span class="token punctuation">,</span>
+        geometry<span class="token operator">=</span><span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">0.1276</span><span class="token punctuation">,</span> <span class="token number">51.5074</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">,</span>  <span class="token comment"># EPSG:4326</span>
+    <span class="token punctuation">)</span>
+
+
+<span class="token decorator annotation punctuation">@pytest<span class="token punctuation">.</span>mark<span class="token punctuation">.</span>asyncio</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">test_stale_create_after_update_is_rejected</span><span class="token punctuation">(</span>pg_pool<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token comment"># In-order: create v1 then update v2 both apply.</span>
+    <span class="token keyword">assert</span> <span class="token keyword">await</span> apply_event<span class="token punctuation">(</span>pg_pool<span class="token punctuation">,</span> _evt<span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">,</span> <span class="token string">"create"</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token string">"applied"</span>
+    <span class="token keyword">assert</span> <span class="token keyword">await</span> apply_event<span class="token punctuation">(</span>pg_pool<span class="token punctuation">,</span> _evt<span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">,</span> <span class="token string">"update"</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token string">"applied"</span>
+
+    <span class="token comment"># Out-of-order redelivery: the create (v1) arrives LAST.</span>
+    <span class="token keyword">assert</span> <span class="token keyword">await</span> apply_event<span class="token punctuation">(</span>pg_pool<span class="token punctuation">,</span> _evt<span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">,</span> <span class="token string">"create"</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token string">"stale"</span>
+
+    row <span class="token operator">=</span> <span class="token keyword">await</span> pg_pool<span class="token punctuation">.</span>fetchrow<span class="token punctuation">(</span>
+        <span class="token string">"SELECT version, op FROM feature_state WHERE feature_id = 'F7'"</span>
+    <span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> row<span class="token punctuation">[</span><span class="token string">"version"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token number">2</span> <span class="token keyword">and</span> row<span class="token punctuation">[</span><span class="token string">"op"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token string">"update"</span><span class="token punctuation">,</span> <span class="token punctuation">(</span>
+        <span class="token string">"stored state must remain at v2 — the late create must not resurrect old geometry"</span>
+    <span class="token punctuation">)</span>
+
+
+<span class="token decorator annotation punctuation">@pytest<span class="token punctuation">.</span>mark<span class="token punctuation">.</span>asyncio</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">test_duplicate_delivery_is_idempotent</span><span class="token punctuation">(</span>pg_pool<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">assert</span> <span class="token keyword">await</span> apply_event<span class="token punctuation">(</span>pg_pool<span class="token punctuation">,</span> _evt<span class="token punctuation">(</span><span class="token number">3</span><span class="token punctuation">,</span> <span class="token string">"update"</span><span class="token punctuation">,</span> <span class="token number">2</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token string">"applied"</span>
+    <span class="token keyword">assert</span> <span class="token keyword">await</span> apply_event<span class="token punctuation">(</span>pg_pool<span class="token punctuation">,</span> _evt<span class="token punctuation">(</span><span class="token number">3</span><span class="token punctuation">,</span> <span class="token string">"update"</span><span class="token punctuation">,</span> <span class="token number">2</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token string">"stale"</span>  <span class="token comment"># exact dup</span>
+</code></pre>
+</div>
+<p>Run with <code>pytest -v --asyncio-mode=auto</code> against a containerized PostgreSQL with the <code>feature_state</code> table and its <code>feature_id</code> primary key. The first test is the one that matters: without the conditional <code>WHERE</code>, the replayed create returns <code>&quot;applied&quot;</code> and the assertion on the stored version fails — the precise signature of a phantom geometry state reaching production.</p>
+<hr>
+<h2 id="troubleshooting" tabindex="-1"><a class="heading-anchor" href="#troubleshooting">Troubleshooting</a></h2>
+<div style="overflow-x:auto;">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely spatial cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Deleted features reappear on the map</td>
+<td>Replayed create/update arrives after the delete and overwrites tombstone</td>
+<td>Store deletes as a version bump (tombstone row), not a physical delete; keep the version guard on the delete path</td>
+</tr>
+<tr>
+<td>Feature “flickers” between two geometries</td>
+<td>Two producers assign overlapping versions for the same <code>feature_id</code></td>
+<td>Assign versions from a single authority per feature, or use <code>(version, observation_time, producer_id)</code> as the ordering tuple</td>
+</tr>
+<tr>
+<td>Throughput collapses to one consumer</td>
+<td>Everything keyed to a single partition chasing global ordering</td>
+<td>Key by <code>feature_id</code> or H3 cell so unrelated entities parallelize across partitions</td>
+</tr>
+<tr>
+<td>High rate of events rejected as stale</td>
+<td>Ordering key finer than the entity (e.g. keyed on event ID) so retries scatter across partitions</td>
+<td>Set the partition key equal to the entity you need ordered; re-check the producer key</td>
+</tr>
+<tr>
+<td>Ordering wrong despite one partition</td>
+<td>Consumer orders by broker arrival time, not source <code>observation_time</code></td>
+<td>Order and compare on <code>observation_time</code> + <code>version</code>; never trust arrival time</td>
+</tr>
+<tr>
+<td>Two same-millisecond edits apply in wrong order</td>
+<td>Timestamp collision with no tiebreaker</td>
+<td>Add the monotonic <code>version</code> counter as the primary comparison key</td>
+</tr>
+<tr>
+<td>Stale-rejection metric spikes after a rebalance</td>
+<td>In-flight events redelivered and reordered during partition reassignment</td>
+<td>Expected; confirm final state is correct and suppress alerting on stale rejections</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<hr>
+<h2 id="faq" tabindex="-1"><a class="heading-anchor" href="#faq">FAQ</a></h2>
+<details class="faq">
+<summary><strong>Do I need global ordering across all spatial webhook events?</strong></summary>
+<p>Almost never. Global ordering forces a single partition, which caps throughput at one consumer and destroys the parallelism that spatial pipelines depend on. What matters is per-key ordering: all events for one feature ID or one H3 cell must be applied in the order they occurred. Events for unrelated features can be processed concurrently and out of order with no correctness impact, because their state is disjoint.</p>
+</details>
+<details class="faq">
+<summary><strong>Why can an at-least-once pipeline still corrupt geometry state?</strong></summary>
+<p>At-least-once guarantees an event is delivered, not that it is delivered in order or only once. A retried create event can arrive after the update that superseded it, so a naive consumer overwrites current geometry with a resurrected older shape. The fix is not stronger delivery but a stale-write guard: compare each event’s version or observation_time against the version already stored, and drop anything older.</p>
+</details>
+<details class="faq">
+<summary><strong>Should I use event time or arrival time to order spatial events?</strong></summary>
+<p>Order by the observation_time recorded at the source (when the sensor measured the geometry), never by broker arrival time. Arrival time reflects network and retry jitter, not the real-world sequence of edits. Pair observation_time with a monotonic per-feature version counter so that two edits sharing a millisecond timestamp still have a deterministic order.</p>
+</details>
+<details class="faq">
+<summary><strong>What is effectively-once and is it enough for spatial webhooks?</strong></summary>
+<p>Effectively-once means the broker delivers at-least-once and the consumer is idempotent, so duplicate and out-of-order deliveries produce the same final state as a single in-order delivery. For the vast majority of geospatial pipelines this is the correct target: it needs no distributed transaction coordinator, tolerates retries, and — when combined with a per-key version guard — makes phantom geometry states impossible.</p>
+</details>
+<hr>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
+<ul>
+<li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a> — the parent section covering reliable movement of spatial events from producer to consumer</li>
+<li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/idempotent-consumers-for-out-of-order-spatial-events/">Idempotent Consumers for Out-of-Order Spatial Events</a> — a deep dive on the version-guarded consumer pattern used in Step 3</li>
+<li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a> — choosing a broker and a partition key that preserves per-key order at scale</li>
+<li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies</a> — merge policies for genuinely concurrent edits that a version guard alone cannot resolve</li>
+<li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a> — the duplicate-suppression discipline that pairs with ordering to reach effectively-once</li>
+</ul>
+
+        <h2 id="explore-this-section">Explore this section</h2>
+        <div class="children-grid">
+          <a class="card " href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/idempotent-consumers-for-out-of-order-spatial-events/">
+            <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19c0-8 6-14 14-14 0 8-6 14-14 14z"/><path d="M5 19l6-6"/></svg></span>
+            <h3 class="card__title">Idempotent Consumers for Out-of-Order Spatial Events</h3>
+            <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+          </a>
+        </div>
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        <div class="aside-card">
+          <h3>Related in this section</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+          </ul>
+        </div>
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a></li>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a></li>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a></li>
+            <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring &amp; Observability for Spatial Pipelines</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</article>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="https://www.geospatialwebhook.com/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/">Home</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queues &amp; Retries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Queues &amp; Retries</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Monitoring</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging &amp; Tracing for Spatial Events</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <a class="site-footer__gh" href="https://github.com/geospatialwebhook" target="_blank" rel="noopener" aria-label="Geospatial Webhook on GitHub">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5Z"/></svg><span>GitHub</span>
+      </a>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

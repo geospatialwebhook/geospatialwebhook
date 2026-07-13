@@ -1,0 +1,69 @@
+---
+layout: base
+---
+{% from "partials/icons.njk" import icon %}
+{% set crumbs = page.url | breadcrumbs %}
+{% set children = collections.content | childrenOf(page.url) %}
+{% set siblings = collections.content | siblingsOf(page.url) %}
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="/">Home</a>
+      {%- for c in crumbs %}
+        <span class="sep" aria-hidden="true">/</span>
+        {%- if loop.last %}
+          <span aria-current="page">{{ c.label | humanize }}</span>
+        {%- else %}
+          <a href="{{ c.url }}">{{ c.label | humanize }}</a>
+        {%- endif -%}
+      {% endfor %}
+    </nav>
+
+    <h1 class="page__title">{{ title }}</h1>
+
+    <div class="page__layout">
+      <div class="markdown">
+        {{ content | safe }}
+
+        {%- if children | length > 0 %}
+        <h2 id="explore-this-section">Explore this section</h2>
+        <div class="children-grid">
+          {%- set tones = ["", "card--mint", "card--earth", "card--rose"] -%}
+          {%- for child in children %}
+          <a class="card {{ tones[loop.index0 % tones.length] }}" href="{{ child.url }}">
+            <span class="card__icon">{{ icon("leaf") }}</span>
+            <h3 class="card__title">{{ child.data.title }}</h3>
+            <span class="card__more">Read more {{ icon("arrow-right") }}</span>
+          </a>
+          {%- endfor %}
+        </div>
+        {%- endif %}
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        {%- if siblings | length > 0 %}
+        <div class="aside-card">
+          <h3>Related in this section</h3>
+          <ul>
+            {%- for sib in siblings %}
+            <li><a href="{{ sib.url }}">{{ sib.data.title }}</a></li>
+            {%- endfor %}
+          </ul>
+        </div>
+        {%- endif %}
+
+        {%- if page.url != "/" %}
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            {%- for s in site.sections %}
+            <li><a href="/{{ s.slug }}/">{{ s.title }}</a></li>
+            {%- endfor %}
+          </ul>
+        </div>
+        {%- endif %}
+      </aside>
+    </div>
+  </div>
+</article>

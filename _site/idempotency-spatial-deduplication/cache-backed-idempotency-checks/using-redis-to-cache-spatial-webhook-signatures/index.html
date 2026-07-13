@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>Using Redis to Cache Spatial Webhook Signatures · Geo Webhook</title>
+  <meta name="description" content="Store HMAC-SHA256 hashes of geospatial webhook payloads in Redis with SET NX EX for atomic, sub-millisecond idempotency checks preventing duplicate events."/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/using-redis-to-cache-spatial-webhook-signatures/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360"/>
+  <meta name="color-scheme" content="light"/>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/using-redis-to-cache-spatial-webhook-signatures/"/>
+  <meta property="og:title" content="Using Redis to Cache Spatial Webhook Signatures"/>
+  <meta property="og:description" content="Store HMAC-SHA256 hashes of geospatial webhook payloads in Redis with SET NX EX for atomic, sub-millisecond idempotency checks preventing duplicate events."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Using Redis to Cache Spatial Webhook Signatures"/>
+  <meta name="twitter:description" content="Store HMAC-SHA256 hashes of geospatial webhook payloads in Redis with SET NX EX for atomic, sub-millisecond idempotency checks preventing duplicate events."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },{ "@type": "ListItem", "position": 2, "name": "Idempotency Spatial Deduplication", "item": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" },{ "@type": "ListItem", "position": 3, "name": "Cache Backed Idempotency Checks", "item": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/" },{ "@type": "ListItem", "position": 4, "name": "Using Redis To Cache Spatial Webhook Signatures", "item": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/using-redis-to-cache-spatial-webhook-signatures/" }
+    ]
+  }
+  </script>
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/using-redis-to-cache-spatial-webhook-signatures/#article",
+    "mainEntityOfPage": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/using-redis-to-cache-spatial-webhook-signatures/",
+    "headline": "Using Redis to Cache Spatial Webhook Signatures",
+    "description": "Store HMAC-SHA256 hashes of geospatial webhook payloads in Redis with SET NX EX for atomic, sub-millisecond idempotency checks preventing duplicate events.",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
+    "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
+    "image": "https://www.geospatialwebhook.com/og-image.png",
+    "url": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/using-redis-to-cache-spatial-webhook-signatures/",
+    "articleSection": "Idempotency Spatial Deduplication",
+    "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
+  }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="https://www.geospatialwebhook.com/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="https://www.geospatialwebhook.com/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Queues &amp; Retries</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
+      </a>
+    </nav>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="https://www.geospatialwebhook.com/">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency Spatial Deduplication</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache Backed Idempotency Checks</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">Using Redis To Cache Spatial Webhook Signatures</span>
+    </nav>
+
+    <h1 class="page__title">Using Redis to Cache Spatial Webhook Signatures</h1>
+
+    <div class="page__layout">
+      <div class="markdown">
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Using Redis to Cache Spatial Webhook Signatures",
+      "description": "Step-by-step guide to storing HMAC-SHA256 hashes of geospatial webhook payloads in Redis with SET NX EX for atomic, sub-millisecond idempotency checks that prevent duplicate spatial event processing.",
+      "datePublished": "2025-01-15",
+      "dateModified": "2026-06-24",
+      "author": {"@type": "Organization", "name": "geospatialwebhook.com"}
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Idempotency & Spatial Deduplication", "item": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/"},
+        {"@type": "ListItem", "position": 2, "name": "Cache-Backed Idempotency Checks", "item": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/"},
+        {"@type": "ListItem", "position": 3, "name": "Using Redis to Cache Spatial Webhook Signatures", "item": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/using-redis-to-cache-spatial-webhook-signatures/"}
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Cache Spatial Webhook Signatures in Redis",
+      "step": [
+        {"@type": "HowToStep", "position": 1, "name": "Normalize the GeoJSON payload", "text": "Strip transient fields and round coordinates to a fixed decimal precision before hashing."},
+        {"@type": "HowToStep", "position": 2, "name": "Compute HMAC-SHA256 signature", "text": "Hash the canonical payload string using your webhook secret as the HMAC key."},
+        {"@type": "HowToStep", "position": 3, "name": "Run atomic SET NX EX in Redis", "text": "Use a single-command SET with NX and EX flags to claim the key only if it does not already exist."},
+        {"@type": "HowToStep", "position": 4, "name": "Branch on the result", "text": "Process the event if SET returned OK; discard it as a duplicate if SET returned nil."}
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What TTL should I set for Redis webhook signature keys?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Set SIGNATURE_TTL to 20–30% longer than your provider's maximum redelivery window. Most providers retry for 24–72 hours, so a 90,000-second (25-hour) to 259,200-second (72-hour) TTL covers the gap safely."}
+        },
+        {
+          "@type": "Question",
+          "name": "Does SET NX EX guarantee exactly-once processing under concurrent delivery?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Yes for a single Redis node or Cluster slot. The SET NX EX operation is atomic in Redis — only one of N concurrent callers with the same key will receive OK. The others receive nil and must discard the event."}
+        },
+        {
+          "@type": "Question",
+          "name": "Should I fail open or fail closed when Redis is unavailable?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Fail open (return True / proceed) for most spatial telemetry pipelines and rely on downstream database constraints for rare duplicates. Fail closed (return False / reject) only when duplicate writes have financial or regulatory consequences, then queue the payload for later reconciliation."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>Compute an HMAC-SHA256 signature of the canonicalized GeoJSON payload, call <code>SET key 1 NX EX &lt;ttl&gt;</code> in Redis, and skip processing if the command returns <code>nil</code> — the entire duplicate check completes in one atomic round-trip at under 5 ms.</strong> This how-to belongs to <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks</a>, which is part of the wider <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a> work on exactly-once semantics for geospatial event streams.</p>
+<h2 id="when-to-use-this-pattern" tabindex="-1"><a class="heading-anchor" href="#when-to-use-this-pattern">When to Use This Pattern</a></h2>
+<p>Use Redis signature caching specifically when:</p>
+<ul>
+<li>Your geospatial webhook provider does not guarantee single delivery and retries on HTTP <code>5xx</code> or timeout, producing identical GeoJSON or WKT bodies milliseconds to hours apart.</li>
+<li>Processing latency is dominated by downstream spatial joins, PostGIS writes, or tile cache invalidations — a sub-millisecond Redis check is worth far more here than on cheap CRUD endpoints.</li>
+<li>You need horizontal scalability: multiple webhook receiver pods must share deduplication state without a central lock or database row-level locking overhead.</li>
+</ul>
+<p>For architectures where the same event must be deduplicated across independent microservices rather than at ingress, pair this approach with an outbox pattern; Redis alone does not span transaction boundaries.</p>
+<h2 id="flow-from-http-ingress-to-conditional-processing" tabindex="-1"><a class="heading-anchor" href="#flow-from-http-ingress-to-conditional-processing">Flow: From HTTP Ingress to Conditional Processing</a></h2>
+<p>The diagram below shows how a spatial webhook travels from provider delivery through signature caching to either processing or discard.</p>
+<svg viewBox="0 0 680 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Spatial webhook signature caching flow: provider delivers event, receiver normalizes payload, computes HMAC, checks Redis SET NX EX, then either processes or discards the event" style="width:100%;max-width:680px;height:auto;display:block;margin:1.5rem auto;">
+  <title>Spatial webhook signature caching flow</title>
+  <desc>A left-to-right flow diagram showing a webhook provider delivering to an HTTP receiver, which normalizes the GeoJSON payload, computes an HMAC-SHA256 signature, runs SET NX EX in Redis, then branches: new events go to spatial processing, duplicates are discarded with HTTP 200.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="currentColor" opacity="0.6"/>
+    </marker>
+  </defs>
+  <!-- Provider -->
+  <rect x="10" y="100" width="100" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
+  <text x="60" y="118" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif">Webhook</text>
+  <text x="60" y="133" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif">Provider</text>
+  <!-- Normalize -->
+  <rect x="145" y="100" width="110" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
+  <text x="200" y="118" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif">Normalize &amp;</text>
+  <text x="200" y="133" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif">HMAC-SHA256</text>
+  <!-- Redis -->
+  <rect x="290" y="100" width="110" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
+  <text x="345" y="118" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif">Redis</text>
+  <text x="345" y="133" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif">SET NX EX</text>
+  <!-- Process -->
+  <rect x="440" y="60" width="110" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
+  <text x="495" y="78" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif">Spatial</text>
+  <text x="495" y="93" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif">Processing</text>
+  <!-- Discard -->
+  <rect x="440" y="148" width="110" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
+  <text x="495" y="166" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif">Discard</text>
+  <text x="495" y="181" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif">HTTP 200</text>
+  <!-- Arrows -->
+  <line x1="110" y1="122" x2="143" y2="122" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.6"/>
+  <line x1="255" y1="122" x2="288" y2="122" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.6"/>
+  <line x1="400" y1="112" x2="438" y2="88" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.6"/>
+  <line x1="400" y1="132" x2="438" y2="162" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.6"/>
+  <!-- Labels on branch arrows -->
+  <text x="415" y="100" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.75">OK</text>
+  <text x="415" y="148" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.75">nil</text>
+</svg>
+<h2 id="complete-runnable-implementation" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-implementation">Complete Runnable Implementation</a></h2>
+<p>The snippet below is self-contained: normalize, sign, check, and branch in one function. The <code>normalize_geojson</code> step is critical — without it, floating-point drift in coordinate arrays causes logically identical retries to produce different signatures and bypass the cache. For a deeper look at this canonicalization problem, see <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/">Generating Deterministic Idempotency Keys for GeoJSON Events</a>.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> hashlib
+<span class="token keyword">import</span> hmac
+<span class="token keyword">import</span> json
+<span class="token keyword">import</span> os
+<span class="token keyword">from</span> typing <span class="token keyword">import</span> Any
+
+<span class="token keyword">import</span> redis
+<span class="token keyword">from</span> redis<span class="token punctuation">.</span>exceptions <span class="token keyword">import</span> RedisError
+
+<span class="token comment"># ── Configuration ────────────────────────────────────────────────────────────</span>
+REDIS_URL      <span class="token operator">=</span> os<span class="token punctuation">.</span>getenv<span class="token punctuation">(</span><span class="token string">"REDIS_URL"</span><span class="token punctuation">,</span> <span class="token string">"redis://localhost:6379/0"</span><span class="token punctuation">)</span>
+WEBHOOK_SECRET <span class="token operator">=</span> os<span class="token punctuation">.</span>getenv<span class="token punctuation">(</span><span class="token string">"WEBHOOK_SECRET"</span><span class="token punctuation">,</span> <span class="token string">"change-me"</span><span class="token punctuation">)</span>
+<span class="token comment"># Set to 20–30 % above the provider's max redelivery window.</span>
+<span class="token comment"># E.g. provider retries for 24 h → use 108 000 s (30 h).</span>
+SIGNATURE_TTL  <span class="token operator">=</span> <span class="token builtin">int</span><span class="token punctuation">(</span>os<span class="token punctuation">.</span>getenv<span class="token punctuation">(</span><span class="token string">"SIGNATURE_TTL"</span><span class="token punctuation">,</span> <span class="token string">"108000"</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+<span class="token comment"># Thread-safe connection pool; socket_timeout evicts blocked calls quickly.</span>
+_redis <span class="token operator">=</span> redis<span class="token punctuation">.</span>Redis<span class="token punctuation">.</span>from_url<span class="token punctuation">(</span>
+    REDIS_URL<span class="token punctuation">,</span>
+    decode_responses<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span>
+    socket_timeout<span class="token operator">=</span><span class="token number">2</span><span class="token punctuation">,</span>
+    socket_connect_timeout<span class="token operator">=</span><span class="token number">2</span><span class="token punctuation">,</span>
+<span class="token punctuation">)</span>
+
+<span class="token comment"># ── Spatial canonicalization ─────────────────────────────────────────────────</span>
+_TRANSIENT_KEYS <span class="token operator">=</span> <span class="token builtin">frozenset</span><span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token string">"_meta"</span><span class="token punctuation">,</span> <span class="token string">"received_at"</span><span class="token punctuation">,</span> <span class="token string">"request_id"</span><span class="token punctuation">,</span> <span class="token string">"delivery_attempt"</span><span class="token punctuation">}</span><span class="token punctuation">)</span>
+
+<span class="token keyword">def</span> <span class="token function">_round_coords</span><span class="token punctuation">(</span>value<span class="token punctuation">:</span> Any<span class="token punctuation">,</span> precision<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">6</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> Any<span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Recursively round floats inside GeoJSON coordinate arrays (RFC 7946
+    recommends 6 decimal places ≈ 0.11 m accuracy in EPSG:4326)."""</span>
+    <span class="token keyword">if</span> <span class="token builtin">isinstance</span><span class="token punctuation">(</span>value<span class="token punctuation">,</span> <span class="token builtin">float</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token builtin">round</span><span class="token punctuation">(</span>value<span class="token punctuation">,</span> precision<span class="token punctuation">)</span>
+    <span class="token keyword">if</span> <span class="token builtin">isinstance</span><span class="token punctuation">(</span>value<span class="token punctuation">,</span> <span class="token builtin">list</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token punctuation">[</span>_round_coords<span class="token punctuation">(</span>v<span class="token punctuation">,</span> precision<span class="token punctuation">)</span> <span class="token keyword">for</span> v <span class="token keyword">in</span> value<span class="token punctuation">]</span>
+    <span class="token keyword">if</span> <span class="token builtin">isinstance</span><span class="token punctuation">(</span>value<span class="token punctuation">,</span> <span class="token builtin">dict</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token punctuation">{</span>k<span class="token punctuation">:</span> _round_coords<span class="token punctuation">(</span>v<span class="token punctuation">,</span> precision<span class="token punctuation">)</span> <span class="token keyword">for</span> k<span class="token punctuation">,</span> v <span class="token keyword">in</span> value<span class="token punctuation">.</span>items<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">}</span>
+    <span class="token keyword">return</span> value
+
+<span class="token keyword">def</span> <span class="token function">normalize_geojson</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Return a canonical UTF-8 string suitable for deterministic hashing.
+
+    Strips transient provider fields, rounds coordinate floats, and
+    enforces sort_keys so key insertion order cannot affect the digest.
+    """</span>
+    clean <span class="token operator">=</span> <span class="token punctuation">{</span>k<span class="token punctuation">:</span> v <span class="token keyword">for</span> k<span class="token punctuation">,</span> v <span class="token keyword">in</span> payload<span class="token punctuation">.</span>items<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token keyword">if</span> k <span class="token keyword">not</span> <span class="token keyword">in</span> _TRANSIENT_KEYS<span class="token punctuation">}</span>
+    clean <span class="token operator">=</span> _round_coords<span class="token punctuation">(</span>clean<span class="token punctuation">)</span>
+    <span class="token comment"># separators=(",", ":") removes all optional whitespace</span>
+    <span class="token keyword">return</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>clean<span class="token punctuation">,</span> sort_keys<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span> separators<span class="token operator">=</span><span class="token punctuation">(</span><span class="token string">","</span><span class="token punctuation">,</span> <span class="token string">":"</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+<span class="token comment"># ── Signature computation ────────────────────────────────────────────────────</span>
+<span class="token keyword">def</span> <span class="token function">compute_signature</span><span class="token punctuation">(</span>canonical<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""HMAC-SHA256 over the canonical payload string."""</span>
+    <span class="token keyword">return</span> hmac<span class="token punctuation">.</span>new<span class="token punctuation">(</span>
+        WEBHOOK_SECRET<span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+        canonical<span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+        hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">,</span>
+    <span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+<span class="token comment"># ── Idempotency check ────────────────────────────────────────────────────────</span>
+<span class="token keyword">def</span> <span class="token function">is_new_spatial_event</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Return True if this event is new and should be processed.
+
+    Uses a single atomic SET NX EX round-trip — no separate GET needed.
+    Fails open on RedisError so a cache outage never stalls the pipeline;
+    downstream spatial DB constraints remain the last-resort safety net.
+    """</span>
+    canonical <span class="token operator">=</span> normalize_geojson<span class="token punctuation">(</span>payload<span class="token punctuation">)</span>
+    sig       <span class="token operator">=</span> compute_signature<span class="token punctuation">(</span>canonical<span class="token punctuation">)</span>
+    cache_key <span class="token operator">=</span> <span class="token string-interpolation"><span class="token string">f"swh:sig:</span><span class="token interpolation"><span class="token punctuation">{</span>sig<span class="token punctuation">}</span></span><span class="token string">"</span></span>   <span class="token comment"># namespace prefix avoids key collisions</span>
+
+    <span class="token keyword">try</span><span class="token punctuation">:</span>
+        <span class="token comment"># SET returns True (key was absent, now set) or None (key existed).</span>
+        result <span class="token operator">=</span> _redis<span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">(</span>cache_key<span class="token punctuation">,</span> <span class="token string">"1"</span><span class="token punctuation">,</span> nx<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span> ex<span class="token operator">=</span>SIGNATURE_TTL<span class="token punctuation">)</span>
+        <span class="token keyword">return</span> result <span class="token keyword">is</span> <span class="token boolean">True</span>
+    <span class="token keyword">except</span> RedisError <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+        <span class="token comment"># Log for alerting but do not block ingestion.</span>
+        <span class="token keyword">print</span><span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"[idempotency] Redis unavailable, failing open: </span><span class="token interpolation"><span class="token punctuation">{</span>exc<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> <span class="token boolean">True</span>
+
+<span class="token comment"># ── Example webhook handler (FastAPI) ────────────────────────────────────────</span>
+<span class="token comment"># from fastapi import FastAPI, Request, Response</span>
+<span class="token comment"># app = FastAPI()</span>
+<span class="token comment">#</span>
+<span class="token comment"># @app.post("/webhook/spatial")</span>
+<span class="token comment"># async def receive_spatial_event(request: Request):</span>
+<span class="token comment">#     payload = await request.json()</span>
+<span class="token comment">#     if not is_new_spatial_event(payload):</span>
+<span class="token comment">#         return Response(status_code=200, content="duplicate ignored")</span>
+<span class="token comment">#     # Hand off to your spatial processing pipeline here.</span>
+<span class="token comment">#     return {"status": "accepted"}</span>
+</code></pre>
+</div>
+<h2 id="parameter-reference" tabindex="-1"><a class="heading-anchor" href="#parameter-reference">Parameter Reference</a></h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Spatial constraint</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>REDIS_URL</code></td>
+<td><code>str</code></td>
+<td><code>redis://localhost:6379/0</code></td>
+<td>Use a dedicated DB index (e.g. <code>/1</code>) to isolate signature keys from application data</td>
+</tr>
+<tr>
+<td><code>WEBHOOK_SECRET</code></td>
+<td><code>str</code></td>
+<td><em>(required)</em></td>
+<td>Minimum 32 bytes of entropy; rotate via environment variable without redeploying code</td>
+</tr>
+<tr>
+<td><code>SIGNATURE_TTL</code></td>
+<td><code>int</code> (seconds)</td>
+<td><code>108000</code> (30 h)</td>
+<td>Must exceed provider max redelivery window; monitor <code>TTL</code> drift with Redis keyspace notifications</td>
+</tr>
+<tr>
+<td><code>precision</code> in <code>_round_coords</code></td>
+<td><code>int</code></td>
+<td><code>6</code></td>
+<td>6 decimals ≈ 0.11 m at EPSG:4326; raise to 7–8 for sub-centimetre survey payloads</td>
+</tr>
+<tr>
+<td><code>cache_key</code> prefix</td>
+<td><code>str</code></td>
+<td><code>swh:sig:</code></td>
+<td>Namespace all signature keys so you can <code>SCAN MATCH swh:sig:*</code> for monitoring</td>
+</tr>
+<tr>
+<td><code>socket_timeout</code></td>
+<td><code>float</code> (seconds)</td>
+<td><code>2</code></td>
+<td>Tune down to <code>0.5</code> in latency-sensitive ingestion paths; too low causes false-positive <code>RedisError</code> on slow networks</td>
+</tr>
+</tbody>
+</table>
+</div><h2 id="gotchas-and-spatial-edge-cases" tabindex="-1"><a class="heading-anchor" href="#gotchas-and-spatial-edge-cases">Gotchas and Spatial Edge Cases</a></h2>
+<ol>
+<li>
+<p><strong>Coordinate ring orientation drift.</strong> RFC 7946 mandates counter-clockwise winding for exterior rings, but several providers (and PostGIS <code>ST_AsGeoJSON</code>) do not enforce this. Two deliveries of the same polygon with opposite winding produce different canonical strings and different signatures. Run <code>shapely.geometry.shape(payload[&quot;geometry&quot;]).buffer(0)</code> to normalize topology before hashing when winding consistency cannot be guaranteed.</p>
+</li>
+<li>
+<p><strong>Precision loss in <code>float</code> → <code>str</code> → <code>float</code> round-trips.</strong> If your ingress framework parses JSON as Python <code>float</code> before passing to the handler, values like <code>-122.4194155</code> may already carry IEEE-754 drift. The <code>_round_coords</code> helper fixes this, but apply it after deserialization, not before — rounding the raw string is a no-op.</p>
+</li>
+<li>
+<p><strong>Mixed CRS payloads colliding after normalization.</strong> A feature in EPSG:3857 (Web Mercator) and the same feature re-projected to EPSG:4326 (WGS84) will have very different coordinate values, so they will not collide in Redis — but they <em>should</em> be treated as duplicates if they represent the same real-world event. Always normalize to a single CRS before hashing; see <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/handling-mixed-crs-payloads-in-python-event-handlers/">Handling Mixed CRS Payloads in Python Event Handlers</a> for a projection pipeline.</p>
+</li>
+<li>
+<p><strong>Provider-added timestamp fields in the geometry.</strong> Some IoT and drone telemetry providers embed <code>&quot;timestamp&quot;</code> inside the <code>geometry</code> object (non-standard GeoJSON). Extend <code>_TRANSIENT_KEYS</code> or add a recursive filter to strip these before hashing, otherwise each delivery attempt gets a unique signature and the cache is useless.</p>
+</li>
+<li>
+<p><strong>Redis Cluster hash slot boundary for key distribution.</strong> In Redis Cluster mode, all <code>swh:sig:*</code> keys hash to different slots based on the full key, distributing evenly. This is correct behaviour for signature caching. Do not add a hash tag (<code>{swh}</code>) unless you need multi-key transactions on the same slot — and there are none here.</p>
+</li>
+<li>
+<p><strong>TTL shorter than the delivery retry window.</strong> If <code>SIGNATURE_TTL</code> expires before the provider stops retrying, the Redis key disappears and the duplicate is processed again. Always add a buffer of at least 30 % above the provider’s stated retry window, and monitor <code>OBJECT IDLETIME</code> on sample keys.</p>
+</li>
+</ol>
+<h2 id="minimal-verification-snippet" tabindex="-1"><a class="heading-anchor" href="#minimal-verification-snippet">Minimal Verification Snippet</a></h2>
+<p>Run this against a local Redis instance to confirm the atomic check-and-set behaves correctly for both new events and retries:</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> pytest
+<span class="token keyword">from</span> unittest<span class="token punctuation">.</span>mock <span class="token keyword">import</span> patch<span class="token punctuation">,</span> MagicMock
+
+<span class="token comment"># Isolate the module under test from a live Redis connection.</span>
+<span class="token keyword">from</span> your_module <span class="token keyword">import</span> is_new_spatial_event
+
+SAMPLE_PAYLOAD <span class="token operator">=</span> <span class="token punctuation">{</span>
+    <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Feature"</span><span class="token punctuation">,</span>
+    <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">122.4194155</span><span class="token punctuation">,</span> <span class="token number">37.7749295</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"sensor_id"</span><span class="token punctuation">:</span> <span class="token string">"gps-42"</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+<span class="token punctuation">}</span>
+
+<span class="token keyword">def</span> <span class="token function">_make_redis_mock</span><span class="token punctuation">(</span>set_returns<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    mock <span class="token operator">=</span> MagicMock<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    mock<span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">.</span>side_effect <span class="token operator">=</span> set_returns
+    <span class="token keyword">return</span> mock
+
+<span class="token keyword">def</span> <span class="token function">test_new_event_returns_true</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">with</span> patch<span class="token punctuation">(</span><span class="token string">"your_module._redis"</span><span class="token punctuation">,</span> _make_redis_mock<span class="token punctuation">(</span><span class="token punctuation">[</span><span class="token boolean">True</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">assert</span> is_new_spatial_event<span class="token punctuation">(</span>SAMPLE_PAYLOAD<span class="token punctuation">)</span> <span class="token keyword">is</span> <span class="token boolean">True</span>
+
+<span class="token keyword">def</span> <span class="token function">test_duplicate_event_returns_false</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token comment"># First call claims the key; second call returns None (key already exists).</span>
+    <span class="token keyword">with</span> patch<span class="token punctuation">(</span><span class="token string">"your_module._redis"</span><span class="token punctuation">,</span> _make_redis_mock<span class="token punctuation">(</span><span class="token punctuation">[</span><span class="token boolean">True</span><span class="token punctuation">,</span> <span class="token boolean">None</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">assert</span> is_new_spatial_event<span class="token punctuation">(</span>SAMPLE_PAYLOAD<span class="token punctuation">)</span> <span class="token keyword">is</span> <span class="token boolean">True</span>
+        <span class="token keyword">assert</span> is_new_spatial_event<span class="token punctuation">(</span>SAMPLE_PAYLOAD<span class="token punctuation">)</span> <span class="token keyword">is</span> <span class="token boolean">False</span>
+
+<span class="token keyword">def</span> <span class="token function">test_transient_fields_stripped_before_hashing</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Events identical except for 'received_at' must map to the same key."""</span>
+    payload_a <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token operator">**</span>SAMPLE_PAYLOAD<span class="token punctuation">,</span> <span class="token string">"received_at"</span><span class="token punctuation">:</span> <span class="token string">"2026-01-01T00:00:00Z"</span><span class="token punctuation">}</span>
+    payload_b <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token operator">**</span>SAMPLE_PAYLOAD<span class="token punctuation">,</span> <span class="token string">"received_at"</span><span class="token punctuation">:</span> <span class="token string">"2026-01-01T00:05:00Z"</span><span class="token punctuation">}</span>
+    <span class="token keyword">with</span> patch<span class="token punctuation">(</span><span class="token string">"your_module._redis"</span><span class="token punctuation">,</span> _make_redis_mock<span class="token punctuation">(</span><span class="token punctuation">[</span><span class="token boolean">True</span><span class="token punctuation">,</span> <span class="token boolean">None</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">assert</span> is_new_spatial_event<span class="token punctuation">(</span>payload_a<span class="token punctuation">)</span> <span class="token keyword">is</span> <span class="token boolean">True</span>
+        <span class="token keyword">assert</span> is_new_spatial_event<span class="token punctuation">(</span>payload_b<span class="token punctuation">)</span> <span class="token keyword">is</span> <span class="token boolean">False</span>  <span class="token comment"># same spatial content</span>
+
+<span class="token keyword">def</span> <span class="token function">test_redis_unavailable_fails_open</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">from</span> redis<span class="token punctuation">.</span>exceptions <span class="token keyword">import</span> RedisError
+    mock <span class="token operator">=</span> MagicMock<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    mock<span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">.</span>side_effect <span class="token operator">=</span> RedisError<span class="token punctuation">(</span><span class="token string">"connection refused"</span><span class="token punctuation">)</span>
+    <span class="token keyword">with</span> patch<span class="token punctuation">(</span><span class="token string">"your_module._redis"</span><span class="token punctuation">,</span> mock<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token comment"># Fail-open: event must be processed even when Redis is down.</span>
+        <span class="token keyword">assert</span> is_new_spatial_event<span class="token punctuation">(</span>SAMPLE_PAYLOAD<span class="token punctuation">)</span> <span class="token keyword">is</span> <span class="token boolean">True</span>
+</code></pre>
+</div>
+<h2 id="frequently-asked-questions" tabindex="-1"><a class="heading-anchor" href="#frequently-asked-questions">Frequently Asked Questions</a></h2>
+<h3 id="what-ttl-should-i-set-for-redis-webhook-signature-keys" tabindex="-1"><a class="heading-anchor" href="#what-ttl-should-i-set-for-redis-webhook-signature-keys">What TTL should I set for Redis webhook signature keys?</a></h3>
+<p>Set <code>SIGNATURE_TTL</code> to 20–30% longer than your provider’s maximum redelivery window. Most spatial webhook providers retry for 24–72 hours, so a 90,000-second (25-hour) to 259,200-second (72-hour) TTL covers the redelivery gap without holding signatures longer than necessary. Anything shorter risks the key expiring while the provider is still retrying, which lets a duplicate slip through.</p>
+<h3 id="does-set-nx-ex-guarantee-exactly-once-processing-under-concurrent-delivery" tabindex="-1"><a class="heading-anchor" href="#does-set-nx-ex-guarantee-exactly-once-processing-under-concurrent-delivery">Does <code>SET NX EX</code> guarantee exactly-once processing under concurrent delivery?</a></h3>
+<p>Yes, for a single Redis node or a single Cluster slot. The <code>SET ... NX EX</code> operation is atomic in Redis — when N concurrent receivers race with the same signature, exactly one receives <code>OK</code> and the rest receive <code>nil</code>. The losers must discard their copy of the event. This is what makes the pattern safe even when several webhook receiver pods process the same retry storm simultaneously.</p>
+<h3 id="should-i-fail-open-or-fail-closed-when-redis-is-unavailable" tabindex="-1"><a class="heading-anchor" href="#should-i-fail-open-or-fail-closed-when-redis-is-unavailable">Should I fail open or fail closed when Redis is unavailable?</a></h3>
+<p>Fail open (proceed with processing) for most spatial telemetry pipelines, and rely on downstream PostGIS unique constraints to absorb the rare duplicate that gets through during a cache outage. Fail closed (reject the delivery) only when duplicate writes carry financial or regulatory weight — and in that case, queue the rejected payload for later reconciliation rather than dropping it.</p>
+<hr>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
+<ul>
+<li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a> — parent: the full pipeline from ingestion to conditional execution</li>
+<li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/">Generating Deterministic Idempotency Keys for GeoJSON Events</a> — deep dive on BLAKE2b vs SHA-256 and recursive float normalization</li>
+<li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a> — architectural overview of exactly-once semantics for geospatial event streams</li>
+</ul>
+
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a></li>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a></li>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a></li>
+            <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring &amp; Observability for Spatial Pipelines</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</article>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="https://www.geospatialwebhook.com/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/">Home</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queues &amp; Retries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Queues &amp; Retries</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Monitoring</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging &amp; Tracing for Spatial Events</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <a class="site-footer__gh" href="https://github.com/geospatialwebhook" target="_blank" rel="noopener" aria-label="Geospatial Webhook on GitHub">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5Z"/></svg><span>GitHub</span>
+      </a>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

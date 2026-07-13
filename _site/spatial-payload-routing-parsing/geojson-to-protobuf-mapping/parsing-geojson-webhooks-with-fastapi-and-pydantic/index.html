@@ -1,0 +1,657 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>Parsing GeoJSON Webhooks with FastAPI and Pydantic · Geo Webhook</title>
+  <meta name="description" content="Enforce RFC 7946-compliant spatial schemas at the HTTP layer with Pydantic v2 models, rejecting malformed GeoJSON webhook payloads before they reach event-driven pipeline logic."/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/parsing-geojson-webhooks-with-fastapi-and-pydantic/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360"/>
+  <meta name="color-scheme" content="light"/>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/parsing-geojson-webhooks-with-fastapi-and-pydantic/"/>
+  <meta property="og:title" content="Parsing GeoJSON Webhooks with FastAPI and Pydantic"/>
+  <meta property="og:description" content="Enforce RFC 7946-compliant spatial schemas at the HTTP layer with Pydantic v2 models, rejecting malformed GeoJSON webhook payloads before they reach event-driven pipeline logic."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Parsing GeoJSON Webhooks with FastAPI and Pydantic"/>
+  <meta name="twitter:description" content="Enforce RFC 7946-compliant spatial schemas at the HTTP layer with Pydantic v2 models, rejecting malformed GeoJSON webhook payloads before they reach event-driven pipeline logic."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },{ "@type": "ListItem", "position": 2, "name": "Spatial Payload Routing Parsing", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" },{ "@type": "ListItem", "position": 3, "name": "Geojson To Protobuf Mapping", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/" },{ "@type": "ListItem", "position": 4, "name": "Parsing Geojson Webhooks With Fastapi And Pydantic", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/parsing-geojson-webhooks-with-fastapi-and-pydantic/" }
+    ]
+  }
+  </script>
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/parsing-geojson-webhooks-with-fastapi-and-pydantic/#article",
+    "mainEntityOfPage": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/parsing-geojson-webhooks-with-fastapi-and-pydantic/",
+    "headline": "Parsing GeoJSON Webhooks with FastAPI and Pydantic",
+    "description": "Enforce RFC 7946-compliant spatial schemas at the HTTP layer with Pydantic v2 models, rejecting malformed GeoJSON webhook payloads before they reach event-driven pipeline logic.",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
+    "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
+    "image": "https://www.geospatialwebhook.com/og-image.png",
+    "url": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/parsing-geojson-webhooks-with-fastapi-and-pydantic/",
+    "articleSection": "Spatial Payload Routing Parsing",
+    "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
+  }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="https://www.geospatialwebhook.com/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="https://www.geospatialwebhook.com/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Queues &amp; Retries</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
+      </a>
+    </nav>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="https://www.geospatialwebhook.com/">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing Parsing</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">Geojson To Protobuf Mapping</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">Parsing Geojson Webhooks With Fastapi And Pydantic</span>
+    </nav>
+
+    <h1 class="page__title">Parsing GeoJSON Webhooks with FastAPI and Pydantic</h1>
+
+    <div class="page__layout">
+      <div class="markdown">
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Parsing GeoJSON Webhooks with FastAPI and Pydantic",
+      "description": "Enforce RFC 7946-compliant spatial schemas at the HTTP layer with Pydantic v2 models, rejecting malformed GeoJSON webhook payloads before they reach event-driven pipeline logic.",
+      "datePublished": "2024-03-15",
+      "dateModified": "2026-06-25",
+      "author": { "@type": "Organization", "name": "geospatialwebhook.com" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Spatial Payload Routing & Parsing", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" },
+        { "@type": "ListItem", "position": 2, "name": "GeoJSON to Protobuf Mapping", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/" },
+        { "@type": "ListItem", "position": 3, "name": "Parsing GeoJSON Webhooks with FastAPI and Pydantic", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/parsing-geojson-webhooks-with-fastapi-and-pydantic/" }
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Parsing GeoJSON Webhooks with FastAPI and Pydantic",
+      "step": [
+        { "@type": "HowToStep", "position": 1, "name": "Model the GeoJSON object graph", "text": "Define discriminated Pydantic v2 models for Geometry, Feature, and FeatureCollection with extra=\"forbid\" so unexpected fields are rejected at parse time." },
+        { "@type": "HowToStep", "position": 2, "name": "Validate coordinate bounds and ring structure", "text": "Use model_validator(mode=\"after\") to assert WGS 84 / EPSG:4326 longitude and latitude ranges and that polygon rings are closed." },
+        { "@type": "HowToStep", "position": 3, "name": "Verify the HMAC signature over raw bytes", "text": "Compute HMAC-SHA256 over the unparsed request body and compare with constant-time comparison before deserializing JSON." },
+        { "@type": "HowToStep", "position": 4, "name": "Deserialize with model_validate_json", "text": "Parse the raw body directly into the typed model, returning 422 with structured errors when the payload violates RFC 7946." },
+        { "@type": "HowToStep", "position": 5, "name": "Acknowledge fast and route downstream", "text": "Return 202 Accepted and hand the validated payload to an async processor, queue, or protobuf serializer." }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Why parse the raw body instead of using a FastAPI body parameter?",
+          "acceptedAnswer": { "@type": "Answer", "text": "HMAC signatures are computed over the exact bytes the sender transmitted. If FastAPI deserializes the body into a model first, key ordering and whitespace can change and the recomputed signature will not match. Read request.body() once, verify the signature against those bytes, then call model_validate_json on the same bytes." }
+        },
+        {
+          "@type": "Question",
+          "name": "Does Pydantic validate that polygon rings are closed?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Not by default. Pydantic validates JSON structure and types but knows nothing about spatial topology. You must add a model_validator that checks the first and last positions of each linear ring are equal, or hand the coordinates to Shapely for a full validity check." }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I reject coordinates outside the valid WGS 84 range?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Add an after-validator that walks the coordinate arrays and asserts -180 <= longitude <= 180 and -90 <= latitude <= 90. RFC 7946 mandates EPSG:4326 with longitude first, so a Point at [200, 10] is invalid and should return 422." }
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>Define RFC 7946-compliant Pydantic v2 models with <code>extra=&quot;forbid&quot;</code>, verify the HMAC signature over the raw request body, then call <code>model_validate_json</code> so FastAPI rejects malformed GeoJSON with a structured <code>422</code> before any spatial logic runs.</strong> This how-to sits under <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping</a>, part of <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a>.</p>
+<h2 id="when-to-use-this-pattern" tabindex="-1"><a class="heading-anchor" href="#when-to-use-this-pattern">When to use this pattern</a></h2>
+<p>Schema enforcement at the HTTP edge is worth the extra model code when malformed geometry would otherwise propagate silently:</p>
+<ul>
+<li>You <strong>ingest GeoJSON from third parties or untrusted clients</strong> — partner integrations, mobile clients, or IoT gateways — where a single missing <code>type</code> discriminator or a swapped longitude/latitude pair can corrupt a spatial index downstream.</li>
+<li>You need <strong>deterministic, machine-readable rejection</strong>: a <code>422</code> with field-level error paths beats a <code>500</code> traceback when a sender debugs why their payload bounced, and it keeps malformed coordinates out of <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a> further along.</li>
+<li>Your endpoint feeds a <strong>binary serializer or async fan-out</strong> — for example, converting validated features as covered in <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping</a> — where the consumer assumes the input is already structurally sound.</li>
+</ul>
+<p>If you are only logging payloads or your producer is fully trusted and inside your own trust boundary, a permissive <code>dict[str, Any]</code> parse may be enough. Reserve strict modeling for ingress points where “is this even valid GeoJSON?” is a question you cannot afford to answer downstream.</p>
+<h2 id="validation-flow" tabindex="-1"><a class="heading-anchor" href="#validation-flow">Validation flow</a></h2>
+<p>The diagram below shows the fail-fast order. Cheap checks run first (signature over raw bytes, then structural parse); the spatial bound and ring checks run inside the model only once the JSON is well-formed. Any failure short-circuits to a typed HTTP error before the payload reaches your processor.</p>
+<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="GeoJSON webhook validation flow diagram" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+  <title>GeoJSON webhook validation flow</title>
+  <desc>A flowchart showing four sequential gates: read raw body and verify HMAC, parse JSON into Pydantic models, validate coordinate bounds and ring closure, then accept and route downstream. Signature failures return 401, structural failures return 422, and accepted payloads return 202 to an async processor.</desc>
+  <defs>
+    <marker id="gj-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="currentColor"/>
+    </marker>
+    <marker id="gj-arr-dash" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
+    </marker>
+  </defs>
+  <!-- Row 1 -->
+  <rect x="8" y="28" width="120" height="50" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="68" y="50" text-anchor="middle" font-size="12" fill="currentColor" font-family="sans-serif">Incoming</text>
+  <text x="68" y="66" text-anchor="middle" font-size="12" fill="currentColor" font-family="sans-serif">POST</text>
+  <line x1="128" y1="53" x2="153" y2="53" stroke="currentColor" stroke-width="1.5" marker-end="url(#gj-arr)"/>
+  <rect x="155" y="28" width="140" height="50" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="225" y="50" text-anchor="middle" font-size="12" fill="currentColor" font-family="sans-serif">1. Verify HMAC</text>
+  <text x="225" y="66" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif">over raw bytes</text>
+  <line x1="295" y1="53" x2="320" y2="53" stroke="currentColor" stroke-width="1.5" marker-end="url(#gj-arr)"/>
+  <rect x="322" y="28" width="140" height="50" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="392" y="50" text-anchor="middle" font-size="12" fill="currentColor" font-family="sans-serif">2. Parse JSON</text>
+  <text x="392" y="66" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif">into Pydantic models</text>
+  <line x1="462" y1="53" x2="487" y2="53" stroke="currentColor" stroke-width="1.5" marker-end="url(#gj-arr)"/>
+  <rect x="489" y="28" width="150" height="50" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="564" y="48" text-anchor="middle" font-size="12" fill="currentColor" font-family="sans-serif">3. Spatial checks</text>
+  <text x="564" y="64" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif">bounds · ring closure</text>
+  <!-- pass path down to accept -->
+  <line x1="564" y1="78" x2="564" y2="104" stroke="currentColor" stroke-width="1.5"/>
+  <line x1="564" y1="104" x2="225" y2="104" stroke="currentColor" stroke-width="1.5"/>
+  <line x1="225" y1="104" x2="225" y2="143" stroke="currentColor" stroke-width="1.5" marker-end="url(#gj-arr)"/>
+  <text x="400" y="98" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif">valid GeoJSON ✓</text>
+  <!-- Row 2: accept -->
+  <rect x="150" y="145" width="150" height="50" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="225" y="167" text-anchor="middle" font-size="12" fill="currentColor" font-family="sans-serif">4. Accept event</text>
+  <text x="225" y="183" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif">202 → async processor</text>
+  <!-- Reject box -->
+  <rect x="360" y="225" width="290" height="50" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="505" y="247" text-anchor="middle" font-size="12" fill="currentColor" font-family="sans-serif">Reject before processing</text>
+  <text x="505" y="263" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif">401 bad signature · 422 invalid GeoJSON</text>
+  <!-- failure paths -->
+  <line x1="225" y1="78" x2="225" y2="100" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3"/>
+  <line x1="395" y1="218" x2="395" y2="225" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#gj-arr-dash)" opacity="0.7"/>
+  <line x1="392" y1="78" x2="392" y2="218" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" opacity="0.7"/>
+  <text x="398" y="150" font-size="9" fill="currentColor" font-family="sans-serif" opacity="0.8">malformed</text>
+  <line x1="564" y1="78" x2="564" y2="200" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" opacity="0.7"/>
+  <line x1="564" y1="200" x2="450" y2="200" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" opacity="0.7"/>
+  <line x1="450" y1="200" x2="450" y2="225" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#gj-arr-dash)" opacity="0.7"/>
+  <text x="569" y="150" font-size="9" fill="currentColor" font-family="sans-serif" opacity="0.8">out of bounds</text>
+</svg>
+<h2 id="complete-runnable-code-block" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-code-block">Complete runnable code block</a></h2>
+<p>The handler below is self-contained. It models the GeoJSON object graph with discriminated unions, enforces WGS 84 / EPSG:4326 coordinate bounds and closed polygon rings inside the model, verifies an HMAC-SHA256 signature over the raw bytes, and returns <code>202</code> with a fast hand-off to an async processor. Because the spec mandates EPSG:4326 with longitude before latitude, the bound checks assume that order.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> hashlib
+<span class="token keyword">import</span> hmac
+<span class="token keyword">from</span> typing <span class="token keyword">import</span> Annotated<span class="token punctuation">,</span> Any<span class="token punctuation">,</span> Literal<span class="token punctuation">,</span> Union
+
+<span class="token keyword">from</span> fastapi <span class="token keyword">import</span> FastAPI<span class="token punctuation">,</span> Header<span class="token punctuation">,</span> HTTPException<span class="token punctuation">,</span> Request<span class="token punctuation">,</span> status
+<span class="token keyword">from</span> pydantic <span class="token keyword">import</span> BaseModel<span class="token punctuation">,</span> ConfigDict<span class="token punctuation">,</span> Field<span class="token punctuation">,</span> ValidationError<span class="token punctuation">,</span> model_validator
+
+app <span class="token operator">=</span> FastAPI<span class="token punctuation">(</span>title<span class="token operator">=</span><span class="token string">"GeoJSON Webhook Ingestor"</span><span class="token punctuation">)</span>
+WEBHOOK_SECRET <span class="token operator">=</span> <span class="token string">b"load-from-secrets-manager-not-source-control"</span>
+
+<span class="token comment"># --- Coordinate helpers (RFC 7946 mandates EPSG:4326, longitude first) ---</span>
+<span class="token keyword">def</span> <span class="token function">_check_position</span><span class="token punctuation">(</span>pos<span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">float</span><span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token comment"># A position is [lon, lat] or [lon, lat, elevation]; only the first two are bounded.</span>
+    <span class="token keyword">if</span> <span class="token builtin">len</span><span class="token punctuation">(</span>pos<span class="token punctuation">)</span> <span class="token operator">&lt;</span> <span class="token number">2</span><span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"position must have at least longitude and latitude"</span><span class="token punctuation">)</span>
+    lon<span class="token punctuation">,</span> lat <span class="token operator">=</span> pos<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> pos<span class="token punctuation">[</span><span class="token number">1</span><span class="token punctuation">]</span>
+    <span class="token keyword">if</span> <span class="token keyword">not</span> <span class="token punctuation">(</span><span class="token operator">-</span><span class="token number">180.0</span> <span class="token operator">&lt;=</span> lon <span class="token operator">&lt;=</span> <span class="token number">180.0</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"longitude </span><span class="token interpolation"><span class="token punctuation">{</span>lon<span class="token punctuation">}</span></span><span class="token string"> outside [-180, 180]"</span></span><span class="token punctuation">)</span>
+    <span class="token keyword">if</span> <span class="token keyword">not</span> <span class="token punctuation">(</span><span class="token operator">-</span><span class="token number">90.0</span> <span class="token operator">&lt;=</span> lat <span class="token operator">&lt;=</span> <span class="token number">90.0</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"latitude </span><span class="token interpolation"><span class="token punctuation">{</span>lat<span class="token punctuation">}</span></span><span class="token string"> outside [-90, 90]"</span></span><span class="token punctuation">)</span>
+
+<span class="token keyword">def</span> <span class="token function">_walk_positions</span><span class="token punctuation">(</span>coords<span class="token punctuation">:</span> Any<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token comment"># Recurse into the nested coordinate array until we hit [lon, lat, ...] positions.</span>
+    <span class="token keyword">if</span> coords <span class="token keyword">and</span> <span class="token builtin">isinstance</span><span class="token punctuation">(</span>coords<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token builtin">int</span><span class="token punctuation">,</span> <span class="token builtin">float</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        _check_position<span class="token punctuation">(</span>coords<span class="token punctuation">)</span>
+    <span class="token keyword">else</span><span class="token punctuation">:</span>
+        <span class="token keyword">for</span> child <span class="token keyword">in</span> coords<span class="token punctuation">:</span>
+            _walk_positions<span class="token punctuation">(</span>child<span class="token punctuation">)</span>
+
+<span class="token comment"># --- Pydantic v2 GeoJSON models ---</span>
+<span class="token keyword">class</span> <span class="token class-name">Point</span><span class="token punctuation">(</span>BaseModel<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    model_config <span class="token operator">=</span> ConfigDict<span class="token punctuation">(</span>extra<span class="token operator">=</span><span class="token string">"forbid"</span><span class="token punctuation">)</span>
+    <span class="token builtin">type</span><span class="token punctuation">:</span> Literal<span class="token punctuation">[</span><span class="token string">"Point"</span><span class="token punctuation">]</span>
+    coordinates<span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">float</span><span class="token punctuation">]</span>
+
+<span class="token keyword">class</span> <span class="token class-name">Polygon</span><span class="token punctuation">(</span>BaseModel<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    model_config <span class="token operator">=</span> ConfigDict<span class="token punctuation">(</span>extra<span class="token operator">=</span><span class="token string">"forbid"</span><span class="token punctuation">)</span>
+    <span class="token builtin">type</span><span class="token punctuation">:</span> Literal<span class="token punctuation">[</span><span class="token string">"Polygon"</span><span class="token punctuation">]</span>
+    <span class="token comment"># Polygon = array of linear rings; each ring is an array of positions.</span>
+    coordinates<span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">float</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">]</span>
+
+    <span class="token decorator annotation punctuation">@model_validator</span><span class="token punctuation">(</span>mode<span class="token operator">=</span><span class="token string">"after"</span><span class="token punctuation">)</span>
+    <span class="token keyword">def</span> <span class="token function">rings_must_close</span><span class="token punctuation">(</span>self<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token string">"Polygon"</span><span class="token punctuation">:</span>
+        <span class="token keyword">for</span> ring <span class="token keyword">in</span> self<span class="token punctuation">.</span>coordinates<span class="token punctuation">:</span>
+            <span class="token keyword">if</span> <span class="token builtin">len</span><span class="token punctuation">(</span>ring<span class="token punctuation">)</span> <span class="token operator">&lt;</span> <span class="token number">4</span><span class="token punctuation">:</span>
+                <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"a linear ring needs at least 4 positions"</span><span class="token punctuation">)</span>
+            <span class="token keyword">if</span> ring<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span> <span class="token operator">!=</span> ring<span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">1</span><span class="token punctuation">]</span><span class="token punctuation">:</span>
+                <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"polygon ring is not closed (first != last position)"</span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> self
+
+<span class="token comment"># Discriminated union keeps error messages precise per geometry type.</span>
+Geometry <span class="token operator">=</span> Annotated<span class="token punctuation">[</span>Union<span class="token punctuation">[</span>Point<span class="token punctuation">,</span> Polygon<span class="token punctuation">]</span><span class="token punctuation">,</span> Field<span class="token punctuation">(</span>discriminator<span class="token operator">=</span><span class="token string">"type"</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+
+<span class="token keyword">class</span> <span class="token class-name">Feature</span><span class="token punctuation">(</span>BaseModel<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    model_config <span class="token operator">=</span> ConfigDict<span class="token punctuation">(</span>extra<span class="token operator">=</span><span class="token string">"forbid"</span><span class="token punctuation">)</span>
+    <span class="token builtin">type</span><span class="token punctuation">:</span> Literal<span class="token punctuation">[</span><span class="token string">"Feature"</span><span class="token punctuation">]</span>
+    geometry<span class="token punctuation">:</span> Geometry
+    properties<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span>
+    <span class="token builtin">id</span><span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">|</span> <span class="token builtin">int</span> <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span>
+
+    <span class="token decorator annotation punctuation">@model_validator</span><span class="token punctuation">(</span>mode<span class="token operator">=</span><span class="token string">"after"</span><span class="token punctuation">)</span>
+    <span class="token keyword">def</span> <span class="token function">coordinates_in_bounds</span><span class="token punctuation">(</span>self<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token string">"Feature"</span><span class="token punctuation">:</span>
+        _walk_positions<span class="token punctuation">(</span>self<span class="token punctuation">.</span>geometry<span class="token punctuation">.</span>coordinates<span class="token punctuation">)</span>
+        <span class="token keyword">return</span> self
+
+<span class="token keyword">class</span> <span class="token class-name">FeatureCollection</span><span class="token punctuation">(</span>BaseModel<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    model_config <span class="token operator">=</span> ConfigDict<span class="token punctuation">(</span>extra<span class="token operator">=</span><span class="token string">"forbid"</span><span class="token punctuation">)</span>
+    <span class="token builtin">type</span><span class="token punctuation">:</span> Literal<span class="token punctuation">[</span><span class="token string">"FeatureCollection"</span><span class="token punctuation">]</span>
+    features<span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">[</span>Feature<span class="token punctuation">]</span> <span class="token operator">=</span> Field<span class="token punctuation">(</span>min_length<span class="token operator">=</span><span class="token number">1</span><span class="token punctuation">)</span>
+
+<span class="token keyword">class</span> <span class="token class-name">WebhookPayload</span><span class="token punctuation">(</span>BaseModel<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    model_config <span class="token operator">=</span> ConfigDict<span class="token punctuation">(</span>extra<span class="token operator">=</span><span class="token string">"forbid"</span><span class="token punctuation">)</span>
+    event_type<span class="token punctuation">:</span> <span class="token builtin">str</span>
+    data<span class="token punctuation">:</span> Feature <span class="token operator">|</span> FeatureCollection
+
+<span class="token comment"># --- Security ---</span>
+<span class="token keyword">def</span> <span class="token function">verify_signature</span><span class="token punctuation">(</span>raw<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">,</span> signature<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+    expected <span class="token operator">=</span> hmac<span class="token punctuation">.</span>new<span class="token punctuation">(</span>WEBHOOK_SECRET<span class="token punctuation">,</span> raw<span class="token punctuation">,</span> hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> hmac<span class="token punctuation">.</span>compare_digest<span class="token punctuation">(</span>expected<span class="token punctuation">,</span> signature<span class="token punctuation">)</span>
+
+<span class="token comment"># --- Route ---</span>
+<span class="token decorator annotation punctuation">@app<span class="token punctuation">.</span>post</span><span class="token punctuation">(</span><span class="token string">"/webhooks/geojson"</span><span class="token punctuation">,</span> status_code<span class="token operator">=</span>status<span class="token punctuation">.</span>HTTP_202_ACCEPTED<span class="token punctuation">)</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">ingest</span><span class="token punctuation">(</span>
+    request<span class="token punctuation">:</span> Request<span class="token punctuation">,</span>
+    x_webhook_signature<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">=</span> Header<span class="token punctuation">(</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">,</span> alias<span class="token operator">=</span><span class="token string">"X-Webhook-Signature"</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token comment"># 1. Read raw bytes ONCE; the signature is computed over these exact bytes.</span>
+    raw <span class="token operator">=</span> <span class="token keyword">await</span> request<span class="token punctuation">.</span>body<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">if</span> <span class="token keyword">not</span> verify_signature<span class="token punctuation">(</span>raw<span class="token punctuation">,</span> x_webhook_signature<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> HTTPException<span class="token punctuation">(</span>status<span class="token punctuation">.</span>HTTP_401_UNAUTHORIZED<span class="token punctuation">,</span> <span class="token string">"invalid signature"</span><span class="token punctuation">)</span>
+
+    <span class="token comment"># 2. Parse the same bytes into the typed model; structured 422 on any violation.</span>
+    <span class="token keyword">try</span><span class="token punctuation">:</span>
+        payload <span class="token operator">=</span> WebhookPayload<span class="token punctuation">.</span>model_validate_json<span class="token punctuation">(</span>raw<span class="token punctuation">)</span>
+    <span class="token keyword">except</span> ValidationError <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> HTTPException<span class="token punctuation">(</span>status<span class="token punctuation">.</span>HTTP_422_UNPROCESSABLE_ENTITY<span class="token punctuation">,</span> exc<span class="token punctuation">.</span>errors<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+    <span class="token comment"># 3. Acknowledge fast; offload heavy spatial work to a queue or executor.</span>
+    <span class="token keyword">await</span> route_downstream<span class="token punctuation">(</span>payload<span class="token punctuation">)</span>
+    <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"accepted"</span><span class="token punctuation">,</span> <span class="token string">"event_type"</span><span class="token punctuation">:</span> payload<span class="token punctuation">.</span>event_type<span class="token punctuation">}</span>
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">route_downstream</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> WebhookPayload<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token comment"># Hand off to PostGIS, a broker, or a protobuf serializer here.</span>
+    <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span>
+</code></pre>
+</div>
+<h2 id="parameter-option-reference-table" tabindex="-1"><a class="heading-anchor" href="#parameter-option-reference-table">Parameter / option reference table</a></h2>
+<p>The settings below are the ones that change correctness, not just style. Spatial constraints assume RFC 7946 (EPSG:4326, longitude first).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Type</th>
+<th>Spatial constraint / effect</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ConfigDict(extra=&quot;forbid&quot;)</code></td>
+<td>bool flag</td>
+<td>Rejects unknown keys (e.g. a typo’d <code>geometery</code>) instead of silently dropping them</td>
+<td><code>extra=&quot;ignore&quot;</code></td>
+</tr>
+<tr>
+<td><code>Field(discriminator=&quot;type&quot;)</code></td>
+<td>union discriminator</td>
+<td>Routes each geometry to the right model so errors name the actual type, not “none matched”</td>
+<td>none</td>
+</tr>
+<tr>
+<td><code>Field(min_length=1)</code> on <code>features</code></td>
+<td>int</td>
+<td>A <code>FeatureCollection</code> with zero features is structurally legal in RFC 7946 but usually a producer bug</td>
+<td>unbounded</td>
+</tr>
+<tr>
+<td><code>model_validate_json(raw)</code></td>
+<td>classmethod</td>
+<td>Parses bytes directly; skips a <code>json.loads</code> round-trip and preserves byte-exact signature input</td>
+<td>n/a</td>
+</tr>
+<tr>
+<td><code>hmac.compare_digest</code></td>
+<td>function</td>
+<td>Constant-time comparison; prevents timing side-channels that leak the secret</td>
+<td>use <code>==</code> (unsafe)</td>
+</tr>
+<tr>
+<td>lon bound</td>
+<td>float range</td>
+<td><code>-180.0 &lt;= lon &lt;= 180.0</code>; values outside indicate swapped lat/lon or a non-EPSG:4326 source</td>
+<td>none</td>
+</tr>
+<tr>
+<td>lat bound</td>
+<td>float range</td>
+<td><code>-90.0 &lt;= lat &lt;= 90.0</code>; a value of <code>200</code> is a classic swapped-axis symptom</td>
+<td>none</td>
+</tr>
+<tr>
+<td>ring closure</td>
+<td>list check</td>
+<td>First and last position of each linear ring must be equal</td>
+<td>not enforced</td>
+</tr>
+</tbody>
+</table>
+</div><h2 id="gotchas-and-spatial-edge-cases" tabindex="-1"><a class="heading-anchor" href="#gotchas-and-spatial-edge-cases">Gotchas and spatial edge cases</a></h2>
+<ol>
+<li><strong>Swapped longitude and latitude.</strong> The single most common bug. RFC 7946 mandates <code>[longitude, latitude]</code>, but many producers (and most people) say “lat, lon”. A <code>Point</code> at <code>[40.7, -74.0]</code> will pass naive parsing yet place New York in the Indian Ocean. The bound checks above catch only egregious swaps (lat &gt; 90); for plausible mid-latitude values you need a sanity check against an expected region.</li>
+<li><strong>Coordinate precision loss before signing.</strong> If you round coordinates before computing or verifying the HMAC, the recomputed digest will not match. Sign the raw bytes exactly as received and round only after validation, never before.</li>
+<li><strong>Ring orientation is not validity.</strong> RFC 7946 prefers right-hand-rule winding (exterior counter-clockwise, holes clockwise) but most parsers accept either. Pydantic checks closure, not winding. If a downstream consumer assumes a winding order, normalize it explicitly with Shapely’s <code>orient()</code> after parsing.</li>
+<li><strong><code>extra=&quot;ignore&quot;</code> hides typos.</strong> Without <code>extra=&quot;forbid&quot;</code>, a payload sending <code>geometery</code> (misspelled) parses with <code>geometry=None</code> and no error. Forbidding extras turns that into a loud <code>422</code>.</li>
+<li><strong>Unbounded coordinate arrays are a denial-of-service surface.</strong> A single <code>Polygon</code> with millions of vertices will exhaust memory during parse. Cap request body size at the gateway and consider a vertex-count guard before handing the geometry to <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a>.</li>
+<li><strong>CRS assumptions on merge.</strong> This handler assumes EPSG:4326. If any producer emits EPSG:3857 or a local grid, the bound checks will reject legitimate data or — worse — pass garbage. Normalize upstream per <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a> before this endpoint, or carry an explicit CRS field and transform inside the validator.</li>
+</ol>
+<h2 id="minimal-verification-snippet" tabindex="-1"><a class="heading-anchor" href="#minimal-verification-snippet">Minimal verification snippet</a></h2>
+<p>Run the following with <code>pytest</code>. It signs a valid payload, asserts a <code>202</code>, then mutates the body and asserts the typed rejections — no live server required, thanks to FastAPI’s <code>TestClient</code>.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> hashlib
+<span class="token keyword">import</span> hmac
+<span class="token keyword">import</span> json
+
+<span class="token keyword">from</span> fastapi<span class="token punctuation">.</span>testclient <span class="token keyword">import</span> TestClient
+
+<span class="token keyword">from</span> app <span class="token keyword">import</span> WEBHOOK_SECRET<span class="token punctuation">,</span> app  <span class="token comment"># import from the module above</span>
+
+client <span class="token operator">=</span> TestClient<span class="token punctuation">(</span>app<span class="token punctuation">)</span>
+
+<span class="token keyword">def</span> <span class="token function">_sign</span><span class="token punctuation">(</span>body<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> <span class="token builtin">str</span><span class="token punctuation">]</span><span class="token punctuation">:</span>
+    sig <span class="token operator">=</span> hmac<span class="token punctuation">.</span>new<span class="token punctuation">(</span>WEBHOOK_SECRET<span class="token punctuation">,</span> body<span class="token punctuation">,</span> hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"X-Webhook-Signature"</span><span class="token punctuation">:</span> sig<span class="token punctuation">}</span>
+
+VALID <span class="token operator">=</span> <span class="token punctuation">{</span>
+    <span class="token string">"event_type"</span><span class="token punctuation">:</span> <span class="token string">"feature.created"</span><span class="token punctuation">,</span>
+    <span class="token string">"data"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span>
+        <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Feature"</span><span class="token punctuation">,</span>
+        <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">74.006</span><span class="token punctuation">,</span> <span class="token number">40.7128</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+        <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"name"</span><span class="token punctuation">:</span> <span class="token string">"NYC"</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token punctuation">}</span><span class="token punctuation">,</span>
+<span class="token punctuation">}</span>
+
+<span class="token keyword">def</span> <span class="token function">test_valid_payload_accepted</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    body <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>VALID<span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    resp <span class="token operator">=</span> client<span class="token punctuation">.</span>post<span class="token punctuation">(</span><span class="token string">"/webhooks/geojson"</span><span class="token punctuation">,</span> content<span class="token operator">=</span>body<span class="token punctuation">,</span> headers<span class="token operator">=</span>_sign<span class="token punctuation">(</span>body<span class="token punctuation">)</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> resp<span class="token punctuation">.</span>status_code <span class="token operator">==</span> <span class="token number">202</span>
+    <span class="token keyword">assert</span> resp<span class="token punctuation">.</span>json<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">[</span><span class="token string">"event_type"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token string">"feature.created"</span>
+
+<span class="token keyword">def</span> <span class="token function">test_out_of_bounds_latitude_rejected</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    bad <span class="token operator">=</span> json<span class="token punctuation">.</span>loads<span class="token punctuation">(</span>json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>VALID<span class="token punctuation">)</span><span class="token punctuation">)</span>
+    bad<span class="token punctuation">[</span><span class="token string">"data"</span><span class="token punctuation">]</span><span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span><span class="token punctuation">[</span><span class="token string">"coordinates"</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">74.006</span><span class="token punctuation">,</span> <span class="token number">200.0</span><span class="token punctuation">]</span>  <span class="token comment"># lat > 90</span>
+    body <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>bad<span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    resp <span class="token operator">=</span> client<span class="token punctuation">.</span>post<span class="token punctuation">(</span><span class="token string">"/webhooks/geojson"</span><span class="token punctuation">,</span> content<span class="token operator">=</span>body<span class="token punctuation">,</span> headers<span class="token operator">=</span>_sign<span class="token punctuation">(</span>body<span class="token punctuation">)</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> resp<span class="token punctuation">.</span>status_code <span class="token operator">==</span> <span class="token number">422</span>
+
+<span class="token keyword">def</span> <span class="token function">test_bad_signature_rejected</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    body <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>VALID<span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    resp <span class="token operator">=</span> client<span class="token punctuation">.</span>post<span class="token punctuation">(</span>
+        <span class="token string">"/webhooks/geojson"</span><span class="token punctuation">,</span> content<span class="token operator">=</span>body<span class="token punctuation">,</span>
+        headers<span class="token operator">=</span><span class="token punctuation">{</span><span class="token string">"X-Webhook-Signature"</span><span class="token punctuation">:</span> <span class="token string">"deadbeef"</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> resp<span class="token punctuation">.</span>status_code <span class="token operator">==</span> <span class="token number">401</span>
+</code></pre>
+</div>
+<p>A passing run confirms three guarantees at once: well-formed GeoJSON is accepted, an out-of-range coordinate is rejected with <code>422</code> before any processing, and a forged signature never reaches the parser.</p>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
+<ul>
+<li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping</a> — turn the validated features from this handler into compact binary messages for high-throughput routing.</li>
+<li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/optimizing-async-geometry-parsing-with-asyncio/">Optimizing Async Geometry Parsing with asyncio</a> — offload heavy validated geometries to a process pool so ingestion stays non-blocking.</li>
+<li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a> — the broader architecture this ingress layer feeds into.</li>
+</ul>
+
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        <div class="aside-card">
+          <h3>Related in this section</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/protocol-buffers-vs-geojson-for-high-frequency-spatial-events/">Protocol Buffers vs GeoJSON for High-Frequency Spatial Events</a></li>
+          </ul>
+        </div>
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a></li>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a></li>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a></li>
+            <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring &amp; Observability for Spatial Pipelines</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</article>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="https://www.geospatialwebhook.com/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/">Home</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queues &amp; Retries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Queues &amp; Retries</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Monitoring</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging &amp; Tracing for Spatial Events</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <a class="site-footer__gh" href="https://github.com/geospatialwebhook" target="_blank" rel="noopener" aria-label="Geospatial Webhook on GitHub">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5Z"/></svg><span>GitHub</span>
+      </a>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

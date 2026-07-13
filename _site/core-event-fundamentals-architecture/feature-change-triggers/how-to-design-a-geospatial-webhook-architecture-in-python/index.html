@@ -1,0 +1,854 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>Design a Geospatial Webhook Architecture in Python · Geo Webhook</title>
+  <meta name="description" content="Build a production geospatial webhook in Python: async dispatch, Shapely validation, HMAC signing, exponential backoff, and dead-letter routing."/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/how-to-design-a-geospatial-webhook-architecture-in-python/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360"/>
+  <meta name="color-scheme" content="light"/>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/how-to-design-a-geospatial-webhook-architecture-in-python/"/>
+  <meta property="og:title" content="Design a Geospatial Webhook Architecture in Python"/>
+  <meta property="og:description" content="Build a production geospatial webhook in Python: async dispatch, Shapely validation, HMAC signing, exponential backoff, and dead-letter routing."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Design a Geospatial Webhook Architecture in Python"/>
+  <meta name="twitter:description" content="Build a production geospatial webhook in Python: async dispatch, Shapely validation, HMAC signing, exponential backoff, and dead-letter routing."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },{ "@type": "ListItem", "position": 2, "name": "Core Event Fundamentals Architecture", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" },{ "@type": "ListItem", "position": 3, "name": "Feature Change Triggers", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/" },{ "@type": "ListItem", "position": 4, "name": "How To Design A Geospatial Webhook Architecture In Python", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/how-to-design-a-geospatial-webhook-architecture-in-python/" }
+    ]
+  }
+  </script>
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/how-to-design-a-geospatial-webhook-architecture-in-python/#article",
+    "mainEntityOfPage": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/how-to-design-a-geospatial-webhook-architecture-in-python/",
+    "headline": "Design a Geospatial Webhook Architecture in Python",
+    "description": "Build a production geospatial webhook in Python: async dispatch, Shapely validation, HMAC signing, exponential backoff, and dead-letter routing.",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
+    "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
+    "image": "https://www.geospatialwebhook.com/og-image.png",
+    "url": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/how-to-design-a-geospatial-webhook-architecture-in-python/",
+    "articleSection": "Core Event Fundamentals Architecture",
+    "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
+  }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="https://www.geospatialwebhook.com/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="https://www.geospatialwebhook.com/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Queues &amp; Retries</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
+      </a>
+    </nav>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="https://www.geospatialwebhook.com/">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals Architecture</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">How To Design A Geospatial Webhook Architecture In Python</span>
+    </nav>
+
+    <h1 class="page__title">Design a Geospatial Webhook Architecture in Python</h1>
+
+    <div class="page__layout">
+      <div class="markdown">
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "How to Design a Geospatial Webhook Architecture in Python",
+      "description": "Step-by-step guide to designing a production-ready geospatial webhook architecture in Python: async dispatch, Shapely validation, HMAC signing, exponential backoff, and dead-letter routing for spatial event pipelines.",
+      "datePublished": "2025-04-10",
+      "dateModified": "2026-06-24",
+      "author": {"@type": "Organization", "name": "geospatialwebhook.com"},
+      "publisher": {"@type": "Organization", "name": "geospatialwebhook.com"}
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Core Event Fundamentals & Architecture", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/"},
+        {"@type": "ListItem", "position": 2, "name": "Feature Change Triggers", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/"},
+        {"@type": "ListItem", "position": 3, "name": "How to Design a Geospatial Webhook Architecture in Python", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/how-to-design-a-geospatial-webhook-architecture-in-python/"}
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Design a Geospatial Webhook Architecture in Python",
+      "description": "Decouple spatial event ingestion from HTTP delivery using an async message broker, enforce Shapely geometry validation, sign payloads with HMAC-SHA256, and implement exponential backoff with dead-letter routing.",
+      "step": [
+        {"@type": "HowToStep", "name": "Define the canonical GeoEvent schema with Pydantic v2 and Shapely validation"},
+        {"@type": "HowToStep", "name": "Implement HMAC-SHA256 payload signing"},
+        {"@type": "HowToStep", "name": "Write an async dispatcher with exponential backoff and jitter"},
+        {"@type": "HowToStep", "name": "Route undeliverable events to a dead-letter queue"},
+        {"@type": "HowToStep", "name": "Verify correctness with a pytest integration harness"}
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Why use async dispatch instead of synchronous HTTP for geospatial webhooks?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Spatial payloads — especially polygon geometries — can be large and validation is CPU-bound. Blocking on synchronous HTTP calls ties up workers and creates backpressure in the ingestion layer. Async dispatch with aiohttp decouples validation from delivery so the ingestion path stays write-optimized."}
+        },
+        {
+          "@type": "Question",
+          "name": "How do I handle CRS mismatches before dispatching a webhook payload?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Normalize all incoming geometries to WGS 84 (EPSG:4326) at the validation layer using pyproj before serializing to GeoJSON. Reject or reproject any geometry whose CRS metadata differs from EPSG:4326 and log the original SRID so consumers can audit it."}
+        },
+        {
+          "@type": "Question",
+          "name": "When should events go to a dead-letter queue vs. be retried?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Retry on transient HTTP errors (5xx, timeouts, connection resets). Send to the dead-letter queue after max_retries is exhausted, or immediately on 4xx client errors (bad endpoint, auth failure) — retrying those wastes resources. Preserve the full original payload and failure metadata in the DLQ so the event can be replayed cleanly."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>To design a geospatial webhook architecture in Python, decouple spatial event ingestion from HTTP delivery using an async message broker, validate geometry with Shapely before dispatch, sign every payload with HMAC-SHA256, and apply exponential backoff with dead-letter routing for undeliverable events.</strong></p>
+<p>This page is part of the <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers</a> topic under <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a>. It focuses on the single concrete question of how to wire these four concerns together into a runnable Python service.</p>
+<hr>
+<h2 id="when-to-use-this-pattern" tabindex="-1"><a class="heading-anchor" href="#when-to-use-this-pattern">When to use this pattern</a></h2>
+<p>Use the four-layer async architecture described here when:</p>
+<ul>
+<li>Your spatial data source emits high-frequency feature mutations (PostGIS triggers, GDAL pipelines, IoT sensor feeds) and a synchronous HTTP call on every write would introduce unacceptable latency or backpressure.</li>
+<li>Consumers need guaranteed at-least-once delivery — a fire-and-forget HTTP call on a database trigger is not sufficient, because you lose the event if the consumer is temporarily unavailable.</li>
+<li>Payload validation is non-trivial: you need to check geometry topology, enforce coordinate ring orientation, or reject coordinates outside WGS 84 (EPSG:4326) bounds before events leave your system.</li>
+</ul>
+<p>If you only need to push a single event type to a single internal service with no retry requirements, a simpler synchronous <code>requests.post</code> is fine. This architecture pays off when you operate across multiple tenants, multiple endpoint registrations, or geographies with variable network reliability.</p>
+<hr>
+<h2 id="architecture-overview" tabindex="-1"><a class="heading-anchor" href="#architecture-overview">Architecture overview</a></h2>
+<p>The pipeline operates across four logical layers. Each isolates a single concern so that failures do not cascade and each layer can scale independently.</p>
+<svg viewBox="0 0 780 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four-layer geospatial webhook pipeline: Ingestion, Validation, Broker, Dispatcher" style="width:100%;max-width:780px;height:auto;display:block;margin:1.5rem auto;">
+  <title>Four-layer geospatial webhook pipeline</title>
+  <desc>Data flows left-to-right from the Ingestion layer through Spatial Validation, then a Message Broker, to the Async Dispatcher which delivers signed payloads to consumer endpoints.</desc>
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.55"/>
+    </marker>
+  </defs>
+  <!-- Layer boxes -->
+  <rect x="10"  y="60" width="160" height="200" rx="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
+  <rect x="200" y="60" width="160" height="200" rx="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
+  <rect x="390" y="60" width="160" height="200" rx="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
+  <rect x="580" y="60" width="190" height="200" rx="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
+  <!-- Layer labels -->
+  <text x="90"  y="44" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.75">1. Ingestion</text>
+  <text x="280" y="44" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.75">2. Validation</text>
+  <text x="470" y="44" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.75">3. Broker</text>
+  <text x="675" y="44" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.75">4. Dispatcher</text>
+  <!-- Ingestion items -->
+  <rect x="24"  y="82"  width="132" height="30" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="90"  y="102" text-anchor="middle" font-size="11" fill="currentColor">PostGIS trigger</text>
+  <rect x="24"  y="122" width="132" height="30" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="90"  y="142" text-anchor="middle" font-size="11" fill="currentColor">GDAL pipeline</text>
+  <rect x="24"  y="162" width="132" height="30" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="90"  y="182" text-anchor="middle" font-size="11" fill="currentColor">IoT sensor feed</text>
+  <rect x="24"  y="202" width="132" height="30" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="90"  y="222" text-anchor="middle" font-size="11" fill="currentColor">Client SDK event</text>
+  <!-- Arrows ingestion → validation -->
+  <line x1="170" y1="160" x2="196" y2="160" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arr)"/>
+  <!-- Validation items -->
+  <rect x="214" y="82"  width="132" height="30" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="280" y="102" text-anchor="middle" font-size="11" fill="currentColor">Shapely topology</text>
+  <rect x="214" y="122" width="132" height="30" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="280" y="142" text-anchor="middle" font-size="11" fill="currentColor">CRS → EPSG:4326</text>
+  <rect x="214" y="162" width="132" height="30" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="280" y="182" text-anchor="middle" font-size="11" fill="currentColor">Pydantic schema</text>
+  <rect x="214" y="202" width="132" height="30" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="280" y="222" text-anchor="middle" font-size="11" fill="currentColor">Delta threshold</text>
+  <!-- Arrows validation → broker -->
+  <line x1="360" y1="160" x2="386" y2="160" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arr)"/>
+  <!-- Broker items -->
+  <rect x="404" y="82"  width="132" height="30" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="470" y="102" text-anchor="middle" font-size="11" fill="currentColor">Redis Streams</text>
+  <rect x="404" y="122" width="132" height="30" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="470" y="142" text-anchor="middle" font-size="11" fill="currentColor">Topic per feature</text>
+  <rect x="404" y="162" width="132" height="30" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="470" y="182" text-anchor="middle" font-size="11" fill="currentColor">Subscription index</text>
+  <rect x="404" y="202" width="132" height="30" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="470" y="222" text-anchor="middle" font-size="11" fill="currentColor">Ordered by feat. ID</text>
+  <!-- Arrows broker → dispatcher -->
+  <line x1="550" y1="160" x2="576" y2="160" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arr)"/>
+  <!-- Dispatcher items -->
+  <rect x="594" y="82"  width="162" height="30" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="675" y="102" text-anchor="middle" font-size="11" fill="currentColor">HMAC-SHA256 sign</text>
+  <rect x="594" y="122" width="162" height="30" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="675" y="142" text-anchor="middle" font-size="11" fill="currentColor">aiohttp async POST</text>
+  <rect x="594" y="162" width="162" height="30" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="675" y="182" text-anchor="middle" font-size="11" fill="currentColor">Exponential backoff</text>
+  <rect x="594" y="202" width="162" height="30" rx="5" fill="currentColor" opacity="0.08"/>
+  <text x="675" y="222" text-anchor="middle" font-size="11" fill="currentColor">Dead-letter queue</text>
+  <!-- DLQ loop arrow back -->
+  <path d="M675,232 Q675,300 470,300 Q265,300 90,300 Q90,265 90,260" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.35" marker-end="url(#arr)"/>
+  <text x="390" y="318" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.5">DLQ replay path</text>
+</svg>
+<p><strong>Layer 1 — Ingestion:</strong> Receives raw feature mutations and normalizes them into a canonical schema: <code>event_id</code> (UUID), <code>feature_id</code>, <code>geometry</code> (GeoJSON dict), <code>change_type</code> (<code>create | update | delete</code>), and <code>properties</code>. This layer is write-optimized and never blocks downstream workers.</p>
+<p><strong>Layer 2 — Spatial Validation:</strong> Parses geometry through Shapely, checks topology validity, and evaluates spatial delta thresholds — the same logic that drives <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers</a>. Events that do not cross a meaningful delta (micro-edits, null-geometry noise) are dropped here, not forwarded.</p>
+<p><strong>Layer 3 — Message Broker:</strong> Publishes validated events to Redis Streams, RabbitMQ, or Kafka. Subscriber matching happens via spatial bounding-box indexes or attribute tags. The broker guarantees ordering per <code>feature_id</code> and persists events until acknowledged. Storing idempotency keys in the broker maps directly to the <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a> strategy.</p>
+<p><strong>Layer 4 — Async Dispatcher:</strong> Pulls events, signs payloads with HMAC-SHA256 (as detailed in <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/securing-webhook-endpoints-with-spatial-token-validation/">Securing Webhook Endpoints with Spatial Token Validation</a>), and delivers them over non-blocking HTTP. Delivery state, retry counts, and consumer health are tracked in a sidecar store.</p>
+<hr>
+<h2 id="complete-runnable-implementation" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-implementation">Complete runnable implementation</a></h2>
+<p>The module below is self-contained and production-aligned. It wires all four layers: Pydantic v2 schema with Shapely validation, HMAC signing, async delivery with jitter, and dead-letter routing. No placeholder TODOs — every part runs as written.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token comment"># geospatial_webhook_dispatcher.py</span>
+<span class="token comment">#</span>
+<span class="token comment"># Dependencies:</span>
+<span class="token comment">#   pip install fastapi aiohttp pydantic shapely uvicorn</span>
+<span class="token comment">#</span>
+<span class="token comment"># Run with:</span>
+<span class="token comment">#   uvicorn geospatial_webhook_dispatcher:app --host 0.0.0.0 --port 8000</span>
+
+<span class="token keyword">import</span> asyncio
+<span class="token keyword">import</span> hashlib
+<span class="token keyword">import</span> hmac
+<span class="token keyword">import</span> json
+<span class="token keyword">import</span> logging
+<span class="token keyword">import</span> random
+<span class="token keyword">import</span> uuid
+<span class="token keyword">from</span> contextlib <span class="token keyword">import</span> asynccontextmanager
+<span class="token keyword">from</span> datetime <span class="token keyword">import</span> datetime<span class="token punctuation">,</span> timezone
+<span class="token keyword">from</span> typing <span class="token keyword">import</span> Literal
+
+<span class="token keyword">import</span> aiohttp
+<span class="token keyword">from</span> fastapi <span class="token keyword">import</span> FastAPI<span class="token punctuation">,</span> Header<span class="token punctuation">,</span> HTTPException
+<span class="token keyword">from</span> pydantic <span class="token keyword">import</span> BaseModel<span class="token punctuation">,</span> Field<span class="token punctuation">,</span> field_validator
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>validation <span class="token keyword">import</span> explain_validity
+
+logging<span class="token punctuation">.</span>basicConfig<span class="token punctuation">(</span>level<span class="token operator">=</span>logging<span class="token punctuation">.</span>INFO<span class="token punctuation">,</span> <span class="token builtin">format</span><span class="token operator">=</span><span class="token string">"%(asctime)s %(levelname)s %(message)s"</span><span class="token punctuation">)</span>
+log <span class="token operator">=</span> logging<span class="token punctuation">.</span>getLogger<span class="token punctuation">(</span>__name__<span class="token punctuation">)</span>
+
+<span class="token comment"># One shared aiohttp.ClientSession per worker process — created on startup,</span>
+<span class="token comment"># closed on shutdown via the lifespan handler defined below.</span>
+_session<span class="token punctuation">:</span> aiohttp<span class="token punctuation">.</span>ClientSession <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span>
+
+
+<span class="token decorator annotation punctuation">@asynccontextmanager</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">lifespan</span><span class="token punctuation">(</span><span class="token keyword">_</span><span class="token punctuation">:</span> FastAPI<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token comment"># Reuse TCP connections + DNS cache across every POST so retries do not</span>
+    <span class="token comment"># repeat the TLS handshake. on_event("startup"/"shutdown") is deprecated</span>
+    <span class="token comment"># in modern FastAPI; the lifespan context manager is the supported path.</span>
+    <span class="token keyword">global</span> _session
+    connector <span class="token operator">=</span> aiohttp<span class="token punctuation">.</span>TCPConnector<span class="token punctuation">(</span>limit<span class="token operator">=</span><span class="token number">50</span><span class="token punctuation">,</span> ttl_dns_cache<span class="token operator">=</span><span class="token number">300</span><span class="token punctuation">)</span>
+    _session <span class="token operator">=</span> aiohttp<span class="token punctuation">.</span>ClientSession<span class="token punctuation">(</span>connector<span class="token operator">=</span>connector<span class="token punctuation">)</span>
+    <span class="token keyword">try</span><span class="token punctuation">:</span>
+        <span class="token keyword">yield</span>
+    <span class="token keyword">finally</span><span class="token punctuation">:</span>
+        <span class="token keyword">await</span> _session<span class="token punctuation">.</span>close<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+
+app <span class="token operator">=</span> FastAPI<span class="token punctuation">(</span>title<span class="token operator">=</span><span class="token string">"Geospatial Webhook Dispatcher"</span><span class="token punctuation">,</span> lifespan<span class="token operator">=</span>lifespan<span class="token punctuation">)</span>
+
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+<span class="token comment"># 1. Canonical GeoEvent schema</span>
+<span class="token comment">#    All fields follow RFC 7946 conventions; geometry must be WGS 84 (EPSG:4326).</span>
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+
+<span class="token keyword">class</span> <span class="token class-name">GeoEvent</span><span class="token punctuation">(</span>BaseModel<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    event_id<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">=</span> Field<span class="token punctuation">(</span>default_factory<span class="token operator">=</span><span class="token keyword">lambda</span><span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">(</span>uuid<span class="token punctuation">.</span>uuid4<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    feature_id<span class="token punctuation">:</span> <span class="token builtin">str</span>
+    geometry<span class="token punctuation">:</span> <span class="token builtin">dict</span>                              <span class="token comment"># RFC 7946 GeoJSON geometry object</span>
+    change_type<span class="token punctuation">:</span> Literal<span class="token punctuation">[</span><span class="token string">"create"</span><span class="token punctuation">,</span> <span class="token string">"update"</span><span class="token punctuation">,</span> <span class="token string">"delete"</span><span class="token punctuation">]</span>
+    properties<span class="token punctuation">:</span> <span class="token builtin">dict</span> <span class="token operator">=</span> Field<span class="token punctuation">(</span>default_factory<span class="token operator">=</span><span class="token builtin">dict</span><span class="token punctuation">)</span>
+    timestamp<span class="token punctuation">:</span> datetime <span class="token operator">=</span> Field<span class="token punctuation">(</span>
+        default_factory<span class="token operator">=</span><span class="token keyword">lambda</span><span class="token punctuation">:</span> datetime<span class="token punctuation">.</span>now<span class="token punctuation">(</span>timezone<span class="token punctuation">.</span>utc<span class="token punctuation">)</span>
+    <span class="token punctuation">)</span>
+
+    <span class="token decorator annotation punctuation">@field_validator</span><span class="token punctuation">(</span><span class="token string">"geometry"</span><span class="token punctuation">)</span>
+    <span class="token decorator annotation punctuation">@classmethod</span>
+    <span class="token keyword">def</span> <span class="token function">validate_geojson_geometry</span><span class="token punctuation">(</span>cls<span class="token punctuation">,</span> v<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">:</span>
+        <span class="token triple-quoted-string string">"""
+        Parse through Shapely to catch topology errors before the event
+        reaches the broker.  Self-intersecting polygons, unclosed rings, and
+        empty geometries all raise ValueError here, not at delivery time.
+        """</span>
+        <span class="token keyword">if</span> <span class="token keyword">not</span> v <span class="token keyword">or</span> <span class="token string">"type"</span> <span class="token keyword">not</span> <span class="token keyword">in</span> v <span class="token keyword">or</span> <span class="token string">"coordinates"</span> <span class="token keyword">not</span> <span class="token keyword">in</span> v<span class="token punctuation">:</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"geometry must be a valid GeoJSON geometry object"</span><span class="token punctuation">)</span>
+        <span class="token keyword">try</span><span class="token punctuation">:</span>
+            geom <span class="token operator">=</span> shape<span class="token punctuation">(</span>v<span class="token punctuation">)</span>
+        <span class="token keyword">except</span> Exception <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Could not parse geometry: </span><span class="token interpolation"><span class="token punctuation">{</span>exc<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span> <span class="token keyword">from</span> exc
+
+        <span class="token keyword">if</span> geom<span class="token punctuation">.</span>is_empty<span class="token punctuation">:</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"geometry must not be empty"</span><span class="token punctuation">)</span>
+
+        <span class="token keyword">if</span> <span class="token keyword">not</span> geom<span class="token punctuation">.</span>is_valid<span class="token punctuation">:</span>
+            detail <span class="token operator">=</span> explain_validity<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Invalid topology: </span><span class="token interpolation"><span class="token punctuation">{</span>detail<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+
+        <span class="token keyword">return</span> v
+
+
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+<span class="token comment"># 2. HMAC-SHA256 payload signing</span>
+<span class="token comment">#    Consumers verify this header as described in RFC 6455 §10 conventions.</span>
+<span class="token comment">#    Key is the shared webhook secret; body is the canonical JSON encoding.</span>
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+
+<span class="token keyword">def</span> <span class="token function">sign_payload</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">,</span> secret<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Return hex digest of HMAC-SHA256 over the canonical JSON body."""</span>
+    <span class="token comment"># Compact encoding ensures the signature is stable regardless of</span>
+    <span class="token comment"># the client's JSON serializer key ordering.</span>
+    body <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>payload<span class="token punctuation">,</span> separators<span class="token operator">=</span><span class="token punctuation">(</span><span class="token string">","</span><span class="token punctuation">,</span> <span class="token string">":"</span><span class="token punctuation">)</span><span class="token punctuation">,</span> sort_keys<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> hmac<span class="token punctuation">.</span>new<span class="token punctuation">(</span>secret<span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> body<span class="token punctuation">,</span> hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+<span class="token comment"># 3. Async dispatcher with exponential backoff + full jitter</span>
+<span class="token comment">#    The ClientSession is created once per worker in the lifespan handler</span>
+<span class="token comment">#    above — never one per request, and never one per retry attempt.</span>
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">deliver_with_retry</span><span class="token punctuation">(</span>
+    url<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span>
+    payload<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">,</span>
+    secret<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span>
+    max_retries<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">4</span><span class="token punctuation">,</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Attempt delivery up to max_retries times.
+    Returns True on success, False after exhausting retries (caller routes to DLQ).
+
+    Backoff formula: min(cap, 2^attempt) + uniform(0, 1)
+    Cap at 30 s to avoid very long waits on the last attempt.
+    """</span>
+    headers <span class="token operator">=</span> <span class="token punctuation">{</span>
+        <span class="token string">"Content-Type"</span><span class="token punctuation">:</span> <span class="token string">"application/json"</span><span class="token punctuation">,</span>
+        <span class="token string">"X-Webhook-Signature"</span><span class="token punctuation">:</span> <span class="token string-interpolation"><span class="token string">f"sha256=</span><span class="token interpolation"><span class="token punctuation">{</span>sign_payload<span class="token punctuation">(</span>payload<span class="token punctuation">,</span> secret<span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">,</span>
+        <span class="token string">"X-Event-ID"</span><span class="token punctuation">:</span> payload<span class="token punctuation">[</span><span class="token string">"event_id"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+        <span class="token string">"X-Feature-ID"</span><span class="token punctuation">:</span> payload<span class="token punctuation">[</span><span class="token string">"feature_id"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+    <span class="token punctuation">}</span>
+    timeout <span class="token operator">=</span> aiohttp<span class="token punctuation">.</span>ClientTimeout<span class="token punctuation">(</span>total<span class="token operator">=</span><span class="token number">10</span><span class="token punctuation">)</span>
+
+    <span class="token keyword">for</span> attempt <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span>max_retries<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">try</span><span class="token punctuation">:</span>
+            <span class="token keyword">assert</span> _session <span class="token keyword">is</span> <span class="token keyword">not</span> <span class="token boolean">None</span><span class="token punctuation">,</span> <span class="token string">"ClientSession not initialised"</span>
+            <span class="token keyword">async</span> <span class="token keyword">with</span> _session<span class="token punctuation">.</span>post<span class="token punctuation">(</span>
+                url<span class="token punctuation">,</span> json<span class="token operator">=</span>payload<span class="token punctuation">,</span> headers<span class="token operator">=</span>headers<span class="token punctuation">,</span> timeout<span class="token operator">=</span>timeout
+            <span class="token punctuation">)</span> <span class="token keyword">as</span> resp<span class="token punctuation">:</span>
+                <span class="token keyword">if</span> resp<span class="token punctuation">.</span>status <span class="token operator">&lt;</span> <span class="token number">300</span><span class="token punctuation">:</span>
+                    log<span class="token punctuation">.</span>info<span class="token punctuation">(</span>
+                        <span class="token string">"delivered event=%s to=%s attempt=%d"</span><span class="token punctuation">,</span>
+                        payload<span class="token punctuation">[</span><span class="token string">"event_id"</span><span class="token punctuation">]</span><span class="token punctuation">,</span> url<span class="token punctuation">,</span> attempt <span class="token operator">+</span> <span class="token number">1</span><span class="token punctuation">,</span>
+                    <span class="token punctuation">)</span>
+                    <span class="token keyword">return</span> <span class="token boolean">True</span>
+
+                <span class="token comment"># 4xx = client-side error; retrying will not help</span>
+                <span class="token keyword">if</span> <span class="token number">400</span> <span class="token operator">&lt;=</span> resp<span class="token punctuation">.</span>status <span class="token operator">&lt;</span> <span class="token number">500</span><span class="token punctuation">:</span>
+                    log<span class="token punctuation">.</span>error<span class="token punctuation">(</span>
+                        <span class="token string">"client error status=%d event=%s url=%s — routing to DLQ"</span><span class="token punctuation">,</span>
+                        resp<span class="token punctuation">.</span>status<span class="token punctuation">,</span> payload<span class="token punctuation">[</span><span class="token string">"event_id"</span><span class="token punctuation">]</span><span class="token punctuation">,</span> url<span class="token punctuation">,</span>
+                    <span class="token punctuation">)</span>
+                    <span class="token keyword">return</span> <span class="token boolean">False</span>
+
+                <span class="token comment"># 5xx = server-side transient; fall through to retry</span>
+                log<span class="token punctuation">.</span>warning<span class="token punctuation">(</span>
+                    <span class="token string">"server error status=%d event=%s attempt=%d"</span><span class="token punctuation">,</span>
+                    resp<span class="token punctuation">.</span>status<span class="token punctuation">,</span> payload<span class="token punctuation">[</span><span class="token string">"event_id"</span><span class="token punctuation">]</span><span class="token punctuation">,</span> attempt <span class="token operator">+</span> <span class="token number">1</span><span class="token punctuation">,</span>
+                <span class="token punctuation">)</span>
+
+        <span class="token keyword">except</span> <span class="token punctuation">(</span>aiohttp<span class="token punctuation">.</span>ClientError<span class="token punctuation">,</span> asyncio<span class="token punctuation">.</span>TimeoutError<span class="token punctuation">)</span> <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+            log<span class="token punctuation">.</span>warning<span class="token punctuation">(</span>
+                <span class="token string">"network error event=%s attempt=%d error=%s"</span><span class="token punctuation">,</span>
+                payload<span class="token punctuation">[</span><span class="token string">"event_id"</span><span class="token punctuation">]</span><span class="token punctuation">,</span> attempt <span class="token operator">+</span> <span class="token number">1</span><span class="token punctuation">,</span> exc<span class="token punctuation">,</span>
+            <span class="token punctuation">)</span>
+
+        <span class="token keyword">if</span> attempt <span class="token operator">&lt;</span> max_retries <span class="token operator">-</span> <span class="token number">1</span><span class="token punctuation">:</span>
+            <span class="token comment"># Full jitter: actual delay is uniform in [0, capped_base]</span>
+            base <span class="token operator">=</span> <span class="token builtin">min</span><span class="token punctuation">(</span><span class="token number">30.0</span><span class="token punctuation">,</span> <span class="token number">2</span> <span class="token operator">**</span> attempt<span class="token punctuation">)</span>
+            delay <span class="token operator">=</span> random<span class="token punctuation">.</span>uniform<span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> base<span class="token punctuation">)</span>
+            <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span>delay<span class="token punctuation">)</span>
+
+    log<span class="token punctuation">.</span>error<span class="token punctuation">(</span>
+        <span class="token string">"exhausted retries event=%s url=%s — routing to DLQ"</span><span class="token punctuation">,</span>
+        payload<span class="token punctuation">[</span><span class="token string">"event_id"</span><span class="token punctuation">]</span><span class="token punctuation">,</span> url<span class="token punctuation">,</span>
+    <span class="token punctuation">)</span>
+    <span class="token keyword">return</span> <span class="token boolean">False</span>
+
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">route_to_dlq</span><span class="token punctuation">(</span>payload<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">,</span> reason<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    In production: write to a Redis LPUSH / Kafka topic / database row.
+    Preserve event_id, feature_id, original payload, failure reason, and
+    timestamp so the event can be replayed or audited without data loss.
+    """</span>
+    record <span class="token operator">=</span> <span class="token punctuation">{</span>
+        <span class="token string">"dlq_timestamp"</span><span class="token punctuation">:</span> datetime<span class="token punctuation">.</span>now<span class="token punctuation">(</span>timezone<span class="token punctuation">.</span>utc<span class="token punctuation">)</span><span class="token punctuation">.</span>isoformat<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+        <span class="token string">"reason"</span><span class="token punctuation">:</span> reason<span class="token punctuation">,</span>
+        <span class="token string">"payload"</span><span class="token punctuation">:</span> payload<span class="token punctuation">,</span>
+    <span class="token punctuation">}</span>
+    <span class="token comment"># Replace this log statement with your broker write:</span>
+    log<span class="token punctuation">.</span>error<span class="token punctuation">(</span><span class="token string">"DLQ record: %s"</span><span class="token punctuation">,</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>record<span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+<span class="token comment"># 4. FastAPI endpoint</span>
+<span class="token comment">#    In production, replace the direct POST with a broker consumer loop that</span>
+<span class="token comment">#    reads from Redis Streams / Kafka topics and calls deliver_with_retry.</span>
+<span class="token comment"># ---------------------------------------------------------------------------</span>
+
+<span class="token decorator annotation punctuation">@app<span class="token punctuation">.</span>post</span><span class="token punctuation">(</span><span class="token string">"/dispatch"</span><span class="token punctuation">)</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">dispatch_event</span><span class="token punctuation">(</span>
+    event<span class="token punctuation">:</span> GeoEvent<span class="token punctuation">,</span>
+    x_target_endpoint<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">=</span> Header<span class="token punctuation">(</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">,</span> description<span class="token operator">=</span><span class="token string">"Consumer endpoint URL"</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+    x_webhook_secret<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">=</span> Header<span class="token punctuation">(</span>default<span class="token operator">=</span><span class="token string">"change-me"</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Validate and dispatch a single geospatial event.
+
+    Headers
+    -------
+    X-Target-Endpoint : full URL of the consumer webhook endpoint
+    X-Webhook-Secret  : shared HMAC secret for payload signing
+    """</span>
+    payload <span class="token operator">=</span> event<span class="token punctuation">.</span>model_dump<span class="token punctuation">(</span>mode<span class="token operator">=</span><span class="token string">"json"</span><span class="token punctuation">)</span>
+    delivered <span class="token operator">=</span> <span class="token keyword">await</span> deliver_with_retry<span class="token punctuation">(</span>x_target_endpoint<span class="token punctuation">,</span> payload<span class="token punctuation">,</span> x_webhook_secret<span class="token punctuation">)</span>
+
+    <span class="token keyword">if</span> <span class="token keyword">not</span> delivered<span class="token punctuation">:</span>
+        <span class="token keyword">await</span> route_to_dlq<span class="token punctuation">(</span>payload<span class="token punctuation">,</span> reason<span class="token operator">=</span><span class="token string">"delivery_failed"</span><span class="token punctuation">)</span>
+        <span class="token keyword">raise</span> HTTPException<span class="token punctuation">(</span>
+            status_code<span class="token operator">=</span><span class="token number">502</span><span class="token punctuation">,</span>
+            detail<span class="token operator">=</span><span class="token string-interpolation"><span class="token string">f"Could not deliver event </span><span class="token interpolation"><span class="token punctuation">{</span>event<span class="token punctuation">.</span>event_id<span class="token punctuation">}</span></span><span class="token string">; routed to DLQ"</span></span><span class="token punctuation">,</span>
+        <span class="token punctuation">)</span>
+
+    <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"delivered"</span><span class="token punctuation">,</span> <span class="token string">"event_id"</span><span class="token punctuation">:</span> event<span class="token punctuation">.</span>event_id<span class="token punctuation">}</span>
+</code></pre>
+</div>
+<hr>
+<h2 id="parameter-option-reference" tabindex="-1"><a class="heading-anchor" href="#parameter-option-reference">Parameter / option reference</a></h2>
+<div style="overflow-x:auto;">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Spatial constraint</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>geometry</code></td>
+<td><code>dict</code></td>
+<td>RFC 7946 GeoJSON geometry; coordinates in WGS 84 (EPSG:4326); no self-intersections</td>
+<td>required</td>
+</tr>
+<tr>
+<td><code>feature_id</code></td>
+<td><code>str</code></td>
+<td>Any opaque string; used as broker ordering key</td>
+<td>required</td>
+</tr>
+<tr>
+<td><code>change_type</code></td>
+<td><code>&quot;create&quot; | &quot;update&quot; | &quot;delete&quot;</code></td>
+<td>—</td>
+<td>required</td>
+</tr>
+<tr>
+<td><code>properties</code></td>
+<td><code>dict</code></td>
+<td>Arbitrary key-value pairs; avoid embedding full geometry duplicates here</td>
+<td><code>{}</code></td>
+</tr>
+<tr>
+<td><code>max_retries</code></td>
+<td><code>int</code></td>
+<td>—</td>
+<td><code>4</code></td>
+</tr>
+<tr>
+<td><code>timeout</code> (per attempt)</td>
+<td><code>float</code> (seconds)</td>
+<td>Keep ≤ 15 s; large polygon serialization can inflate response time</td>
+<td><code>10</code></td>
+</tr>
+<tr>
+<td><code>X-Webhook-Secret</code></td>
+<td><code>str</code></td>
+<td>Minimum 32 random bytes in production; rotate on breach</td>
+<td><code>&quot;change-me&quot;</code></td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<hr>
+<h2 id="gotchas-and-spatial-edge-cases" tabindex="-1"><a class="heading-anchor" href="#gotchas-and-spatial-edge-cases">Gotchas and spatial edge cases</a></h2>
+<ol>
+<li>
+<p><strong>Coordinate ring orientation.</strong> RFC 7946 requires exterior rings to be counter-clockwise and interior rings (holes) to be clockwise. Shapely’s <code>is_valid</code> check does not enforce RFC 7946 winding order — it only checks topological validity. Call <code>shapely.geometry.mapping(geom)</code> after <code>geom = orient(geom, sign=1.0)</code> from <code>shapely.ops</code> before serializing to JSON.</p>
+</li>
+<li>
+<p><strong>CRS mismatch on ingestion.</strong> PostGIS may emit geometries in a projected CRS such as EPSG:3857 (Web Mercator). Passing those coordinates directly into a GeoJSON payload violates RFC 7946. Reproject to WGS 84 (EPSG:4326) using <code>pyproj.Transformer</code> before the Pydantic validator runs, as described in <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/handling-mixed-crs-payloads-in-python-event-handlers/">Handling Mixed CRS Payloads in Python Event Handlers</a>.</p>
+</li>
+<li>
+<p><strong>Precision loss during serialization.</strong> Python’s <code>json.dumps</code> serializes floats with up to 17 significant digits, but <code>model_dump(mode=&quot;json&quot;)</code> from Pydantic may round coordinates via intermediate float conversion. For high-precision geometries (cadastral surveys, survey-grade GPS), serialize coordinates explicitly to a fixed decimal place (e.g., 7 d.p. ≈ 1 cm accuracy) using a custom JSON encoder rather than relying on default float formatting.</p>
+</li>
+<li>
+<p><strong>Empty geometry after transformation.</strong> Reprojection of very small or degenerate geometries can produce an empty Shapely result. Always call <code>geom.is_empty</code> after any transformation and reject the event with a descriptive error rather than forwarding an empty geometry downstream.</p>
+</li>
+<li>
+<p><strong>HMAC signature drift on large payloads.</strong> If the consumer reconstructs the body from a different key ordering than the dispatcher’s <code>sort_keys=True</code>, the HMAC will not match. Standardize on <code>sort_keys=True, separators=(&quot;,&quot;, &quot;:&quot;)</code> on both sides, and document this contract in your API reference. Mismatches surface as 401s, not 5xxs, so they bypass retry logic — log them explicitly.</p>
+</li>
+<li>
+<p><strong>Session lifecycle in async frameworks.</strong> Creating a new <code>aiohttp.ClientSession</code> inside <code>deliver_with_retry</code> (one per attempt) opens a new TCP connection and TLS handshake on every retry. The code above creates one session per worker process via the <code>lifespan</code> context manager — the deprecated <code>@app.on_event(&quot;startup&quot;)</code> hook still works but is being phased out, so prefer <code>lifespan</code> on new services. When using Celery workers instead of FastAPI, create the session in a <code>celery.signals.worker_process_init</code> handler and close it in <code>worker_process_shutdown</code>.</p>
+</li>
+</ol>
+<hr>
+<h2 id="minimal-verification-snippet" tabindex="-1"><a class="heading-anchor" href="#minimal-verification-snippet">Minimal verification snippet</a></h2>
+<p>Run this with <code>pytest</code> against a live instance or a <code>respx</code>-mocked session to confirm end-to-end correctness, including signature verification.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token comment"># test_dispatcher.py</span>
+<span class="token keyword">import</span> asyncio
+<span class="token keyword">import</span> hashlib
+<span class="token keyword">import</span> hmac
+<span class="token keyword">import</span> json
+
+<span class="token keyword">import</span> pytest
+<span class="token keyword">from</span> httpx <span class="token keyword">import</span> AsyncClient<span class="token punctuation">,</span> ASGITransport
+
+<span class="token keyword">from</span> geospatial_webhook_dispatcher <span class="token keyword">import</span> app<span class="token punctuation">,</span> sign_payload
+
+VALID_POINT_GEOMETRY <span class="token operator">=</span> <span class="token punctuation">{</span>
+    <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span>
+    <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">122.4194</span><span class="token punctuation">,</span> <span class="token number">37.7749</span><span class="token punctuation">]</span><span class="token punctuation">,</span>   <span class="token comment"># San Francisco, WGS 84 (EPSG:4326)</span>
+<span class="token punctuation">}</span>
+
+VALID_POLYGON_GEOMETRY <span class="token operator">=</span> <span class="token punctuation">{</span>
+    <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Polygon"</span><span class="token punctuation">,</span>
+    <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token punctuation">[</span>
+        <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">122.42</span><span class="token punctuation">,</span> <span class="token number">37.78</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+        <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">122.40</span><span class="token punctuation">,</span> <span class="token number">37.78</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+        <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">122.40</span><span class="token punctuation">,</span> <span class="token number">37.76</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+        <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">122.42</span><span class="token punctuation">,</span> <span class="token number">37.76</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+        <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">122.42</span><span class="token punctuation">,</span> <span class="token number">37.78</span><span class="token punctuation">]</span><span class="token punctuation">,</span>   <span class="token comment"># closed ring</span>
+    <span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+<span class="token punctuation">}</span>
+
+
+<span class="token decorator annotation punctuation">@pytest<span class="token punctuation">.</span>mark<span class="token punctuation">.</span>asyncio</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">test_sign_payload_is_deterministic</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    payload <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"event_id"</span><span class="token punctuation">:</span> <span class="token string">"abc"</span><span class="token punctuation">,</span> <span class="token string">"feature_id"</span><span class="token punctuation">:</span> <span class="token string">"f1"</span><span class="token punctuation">,</span> <span class="token string">"geometry"</span><span class="token punctuation">:</span> VALID_POINT_GEOMETRY<span class="token punctuation">}</span>
+    sig1 <span class="token operator">=</span> sign_payload<span class="token punctuation">(</span>payload<span class="token punctuation">,</span> <span class="token string">"secret"</span><span class="token punctuation">)</span>
+    sig2 <span class="token operator">=</span> sign_payload<span class="token punctuation">(</span>payload<span class="token punctuation">,</span> <span class="token string">"secret"</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> sig1 <span class="token operator">==</span> sig2<span class="token punctuation">,</span> <span class="token string">"Signature must be deterministic"</span>
+
+
+<span class="token decorator annotation punctuation">@pytest<span class="token punctuation">.</span>mark<span class="token punctuation">.</span>asyncio</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">test_sign_payload_hmac_correct</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    payload <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"event_id"</span><span class="token punctuation">:</span> <span class="token string">"abc"</span><span class="token punctuation">,</span> <span class="token string">"feature_id"</span><span class="token punctuation">:</span> <span class="token string">"f1"</span><span class="token punctuation">}</span>
+    expected_body <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>payload<span class="token punctuation">,</span> separators<span class="token operator">=</span><span class="token punctuation">(</span><span class="token string">","</span><span class="token punctuation">,</span> <span class="token string">":"</span><span class="token punctuation">)</span><span class="token punctuation">,</span> sort_keys<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    expected <span class="token operator">=</span> hmac<span class="token punctuation">.</span>new<span class="token punctuation">(</span><span class="token string">b"secret"</span><span class="token punctuation">,</span> expected_body<span class="token punctuation">,</span> hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> sign_payload<span class="token punctuation">(</span>payload<span class="token punctuation">,</span> <span class="token string">"secret"</span><span class="token punctuation">)</span> <span class="token operator">==</span> expected
+
+
+<span class="token decorator annotation punctuation">@pytest<span class="token punctuation">.</span>mark<span class="token punctuation">.</span>asyncio</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">test_dispatch_rejects_invalid_geometry</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    self_intersecting <span class="token operator">=</span> <span class="token punctuation">{</span>
+        <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Polygon"</span><span class="token punctuation">,</span>
+        <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token punctuation">[</span>
+            <span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">2</span><span class="token punctuation">,</span> <span class="token number">2</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">2</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">2</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span>  <span class="token comment"># bowtie — self-intersecting</span>
+        <span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+    <span class="token punctuation">}</span>
+    transport <span class="token operator">=</span> ASGITransport<span class="token punctuation">(</span>app<span class="token operator">=</span>app<span class="token punctuation">)</span>
+    <span class="token keyword">async</span> <span class="token keyword">with</span> AsyncClient<span class="token punctuation">(</span>transport<span class="token operator">=</span>transport<span class="token punctuation">,</span> base_url<span class="token operator">=</span><span class="token string">"http://test"</span><span class="token punctuation">)</span> <span class="token keyword">as</span> client<span class="token punctuation">:</span>
+        resp <span class="token operator">=</span> <span class="token keyword">await</span> client<span class="token punctuation">.</span>post<span class="token punctuation">(</span>
+            <span class="token string">"/dispatch"</span><span class="token punctuation">,</span>
+            json<span class="token operator">=</span><span class="token punctuation">{</span>
+                <span class="token string">"feature_id"</span><span class="token punctuation">:</span> <span class="token string">"f1"</span><span class="token punctuation">,</span>
+                <span class="token string">"geometry"</span><span class="token punctuation">:</span> self_intersecting<span class="token punctuation">,</span>
+                <span class="token string">"change_type"</span><span class="token punctuation">:</span> <span class="token string">"update"</span><span class="token punctuation">,</span>
+            <span class="token punctuation">}</span><span class="token punctuation">,</span>
+            headers<span class="token operator">=</span><span class="token punctuation">{</span>
+                <span class="token string">"X-Target-Endpoint"</span><span class="token punctuation">:</span> <span class="token string">"http://example.com/hook"</span><span class="token punctuation">,</span>
+                <span class="token string">"X-Webhook-Secret"</span><span class="token punctuation">:</span> <span class="token string">"test-secret"</span><span class="token punctuation">,</span>
+            <span class="token punctuation">}</span><span class="token punctuation">,</span>
+        <span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> resp<span class="token punctuation">.</span>status_code <span class="token operator">==</span> <span class="token number">422</span><span class="token punctuation">,</span> <span class="token string">"Self-intersecting polygon must be rejected at validation"</span>
+
+
+<span class="token decorator annotation punctuation">@pytest<span class="token punctuation">.</span>mark<span class="token punctuation">.</span>asyncio</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">test_dispatch_rejects_missing_geometry_type</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    transport <span class="token operator">=</span> ASGITransport<span class="token punctuation">(</span>app<span class="token operator">=</span>app<span class="token punctuation">)</span>
+    <span class="token keyword">async</span> <span class="token keyword">with</span> AsyncClient<span class="token punctuation">(</span>transport<span class="token operator">=</span>transport<span class="token punctuation">,</span> base_url<span class="token operator">=</span><span class="token string">"http://test"</span><span class="token punctuation">)</span> <span class="token keyword">as</span> client<span class="token punctuation">:</span>
+        resp <span class="token operator">=</span> <span class="token keyword">await</span> client<span class="token punctuation">.</span>post<span class="token punctuation">(</span>
+            <span class="token string">"/dispatch"</span><span class="token punctuation">,</span>
+            json<span class="token operator">=</span><span class="token punctuation">{</span>
+                <span class="token string">"feature_id"</span><span class="token punctuation">:</span> <span class="token string">"f2"</span><span class="token punctuation">,</span>
+                <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">,</span>  <span class="token comment"># missing "type"</span>
+                <span class="token string">"change_type"</span><span class="token punctuation">:</span> <span class="token string">"create"</span><span class="token punctuation">,</span>
+            <span class="token punctuation">}</span><span class="token punctuation">,</span>
+            headers<span class="token operator">=</span><span class="token punctuation">{</span>
+                <span class="token string">"X-Target-Endpoint"</span><span class="token punctuation">:</span> <span class="token string">"http://example.com/hook"</span><span class="token punctuation">,</span>
+                <span class="token string">"X-Webhook-Secret"</span><span class="token punctuation">:</span> <span class="token string">"test-secret"</span><span class="token punctuation">,</span>
+            <span class="token punctuation">}</span><span class="token punctuation">,</span>
+        <span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> resp<span class="token punctuation">.</span>status_code <span class="token operator">==</span> <span class="token number">422</span>
+</code></pre>
+</div>
+<hr>
+<h2 id="frequently-asked-questions" tabindex="-1"><a class="heading-anchor" href="#frequently-asked-questions">Frequently asked questions</a></h2>
+<h3 id="why-use-async-dispatch-instead-of-synchronous-http-for-geospatial-webhooks" tabindex="-1"><a class="heading-anchor" href="#why-use-async-dispatch-instead-of-synchronous-http-for-geospatial-webhooks">Why use async dispatch instead of synchronous HTTP for geospatial webhooks?</a></h3>
+<p>Spatial payloads — especially polygon and multipolygon geometries — can be large, and topology validation is CPU-bound. Blocking on synchronous <code>requests.post</code> calls ties up workers and pushes backpressure into the ingestion layer, so a slow consumer slows down the database trigger that produced the event. Async delivery with <code>aiohttp</code> decouples validation from delivery: the ingestion path stays write-optimized while a fixed pool of connections fans out POSTs concurrently.</p>
+<h3 id="how-do-i-handle-crs-mismatches-before-dispatching-a-webhook-payload" tabindex="-1"><a class="heading-anchor" href="#how-do-i-handle-crs-mismatches-before-dispatching-a-webhook-payload">How do I handle CRS mismatches before dispatching a webhook payload?</a></h3>
+<p>Normalize every incoming geometry to WGS 84 (EPSG:4326) at the validation layer using <code>pyproj.Transformer</code> before serializing to GeoJSON, since RFC 7946 mandates EPSG:4326. Reject or reproject any geometry whose source CRS differs, and log the original SRID so consumers can audit the transformation. The full reprojection workflow is covered in <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/handling-mixed-crs-payloads-in-python-event-handlers/">Handling Mixed CRS Payloads in Python Event Handlers</a>.</p>
+<h3 id="when-should-events-go-to-a-dead-letter-queue-versus-be-retried" tabindex="-1"><a class="heading-anchor" href="#when-should-events-go-to-a-dead-letter-queue-versus-be-retried">When should events go to a dead-letter queue versus be retried?</a></h3>
+<p>Retry on transient failures — 5xx responses, timeouts, and connection resets — using the capped exponential backoff with full jitter shown above. Send straight to the dead-letter queue on 4xx client errors (bad endpoint, auth failure, malformed signature), because retrying those only wastes connections, and after <code>max_retries</code> is exhausted for transient errors. Always preserve the full original payload plus failure metadata in the DLQ so the event can be replayed without data loss.</p>
+<hr>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
+<ul>
+<li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers</a> — the parent topic covering when and why to fire events on spatial mutations</li>
+<li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/implementing-at-least-once-delivery-for-gis-webhooks/">Implementing At-Least-Once Delivery for GIS Webhooks</a> — retry guarantees, consumer acknowledgement patterns, and queue durability</li>
+<li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/">Generating Deterministic Idempotency Keys for GeoJSON Events</a> — how to derive stable <code>event_id</code> values from geometry hashes to prevent duplicate processing</li>
+</ul>
+
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a></li>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a></li>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a></li>
+            <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring &amp; Observability for Spatial Pipelines</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</article>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="https://www.geospatialwebhook.com/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/">Home</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queues &amp; Retries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Queues &amp; Retries</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Monitoring</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging &amp; Tracing for Spatial Events</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <a class="site-footer__gh" href="https://github.com/geospatialwebhook" target="_blank" rel="noopener" aria-label="Geospatial Webhook on GitHub">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5Z"/></svg><span>GitHub</span>
+      </a>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

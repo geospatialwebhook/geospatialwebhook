@@ -1,0 +1,851 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>GeoJSON to Protobuf Mapping for Spatial Webhooks · Geo Webhook</title>
+  <meta name="description" content="Map GeoJSON webhook payloads to Protocol Buffers in Python: schema design, Pydantic validation, CRS normalization, binary serialization, and async broker dispatch with retries."/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360"/>
+  <meta name="color-scheme" content="light"/>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/"/>
+  <meta property="og:title" content="GeoJSON to Protobuf Mapping for Spatial Webhooks"/>
+  <meta property="og:description" content="Map GeoJSON webhook payloads to Protocol Buffers in Python: schema design, Pydantic validation, CRS normalization, binary serialization, and async broker dispatch with retries."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="GeoJSON to Protobuf Mapping for Spatial Webhooks"/>
+  <meta name="twitter:description" content="Map GeoJSON webhook payloads to Protocol Buffers in Python: schema design, Pydantic validation, CRS normalization, binary serialization, and async broker dispatch with retries."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },{ "@type": "ListItem", "position": 2, "name": "Spatial Payload Routing Parsing", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" },{ "@type": "ListItem", "position": 3, "name": "Geojson To Protobuf Mapping", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/" }
+    ]
+  }
+  </script>
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/#article",
+    "mainEntityOfPage": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/",
+    "headline": "GeoJSON to Protobuf Mapping for Spatial Webhooks",
+    "description": "Map GeoJSON webhook payloads to Protocol Buffers in Python: schema design, Pydantic validation, CRS normalization, binary serialization, and async broker dispatch with retries.",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
+    "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
+    "image": "https://www.geospatialwebhook.com/og-image.png",
+    "url": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/",
+    "articleSection": "Spatial Payload Routing Parsing",
+    "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
+  }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="https://www.geospatialwebhook.com/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="https://www.geospatialwebhook.com/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Queues &amp; Retries</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
+      </a>
+    </nav>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="https://www.geospatialwebhook.com/">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing Parsing</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">Geojson To Protobuf Mapping</span>
+    </nav>
+
+    <h1 class="page__title">GeoJSON to Protobuf Mapping for Spatial Webhooks</h1>
+
+    <div class="page__layout">
+      <div class="markdown">
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "GeoJSON to Protobuf Mapping for Spatial Webhooks",
+      "description": "A step-by-step guide to mapping GeoJSON webhook payloads to Protocol Buffers in Python — covering proto schema design, Pydantic validation, CRS normalization, binary serialization, and async broker dispatch with retries.",
+      "datePublished": "2024-11-01",
+      "dateModified": "2026-06-25",
+      "author": { "@type": "Organization", "name": "geospatialwebhook.com" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Spatial Payload Routing & Parsing", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" },
+        { "@type": "ListItem", "position": 3, "name": "GeoJSON to Protobuf Mapping", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/" }
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Map GeoJSON Webhook Payloads to Protocol Buffers in Python",
+      "step": [
+        { "@type": "HowToStep", "position": 1, "name": "Design the proto schema", "text": "Model geometry variants with oneof and coordinate arrays with repeated fields, reserving field numbers for backward compatibility." },
+        { "@type": "HowToStep", "position": 2, "name": "Validate ingestion defensively", "text": "Parse raw JSON with Pydantic v2, rejecting unsupported geometry types and malformed coordinate arrays before serialization." },
+        { "@type": "HowToStep", "position": 3, "name": "Normalize coordinates to EPSG:4326", "text": "Reproject any non-WGS84 input with cached pyproj transformers so the binary message lives in one canonical coordinate space." },
+        { "@type": "HowToStep", "position": 4, "name": "Serialize to protobuf bytes", "text": "Convert the validated geometry into the generated protobuf message and produce a compact binary blob isolated from network I/O." },
+        { "@type": "HowToStep", "position": 5, "name": "Dispatch asynchronously with retries", "text": "Publish the binary payload to the broker using exponential backoff with jitter, routing fatal data errors to a dead-letter queue." }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How much smaller is protobuf than GeoJSON for spatial payloads?",
+          "acceptedAnswer": { "@type": "Answer", "text": "For polygon-heavy payloads, protobuf typically reduces wire size by 60–75% versus equivalent GeoJSON, because field names are replaced by integer tags and doubles are packed as fixed-width binary rather than decimal strings. The gain is largest for dense vertex arrays and smallest for property-heavy features with long string values." }
+        },
+        {
+          "@type": "Question",
+          "name": "Should I store coordinates as double or sint32 in the proto schema?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Use double when you need full WGS84 precision and arbitrary input. Use scaled sint32 (degrees × 1e7, zigzag-encoded) only when you control producers and accept ~1 cm precision — it roughly halves coordinate bytes but loses precision and complicates schema evolution. Default to double unless a measured size budget forces the change." }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I handle MultiPolygon and GeometryCollection in a oneof schema?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Add explicit MultiPolygon and MultiLineString messages as additional oneof variants rather than overloading Polygon. GeometryCollection should be a repeated Geometry field on its own message. Reserve the new field numbers ahead of time so older consumers ignore unknown variants instead of mis-parsing them." }
+        },
+        {
+          "@type": "Question",
+          "name": "What happens to protobuf consumers when I add a new geometry type?",
+          "acceptedAnswer": { "@type": "Answer", "text": "proto3 consumers built from an older schema silently ignore unknown oneof branches and leave the geometry field unset, so they will not crash — but they will treat the feature as having no geometry. Version your topic or include a schema_version field so consumers can detect and route payloads they cannot fully decode." }
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>Mapping GeoJSON to Protobuf means validating the incoming feature collection, normalizing every coordinate to a single canonical CRS, then encoding the result into a compact, strongly-typed binary message your event broker can move at high throughput.</strong> This page is part of <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a>.</p>
+<p>GeoJSON remains the de facto interchange format for spatial data because it is human-readable and supported everywhere, but its verbose JSON structure is expensive to move at scale: field names repeat on every feature, coordinates serialize as decimal strings, and a single municipal boundary can balloon to megabytes. For high-throughput, low-latency event pipelines, encoding that same geometry as Protocol Buffers cuts wire size dramatically while giving you a schema contract that consumers in any language can decode. This guide walks the full pipeline in Python — proto schema design, defensive ingestion, coordinate normalization, binary serialization, and asynchronous broker dispatch — with explicit attention to the production failure modes that bite spatial workloads.</p>
+<hr>
+<h2 id="architecture-four-layers-from-webhook-to-binary-topic" tabindex="-1"><a class="heading-anchor" href="#architecture-four-layers-from-webhook-to-binary-topic">Architecture: Four Layers from Webhook to Binary Topic</a></h2>
+<p>The mapping pipeline sits between your webhook receiver and your message broker. Each layer has one responsibility, and keeping them isolated is what lets you scale serialization independently of network I/O and reject bad geometry before it ever touches the broker.</p>
+<svg viewBox="0 0 720 340" role="img" aria-label="Four-layer pipeline mapping a GeoJSON webhook to a protobuf topic: receiver, normalizer, serializer, broker" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;">
+  <title>GeoJSON to Protobuf Mapping Pipeline</title>
+  <desc>Four connected boxes showing the data path: (1) Webhook Receiver validates the GeoJSON schema with Pydantic and returns 422 on bad geometry; (2) Normalizer reprojects coordinates to EPSG:4326 using cached pyproj transformers; (3) Serializer builds the generated protobuf message and produces compact binary bytes; (4) Broker publishes to a binary topic with exponential backoff retries and a dead-letter queue for fatal errors.</desc>
+  <defs>
+    <marker id="ptp-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
+    </marker>
+  </defs>
+  <text x="20" y="34" font-size="11" fill="currentColor" opacity="0.6">Incoming GeoJSON FeatureCollection (text/json)</text>
+  <rect x="20" y="120" width="148" height="120" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
+  <text x="94" y="152" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Webhook</text>
+  <text x="94" y="168" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Receiver</text>
+  <text x="94" y="192" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">Pydantic v2 schema</text>
+  <text x="94" y="206" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">Reject → 422</text>
+  <text x="94" y="220" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">Signature check</text>
+  <rect x="204" y="120" width="148" height="120" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
+  <text x="278" y="152" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Normalizer</text>
+  <text x="278" y="178" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">Reproject → EPSG:4326</text>
+  <text x="278" y="192" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">Cached transformers</text>
+  <text x="278" y="206" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">Topology repair</text>
+  <text x="278" y="220" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">always_xy=True</text>
+  <rect x="388" y="120" width="148" height="120" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
+  <text x="462" y="152" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Serializer</text>
+  <text x="462" y="178" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">oneof geometry</text>
+  <text x="462" y="192" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">repeated coords</text>
+  <text x="462" y="206" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">SerializeToString()</text>
+  <text x="462" y="220" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">CPU-bound, no I/O</text>
+  <rect x="572" y="120" width="148" height="120" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
+  <text x="646" y="152" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Broker</text>
+  <text x="646" y="178" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">Binary topic</text>
+  <text x="646" y="192" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">Backoff + jitter</text>
+  <text x="646" y="206" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">Spatial partition key</text>
+  <text x="646" y="220" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">DLQ on fatal</text>
+  <line x1="168" y1="180" x2="201" y2="180" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#ptp-arrow)"/>
+  <line x1="352" y1="180" x2="385" y2="180" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#ptp-arrow)"/>
+  <line x1="536" y1="180" x2="569" y2="180" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#ptp-arrow)"/>
+  <text x="94" y="262" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.5">Layer 1</text>
+  <text x="278" y="262" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.5">Layer 2</text>
+  <text x="462" y="262" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.5">Layer 3</text>
+  <text x="646" y="262" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.5">Layer 4</text>
+  <text x="572" y="300" font-size="11" fill="currentColor" opacity="0.6" text-anchor="start">Compact protobuf bytes →</text>
+  <text x="572" y="316" font-size="11" fill="currentColor" opacity="0.6" text-anchor="start">downstream consumers</text>
+</svg>
+<p><strong>Layer 1 — Webhook Receiver:</strong> validates the incoming GeoJSON feature collection against a strict schema, verifies the delivery signature, and returns <code>422 Unprocessable Entity</code> for malformed geometry before any encoding work happens.</p>
+<p><strong>Layer 2 — Normalizer:</strong> reprojects every coordinate to the canonical EPSG:4326 (WGS84) coordinate space using cached <code>pyproj</code> transformers, so the binary message never mixes projections.</p>
+<p><strong>Layer 3 — Serializer:</strong> maps the validated, normalized geometry onto the generated protobuf message and produces a compact binary blob. This stage is CPU-bound and is kept off the event loop’s I/O path.</p>
+<p><strong>Layer 4 — Broker:</strong> publishes the binary payload to a dedicated topic using exponential backoff with jitter, partitions by geographic key, and routes fatal data errors to a dead-letter queue.</p>
+<hr>
+<h2 id="prerequisites" tabindex="-1"><a class="heading-anchor" href="#prerequisites">Prerequisites</a></h2>
+<p>Before wiring up the pipeline, your environment must satisfy several baseline constraints. The most common failure point is compiler drift — your <code>protoc</code> version must match your runtime <code>protobuf</code> library, or generated stubs will mis-decode at the wire level.</p>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Python 3.10+</strong> for <code>match</code> statements and modern typing</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Web framework:</strong> <code>fastapi&gt;=0.100.0</code> with <code>uvicorn</code> for the receiving endpoint, or <code>aiohttp</code> for a standalone async consumer</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Validation:</strong> <code>pydantic&gt;=2.0</code> for fast schema-driven ingestion validation</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Geospatial:</strong> <code>pyproj&gt;=3.5.0</code> for CRS transformation and <code>shapely&gt;=2.0</code> for topology repair</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Serialization:</strong> <code>protobuf&gt;=4.21.0</code> runtime plus <code>grpcio-tools</code> (or a standalone <code>protoc</code>) for code generation; pin both to the same major version</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Message broker:</strong> Kafka, RabbitMQ, NATS, or Redis Streams configured for at-least-once delivery</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Compiler on PATH:</strong> the <code>protoc</code> binary must be reachable and version-aligned with the runtime library</label></li>
+</ul>
+<div class="code-block" data-lang="bash">
+  <div class="code-block__header">
+    <span class="code-block__lang">bash</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-bash" tabindex="0"><code class="language-bash">pip <span class="token function">install</span> fastapi uvicorn <span class="token string">"pydantic>=2.0"</span> <span class="token string">"pyproj>=3.5"</span> shapely <span class="token string">"protobuf>=4.21"</span> grpcio-tools
+</code></pre>
+</div>
+<p>Payloads should conform to the <a href="https://datatracker.ietf.org/doc/html/rfc7946">RFC 7946 GeoJSON specification</a>, which mandates longitude-first axis ordering and warns against relying on coordinate precision beyond what your application needs. Real-world webhooks frequently deviate, so the ingestion layer must parse defensively rather than assume compliance. If your endpoint also verifies HMAC signatures, do that before parsing — the full receiver contract is covered in <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/parsing-geojson-webhooks-with-fastapi-and-pydantic/">Parsing GeoJSON Webhooks with FastAPI and Pydantic</a>.</p>
+<hr>
+<h2 id="step-by-step-implementation" tabindex="-1"><a class="heading-anchor" href="#step-by-step-implementation">Step-by-Step Implementation</a></h2>
+<h3 id="step-1-design-the-proto-schema" tabindex="-1"><a class="heading-anchor" href="#step-1-design-the-proto-schema">Step 1 — Design the Proto Schema</a></h3>
+<p>Protobuf efficiency begins at the schema. GeoJSON’s flexible, deeply nested structure maps poorly to flat messages, so model geometry variants with <code>oneof</code> and coordinate arrays with <code>repeated</code> fields. Number fields in a logical progression and reserve numbers for anything you remove, so older consumers stay binary-compatible.</p>
+<div class="code-block" data-lang="protobuf">
+  <div class="code-block__header">
+    <span class="code-block__lang">protobuf</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-protobuf" tabindex="0"><code class="language-protobuf">syntax = &quot;proto3&quot;;
+
+package spatial.v1;
+
+// Coordinate pair, canonical WGS84 (EPSG:4326): x = longitude, y = latitude.
+message Point {
+  double x = 1;
+  double y = 2;
+}
+
+message LineString {
+  repeated Point coords = 1;
+}
+
+message Polygon {
+  repeated LineString rings = 1;  // ring[0] is exterior; rest are holes
+}
+
+message Geometry {
+  oneof type {
+    Point point = 1;
+    LineString line_string = 2;
+    Polygon polygon = 3;
+  }
+  // Reserved for future MultiPolygon / GeometryCollection variants.
+  reserved 4, 5, 6;
+}
+
+message Feature {
+  string id = 1;
+  Geometry geometry = 2;
+  map&lt;string, string&gt; properties = 3;
+}
+
+message FeatureCollection {
+  repeated Feature features = 1;
+  string source_crs = 2;     // audit metadata; payload is already EPSG:4326
+  uint32 schema_version = 3;  // lets consumers detect formats they cannot decode
+}
+</code></pre>
+</div>
+<p>Compile to Python stubs, pinning the compiler to match your runtime library:</p>
+<div class="code-block" data-lang="bash">
+  <div class="code-block__header">
+    <span class="code-block__lang">bash</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-bash" tabindex="0"><code class="language-bash">protoc <span class="token parameter variable">--python_out</span><span class="token operator">=</span>. <span class="token parameter variable">--pyi_out</span><span class="token operator">=</span>. spatial.proto
+</code></pre>
+</div>
+<p>Never reuse a field number after deprecating it — doing so silently corrupts every consumer built against the old schema. The <code>reserved</code> keyword makes that mistake impossible to commit by accident.</p>
+<h3 id="step-2-validate-ingestion-defensively" tabindex="-1"><a class="heading-anchor" href="#step-2-validate-ingestion-defensively">Step 2 — Validate Ingestion Defensively</a></h3>
+<p>Ingestion must tolerate malformed payloads without crashing the event loop. Pydantic v2 bridges raw JSON and structured Python objects with fast, schema-driven validation, rejecting unsupported geometry types and empty coordinate arrays before they reach serialization.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> typing <span class="token keyword">import</span> Any<span class="token punctuation">,</span> Dict<span class="token punctuation">,</span> List<span class="token punctuation">,</span> Literal<span class="token punctuation">,</span> Optional
+<span class="token keyword">from</span> pydantic <span class="token keyword">import</span> BaseModel<span class="token punctuation">,</span> Field<span class="token punctuation">,</span> field_validator
+
+GEOMETRY_TYPES <span class="token operator">=</span> Literal<span class="token punctuation">[</span>
+    <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"LineString"</span><span class="token punctuation">,</span> <span class="token string">"Polygon"</span><span class="token punctuation">,</span>
+    <span class="token string">"MultiPoint"</span><span class="token punctuation">,</span> <span class="token string">"MultiLineString"</span><span class="token punctuation">,</span> <span class="token string">"MultiPolygon"</span><span class="token punctuation">,</span>
+<span class="token punctuation">]</span>
+
+<span class="token keyword">class</span> <span class="token class-name">GeoGeometry</span><span class="token punctuation">(</span>BaseModel<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token builtin">type</span><span class="token punctuation">:</span> GEOMETRY_TYPES
+    coordinates<span class="token punctuation">:</span> List<span class="token punctuation">[</span>Any<span class="token punctuation">]</span>
+
+    <span class="token decorator annotation punctuation">@field_validator</span><span class="token punctuation">(</span><span class="token string">"coordinates"</span><span class="token punctuation">)</span>
+    <span class="token decorator annotation punctuation">@classmethod</span>
+    <span class="token keyword">def</span> <span class="token function">coordinates_not_empty</span><span class="token punctuation">(</span>cls<span class="token punctuation">,</span> v<span class="token punctuation">:</span> List<span class="token punctuation">[</span>Any<span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> List<span class="token punctuation">[</span>Any<span class="token punctuation">]</span><span class="token punctuation">:</span>
+        <span class="token keyword">if</span> <span class="token keyword">not</span> v<span class="token punctuation">:</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"coordinates must not be empty"</span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> v
+
+<span class="token keyword">class</span> <span class="token class-name">GeoFeature</span><span class="token punctuation">(</span>BaseModel<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token builtin">id</span><span class="token punctuation">:</span> Optional<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token boolean">None</span>
+    geometry<span class="token punctuation">:</span> GeoGeometry
+    properties<span class="token punctuation">:</span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span> <span class="token operator">=</span> Field<span class="token punctuation">(</span>default_factory<span class="token operator">=</span><span class="token builtin">dict</span><span class="token punctuation">)</span>
+
+<span class="token keyword">class</span> <span class="token class-name">GeoFeatureCollection</span><span class="token punctuation">(</span>BaseModel<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token builtin">type</span><span class="token punctuation">:</span> Literal<span class="token punctuation">[</span><span class="token string">"FeatureCollection"</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token string">"FeatureCollection"</span>
+    features<span class="token punctuation">:</span> List<span class="token punctuation">[</span>GeoFeature<span class="token punctuation">]</span>
+    crs_hint<span class="token punctuation">:</span> Optional<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token boolean">None</span>  <span class="token comment"># e.g. "EPSG:32633" if the producer declares it</span>
+</code></pre>
+</div>
+<p>Wrap this model in your endpoint so a <code>ValidationError</code> becomes a structured <code>422</code>, not a <code>500</code>. Failed payloads should be routed to a dead-letter queue with the original body attached, never silently dropped — topological errors, self-intersecting rings, and coordinate overflow are caught earlier and in more depth by a dedicated <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a> stage.</p>
+<h3 id="step-3-normalize-coordinates-to-epsg4326" tabindex="-1"><a class="heading-anchor" href="#step-3-normalize-coordinates-to-epsg4326">Step 3 — Normalize Coordinates to EPSG:4326</a></h3>
+<p>GeoJSON arrives in mixed coordinate reference systems — IoT trackers, legacy GIS exports, and third-party APIs all differ. The protobuf message assumes one canonical space, so reproject everything to EPSG:4326 (WGS84) at ingestion. Cache transformers per CRS pair: construction triggers a PROJ database lookup that is far too expensive to repeat per request, but the transformer is thread-safe once built.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> functools <span class="token keyword">import</span> lru_cache
+<span class="token keyword">from</span> typing <span class="token keyword">import</span> List
+<span class="token keyword">from</span> pyproj <span class="token keyword">import</span> Transformer
+
+<span class="token decorator annotation punctuation">@lru_cache</span><span class="token punctuation">(</span>maxsize<span class="token operator">=</span><span class="token number">64</span><span class="token punctuation">)</span>
+<span class="token keyword">def</span> <span class="token function">_get_transformer</span><span class="token punctuation">(</span>source_crs<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> target_crs<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">=</span> <span class="token string">"EPSG:4326"</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> Transformer<span class="token punctuation">:</span>
+    <span class="token comment"># always_xy=True forces (lon, lat) order, matching RFC 7946 axis ordering.</span>
+    <span class="token keyword">return</span> Transformer<span class="token punctuation">.</span>from_crs<span class="token punctuation">(</span>source_crs<span class="token punctuation">,</span> target_crs<span class="token punctuation">,</span> always_xy<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span>
+
+<span class="token keyword">def</span> <span class="token function">normalize_ring</span><span class="token punctuation">(</span>ring<span class="token punctuation">:</span> List<span class="token punctuation">[</span>List<span class="token punctuation">[</span><span class="token builtin">float</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">,</span> source_crs<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> List<span class="token punctuation">[</span>List<span class="token punctuation">[</span><span class="token builtin">float</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Reproject one ring of [lon, lat] pairs to canonical EPSG:4326."""</span>
+    <span class="token keyword">if</span> source_crs<span class="token punctuation">.</span>upper<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token keyword">in</span> <span class="token punctuation">(</span><span class="token string">"EPSG:4326"</span><span class="token punctuation">,</span> <span class="token string">"WGS84"</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> ring
+    transformer <span class="token operator">=</span> _get_transformer<span class="token punctuation">(</span>source_crs<span class="token punctuation">)</span>
+    <span class="token keyword">return</span> <span class="token punctuation">[</span><span class="token builtin">list</span><span class="token punctuation">(</span>transformer<span class="token punctuation">.</span>transform<span class="token punctuation">(</span>lon<span class="token punctuation">,</span> lat<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token keyword">for</span> lon<span class="token punctuation">,</span> lat <span class="token keyword">in</span> ring<span class="token punctuation">]</span>
+</code></pre>
+</div>
+<p>CRS mismatches are a leading cause of silent spatial drift, so log the <code>source_crs</code> alongside the transformed payload for auditability and record it in the message’s <code>source_crs</code> field. For datum shifts, fallback transformation chains, and per-event CRS resolution in distributed consumers, see <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a>.</p>
+<h3 id="step-4-serialize-to-protobuf-bytes" tabindex="-1"><a class="heading-anchor" href="#step-4-serialize-to-protobuf-bytes">Step 4 — Serialize to Protobuf Bytes</a></h3>
+<p>With the geometry validated and normalized, map it onto the generated protobuf message. Keep this stage free of network calls so it never blocks the event loop — it is pure CPU work and can later be offloaded to a thread or process pool.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> spatial_pb2 <span class="token keyword">import</span> <span class="token punctuation">(</span>
+    FeatureCollection<span class="token punctuation">,</span> Feature<span class="token punctuation">,</span> Geometry<span class="token punctuation">,</span> Point<span class="token punctuation">,</span> LineString<span class="token punctuation">,</span> Polygon<span class="token punctuation">,</span>
+<span class="token punctuation">)</span>
+
+<span class="token keyword">def</span> <span class="token function">_build_geometry</span><span class="token punctuation">(</span>geom<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> Geometry<span class="token punctuation">:</span>
+    g <span class="token operator">=</span> Geometry<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    gtype<span class="token punctuation">,</span> coords <span class="token operator">=</span> geom<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"type"</span><span class="token punctuation">)</span><span class="token punctuation">,</span> geom<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"coordinates"</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+    <span class="token keyword">if</span> gtype <span class="token operator">==</span> <span class="token string">"Point"</span><span class="token punctuation">:</span>
+        g<span class="token punctuation">.</span>point<span class="token punctuation">.</span>x<span class="token punctuation">,</span> g<span class="token punctuation">.</span>point<span class="token punctuation">.</span>y <span class="token operator">=</span> coords<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> coords<span class="token punctuation">[</span><span class="token number">1</span><span class="token punctuation">]</span>
+    <span class="token keyword">elif</span> gtype <span class="token operator">==</span> <span class="token string">"LineString"</span><span class="token punctuation">:</span>
+        g<span class="token punctuation">.</span>line_string<span class="token punctuation">.</span>coords<span class="token punctuation">.</span>extend<span class="token punctuation">(</span>Point<span class="token punctuation">(</span>x<span class="token operator">=</span>c<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> y<span class="token operator">=</span>c<span class="token punctuation">[</span><span class="token number">1</span><span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token keyword">for</span> c <span class="token keyword">in</span> coords<span class="token punctuation">)</span>
+    <span class="token keyword">elif</span> gtype <span class="token operator">==</span> <span class="token string">"Polygon"</span><span class="token punctuation">:</span>
+        <span class="token keyword">for</span> ring <span class="token keyword">in</span> coords<span class="token punctuation">:</span>
+            ls <span class="token operator">=</span> g<span class="token punctuation">.</span>polygon<span class="token punctuation">.</span>rings<span class="token punctuation">.</span>add<span class="token punctuation">(</span><span class="token punctuation">)</span>
+            ls<span class="token punctuation">.</span>coords<span class="token punctuation">.</span>extend<span class="token punctuation">(</span>Point<span class="token punctuation">(</span>x<span class="token operator">=</span>c<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> y<span class="token operator">=</span>c<span class="token punctuation">[</span><span class="token number">1</span><span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token keyword">for</span> c <span class="token keyword">in</span> ring<span class="token punctuation">)</span>
+    <span class="token keyword">else</span><span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Unsupported geometry type for serialization: </span><span class="token interpolation"><span class="token punctuation">{</span>gtype<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> g
+
+<span class="token keyword">def</span> <span class="token function">serialize_to_protobuf</span><span class="token punctuation">(</span>collection<span class="token punctuation">:</span> GeoFeatureCollection<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bytes</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Convert a validated, normalized feature collection to protobuf bytes."""</span>
+    pb <span class="token operator">=</span> FeatureCollection<span class="token punctuation">(</span>source_crs<span class="token operator">=</span><span class="token string">"EPSG:4326"</span><span class="token punctuation">,</span> schema_version<span class="token operator">=</span><span class="token number">1</span><span class="token punctuation">)</span>
+    <span class="token keyword">for</span> feat <span class="token keyword">in</span> collection<span class="token punctuation">.</span>features<span class="token punctuation">:</span>
+        feature <span class="token operator">=</span> pb<span class="token punctuation">.</span>features<span class="token punctuation">.</span>add<span class="token punctuation">(</span><span class="token punctuation">)</span>
+        feature<span class="token punctuation">.</span><span class="token builtin">id</span> <span class="token operator">=</span> feat<span class="token punctuation">.</span><span class="token builtin">id</span> <span class="token keyword">or</span> <span class="token string">""</span>
+        <span class="token comment"># protobuf string map: coerce property values to strings deterministically</span>
+        <span class="token keyword">for</span> k<span class="token punctuation">,</span> v <span class="token keyword">in</span> <span class="token builtin">sorted</span><span class="token punctuation">(</span>feat<span class="token punctuation">.</span>properties<span class="token punctuation">.</span>items<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+            feature<span class="token punctuation">.</span>properties<span class="token punctuation">[</span>k<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token builtin">str</span><span class="token punctuation">(</span>v<span class="token punctuation">)</span>
+        feature<span class="token punctuation">.</span>geometry<span class="token punctuation">.</span>CopyFrom<span class="token punctuation">(</span>_build_geometry<span class="token punctuation">(</span>feat<span class="token punctuation">.</span>geometry<span class="token punctuation">.</span>model_dump<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> pb<span class="token punctuation">.</span>SerializeToString<span class="token punctuation">(</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>Sorting properties before insertion keeps the encoded map order stable, which matters if downstream stages hash the bytes for deduplication — apply an idempotency key derived from this canonical blob following <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a>. When a single payload exceeds the broker’s message-size limit (common with municipal boundaries or high-resolution LiDAR footprints), chunk the <code>features</code> list, assign sequence numbers, and reassemble on the consumer side rather than serializing one monolithic message.</p>
+<h3 id="step-5-dispatch-asynchronously-with-retries" tabindex="-1"><a class="heading-anchor" href="#step-5-dispatch-asynchronously-with-retries">Step 5 — Dispatch Asynchronously with Retries</a></h3>
+<p>Publish the binary payload to the broker on the async path, isolating CPU-bound serialization from I/O. Wrap the publish in exponential backoff with jitter so a transient broker hiccup does not cascade into a retry storm, and partition by a geographic key so updates for the same region stay ordered.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">import</span> random
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">publish_with_backoff</span><span class="token punctuation">(</span>
+    payload<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">,</span>
+    topic<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span>
+    partition_key<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span>
+    producer<span class="token punctuation">,</span>
+    max_retries<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">5</span><span class="token punctuation">,</span>
+    base_delay<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> <span class="token number">0.5</span><span class="token punctuation">,</span>
+    cap<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> <span class="token number">10.0</span><span class="token punctuation">,</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Publish protobuf bytes with full-jitter exponential backoff."""</span>
+    <span class="token keyword">for</span> attempt <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span>max_retries<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">try</span><span class="token punctuation">:</span>
+            <span class="token keyword">await</span> producer<span class="token punctuation">.</span>send<span class="token punctuation">(</span>topic<span class="token punctuation">,</span> key<span class="token operator">=</span>partition_key<span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> value<span class="token operator">=</span>payload<span class="token punctuation">)</span>
+            <span class="token keyword">return</span>
+        <span class="token keyword">except</span> Exception <span class="token keyword">as</span> exc<span class="token punctuation">:</span>  <span class="token comment"># broker timeout, connection reset, etc.</span>
+            <span class="token keyword">if</span> attempt <span class="token operator">==</span> max_retries <span class="token operator">-</span> <span class="token number">1</span><span class="token punctuation">:</span>
+                <span class="token keyword">raise</span> RuntimeError<span class="token punctuation">(</span>
+                    <span class="token string-interpolation"><span class="token string">f"Publish failed after </span><span class="token interpolation"><span class="token punctuation">{</span>max_retries<span class="token punctuation">}</span></span><span class="token string"> attempts: </span><span class="token interpolation"><span class="token punctuation">{</span>exc<span class="token punctuation">}</span></span><span class="token string">"</span></span>
+                <span class="token punctuation">)</span> <span class="token keyword">from</span> exc
+            <span class="token comment"># Full jitter avoids thundering-herd retries across many workers.</span>
+            delay <span class="token operator">=</span> random<span class="token punctuation">.</span>uniform<span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token builtin">min</span><span class="token punctuation">(</span>cap<span class="token punctuation">,</span> base_delay <span class="token operator">*</span> <span class="token punctuation">(</span><span class="token number">2</span> <span class="token operator">**</span> attempt<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+            <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span>delay<span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>Run serialization off the event loop so a large geometry never stalls concurrent requests:</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">dispatch_feature_collection</span><span class="token punctuation">(</span>collection<span class="token punctuation">,</span> topic<span class="token punctuation">,</span> producer<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    loop <span class="token operator">=</span> asyncio<span class="token punctuation">.</span>get_running_loop<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    payload <span class="token operator">=</span> <span class="token keyword">await</span> loop<span class="token punctuation">.</span>run_in_executor<span class="token punctuation">(</span><span class="token boolean">None</span><span class="token punctuation">,</span> serialize_to_protobuf<span class="token punctuation">,</span> collection<span class="token punctuation">)</span>
+    region <span class="token operator">=</span> collection<span class="token punctuation">.</span>features<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">.</span>geometry<span class="token punctuation">.</span>coordinates<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span>  <span class="token comment"># crude geo key</span>
+    partition_key <span class="token operator">=</span> <span class="token string-interpolation"><span class="token string">f"</span><span class="token interpolation"><span class="token punctuation">{</span><span class="token builtin">round</span><span class="token punctuation">(</span>region<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">:</span><span class="token interpolation"><span class="token punctuation">{</span><span class="token builtin">round</span><span class="token punctuation">(</span>region<span class="token punctuation">[</span><span class="token number">1</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">"</span></span>
+    <span class="token keyword">await</span> publish_with_backoff<span class="token punctuation">(</span>payload<span class="token punctuation">,</span> topic<span class="token punctuation">,</span> partition_key<span class="token punctuation">,</span> producer<span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>For very large or numerous geometries, the executor offload above is the entry point to a fuller worker pattern documented in <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a>.</p>
+<hr>
+<h2 id="spatial-validation-and-error-handling" tabindex="-1"><a class="heading-anchor" href="#spatial-validation-and-error-handling">Spatial Validation and Error Handling</a></h2>
+<p>Schema validation at Layer 1 catches structural problems, but two spatial checks protect correctness at the boundary between normalization and serialization.</p>
+<p><strong>Topology repair before encoding.</strong> A self-intersecting polygon or an unclosed ring is structurally valid JSON but produces a geometry that downstream spatial indexes will reject. Repair it with Shapely and fail loudly if it collapses:</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape<span class="token punctuation">,</span> mapping
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>validation <span class="token keyword">import</span> make_valid
+
+<span class="token keyword">def</span> <span class="token function">repair_geometry</span><span class="token punctuation">(</span>geom_dict<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">:</span>
+    geom <span class="token operator">=</span> make_valid<span class="token punctuation">(</span>shape<span class="token punctuation">(</span>geom_dict<span class="token punctuation">)</span><span class="token punctuation">)</span>
+    <span class="token keyword">if</span> geom<span class="token punctuation">.</span>is_empty<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"Geometry collapsed to empty after make_valid — reject"</span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> mapping<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p><strong>CRS sanity bounds.</strong> After reprojection, every coordinate must fall within EPSG:4326 bounds. A longitude outside ±180 or a latitude outside ±90 means the declared source CRS was wrong:</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">def</span> <span class="token function">assert_wgs84_bounds</span><span class="token punctuation">(</span>coords<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token keyword">for</span> lon<span class="token punctuation">,</span> lat <span class="token keyword">in</span> coords<span class="token punctuation">:</span>
+        <span class="token keyword">if</span> <span class="token keyword">not</span> <span class="token punctuation">(</span><span class="token operator">-</span><span class="token number">180.0</span> <span class="token operator">&lt;=</span> lon <span class="token operator">&lt;=</span> <span class="token number">180.0</span> <span class="token keyword">and</span> <span class="token operator">-</span><span class="token number">90.0</span> <span class="token operator">&lt;=</span> lat <span class="token operator">&lt;=</span> <span class="token number">90.0</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Coordinate out of WGS84 bounds: </span><span class="token interpolation"><span class="token punctuation">{</span><span class="token punctuation">(</span>lon<span class="token punctuation">,</span> lat<span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>Both checks should surface as <code>422</code> responses (bad input), not <code>500</code> (system failure). Route the offending payload, its detected CRS, and the failure reason to a quarantine topic with the full body snapshot so a human or an automated correction job can replay it.</p>
+<hr>
+<h2 id="retry-backoff-and-delivery-guarantees" tabindex="-1"><a class="heading-anchor" href="#retry-backoff-and-delivery-guarantees">Retry, Backoff, and Delivery Guarantees</a></h2>
+<p>The serialization stage is pure and synchronous — it needs no retry logic itself. The retry surface is the broker publish in Step 5. Distinguish two error classes and treat them differently:</p>
+<ul>
+<li><strong>Transient failures</strong> (broker timeout, connection reset, leader election) are safe to retry. Use full-jitter exponential backoff, as shown above, with a hard attempt cap so a permanently-down broker does not pin a worker forever.</li>
+<li><strong>Fatal data errors</strong> (unsupported geometry, out-of-bounds coordinates, schema mismatch) will never succeed on retry. Send them straight to the dead-letter queue.</li>
+</ul>
+<p>Protobuf publishing converts the broker’s at-least-once delivery into effectively exactly-once <em>processing</em> only when consumers deduplicate. Because a retried publish can produce a duplicate message on the topic, attach an idempotency key — derived from the canonical serialized bytes — so consumers can discard redeliveries, exactly as covered in <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a>. Size any consumer-side deduplication window to exceed the broker’s maximum retry window by at least 2x.</p>
+<hr>
+<h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
+<p>The following pytest suite confirms the mapping round-trips and that the binary form is genuinely smaller than the source JSON — the whole reason for the pipeline.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> json
+<span class="token keyword">import</span> pytest
+<span class="token keyword">from</span> spatial_pb2 <span class="token keyword">import</span> FeatureCollection
+<span class="token keyword">from</span> your_module <span class="token keyword">import</span> GeoFeatureCollection<span class="token punctuation">,</span> serialize_to_protobuf
+
+SAMPLE <span class="token operator">=</span> <span class="token punctuation">{</span>
+    <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"FeatureCollection"</span><span class="token punctuation">,</span>
+    <span class="token string">"features"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span>
+        <span class="token punctuation">{</span>
+            <span class="token string">"id"</span><span class="token punctuation">:</span> <span class="token string">"zone-7"</span><span class="token punctuation">,</span>
+            <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span>
+                <span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Polygon"</span><span class="token punctuation">,</span>
+                <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token punctuation">[</span>
+                    <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">73.99</span><span class="token punctuation">,</span> <span class="token number">40.74</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">73.98</span><span class="token punctuation">,</span> <span class="token number">40.74</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+                    <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">73.98</span><span class="token punctuation">,</span> <span class="token number">40.75</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">73.99</span><span class="token punctuation">,</span> <span class="token number">40.75</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">73.99</span><span class="token punctuation">,</span> <span class="token number">40.74</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+                <span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+            <span class="token punctuation">}</span><span class="token punctuation">,</span>
+            <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"name"</span><span class="token punctuation">:</span> <span class="token string">"midtown"</span><span class="token punctuation">,</span> <span class="token string">"level"</span><span class="token punctuation">:</span> <span class="token number">3</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+        <span class="token punctuation">}</span>
+    <span class="token punctuation">]</span><span class="token punctuation">,</span>
+<span class="token punctuation">}</span>
+
+<span class="token keyword">def</span> <span class="token function">test_roundtrip_preserves_coordinates</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    collection <span class="token operator">=</span> GeoFeatureCollection<span class="token punctuation">(</span><span class="token operator">**</span>SAMPLE<span class="token punctuation">)</span>
+    blob <span class="token operator">=</span> serialize_to_protobuf<span class="token punctuation">(</span>collection<span class="token punctuation">)</span>
+    decoded <span class="token operator">=</span> FeatureCollection<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    decoded<span class="token punctuation">.</span>ParseFromString<span class="token punctuation">(</span>blob<span class="token punctuation">)</span>
+    ring <span class="token operator">=</span> decoded<span class="token punctuation">.</span>features<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">.</span>geometry<span class="token punctuation">.</span>polygon<span class="token punctuation">.</span>rings<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">.</span>coords
+    <span class="token keyword">assert</span> <span class="token punctuation">(</span>ring<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">.</span>x<span class="token punctuation">,</span> ring<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">.</span>y<span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token punctuation">(</span><span class="token operator">-</span><span class="token number">73.99</span><span class="token punctuation">,</span> <span class="token number">40.74</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> decoded<span class="token punctuation">.</span>features<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">.</span>properties<span class="token punctuation">[</span><span class="token string">"name"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token string">"midtown"</span>
+
+<span class="token keyword">def</span> <span class="token function">test_protobuf_is_smaller_than_geojson</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    collection <span class="token operator">=</span> GeoFeatureCollection<span class="token punctuation">(</span><span class="token operator">**</span>SAMPLE<span class="token punctuation">)</span>
+    blob <span class="token operator">=</span> serialize_to_protobuf<span class="token punctuation">(</span>collection<span class="token punctuation">)</span>
+    geojson_bytes <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>SAMPLE<span class="token punctuation">,</span> separators<span class="token operator">=</span><span class="token punctuation">(</span><span class="token string">","</span><span class="token punctuation">,</span> <span class="token string">":"</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> <span class="token builtin">len</span><span class="token punctuation">(</span>blob<span class="token punctuation">)</span> <span class="token operator">&lt;</span> <span class="token builtin">len</span><span class="token punctuation">(</span>geojson_bytes<span class="token punctuation">)</span>
+
+<span class="token keyword">def</span> <span class="token function">test_invalid_geometry_type_rejected</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    bad <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"FeatureCollection"</span><span class="token punctuation">,</span> <span class="token string">"features"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span>
+        <span class="token punctuation">{</span><span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Hexagon"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">}</span>
+    <span class="token punctuation">]</span><span class="token punctuation">}</span>
+    <span class="token keyword">with</span> pytest<span class="token punctuation">.</span>raises<span class="token punctuation">(</span>Exception<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        GeoFeatureCollection<span class="token punctuation">(</span><span class="token operator">**</span>bad<span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>Run with <code>pytest -v</code> after generating <code>spatial_pb2</code> and installing <code>pydantic</code>, <code>shapely</code>, and <code>pyproj</code> in a test virtualenv.</p>
+<hr>
+<h2 id="troubleshooting" tabindex="-1"><a class="heading-anchor" href="#troubleshooting">Troubleshooting</a></h2>
+<div style="overflow-x:auto">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely spatial cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Consumer decodes garbage / wrong fields</td>
+<td><code>protoc</code> version differs from runtime <code>protobuf</code> library</td>
+<td>Pin compiler and runtime to the same major version; regenerate stubs in CI</td>
+</tr>
+<tr>
+<td>Coordinates appear swapped (lat/lon)</td>
+<td>Transformer built without <code>always_xy=True</code></td>
+<td>Set <code>always_xy=True</code> on every <code>Transformer.from_crs</code> call</td>
+</tr>
+<tr>
+<td>Geometry field empty on a new geometry type</td>
+<td>proto3 consumer built from older schema ignores unknown <code>oneof</code> branch</td>
+<td>Add the new variant, bump <code>schema_version</code>, version the topic</td>
+</tr>
+<tr>
+<td>Serialized payload larger than expected</td>
+<td>Property-heavy features with long string values</td>
+<td>Move bulky properties out of the map; consider scaled <code>sint32</code> coords</td>
+</tr>
+<tr>
+<td>Broker rejects message (too large)</td>
+<td>Single municipal boundary or LiDAR footprint exceeds size limit</td>
+<td>Chunk <code>features</code> with sequence numbers; reassemble on consumer</td>
+</tr>
+<tr>
+<td>Coordinate out of WGS84 bounds after transform</td>
+<td>Wrong declared source CRS</td>
+<td>Validate bounds post-reprojection; quarantine and re-detect CRS</td>
+</tr>
+<tr>
+<td>Event loop stalls under load</td>
+<td>Serialization running on the I/O thread</td>
+<td>Offload <code>serialize_to_protobuf</code> via <code>run_in_executor</code></td>
+</tr>
+<tr>
+<td>Duplicate features in downstream store</td>
+<td>Retried publish created duplicate broker messages</td>
+<td>Attach an idempotency key from the canonical bytes; deduplicate on consume</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<hr>
+<h2 id="faq" tabindex="-1"><a class="heading-anchor" href="#faq">FAQ</a></h2>
+<details class="faq">
+<summary><strong>How much smaller is protobuf than GeoJSON for spatial payloads?</strong></summary>
+<p>For polygon-heavy payloads, protobuf typically reduces wire size by 60–75% versus equivalent GeoJSON. Field names are replaced by integer tags, and <code>double</code> coordinates are packed as fixed-width binary instead of variable-length decimal strings. The reduction is largest for dense vertex arrays and smallest for features dominated by long string properties, where the values themselves carry the bytes regardless of format.</p>
+</details>
+<details class="faq">
+<summary><strong>Should I store coordinates as double or sint32 in the proto schema?</strong></summary>
+<p>Default to <code>double</code> — it preserves full WGS84 precision and accepts arbitrary input. Scaled <code>sint32</code> (degrees × 1e7, zigzag-encoded) roughly halves coordinate bytes but caps precision at about 1 cm and complicates schema evolution, so only adopt it when you control all producers and a measured size budget forces the change. Mixing the two in one schema is a maintenance trap.</p>
+</details>
+<details class="faq">
+<summary><strong>How do I handle MultiPolygon and GeometryCollection in a oneof schema?</strong></summary>
+<p>Add explicit <code>MultiPolygon</code> and <code>MultiLineString</code> messages as new <code>oneof</code> variants rather than overloading <code>Polygon</code>, and model <code>GeometryCollection</code> as a message with a <code>repeated Geometry</code> field. Claim the reserved field numbers from the schema above so older consumers ignore unknown variants instead of mis-parsing them, and bump <code>schema_version</code> whenever you add one.</p>
+</details>
+<details class="faq">
+<summary><strong>What happens to protobuf consumers when I add a new geometry type?</strong></summary>
+<p>A proto3 consumer built from an older schema silently ignores the unknown <code>oneof</code> branch and leaves the geometry field unset, so it will not crash — but it treats the feature as having no geometry, which is its own kind of data loss. Include a <code>schema_version</code> field (or version the topic) so consumers can detect payloads they cannot fully decode and route them for reprocessing instead of dropping geometry silently.</p>
+</details>
+<hr>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
+<ul>
+<li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a> — parent section covering ingestion, parsing, and routing of geospatial event payloads</li>
+<li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/parsing-geojson-webhooks-with-fastapi-and-pydantic/">Parsing GeoJSON Webhooks with FastAPI and Pydantic</a> — the receiver-side endpoint contract, signature verification, and request lifecycle hooks</li>
+<li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a> — reprojecting mixed-CRS payloads to a canonical EPSG:4326 space before serialization</li>
+<li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a> — topology checks and quarantine handling for malformed geometry</li>
+<li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a> — offloading expensive serialization off the event loop with worker pools</li>
+<li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a> — deriving idempotency keys from the canonical serialized payload</li>
+</ul>
+
+        <h2 id="explore-this-section">Explore this section</h2>
+        <div class="children-grid">
+          <a class="card " href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/parsing-geojson-webhooks-with-fastapi-and-pydantic/">
+            <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19c0-8 6-14 14-14 0 8-6 14-14 14z"/><path d="M5 19l6-6"/></svg></span>
+            <h3 class="card__title">Parsing GeoJSON Webhooks with FastAPI and Pydantic</h3>
+            <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+          </a>
+          <a class="card card--mint" href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/protocol-buffers-vs-geojson-for-high-frequency-spatial-events/">
+            <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19c0-8 6-14 14-14 0 8-6 14-14 14z"/><path d="M5 19l6-6"/></svg></span>
+            <h3 class="card__title">Protocol Buffers vs GeoJSON for High-Frequency Spatial Events</h3>
+            <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+          </a>
+        </div>
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        <div class="aside-card">
+          <h3>Related in this section</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
+          </ul>
+        </div>
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a></li>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a></li>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a></li>
+            <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring &amp; Observability for Spatial Pipelines</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</article>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="https://www.geospatialwebhook.com/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/">Home</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queues &amp; Retries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Queues &amp; Retries</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Monitoring</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging &amp; Tracing for Spatial Events</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <a class="site-footer__gh" href="https://github.com/geospatialwebhook" target="_blank" rel="noopener" aria-label="Geospatial Webhook on GitHub">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5Z"/></svg><span>GitHub</span>
+      </a>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

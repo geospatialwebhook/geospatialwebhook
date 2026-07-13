@@ -1,0 +1,44 @@
+---
+layout: base
+title: Offline
+description: This is the offline fallback page served by the service worker when no network connection is available.
+permalink: /offline/
+noindex: true
+eleventyExcludeFromCollections: true
+---
+<section class="section">
+  <div class="container">
+    <div class="markdown">
+      <h1>You're offline</h1>
+      <p>It looks like your network is unavailable. Pages you've already visited may still load from the cache. Reconnect to fetch the latest updates.</p>
+<svg viewBox="0 0 560 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Service worker cache pipeline: browser request routed through service worker to cache or network" style="width:100%;max-width:560px;height:auto;display:block;margin:1.5rem auto;">
+  <title>Service Worker Cache Pipeline</title>
+  <desc>A three-stage flow diagram showing a browser request passing through the service worker, which checks the cache store first; on a cache hit the response is served immediately, and on a cache miss the request falls through to the network.</desc>
+  <defs>
+    <marker id="sw-arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
+    </marker>
+  </defs>
+  <rect x="8" y="55" width="110" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-opacity="0.4"/>
+  <text x="63" y="77" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Browser</text>
+  <text x="63" y="93" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">fetch request</text>
+  <line x1="118" y1="80" x2="148" y2="80" stroke="currentColor" stroke-opacity="0.5" stroke-width="1.5" marker-end="url(#sw-arr)"/>
+  <rect x="150" y="55" width="130" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-opacity="0.5"/>
+  <text x="215" y="77" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Service Worker</text>
+  <text x="215" y="93" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">intercept + route</text>
+  <line x1="280" y1="80" x2="310" y2="80" stroke="currentColor" stroke-opacity="0.5" stroke-width="1.5" marker-end="url(#sw-arr)"/>
+  <rect x="312" y="20" width="110" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-opacity="0.4"/>
+  <text x="367" y="42" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Cache Store</text>
+  <text x="367" y="58" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">cache hit → serve</text>
+  <rect x="312" y="90" width="110" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-opacity="0.35"/>
+  <text x="367" y="112" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Network</text>
+  <text x="367" y="128" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">cache miss → fetch</text>
+  <line x1="280" y1="72" x2="310" y2="45" stroke="currentColor" stroke-opacity="0.4" stroke-width="1.2" marker-end="url(#sw-arr)"/>
+  <line x1="280" y1="88" x2="310" y2="115" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.2" stroke-dasharray="4 2" marker-end="url(#sw-arr)"/>
+  <text x="430" y="48" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.5">HIT</text>
+  <text x="430" y="118" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.5">MISS</text>
+</svg>
+      <p><a href="/">Return to the home page</a></p>
+    </div>
+  </div>
+</section>

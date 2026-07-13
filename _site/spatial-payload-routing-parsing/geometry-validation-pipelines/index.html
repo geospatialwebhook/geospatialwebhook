@@ -1,0 +1,883 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>Geometry Validation Pipelines · Geo Webhook</title>
+  <meta name="description" content="Build async geometry validation pipelines in Python: topology repair, coordinate bounds, Pydantic schema enforcement, CRS alignment, and clean error routing for webhook payloads."/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360"/>
+  <meta name="color-scheme" content="light"/>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/"/>
+  <meta property="og:title" content="Geometry Validation Pipelines"/>
+  <meta property="og:description" content="Build async geometry validation pipelines in Python: topology repair, coordinate bounds, Pydantic schema enforcement, CRS alignment, and clean error routing for webhook payloads."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Geometry Validation Pipelines"/>
+  <meta name="twitter:description" content="Build async geometry validation pipelines in Python: topology repair, coordinate bounds, Pydantic schema enforcement, CRS alignment, and clean error routing for webhook payloads."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },{ "@type": "ListItem", "position": 2, "name": "Spatial Payload Routing Parsing", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" },{ "@type": "ListItem", "position": 3, "name": "Geometry Validation Pipelines", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/" }
+    ]
+  }
+  </script>
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/#article",
+    "mainEntityOfPage": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/",
+    "headline": "Geometry Validation Pipelines",
+    "description": "Build async geometry validation pipelines in Python: topology repair, coordinate bounds, Pydantic schema enforcement, CRS alignment, and clean error routing for webhook payloads.",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
+    "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
+    "image": "https://www.geospatialwebhook.com/og-image.png",
+    "url": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/",
+    "articleSection": "Spatial Payload Routing Parsing",
+    "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
+  }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="https://www.geospatialwebhook.com/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="https://www.geospatialwebhook.com/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Queues &amp; Retries</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
+      </a>
+    </nav>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="https://www.geospatialwebhook.com/">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing Parsing</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">Geometry Validation Pipelines</span>
+    </nav>
+
+    <h1 class="page__title">Geometry Validation Pipelines</h1>
+
+    <div class="page__layout">
+      <div class="markdown">
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Geometry Validation Pipelines for Geospatial Webhooks",
+      "description": "Step-by-step guide to building asynchronous geometry validation pipelines in Python — covering schema enforcement, coordinate bounds, topology repair, CRS alignment, and error routing with runnable code.",
+      "datePublished": "2024-11-01",
+      "dateModified": "2026-06-25",
+      "author": {"@type": "Organization", "name": "GeoSpatialWebhook"}
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/"},
+        {"@type": "ListItem", "position": 2, "name": "Spatial Payload Routing & Parsing", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/"},
+        {"@type": "ListItem", "position": 3, "name": "Geometry Validation Pipelines", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/"}
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "How to Build a Geometry Validation Pipeline for Webhook Payloads",
+      "step": [
+        {"@type": "HowToStep", "position": 1, "name": "Enforce schema and geometry type with Pydantic"},
+        {"@type": "HowToStep", "position": 2, "name": "Validate coordinate sequence length and WGS84 bounds"},
+        {"@type": "HowToStep", "position": 3, "name": "Check topology and attempt automatic repair"},
+        {"@type": "HowToStep", "position": 4, "name": "Align CRS to EPSG:4326 and apply precision control"},
+        {"@type": "HowToStep", "position": 5, "name": "Categorize failures and route to repair, feedback, or DLQ"},
+        {"@type": "HowToStep", "position": 6, "name": "Wire the stages into an async FastAPI handler"}
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Should geometry validation run synchronously in the webhook handler or offloaded to a worker?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Run cheap schema and bounds checks synchronously inside the request so malformed payloads get an immediate HTTP 400 and never reach the broker. Offload GEOS-backed topology checks and CRS transformation to an async worker pool only when geometries are large (thousands of vertices) or throughput is high — those operations are CPU-bound and will block the event loop if run inline."}
+        },
+        {
+          "@type": "Question",
+          "name": "When should I auto-repair a geometry with make_valid versus rejecting it?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Auto-repair self-intersections, bowtie polygons, and unclosed rings with make_valid when the result is still the same geometry type and area change is within tolerance — flag these as repaired so consumers can audit them. Reject (route to a dead-letter queue) when make_valid returns an empty geometry, changes the geometry type (for example a Polygon collapsing to a LineString), or when coordinates contain NaN or Infinity, since those indicate upstream corruption that repair would mask."}
+        },
+        {
+          "@type": "Question",
+          "name": "Why does is_valid pass but a spatial join still fails downstream?",
+          "acceptedAnswer": {"@type": "Answer", "text": "is_valid only checks OGC Simple Features topology — it does not check coordinate reference system. A geometry can be topologically valid in EPSG:3857 yet break a join against EPSG:4326 data because the coordinates are in metres, not degrees. Always normalize CRS to a single canonical projection before any join, and assert that coordinates fall within the expected bounds for that CRS."}
+        },
+        {
+          "@type": "Question",
+          "name": "How do I avoid re-validating the same static geometry on every delivery?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Cache validation results in Redis keyed by a deterministic hash of the normalized coordinate array (json.dumps with sort_keys=True, then SHA-256). Immutable geometries such as administrative boundaries hit the cache and skip the GEOS computation entirely, which removes the dominant cost from p99 latency during traffic spikes."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>A geometry validation pipeline is the gatekeeping stage that rejects, repairs, or normalizes every incoming spatial payload before it reaches your broker — so malformed coordinates, broken topology, and CRS drift never corrupt downstream analytics or routing.</strong></p>
+<p>This page is part of <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a>, the section covering how to route, parse, and transform geospatial webhook payloads at production scale. Validation sits immediately after deserialization and before transformation, storage, or dispatch, so it can be scaled independently of the heavier downstream stages.</p>
+<hr>
+<h2 id="prerequisites" tabindex="-1"><a class="heading-anchor" href="#prerequisites">Prerequisites</a></h2>
+<p>Before wiring up a validation pipeline, verify the following are in place:</p>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> Python 3.10+ with <code>asyncio</code> support</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <code>shapely&gt;=2.0</code> for GEOS-backed topology predicates and <code>make_valid()</code></label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <code>pydantic&gt;=2.0</code> for strict payload schema enforcement</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <code>pyproj&gt;=3.5</code> for coordinate reference system transformation</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <code>fastapi</code> and an ASGI server (<code>uvicorn</code>) for the ingestion endpoint</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> An async message broker (Redis Streams, RabbitMQ, or Kafka) plus a dead-letter destination</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> Idempotency already applied at ingestion, following the approach in <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></label></li>
+</ul>
+<p>Anchor your rules to external standards: the <a href="https://datatracker.ietf.org/doc/html/rfc7946">RFC 7946 GeoJSON specification</a> defines coordinate ordering and ring closure, and the OGC Simple Features model defines what “valid” means for each geometry type.</p>
+<hr>
+<h2 id="pipeline-architecture" tabindex="-1"><a class="heading-anchor" href="#pipeline-architecture">Pipeline Architecture</a></h2>
+<p>The diagram below shows the four-stage path from a raw webhook delivery to a validated geometry published on the broker. Each stage either passes the payload forward, hands it to the repair branch, or isolates it for review — so a single bad payload can never stall the stream.</p>
+<svg viewBox="0 0 760 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four-stage geometry validation pipeline from webhook ingestion to validated publish, with a structural-reject branch returning HTTP 400, a topology repair branch, and a dead-letter branch for fatal errors" style="width:100%;max-width:760px;height:auto;font-family:inherit;display:block;margin:1.5rem auto;">
+  <title>Geometry Validation Pipeline</title>
+  <desc>Four numbered stages laid out left to right: Schema and Type, Coordinate Bounds, Topology and Repair, and CRS Alignment, connected by arrows toward a validated publish. The Schema stage rejects structural errors with HTTP 400; the Topology stage branches to a repair queue or, when repair fails, to a dead-letter queue. A lower panel compares the three error tiers: recoverable, structural, and fatal.</desc>
+  <defs>
+    <marker id="gv-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
+    </marker>
+  </defs>
+  <!-- Stage 1 -->
+  <rect x="20" y="24" width="160" height="92" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+  <text x="100" y="46" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">Stage 1</text>
+  <text x="100" y="63" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">Schema &amp; Type</text>
+  <line x1="40" y1="78" x2="160" y2="78" stroke="currentColor" stroke-width="0.75" opacity="0.25"/>
+  <text x="100" y="93" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.6">Pydantic v2</text>
+  <text x="100" y="106" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.6">required fields</text>
+  <!-- Stage 2 -->
+  <rect x="220" y="24" width="160" height="92" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+  <text x="300" y="46" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">Stage 2</text>
+  <text x="300" y="63" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">Coordinate Bounds</text>
+  <line x1="240" y1="78" x2="360" y2="78" stroke="currentColor" stroke-width="0.75" opacity="0.25"/>
+  <text x="300" y="93" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.6">ring length</text>
+  <text x="300" y="106" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.6">no NaN / Inf</text>
+  <!-- Stage 3 -->
+  <rect x="420" y="24" width="160" height="92" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+  <text x="500" y="46" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">Stage 3</text>
+  <text x="500" y="63" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">Topology &amp; Repair</text>
+  <line x1="440" y1="78" x2="560" y2="78" stroke="currentColor" stroke-width="0.75" opacity="0.25"/>
+  <text x="500" y="93" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.6">is_valid</text>
+  <text x="500" y="106" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.6">make_valid()</text>
+  <!-- Stage 4 -->
+  <rect x="620" y="24" width="120" height="92" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+  <text x="680" y="46" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">Stage 4</text>
+  <text x="680" y="63" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">CRS Align</text>
+  <line x1="636" y1="78" x2="724" y2="78" stroke="currentColor" stroke-width="0.75" opacity="0.25"/>
+  <text x="680" y="93" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.6">&#8594; EPSG:4326</text>
+  <text x="680" y="106" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.6">round precision</text>
+  <!-- Arrows between stages -->
+  <line x1="182" y1="70" x2="216" y2="70" stroke="currentColor" stroke-width="1.5" marker-end="url(#gv-arrow)" opacity="0.6"/>
+  <line x1="382" y1="70" x2="416" y2="70" stroke="currentColor" stroke-width="1.5" marker-end="url(#gv-arrow)" opacity="0.6"/>
+  <line x1="582" y1="70" x2="616" y2="70" stroke="currentColor" stroke-width="1.5" marker-end="url(#gv-arrow)" opacity="0.6"/>
+  <!-- Validated publish out of Stage 4 -->
+  <line x1="680" y1="116" x2="680" y2="150" stroke="currentColor" stroke-width="1.5" marker-end="url(#gv-arrow)" opacity="0.6"/>
+  <rect x="600" y="150" width="140" height="40" rx="6" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.4"/>
+  <text x="670" y="174" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">Publish to broker</text>
+  <!-- Structural reject from Stage 1 -->
+  <line x1="100" y1="116" x2="100" y2="166" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#gv-arrow)" opacity="0.55"/>
+  <rect x="20" y="166" width="160" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.35"/>
+  <text x="100" y="186" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8">Structural error</text>
+  <text x="100" y="200" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8">&#8594; HTTP 400</text>
+  <!-- Repair / DLQ branch from Stage 3 -->
+  <line x1="500" y1="116" x2="500" y2="166" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#gv-arrow)" opacity="0.55"/>
+  <rect x="416" y="166" width="168" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.35"/>
+  <text x="500" y="186" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8">Repair ok &#8594; repair queue</text>
+  <text x="500" y="200" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8">Repair fails &#8594; DLQ</text>
+  <!-- Error tiers panel -->
+  <rect x="20" y="262" width="720" height="184" rx="8" fill="none" stroke="currentColor" stroke-width="1" opacity="0.25"/>
+  <text x="380" y="286" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity="0.85">Error Categorization Tiers</text>
+  <rect x="44" y="304" width="208" height="122" rx="6" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"/>
+  <text x="148" y="328" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85" font-weight="700">Recoverable</text>
+  <text x="148" y="350" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">make_valid()</text>
+  <text x="148" y="365" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">resolves it</text>
+  <text x="148" y="386" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">Route to repair</text>
+  <text x="148" y="401" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">queue, flag repaired</text>
+  <text x="148" y="418" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.55">e.g. bowtie polygon</text>
+  <rect x="276" y="304" width="208" height="122" rx="6" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"/>
+  <text x="380" y="328" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85" font-weight="700">Structural</text>
+  <text x="380" y="350" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">Schema mismatch,</text>
+  <text x="380" y="365" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">missing fields</text>
+  <text x="380" y="386" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">Reject with 400</text>
+  <text x="380" y="401" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">+ failed_field</text>
+  <text x="380" y="418" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.55">Producer self-corrects</text>
+  <rect x="508" y="304" width="208" height="122" rx="6" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"/>
+  <text x="612" y="328" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85" font-weight="700">Fatal</text>
+  <text x="612" y="350" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">NaN / Inf coords,</text>
+  <text x="612" y="365" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">unsupported CRS</text>
+  <text x="612" y="386" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">Archive to DLQ</text>
+  <text x="612" y="401" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">with full context</text>
+  <text x="612" y="418" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.55">Manual triage</text>
+</svg>
+<p>The pipeline has four numbered stages:</p>
+<ol>
+<li><strong>Schema and type</strong> — enforce required fields and a known geometry type with Pydantic before any GEOS work runs.</li>
+<li><strong>Coordinate bounds</strong> — verify ring lengths and reject <code>NaN</code>, <code>Infinity</code>, or out-of-range coordinates.</li>
+<li><strong>Topology and repair</strong> — run <code>is_valid</code>, attempt <code>make_valid()</code>, and branch failures to repair or the dead-letter queue.</li>
+<li><strong>CRS alignment</strong> — normalize to a canonical projection (EPSG:4326) and apply precision rounding before publishing.</li>
+</ol>
+<hr>
+<h2 id="step-by-step-implementation" tabindex="-1"><a class="heading-anchor" href="#step-by-step-implementation">Step-by-Step Implementation</a></h2>
+<h3 id="step-1-schema-and-type-enforcement" tabindex="-1"><a class="heading-anchor" href="#step-1-schema-and-type-enforcement">Step 1 — Schema and Type Enforcement</a></h3>
+<p>Validation begins at the JSON boundary. Reject payloads missing <code>type</code> or <code>coordinates</code>, or carrying an unsupported geometry type, before spending CPU on GEOS. This runs synchronously inside the request so producers get an immediate, actionable error.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> pydantic <span class="token keyword">import</span> BaseModel<span class="token punctuation">,</span> field_validator
+<span class="token keyword">from</span> typing <span class="token keyword">import</span> Literal<span class="token punctuation">,</span> Union
+
+ALLOWED_TYPES <span class="token operator">=</span> <span class="token punctuation">{</span>
+    <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"LineString"</span><span class="token punctuation">,</span> <span class="token string">"Polygon"</span><span class="token punctuation">,</span>
+    <span class="token string">"MultiPoint"</span><span class="token punctuation">,</span> <span class="token string">"MultiLineString"</span><span class="token punctuation">,</span> <span class="token string">"MultiPolygon"</span><span class="token punctuation">,</span>
+<span class="token punctuation">}</span>
+
+<span class="token keyword">class</span> <span class="token class-name">GeometryPayload</span><span class="token punctuation">(</span>BaseModel<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    feature_id<span class="token punctuation">:</span> <span class="token builtin">str</span>
+    <span class="token builtin">type</span><span class="token punctuation">:</span> Literal<span class="token punctuation">[</span>
+        <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"LineString"</span><span class="token punctuation">,</span> <span class="token string">"Polygon"</span><span class="token punctuation">,</span>
+        <span class="token string">"MultiPoint"</span><span class="token punctuation">,</span> <span class="token string">"MultiLineString"</span><span class="token punctuation">,</span> <span class="token string">"MultiPolygon"</span><span class="token punctuation">,</span>
+    <span class="token punctuation">]</span>
+    coordinates<span class="token punctuation">:</span> Union<span class="token punctuation">[</span><span class="token builtin">list</span><span class="token punctuation">,</span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">list</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">list</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">]</span>
+    crs_epsg<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">4326</span>  <span class="token comment"># CRS reported by the provider; EPSG:4326 default</span>
+
+    <span class="token decorator annotation punctuation">@field_validator</span><span class="token punctuation">(</span><span class="token string">"coordinates"</span><span class="token punctuation">,</span> mode<span class="token operator">=</span><span class="token string">"before"</span><span class="token punctuation">)</span>
+    <span class="token decorator annotation punctuation">@classmethod</span>
+    <span class="token keyword">def</span> <span class="token function">ensure_list</span><span class="token punctuation">(</span>cls<span class="token punctuation">,</span> v<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">if</span> <span class="token keyword">not</span> <span class="token builtin">isinstance</span><span class="token punctuation">(</span>v<span class="token punctuation">,</span> <span class="token builtin">list</span><span class="token punctuation">)</span> <span class="token keyword">or</span> <span class="token keyword">not</span> v<span class="token punctuation">:</span>
+            <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"coordinates must be a non-empty JSON array"</span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> v
+</code></pre>
+</div>
+<p>If validation fails, return a structured error with a clear <code>error_code</code> and <code>failed_field</code> so producers can self-correct without platform-team intervention.</p>
+<h3 id="step-2-coordinate-sequence-and-bounds-validation" tabindex="-1"><a class="heading-anchor" href="#step-2-coordinate-sequence-and-bounds-validation">Step 2 — Coordinate Sequence and Bounds Validation</a></h3>
+<p>A passing schema does not mean the numbers are usable. A <code>LineString</code> needs at least two distinct points; a <code>Polygon</code> exterior ring needs at least four coordinates with the first and last matching. Scan for <code>NaN</code>, <code>Infinity</code>, and coordinates outside valid WGS84 bounds.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> math
+
+<span class="token keyword">def</span> <span class="token function">validate_coordinate_bounds</span><span class="token punctuation">(</span>coords<span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Flatten nested coordinate arrays and bounds-check every (lon, lat) pair."""</span>
+    flat<span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">float</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+
+    <span class="token keyword">def</span> <span class="token function">flatten</span><span class="token punctuation">(</span>node<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">for</span> item <span class="token keyword">in</span> node<span class="token punctuation">:</span>
+            flatten<span class="token punctuation">(</span>item<span class="token punctuation">)</span> <span class="token keyword">if</span> <span class="token builtin">isinstance</span><span class="token punctuation">(</span>item<span class="token punctuation">,</span> <span class="token builtin">list</span><span class="token punctuation">)</span> <span class="token keyword">else</span> flat<span class="token punctuation">.</span>append<span class="token punctuation">(</span>item<span class="token punctuation">)</span>
+
+    flatten<span class="token punctuation">(</span>coords<span class="token punctuation">)</span>
+    <span class="token keyword">if</span> <span class="token builtin">len</span><span class="token punctuation">(</span>flat<span class="token punctuation">)</span> <span class="token operator">%</span> <span class="token number">2</span> <span class="token operator">!=</span> <span class="token number">0</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token boolean">False</span>  <span class="token comment"># odd count means a malformed pair</span>
+
+    <span class="token keyword">for</span> i <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token builtin">len</span><span class="token punctuation">(</span>flat<span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token number">2</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        lon<span class="token punctuation">,</span> lat <span class="token operator">=</span> flat<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">,</span> flat<span class="token punctuation">[</span>i <span class="token operator">+</span> <span class="token number">1</span><span class="token punctuation">]</span>
+        <span class="token keyword">if</span> math<span class="token punctuation">.</span>isnan<span class="token punctuation">(</span>lon<span class="token punctuation">)</span> <span class="token keyword">or</span> math<span class="token punctuation">.</span>isinf<span class="token punctuation">(</span>lon<span class="token punctuation">)</span> <span class="token keyword">or</span> <span class="token keyword">not</span> <span class="token punctuation">(</span><span class="token operator">-</span><span class="token number">180.0</span> <span class="token operator">&lt;=</span> lon <span class="token operator">&lt;=</span> <span class="token number">180.0</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+            <span class="token keyword">return</span> <span class="token boolean">False</span>
+        <span class="token keyword">if</span> math<span class="token punctuation">.</span>isnan<span class="token punctuation">(</span>lat<span class="token punctuation">)</span> <span class="token keyword">or</span> math<span class="token punctuation">.</span>isinf<span class="token punctuation">(</span>lat<span class="token punctuation">)</span> <span class="token keyword">or</span> <span class="token keyword">not</span> <span class="token punctuation">(</span><span class="token operator">-</span><span class="token number">90.0</span> <span class="token operator">&lt;=</span> lat <span class="token operator">&lt;=</span> <span class="token number">90.0</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+            <span class="token keyword">return</span> <span class="token boolean">False</span>
+    <span class="token keyword">return</span> <span class="token boolean">True</span>
+</code></pre>
+</div>
+<p>Bounds checks assume the payload is already in EPSG:4326. When the provider reports a projected CRS, run this check <em>after</em> Step 4, against the bounds of that CRS instead.</p>
+<h3 id="step-3-topology-integrity-and-automatic-repair" tabindex="-1"><a class="heading-anchor" href="#step-3-topology-integrity-and-automatic-repair">Step 3 — Topology Integrity and Automatic Repair</a></h3>
+<p>Coordinate bounds say nothing about self-intersections, unclosed rings, duplicate consecutive vertices, or wrong ring orientation. Shapely’s <code>is_valid</code> is a fast boolean predicate; <code>make_valid()</code> resolves common violations such as bowtie polygons. Reject only when repair changes the geometry type or yields an empty result.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape<span class="token punctuation">,</span> mapping
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>validation <span class="token keyword">import</span> make_valid<span class="token punctuation">,</span> explain_validity
+
+<span class="token keyword">def</span> <span class="token function">validate_topology</span><span class="token punctuation">(</span>geom_dict<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">tuple</span><span class="token punctuation">[</span><span class="token builtin">bool</span><span class="token punctuation">,</span> <span class="token builtin">dict</span><span class="token punctuation">,</span> <span class="token builtin">bool</span><span class="token punctuation">]</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Returns (ok, geometry_dict, was_repaired).
+    ok=False means the geometry could not be repaired and must be dead-lettered.
+    """</span>
+    geom <span class="token operator">=</span> shape<span class="token punctuation">(</span>geom_dict<span class="token punctuation">)</span>
+    <span class="token keyword">if</span> geom<span class="token punctuation">.</span>is_valid<span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token boolean">True</span><span class="token punctuation">,</span> geom_dict<span class="token punctuation">,</span> <span class="token boolean">False</span>
+
+    reason <span class="token operator">=</span> explain_validity<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>  <span class="token comment"># e.g. "Self-intersection[12.3 45.6]"</span>
+    repaired <span class="token operator">=</span> make_valid<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>
+
+    <span class="token comment"># Reject repairs that collapse the geometry or change its dimensionality</span>
+    <span class="token keyword">if</span> repaired<span class="token punctuation">.</span>is_empty <span class="token keyword">or</span> repaired<span class="token punctuation">.</span>geom_type <span class="token operator">!=</span> geom<span class="token punctuation">.</span>geom_type<span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token boolean">False</span><span class="token punctuation">,</span> <span class="token punctuation">{</span><span class="token string">"reason"</span><span class="token punctuation">:</span> reason<span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token boolean">False</span>
+
+    <span class="token keyword">return</span> <span class="token boolean">True</span><span class="token punctuation">,</span> mapping<span class="token punctuation">(</span>repaired<span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token boolean">True</span>
+</code></pre>
+</div>
+<p>Flagging <code>was_repaired</code> lets downstream consumers audit which geometries were silently altered — important for regulatory and cadastral data where a repaired boundary is not the same as the one a surveyor submitted.</p>
+<h3 id="step-4-crs-alignment-and-precision-control" tabindex="-1"><a class="heading-anchor" href="#step-4-crs-alignment-and-precision-control">Step 4 — CRS Alignment and Precision Control</a></h3>
+<p>Raw payloads arrive in arbitrary coordinate reference systems. Normalize to a single canonical projection before publishing; consistent projection is the topic of <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a>, and skipping it is the leading cause of false-positive overlaps and broken spatial joins. Cache transformers, since per-request <code>Transformer</code> construction triggers an expensive PROJ database lookup.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> pyproj <span class="token keyword">import</span> Transformer
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape<span class="token punctuation">,</span> mapping
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>ops <span class="token keyword">import</span> transform <span class="token keyword">as</span> shapely_transform
+
+_transformer_cache<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">tuple</span><span class="token punctuation">[</span><span class="token builtin">int</span><span class="token punctuation">,</span> <span class="token builtin">int</span><span class="token punctuation">]</span><span class="token punctuation">,</span> Transformer<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token punctuation">}</span>
+
+<span class="token keyword">def</span> <span class="token function">_get_transformer</span><span class="token punctuation">(</span>source_epsg<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">,</span> target_epsg<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">4326</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> Transformer<span class="token punctuation">:</span>
+    key <span class="token operator">=</span> <span class="token punctuation">(</span>source_epsg<span class="token punctuation">,</span> target_epsg<span class="token punctuation">)</span>
+    <span class="token keyword">if</span> key <span class="token keyword">not</span> <span class="token keyword">in</span> _transformer_cache<span class="token punctuation">:</span>
+        <span class="token comment"># always_xy=True keeps (lon, lat) order across PROJ 6+ axis conventions</span>
+        _transformer_cache<span class="token punctuation">[</span>key<span class="token punctuation">]</span> <span class="token operator">=</span> Transformer<span class="token punctuation">.</span>from_crs<span class="token punctuation">(</span>
+            source_epsg<span class="token punctuation">,</span> target_epsg<span class="token punctuation">,</span> always_xy<span class="token operator">=</span><span class="token boolean">True</span>
+        <span class="token punctuation">)</span>
+    <span class="token keyword">return</span> _transformer_cache<span class="token punctuation">[</span>key<span class="token punctuation">]</span>
+
+<span class="token keyword">def</span> <span class="token function">normalize_to_wgs84</span><span class="token punctuation">(</span>geom_dict<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">,</span> source_epsg<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">,</span> precision<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">7</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Reproject to EPSG:4326, then round AFTER transform to avoid topology drift."""</span>
+    geom <span class="token operator">=</span> shape<span class="token punctuation">(</span>geom_dict<span class="token punctuation">)</span>
+    <span class="token keyword">if</span> source_epsg <span class="token operator">!=</span> <span class="token number">4326</span><span class="token punctuation">:</span>
+        geom <span class="token operator">=</span> shapely_transform<span class="token punctuation">(</span>_get_transformer<span class="token punctuation">(</span>source_epsg<span class="token punctuation">)</span><span class="token punctuation">.</span>transform<span class="token punctuation">,</span> geom<span class="token punctuation">)</span>
+
+    <span class="token keyword">def</span> <span class="token function">_round</span><span class="token punctuation">(</span>x<span class="token punctuation">,</span> y<span class="token punctuation">,</span> z<span class="token operator">=</span><span class="token boolean">None</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token comment"># ~1 cm precision at the equator with 7 decimal places</span>
+        <span class="token keyword">return</span> <span class="token punctuation">(</span><span class="token builtin">round</span><span class="token punctuation">(</span>x<span class="token punctuation">,</span> precision<span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token builtin">round</span><span class="token punctuation">(</span>y<span class="token punctuation">,</span> precision<span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+    <span class="token keyword">return</span> mapping<span class="token punctuation">(</span>shapely_transform<span class="token punctuation">(</span>_round<span class="token punctuation">,</span> geom<span class="token punctuation">)</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>Round precision only <em>after</em> transformation — rounding first can move a vertex enough to introduce a self-intersection that Stage 3 would have caught but Stage 4 reintroduces.</p>
+<h3 id="step-5-error-categorization-and-routing" tabindex="-1"><a class="heading-anchor" href="#step-5-error-categorization-and-routing">Step 5 — Error Categorization and Routing</a></h3>
+<p>Once a stage fails, route the payload by tier so retries, producer feedback, and manual triage stay separate. Valid geometries proceed to the broker.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> enum <span class="token keyword">import</span> Enum
+
+<span class="token keyword">class</span> <span class="token class-name">ErrorTier</span><span class="token punctuation">(</span><span class="token builtin">str</span><span class="token punctuation">,</span> Enum<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    RECOVERABLE <span class="token operator">=</span> <span class="token string">"recoverable"</span>  <span class="token comment"># make_valid() fixed it; publish with repaired=True</span>
+    STRUCTURAL <span class="token operator">=</span> <span class="token string">"structural"</span>    <span class="token comment"># schema / missing field; reject with HTTP 400</span>
+    FATAL <span class="token operator">=</span> <span class="token string">"fatal"</span>              <span class="token comment"># NaN, unsupported CRS, unrepairable; archive to DLQ</span>
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">route_result</span><span class="token punctuation">(</span>broker<span class="token punctuation">,</span> tier<span class="token punctuation">:</span> ErrorTier <span class="token operator">|</span> <span class="token boolean">None</span><span class="token punctuation">,</span> payload<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">:</span>
+    <span class="token keyword">if</span> tier <span class="token keyword">is</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        <span class="token keyword">await</span> broker<span class="token punctuation">.</span>publish<span class="token punctuation">(</span><span class="token string">"validated-geometries"</span><span class="token punctuation">,</span> payload<span class="token punctuation">)</span>
+        <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"valid"</span><span class="token punctuation">}</span>
+    <span class="token keyword">if</span> tier <span class="token keyword">is</span> ErrorTier<span class="token punctuation">.</span>RECOVERABLE<span class="token punctuation">:</span>
+        <span class="token keyword">await</span> broker<span class="token punctuation">.</span>publish<span class="token punctuation">(</span><span class="token string">"repaired-geometries"</span><span class="token punctuation">,</span> <span class="token punctuation">{</span><span class="token operator">**</span>payload<span class="token punctuation">,</span> <span class="token string">"repaired"</span><span class="token punctuation">:</span> <span class="token boolean">True</span><span class="token punctuation">}</span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"repaired"</span><span class="token punctuation">}</span>
+    <span class="token keyword">if</span> tier <span class="token keyword">is</span> ErrorTier<span class="token punctuation">.</span>STRUCTURAL<span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"rejected"</span><span class="token punctuation">,</span> <span class="token string">"tier"</span><span class="token punctuation">:</span> tier<span class="token punctuation">.</span>value<span class="token punctuation">}</span>  <span class="token comment"># caller returns HTTP 400</span>
+    <span class="token keyword">await</span> broker<span class="token punctuation">.</span>publish<span class="token punctuation">(</span><span class="token string">"geometry-dlq"</span><span class="token punctuation">,</span> payload<span class="token punctuation">)</span>  <span class="token comment"># FATAL: keep full context</span>
+    <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"dead_lettered"</span><span class="token punctuation">}</span>
+</code></pre>
+</div>
+<p>Teams standardizing on binary serialization can map validated GeoJSON straight to Protocol Buffers to cut payload size and parse cost — see <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping</a>. For latency-critical routing, <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/converting-wkt-to-protobuf-for-low-latency-routing/">converting WKT to Protobuf for low-latency routing</a> shows how to attach validation metadata as Protobuf extensions while stripping redundant JSON syntax.</p>
+<h3 id="step-6-async-handler-integration" tabindex="-1"><a class="heading-anchor" href="#step-6-async-handler-integration">Step 6 — Async Handler Integration</a></h3>
+<p>The FastAPI endpoint wires all stages together. Cheap checks run inline; the GEOS-heavy stages run in a thread pool so they never block the event loop, and a result cache short-circuits immutable geometries.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">import</span> hashlib
+<span class="token keyword">import</span> json
+<span class="token keyword">from</span> fastapi <span class="token keyword">import</span> FastAPI<span class="token punctuation">,</span> HTTPException<span class="token punctuation">,</span> Request
+<span class="token keyword">from</span> pydantic <span class="token keyword">import</span> ValidationError
+<span class="token keyword">from</span> redis<span class="token punctuation">.</span>asyncio <span class="token keyword">import</span> Redis
+
+app <span class="token operator">=</span> FastAPI<span class="token punctuation">(</span><span class="token punctuation">)</span>
+redis_client <span class="token operator">=</span> Redis<span class="token punctuation">.</span>from_url<span class="token punctuation">(</span><span class="token string">"redis://localhost:6379/0"</span><span class="token punctuation">,</span> decode_responses<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span>
+
+<span class="token decorator annotation punctuation">@app<span class="token punctuation">.</span>post</span><span class="token punctuation">(</span><span class="token string">"/webhooks/geometry"</span><span class="token punctuation">)</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">validate_geometry</span><span class="token punctuation">(</span>request<span class="token punctuation">:</span> Request<span class="token punctuation">,</span> broker<span class="token operator">=</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    raw <span class="token operator">=</span> <span class="token keyword">await</span> request<span class="token punctuation">.</span>json<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+    <span class="token comment"># Stage 1: schema (sync, fast) — structural failures become HTTP 400</span>
+    <span class="token keyword">try</span><span class="token punctuation">:</span>
+        payload <span class="token operator">=</span> GeometryPayload<span class="token punctuation">(</span><span class="token operator">**</span>raw<span class="token punctuation">)</span>
+    <span class="token keyword">except</span> ValidationError <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> HTTPException<span class="token punctuation">(</span>status_code<span class="token operator">=</span><span class="token number">400</span><span class="token punctuation">,</span> detail<span class="token operator">=</span>exc<span class="token punctuation">.</span>errors<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+    geom_dict <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> payload<span class="token punctuation">.</span><span class="token builtin">type</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> payload<span class="token punctuation">.</span>coordinates<span class="token punctuation">}</span>
+
+    <span class="token comment"># Cache hit: identical normalized geometry already validated</span>
+    cache_key <span class="token operator">=</span> <span class="token string">"geomval:"</span> <span class="token operator">+</span> hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">(</span>
+        json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>geom_dict<span class="token punctuation">,</span> sort_keys<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">if</span> <span class="token keyword">await</span> redis_client<span class="token punctuation">.</span>exists<span class="token punctuation">(</span>cache_key<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"valid"</span><span class="token punctuation">,</span> <span class="token string">"cached"</span><span class="token punctuation">:</span> <span class="token boolean">True</span><span class="token punctuation">}</span>
+
+    <span class="token comment"># Stages 2-4 are CPU-bound: run off the event loop</span>
+    <span class="token keyword">def</span> <span class="token function">_heavy</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">tuple</span><span class="token punctuation">[</span>ErrorTier <span class="token operator">|</span> <span class="token boolean">None</span><span class="token punctuation">,</span> <span class="token builtin">dict</span><span class="token punctuation">]</span><span class="token punctuation">:</span>
+        <span class="token keyword">if</span> <span class="token keyword">not</span> validate_coordinate_bounds<span class="token punctuation">(</span>payload<span class="token punctuation">.</span>coordinates<span class="token punctuation">)</span><span class="token punctuation">:</span>
+            <span class="token keyword">return</span> ErrorTier<span class="token punctuation">.</span>FATAL<span class="token punctuation">,</span> <span class="token punctuation">{</span><span class="token operator">**</span>raw<span class="token punctuation">,</span> <span class="token string">"reason"</span><span class="token punctuation">:</span> <span class="token string">"out_of_bounds_or_nan"</span><span class="token punctuation">}</span>
+        ok<span class="token punctuation">,</span> fixed<span class="token punctuation">,</span> repaired <span class="token operator">=</span> validate_topology<span class="token punctuation">(</span>geom_dict<span class="token punctuation">)</span>
+        <span class="token keyword">if</span> <span class="token keyword">not</span> ok<span class="token punctuation">:</span>
+            <span class="token keyword">return</span> ErrorTier<span class="token punctuation">.</span>FATAL<span class="token punctuation">,</span> <span class="token punctuation">{</span><span class="token operator">**</span>raw<span class="token punctuation">,</span> <span class="token operator">**</span>fixed<span class="token punctuation">}</span>
+        normalized <span class="token operator">=</span> normalize_to_wgs84<span class="token punctuation">(</span>fixed<span class="token punctuation">,</span> payload<span class="token punctuation">.</span>crs_epsg<span class="token punctuation">)</span>
+        tier <span class="token operator">=</span> ErrorTier<span class="token punctuation">.</span>RECOVERABLE <span class="token keyword">if</span> repaired <span class="token keyword">else</span> <span class="token boolean">None</span>
+        <span class="token keyword">return</span> tier<span class="token punctuation">,</span> <span class="token punctuation">{</span><span class="token string">"feature_id"</span><span class="token punctuation">:</span> payload<span class="token punctuation">.</span>feature_id<span class="token punctuation">,</span> <span class="token string">"geometry"</span><span class="token punctuation">:</span> normalized<span class="token punctuation">}</span>
+
+    tier<span class="token punctuation">,</span> out <span class="token operator">=</span> <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>to_thread<span class="token punctuation">(</span>_heavy<span class="token punctuation">)</span>
+    result <span class="token operator">=</span> <span class="token keyword">await</span> route_result<span class="token punctuation">(</span>broker<span class="token punctuation">,</span> tier<span class="token punctuation">,</span> out<span class="token punctuation">)</span>
+
+    <span class="token keyword">if</span> result<span class="token punctuation">[</span><span class="token string">"status"</span><span class="token punctuation">]</span> <span class="token keyword">in</span> <span class="token punctuation">(</span><span class="token string">"valid"</span><span class="token punctuation">,</span> <span class="token string">"repaired"</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">await</span> redis_client<span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">(</span>cache_key<span class="token punctuation">,</span> <span class="token string">"1"</span><span class="token punctuation">,</span> ex<span class="token operator">=</span><span class="token number">86400</span><span class="token punctuation">)</span>  <span class="token comment"># 24h for static geometries</span>
+    <span class="token keyword">return</span> result
+</code></pre>
+</div>
+<hr>
+<h2 id="spatial-validation-and-error-handling" tabindex="-1"><a class="heading-anchor" href="#spatial-validation-and-error-handling">Spatial Validation and Error Handling</a></h2>
+<p>The most damaging failures are the ones that pass <code>is_valid</code> but are semantically wrong. Three guards catch them:</p>
+<ul>
+<li><strong>Type allowlist before parsing.</strong> <code>shape()</code> will happily build a <code>GeometryCollection</code> you never intended to support. Constrain the type in Pydantic so an unexpected type is a structural rejection, not a downstream surprise.</li>
+<li><strong><code>make_valid()</code> on every operand before any predicate.</strong> Self-touching rings make <code>intersects()</code> and <code>union()</code> raise <code>TopologyException</code>. Repairing first keeps the resolution path free of defensive try/except blocks.</li>
+<li><strong>Bounds re-check after reprojection.</strong> A transform can push a coordinate just outside valid range due to floating-point drift; assert bounds again on the normalized geometry before publishing.</li>
+</ul>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> shapely<span class="token punctuation">.</span>validation <span class="token keyword">import</span> explain_validity
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape
+
+<span class="token keyword">def</span> <span class="token function">diagnose</span><span class="token punctuation">(</span>geom_dict<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span> <span class="token operator">|</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Return a human-readable reason a geometry is unusable, or None if fine."""</span>
+    geom <span class="token operator">=</span> shape<span class="token punctuation">(</span>geom_dict<span class="token punctuation">)</span>
+    <span class="token keyword">if</span> geom<span class="token punctuation">.</span>is_empty<span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token string">"empty geometry"</span>
+    <span class="token keyword">if</span> <span class="token keyword">not</span> geom<span class="token punctuation">.</span>is_valid<span class="token punctuation">:</span>
+        <span class="token keyword">return</span> explain_validity<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>  <span class="token comment"># pinpoints self-intersection coordinates</span>
+    <span class="token keyword">if</span> <span class="token keyword">not</span> validate_coordinate_bounds<span class="token punctuation">(</span>geom_dict<span class="token punctuation">[</span><span class="token string">"coordinates"</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token string">"coordinates outside WGS84 bounds after normalization"</span>
+    <span class="token keyword">return</span> <span class="token boolean">None</span>
+</code></pre>
+</div>
+<p>When <code>make_valid()</code> cannot produce a usable geometry — rare, usually coordinate overflow — log the raw payload and route to the dead-letter queue rather than returning HTTP 500.</p>
+<hr>
+<h2 id="retry-backoff-and-delivery-guarantees" tabindex="-1"><a class="heading-anchor" href="#retry-backoff-and-delivery-guarantees">Retry, Backoff, and Delivery Guarantees</a></h2>
+<p>Validation is CPU-bound, so the failure you must plan for is not network loss but <em>broker backpressure</em>: validation workers can produce faster than the broker accepts. When publishing fails, retry with exponential backoff and full jitter, and shed load at the receiver rather than buffering unbounded in-flight tasks.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">import</span> random
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">publish_with_backoff</span><span class="token punctuation">(</span>
+    broker<span class="token punctuation">,</span>
+    topic<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span>
+    payload<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">,</span>
+    max_attempts<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">5</span><span class="token punctuation">,</span>
+    base_delay_ms<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">50</span><span class="token punctuation">,</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""At-least-once publish with full-jitter backoff. Returns False if exhausted."""</span>
+    <span class="token keyword">for</span> attempt <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span>max_attempts<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">try</span><span class="token punctuation">:</span>
+            <span class="token keyword">await</span> broker<span class="token punctuation">.</span>publish<span class="token punctuation">(</span>topic<span class="token punctuation">,</span> payload<span class="token punctuation">)</span>
+            <span class="token keyword">return</span> <span class="token boolean">True</span>
+        <span class="token keyword">except</span> <span class="token punctuation">(</span>ConnectionError<span class="token punctuation">,</span> TimeoutError<span class="token punctuation">)</span><span class="token punctuation">:</span>
+            ceiling_ms <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token number">2</span> <span class="token operator">**</span> attempt<span class="token punctuation">)</span> <span class="token operator">*</span> base_delay_ms
+            <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span>random<span class="token punctuation">.</span>uniform<span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> ceiling_ms<span class="token punctuation">)</span> <span class="token operator">/</span> <span class="token number">1000.0</span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> <span class="token boolean">False</span>
+</code></pre>
+</div>
+<p><strong>At-least-once vs exactly-once:</strong> most providers deliver at-least-once, so the same geometry can arrive twice. The validation result cache (Step 6) plus the upstream idempotency key turn that into effectively-once for identical payloads. If <code>publish_with_backoff</code> exhausts its budget, return HTTP <code>503</code> with a <code>Retry-After</code> header — pushing redelivery back to the provider — instead of accumulating tasks. When in-flight work exceeds a bounded ceiling, return HTTP <code>429</code> at the receiver to apply backpressure cleanly.</p>
+<hr>
+<h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
+<p>This test suite confirms each stage in isolation without a broker or network, using two deliberately broken geometries.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> math
+<span class="token keyword">import</span> pytest
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> Polygon<span class="token punctuation">,</span> mapping
+
+<span class="token comment"># A self-intersecting "bowtie" polygon — invalid but repairable</span>
+BOWTIE <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Polygon"</span><span class="token punctuation">,</span>
+          <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token punctuation">[</span><span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">1</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">1</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">}</span>
+<span class="token comment"># A valid square in EPSG:4326</span>
+SQUARE <span class="token operator">=</span> mapping<span class="token punctuation">(</span>Polygon<span class="token punctuation">(</span><span class="token punctuation">[</span><span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+<span class="token keyword">def</span> <span class="token function">test_bounds_rejects_nan</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">from</span> your_module <span class="token keyword">import</span> validate_coordinate_bounds
+    <span class="token keyword">assert</span> validate_coordinate_bounds<span class="token punctuation">(</span><span class="token punctuation">[</span><span class="token punctuation">[</span><span class="token number">0.0</span><span class="token punctuation">,</span> <span class="token number">0.0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token builtin">float</span><span class="token punctuation">(</span><span class="token string">"nan"</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token number">1.0</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token keyword">is</span> <span class="token boolean">False</span>
+
+<span class="token keyword">def</span> <span class="token function">test_bounds_rejects_out_of_range</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">from</span> your_module <span class="token keyword">import</span> validate_coordinate_bounds
+    <span class="token keyword">assert</span> validate_coordinate_bounds<span class="token punctuation">(</span><span class="token punctuation">[</span><span class="token punctuation">[</span><span class="token number">200.0</span><span class="token punctuation">,</span> <span class="token number">0.0</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token keyword">is</span> <span class="token boolean">False</span>  <span class="token comment"># lon > 180</span>
+
+<span class="token keyword">def</span> <span class="token function">test_topology_repairs_bowtie</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">from</span> your_module <span class="token keyword">import</span> validate_topology
+    ok<span class="token punctuation">,</span> fixed<span class="token punctuation">,</span> repaired <span class="token operator">=</span> validate_topology<span class="token punctuation">(</span>BOWTIE<span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> ok <span class="token keyword">is</span> <span class="token boolean">True</span> <span class="token keyword">and</span> repaired <span class="token keyword">is</span> <span class="token boolean">True</span>
+
+<span class="token keyword">def</span> <span class="token function">test_valid_square_is_untouched</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">from</span> your_module <span class="token keyword">import</span> validate_topology
+    ok<span class="token punctuation">,</span> fixed<span class="token punctuation">,</span> repaired <span class="token operator">=</span> validate_topology<span class="token punctuation">(</span>SQUARE<span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> ok <span class="token keyword">is</span> <span class="token boolean">True</span> <span class="token keyword">and</span> repaired <span class="token keyword">is</span> <span class="token boolean">False</span>
+
+<span class="token keyword">def</span> <span class="token function">test_crs_normalization_rounds_precision</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">from</span> your_module <span class="token keyword">import</span> normalize_to_wgs84
+    <span class="token comment"># EPSG:3857 metres near the equator -> degrees</span>
+    out <span class="token operator">=</span> normalize_to_wgs84<span class="token punctuation">(</span>
+        <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Point"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token number">111319.49</span><span class="token punctuation">,</span> <span class="token number">0.0</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">,</span> source_epsg<span class="token operator">=</span><span class="token number">3857</span>
+    <span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> math<span class="token punctuation">.</span>isclose<span class="token punctuation">(</span>out<span class="token punctuation">[</span><span class="token string">"coordinates"</span><span class="token punctuation">]</span><span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token number">1.0</span><span class="token punctuation">,</span> abs_tol<span class="token operator">=</span><span class="token number">1e-4</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>Run with <code>pytest -v</code> — all five assertions pass offline.</p>
+<hr>
+<h2 id="troubleshooting" tabindex="-1"><a class="heading-anchor" href="#troubleshooting">Troubleshooting</a></h2>
+<div style="overflow-x:auto">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely Spatial Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TopologyException</code> on <code>union()</code> / <code>intersection()</code> downstream</td>
+<td>Geometry passed <code>is_valid</code> but a consumer skipped <code>make_valid()</code></td>
+<td>Repair in Stage 3 and publish only the repaired geometry; never the raw input</td>
+</tr>
+<tr>
+<td>Validation passes but spatial joins return zero rows</td>
+<td>CRS never normalized — coordinates are in metres (EPSG:3857), not degrees</td>
+<td>Enforce Stage 4 normalization to EPSG:4326 before publishing</td>
+</tr>
+<tr>
+<td><code>make_valid()</code> collapses a Polygon to a LineString</td>
+<td>Degenerate ring (zero area) or all-collinear vertices</td>
+<td>Reject as fatal when <code>geom_type</code> changes; route to the DLQ for inspection</td>
+</tr>
+<tr>
+<td>Self-intersection reappears after normalization</td>
+<td>Precision rounding applied before reprojection moved a vertex</td>
+<td>Round AFTER the transform, not before, as in <code>normalize_to_wgs84</code></td>
+</tr>
+<tr>
+<td>Event loop stalls under load, p99 latency spikes</td>
+<td>GEOS topology checks running inline on the async handler</td>
+<td>Offload Stages 2-4 with <code>asyncio.to_thread</code> or a worker pool</td>
+</tr>
+<tr>
+<td>DLQ fills with the same <code>feature_id</code> repeatedly</td>
+<td>A producer is emitting coordinates with <code>NaN</code> or in an unsupported CRS</td>
+<td>Bounds-check in Stage 2 and return the <code>failed_field</code> so the producer self-corrects</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<hr>
+<h2 id="faq" tabindex="-1"><a class="heading-anchor" href="#faq">FAQ</a></h2>
+<details class="faq">
+<summary><strong>Should validation run in the handler or in a worker?</strong></summary>
+<p>Run cheap schema and bounds checks synchronously inside the request so malformed payloads get an immediate HTTP 400 and never reach the broker. Offload GEOS-backed topology checks and CRS transformation to a thread pool (<code>asyncio.to_thread</code>) only when geometries are large or throughput is high — those operations are CPU-bound and will block the event loop if run inline.</p>
+</details>
+<details class="faq">
+<summary><strong>When should I auto-repair with make_valid versus rejecting?</strong></summary>
+<p>Auto-repair self-intersections, bowtie polygons, and unclosed rings when <code>make_valid()</code> returns the same geometry type and the area change is within tolerance — and flag those as repaired so consumers can audit them. Reject (route to the dead-letter queue) when <code>make_valid()</code> returns an empty geometry, changes the geometry type, or when coordinates contain <code>NaN</code> or <code>Infinity</code>, since those indicate upstream corruption that repair would only mask.</p>
+</details>
+<details class="faq">
+<summary><strong>Why does is_valid pass but a join still fails?</strong></summary>
+<p><code>is_valid</code> only checks OGC Simple Features topology — it does not check the coordinate reference system. A geometry can be valid in EPSG:3857 yet break a join against EPSG:4326 data because the coordinates are in metres, not degrees. Always normalize CRS to a single canonical projection before any join, and assert coordinates fall within the expected bounds for that CRS.</p>
+</details>
+<details class="faq">
+<summary><strong>How do I avoid re-validating the same static geometry?</strong></summary>
+<p>Cache validation results in Redis keyed by a deterministic hash of the normalized coordinate array (<code>json.dumps</code> with <code>sort_keys=True</code>, then SHA-256). Immutable geometries such as administrative boundaries hit the cache and skip the GEOS computation entirely, which removes the dominant cost from p99 latency during traffic spikes.</p>
+</details>
+<hr>
+<h2 id="operational-considerations" tabindex="-1"><a class="heading-anchor" href="#operational-considerations">Operational Considerations</a></h2>
+<p><strong>Instrument every stage.</strong> Track <code>validation_duration_ms</code> per stage (schema, bounds, topology, CRS), <code>validation_pass_rate</code>, <code>repair_success_rate</code>, <code>dlq_ingestion_count</code> by tier, and <code>geometry_size_bytes</code> distribution. The <code>geometry_repair_count</code> metric in particular is a leading indicator of upstream provider quality and feeds directly into the conflict-handling metrics discussed in <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies</a>.</p>
+<p><strong>Scale on CPU, not connections.</strong> Because GEOS work dominates, deploy validation workers behind a horizontal autoscaler keyed on CPU utilization or broker queue depth rather than request rate.</p>
+<p><strong>Validate before serialization, not after.</strong> Running validation upstream of binary encoding means the repaired, normalized geometry is what gets serialized — so the integrity guarantee is preserved end to end into <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping</a> and any downstream broker.</p>
+<p><strong>Keep heavy parsing off the hot path.</strong> For payloads with very large geometries, defer parsing to a dedicated worker as covered in <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a> so the validation receiver stays responsive under burst load.</p>
+<hr>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
+<ul>
+<li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a> — parent section covering routing, parsing, and transformation of geospatial webhook payloads</li>
+<li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a> — canonical projection handling that powers Stage 4 of this pipeline</li>
+<li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping</a> — compact binary serialization for validated geometries</li>
+<li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a> — offloading large-geometry work so the validation receiver stays responsive</li>
+<li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/converting-wkt-to-protobuf-for-low-latency-routing/">Converting WKT to Protobuf for Low-Latency Routing</a> — attaching validation metadata to binary payloads for fast dispatch</li>
+</ul>
+
+        <h2 id="explore-this-section">Explore this section</h2>
+        <div class="children-grid">
+          <a class="card " href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/converting-wkt-to-protobuf-for-low-latency-routing/">
+            <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19c0-8 6-14 14-14 0 8-6 14-14 14z"/><path d="M5 19l6-6"/></svg></span>
+            <h3 class="card__title">Converting WKT to Protobuf for Low-Latency Routing</h3>
+            <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+          </a>
+        </div>
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        <div class="aside-card">
+          <h3>Related in this section</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          </ul>
+        </div>
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a></li>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a></li>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a></li>
+            <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring &amp; Observability for Spatial Pipelines</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</article>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="https://www.geospatialwebhook.com/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/">Home</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queues &amp; Retries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Queues &amp; Retries</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Monitoring</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging &amp; Tracing for Spatial Events</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <a class="site-footer__gh" href="https://github.com/geospatialwebhook" target="_blank" rel="noopener" aria-label="Geospatial Webhook on GitHub">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5Z"/></svg><span>GitHub</span>
+      </a>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
