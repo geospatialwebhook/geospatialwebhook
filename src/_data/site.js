@@ -36,5 +36,23 @@ module.exports = {
       icon: "route",
       tone: "earth",
     },
+    {
+      slug: "queue-management-retry-delivery",
+      title: "Queue Management, Retries & Delivery Guarantees",
+      navTitle: "Queues & Retries",
+      summary:
+        "Exponential backoff with jitter, dead-letter queues for spatial payloads, broker selection, and ordering guarantees for high-volume geospatial event streams.",
+      icon: "repeat",
+      tone: "rose",
+    },
+    {
+      slug: "monitoring-observability-spatial",
+      title: "Monitoring & Observability for Spatial Pipelines",
+      navTitle: "Monitoring",
+      summary:
+        "Geo-specific metrics, consumer lag and partition skew detection, structured logging, and distributed tracing for production spatial webhook systems.",
+      icon: "activity",
+      tone: "peach",
+    },
   ],
 };

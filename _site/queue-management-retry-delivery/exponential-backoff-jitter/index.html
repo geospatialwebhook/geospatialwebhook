@@ -1,0 +1,888 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>Exponential Backoff &amp; Jitter for Spatial Webhooks · Geo Webhook</title>
+  <meta name="description" content="Retry failed spatial webhook deliveries without retry storms: exponential backoff, full/equal/decorrelated jitter, retry budgets, and idempotent geometry writes."/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360"/>
+  <meta name="color-scheme" content="light"/>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/"/>
+  <meta property="og:title" content="Exponential Backoff &amp; Jitter for Spatial Webhooks"/>
+  <meta property="og:description" content="Retry failed spatial webhook deliveries without retry storms: exponential backoff, full/equal/decorrelated jitter, retry budgets, and idempotent geometry writes."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Exponential Backoff &amp; Jitter for Spatial Webhooks"/>
+  <meta name="twitter:description" content="Retry failed spatial webhook deliveries without retry storms: exponential backoff, full/equal/decorrelated jitter, retry budgets, and idempotent geometry writes."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=9f5ca540"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },{ "@type": "ListItem", "position": 2, "name": "Queue Management Retry Delivery", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/" },{ "@type": "ListItem", "position": 3, "name": "Exponential Backoff Jitter", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/" }
+    ]
+  }
+  </script>
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/#article",
+    "mainEntityOfPage": "https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/",
+    "headline": "Exponential Backoff &amp; Jitter for Spatial Webhooks",
+    "description": "Retry failed spatial webhook deliveries without retry storms: exponential backoff, full/equal/decorrelated jitter, retry budgets, and idempotent geometry writes.",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
+    "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
+    "image": "https://www.geospatialwebhook.com/og-image.png",
+    "url": "https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/",
+    "articleSection": "Queue Management Retry Delivery",
+    "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
+  }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="/core-event-fundamentals-architecture/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="/idempotency-spatial-deduplication/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="/spatial-payload-routing-parsing/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+      <a href="/queue-management-retry-delivery/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Queues &amp; Retries</span>
+      </a>
+      <a href="/monitoring-observability-spatial/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
+      </a>
+    </nav>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="/">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="/queue-management-retry-delivery/">Queue Management Retry Delivery</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">Exponential Backoff Jitter</span>
+    </nav>
+
+    <h1 class="page__title">Exponential Backoff &amp; Jitter for Spatial Webhooks</h1>
+
+    <div class="page__layout">
+      <div class="markdown">
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Exponential Backoff & Jitter for Spatial Webhooks",
+      "description": "A production guide to retry timing for redelivering failed spatial webhook events: why constant retry causes thundering-herd storms, exponential backoff, the full/equal/decorrelated jitter variants, retry budgets, and pairing retries with idempotency so a retried geometry write never double-inserts.",
+      "url": "https://geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/",
+      "datePublished": "2025-02-10",
+      "dateModified": "2026-07-13",
+      "author": {"@type": "Organization", "name": "geospatialwebhook.com"},
+      "publisher": {"@type": "Organization", "name": "geospatialwebhook.com"}
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatialwebhook.com/"},
+        {"@type": "ListItem", "position": 2, "name": "Queue Management, Retries & Delivery Guarantees", "item": "https://geospatialwebhook.com/queue-management-retry-delivery/"},
+        {"@type": "ListItem", "position": 3, "name": "Exponential Backoff & Jitter for Spatial Webhooks", "item": "https://geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/"}
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Retry failed spatial webhook deliveries with exponential backoff and jitter",
+      "step": [
+        {"@type": "HowToStep", "position": 1, "name": "Classify the failure as retryable or terminal before scheduling any retry"},
+        {"@type": "HowToStep", "position": 2, "name": "Compute the next delay with decorrelated jitter capped at a ceiling"},
+        {"@type": "HowToStep", "position": 3, "name": "Enforce a retry budget across all in-flight events"},
+        {"@type": "HowToStep", "position": 4, "name": "Re-POST the GeoJSON payload under an idempotency key so a retry cannot double-insert"},
+        {"@type": "HowToStep", "position": 5, "name": "Route exhausted events to a dead-letter queue and verify the backoff sequence bounds"}
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Why do retries require idempotency for spatial payloads?",
+          "acceptedAnswer": {"@type": "Answer", "text": "A retry happens precisely when the client is unsure the first attempt succeeded — a timeout or dropped connection can occur after the receiver has already written the geometry. Without an idempotency key, the retried POST re-inserts the same feature, producing duplicate polygons, double-counted areas, and corrupted spatial joins. Deriving a deterministic key from the normalised geometry and claiming it atomically before the write makes the retry a no-op instead of a duplicate."}
+        },
+        {
+          "@type": "Question",
+          "name": "Which jitter variant should I use for spatial webhook retries?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Decorrelated jitter is the best default for most spatial webhook fleets. Full jitter minimises collisions but can retry too eagerly right after a failure; equal jitter guarantees a minimum wait but clusters more tightly; decorrelated jitter walks the delay upward from the previous value, giving both wide spread and a rising floor. AWS load tests found full and decorrelated jitter complete a contended workload in the fewest total calls."}
+        },
+        {
+          "@type": "Question",
+          "name": "How do I tell a retryable failure from a non-retryable one?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Retry on transient transport and server faults: connection errors, read timeouts, and 5xx responses such as 502, 503, and 504, plus 429 (respecting Retry-After). Do not retry client faults: 400, 401, 403, 404, 409, 422, and any invalid-geometry rejection. A self-intersecting polygon will fail identically on every attempt, so retrying it only wastes the retry budget and delays routing it to a dead-letter queue for inspection."}
+        },
+        {
+          "@type": "Question",
+          "name": "What is a retry budget and why does it matter at fleet scale?",
+          "acceptedAnswer": {"@type": "Answer", "text": "A retry budget caps retries as a fraction of successful requests — for example, no more than 10 percent additional load from retries. Without a budget, a downstream outage causes every event to exhaust its full retry ladder simultaneously, multiplying load exactly when the receiver is already failing. A token-bucket budget sheds retries once the ratio is exceeded, sending events straight to the dead-letter queue instead of amplifying the outage."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>Exponential backoff with decorrelated jitter is the correct retry timing for redelivering failed spatial webhook events: it spreads retry attempts across time so a recovering receiver is not hit by a synchronised thundering herd, and — paired with an idempotency key derived from the geometry — it guarantees a retried write never double-inserts a feature.</strong></p>
+<p>This topic sits under <a href="/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a>, the section covering how spatial event pipelines move payloads reliably from producer to consumer. Retry timing is the first line of defence against transient failure; when retries are exhausted, events fall through to <a href="/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a>, and the overall correctness contract is set by <a href="/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a>.</p>
+<hr>
+<h2 id="prerequisites" tabindex="-1"><a class="heading-anchor" href="#prerequisites">Prerequisites</a></h2>
+<p>Confirm your stack meets this baseline before wiring retries into a spatial webhook dispatcher. Check off each item as you verify it:</p>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Python 3.11+</strong> — <code>asyncio.timeout()</code> and <code>tomllib</code> simplify per-attempt deadlines and config loading</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong><code>aiohttp</code> 3.9+</strong> — the async HTTP client used to POST GeoJSON, with fine-grained <code>ClientTimeout</code> control</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong><code>shapely</code> 2.0+</strong> — to validate geometry topology so invalid-geometry failures are classified as terminal, not retryable</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong><code>redis-py</code> 5.0+</strong> (<code>redis.asyncio</code>) — for the idempotency claim that makes each retry safe, and for a shared retry-budget token bucket</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>A retry-window SLA from every downstream provider</strong> — you cannot size backoff ceilings or TTLs without knowing how long the receiver stays down</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>A dead-letter sink</strong> — a place to send events once the retry budget is exhausted, so nothing is silently dropped</label></li>
+</ul>
+<hr>
+<h2 id="why-constant-and-linear-retry-fail-at-scale" tabindex="-1"><a class="heading-anchor" href="#why-constant-and-linear-retry-fail-at-scale">Why Constant and Linear Retry Fail at Scale</a></h2>
+<p>A single client retrying a single failed delivery at a fixed one-second interval is harmless. The danger is correlation. When a shared downstream — a tile server, a PostGIS writer, a routing engine — has a brief outage, every producer that was mid-delivery fails at nearly the same instant. If they all retry on the same fixed schedule, they retry <em>together</em>, in a synchronised wave. The receiver comes back up, is immediately hit by the entire backlog at once, tips over again, and the cycle repeats. This is the classic thundering-herd retry storm, and constant or linear backoff actively creates it because it preserves the alignment of the original failure.</p>
+<p>Spatial workloads make this worse in three specific ways. First, individual requests are expensive: a webhook carrying a <code>MultiPolygon</code> triggers geometry validation, a spatial join, and often a tile invalidation, so a retry storm consumes far more receiver CPU per request than a plain JSON ping. Second, payloads are large — a dense boundary geometry is orders of magnitude bigger than a status event — so synchronised retries saturate bandwidth as well as CPU. Third, spatial events are frequently bursty by nature: a fleet of sensors crossing a region boundary emits correlated events, so the population that fails together is already clustered.</p>
+<p>Exponential backoff breaks the synchronisation over <em>time</em> by making each successive delay grow multiplicatively (<code>base · 2^attempt</code>), which thins the retry rate as an outage lengthens. But pure exponential backoff alone does not break synchronisation <em>between clients</em>: a thousand producers that all failed at <code>t=0</code> and all use identical exponential delays still retry in lockstep, just at exponentially spaced instants. The fix is <strong>jitter</strong> — randomising each delay so the herd disperses across the interval instead of stacking on its edge.</p>
+<hr>
+<h2 id="architecture-blueprint" tabindex="-1"><a class="heading-anchor" href="#architecture-blueprint">Architecture Blueprint</a></h2>
+<p>The retry path is a small state machine wrapped around a single HTTP POST. Every failure is classified before a delay is ever computed, every retry re-claims an idempotency key, and exhaustion has exactly one destination.</p>
+<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Retry state machine for spatial webhook delivery with jittered backoff and dead-letter exit" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+  <title>Jittered retry state machine for spatial webhook delivery</title>
+  <desc>Flow from an outbound GeoJSON POST through failure classification: terminal 4xx and invalid geometry exit immediately to the dead-letter queue, retryable 5xx and timeout compute a decorrelated-jitter delay under a retry budget and loop back to the POST, and success acknowledges.</desc>
+  <defs>
+    <marker id="bo-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.6"/>
+    </marker>
+  </defs>
+  <!-- 1 POST -->
+  <rect x="12" y="120" width="120" height="58" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
+  <text x="72" y="144" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">POST</text>
+  <text x="72" y="159" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.8">GeoJSON</text>
+  <text x="72" y="172" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.6">idempotency key</text>
+  <line x1="132" y1="149" x2="162" y2="149" stroke="currentColor" stroke-width="1.5" marker-end="url(#bo-arr)" opacity="0.55"/>
+  <!-- 2 Classify (diamond) -->
+  <polygon points="240,110 320,149 240,188 160,149" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.6"/>
+  <text x="240" y="146" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Classify</text>
+  <text x="240" y="160" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.75">outcome?</text>
+  <!-- success up -->
+  <line x1="240" y1="110" x2="240" y2="64" stroke="currentColor" stroke-width="1.2" marker-end="url(#bo-arr)" opacity="0.45" stroke-dasharray="4,3"/>
+  <text x="240" y="54" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">2xx → ACK</text>
+  <!-- terminal down to DLQ -->
+  <line x1="240" y1="188" x2="240" y2="232" stroke="currentColor" stroke-width="1.5" marker-end="url(#bo-arr)" opacity="0.55"/>
+  <text x="250" y="214" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">4xx / invalid geometry</text>
+  <rect x="150" y="232" width="180" height="52" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
+  <text x="240" y="254" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Dead-Letter Queue</text>
+  <text x="240" y="269" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">terminal + budget-exhausted</text>
+  <!-- retryable right to backoff -->
+  <line x1="320" y1="149" x2="360" y2="149" stroke="currentColor" stroke-width="1.5" marker-end="url(#bo-arr)" opacity="0.55"/>
+  <text x="340" y="141" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">5xx / timeout</text>
+  <!-- 3 budget (diamond) -->
+  <polygon points="435,110 515,149 435,188 355,149" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.6"/>
+  <text x="435" y="146" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Budget</text>
+  <text x="435" y="160" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.75">token left?</text>
+  <!-- budget exhausted down to DLQ -->
+  <line x1="435" y1="188" x2="435" y2="258" stroke="currentColor" stroke-width="1.2" marker-end="url(#bo-arr)" opacity="0.45" stroke-dasharray="4,3"/>
+  <line x1="435" y1="258" x2="332" y2="258" stroke="currentColor" stroke-width="1.2" marker-end="url(#bo-arr)" opacity="0.45" stroke-dasharray="4,3"/>
+  <text x="445" y="220" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">no → shed</text>
+  <!-- budget ok to delay -->
+  <line x1="515" y1="149" x2="555" y2="149" stroke="currentColor" stroke-width="1.5" marker-end="url(#bo-arr)" opacity="0.55"/>
+  <!-- 4 delay -->
+  <rect x="555" y="120" width="150" height="58" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
+  <text x="630" y="142" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Sleep delay</text>
+  <text x="630" y="157" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.8">decorrelated jitter</text>
+  <text x="630" y="170" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.6">min(cap, U(base, prev·3))</text>
+  <!-- loop back to POST -->
+  <line x1="630" y1="120" x2="630" y2="40" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
+  <line x1="630" y1="40" x2="72" y2="40" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
+  <line x1="72" y1="40" x2="72" y2="118" stroke="currentColor" stroke-width="1.5" marker-end="url(#bo-arr)" opacity="0.5"/>
+  <text x="360" y="32" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.6">retry attempt n+1</text>
+</svg>
+<p><strong>Layer breakdown:</strong></p>
+<ol>
+<li><strong>Dispatch</strong> — the payload is POSTed as GeoJSON under a stable idempotency key. The key is derived once and reused for every retry of the same event, so the receiver can recognise a redelivery.</li>
+<li><strong>Classification</strong> — the outcome is sorted into three buckets before any timing logic runs: success acknowledges and exits; a terminal fault (4xx or invalid geometry) goes straight to the dead-letter queue; a retryable fault (5xx, timeout, 429) proceeds to timing.</li>
+<li><strong>Budget gate</strong> — a shared token bucket decides whether the fleet can afford this retry. If the retry-to-success ratio is already too high, the event is shed to the dead-letter queue instead of amplifying an outage.</li>
+<li><strong>Jittered delay</strong> — a decorrelated-jitter delay, capped at a ceiling, is slept before looping back to dispatch for the next attempt.</li>
+</ol>
+<hr>
+<h2 id="step-by-step-implementation" tabindex="-1"><a class="heading-anchor" href="#step-by-step-implementation">Step-by-Step Implementation</a></h2>
+<h3 id="step-1-classify-the-failure-before-scheduling-anything" tabindex="-1"><a class="heading-anchor" href="#step-1-classify-the-failure-before-scheduling-anything">Step 1 — Classify the Failure Before Scheduling Anything</a></h3>
+<p>Timing logic must never run for a failure that will never succeed. A <code>422</code> for a self-intersecting polygon is deterministic: it fails identically on attempt one and attempt fifty. Retrying it burns the budget and delays the moment a human sees it in the dead-letter queue.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> dataclasses <span class="token keyword">import</span> dataclass
+<span class="token keyword">from</span> enum <span class="token keyword">import</span> Enum<span class="token punctuation">,</span> auto
+<span class="token keyword">import</span> aiohttp
+
+
+<span class="token keyword">class</span> <span class="token class-name">Outcome</span><span class="token punctuation">(</span>Enum<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    SUCCESS <span class="token operator">=</span> auto<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    RETRYABLE <span class="token operator">=</span> auto<span class="token punctuation">(</span><span class="token punctuation">)</span>   <span class="token comment"># transient: 5xx, timeout, connection reset, 429</span>
+    TERMINAL <span class="token operator">=</span> auto<span class="token punctuation">(</span><span class="token punctuation">)</span>    <span class="token comment"># permanent: 4xx, invalid geometry — send to DLQ</span>
+
+
+<span class="token comment"># 4xx codes that must never be retried; a retry cannot change the result.</span>
+NON_RETRYABLE_STATUS <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token number">400</span><span class="token punctuation">,</span> <span class="token number">401</span><span class="token punctuation">,</span> <span class="token number">403</span><span class="token punctuation">,</span> <span class="token number">404</span><span class="token punctuation">,</span> <span class="token number">409</span><span class="token punctuation">,</span> <span class="token number">410</span><span class="token punctuation">,</span> <span class="token number">422</span><span class="token punctuation">}</span>
+<span class="token comment"># 5xx and 429 are worth another attempt after a backoff delay.</span>
+RETRYABLE_STATUS <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token number">429</span><span class="token punctuation">,</span> <span class="token number">500</span><span class="token punctuation">,</span> <span class="token number">502</span><span class="token punctuation">,</span> <span class="token number">503</span><span class="token punctuation">,</span> <span class="token number">504</span><span class="token punctuation">}</span>
+
+
+<span class="token keyword">def</span> <span class="token function">classify_response</span><span class="token punctuation">(</span>status<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> Outcome<span class="token punctuation">:</span>
+    <span class="token keyword">if</span> <span class="token number">200</span> <span class="token operator">&lt;=</span> status <span class="token operator">&lt;</span> <span class="token number">300</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> Outcome<span class="token punctuation">.</span>SUCCESS
+    <span class="token keyword">if</span> status <span class="token keyword">in</span> NON_RETRYABLE_STATUS<span class="token punctuation">:</span>
+        <span class="token keyword">return</span> Outcome<span class="token punctuation">.</span>TERMINAL
+    <span class="token keyword">if</span> status <span class="token keyword">in</span> RETRYABLE_STATUS <span class="token keyword">or</span> <span class="token number">500</span> <span class="token operator">&lt;=</span> status <span class="token operator">&lt;</span> <span class="token number">600</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> Outcome<span class="token punctuation">.</span>RETRYABLE
+    <span class="token comment"># Unknown 4xx: treat as terminal so we fail fast rather than loop.</span>
+    <span class="token keyword">return</span> Outcome<span class="token punctuation">.</span>TERMINAL
+
+
+<span class="token keyword">def</span> <span class="token function">classify_exception</span><span class="token punctuation">(</span>exc<span class="token punctuation">:</span> Exception<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> Outcome<span class="token punctuation">:</span>
+    <span class="token comment"># Transport faults are transient by nature and safe to retry.</span>
+    <span class="token keyword">if</span> <span class="token builtin">isinstance</span><span class="token punctuation">(</span>exc<span class="token punctuation">,</span> <span class="token punctuation">(</span>aiohttp<span class="token punctuation">.</span>ClientConnectionError<span class="token punctuation">,</span>
+                        aiohttp<span class="token punctuation">.</span>ServerTimeoutError<span class="token punctuation">,</span>
+                        TimeoutError<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> Outcome<span class="token punctuation">.</span>RETRYABLE
+    <span class="token keyword">return</span> Outcome<span class="token punctuation">.</span>TERMINAL
+</code></pre>
+</div>
+<p>Validate geometry topology <em>before</em> the POST so that an invalid ring is classified as terminal locally, never sent over the wire only to bounce back as a <code>422</code>. The topology check is the same <code>shapely</code> gate used across the pipeline; the CRS must carry its EPSG code (payloads default to EPSG:4326 (WGS84) per <a href="https://datatracker.ietf.org/doc/html/rfc7946">RFC 7946</a>).</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>validation <span class="token keyword">import</span> explain_validity
+
+
+<span class="token keyword">def</span> <span class="token function">is_terminal_geometry</span><span class="token punctuation">(</span>feature<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span> <span class="token operator">|</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Return a reason string if the geometry can never succeed, else None."""</span>
+    geom <span class="token operator">=</span> shape<span class="token punctuation">(</span>feature<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+    <span class="token keyword">if</span> geom<span class="token punctuation">.</span>is_empty<span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token string">"empty geometry"</span>
+    <span class="token keyword">if</span> <span class="token keyword">not</span> geom<span class="token punctuation">.</span>is_valid<span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token string-interpolation"><span class="token string">f"invalid topology: </span><span class="token interpolation"><span class="token punctuation">{</span>explain_validity<span class="token punctuation">(</span>geom<span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">"</span></span>
+    <span class="token keyword">return</span> <span class="token boolean">None</span>
+</code></pre>
+</div>
+<h3 id="step-2-compute-the-delay-with-decorrelated-jitter" tabindex="-1"><a class="heading-anchor" href="#step-2-compute-the-delay-with-decorrelated-jitter">Step 2 — Compute the Delay with Decorrelated Jitter</a></h3>
+<p>The three jitter strategies differ in how they draw the random delay for attempt <code>n</code>, given a <code>base</code>, a <code>cap</code>, and (for decorrelated) the previous delay:</p>
+<ul>
+<li><strong>Full jitter</strong> — <code>delay = uniform(0, min(cap, base · 2^n))</code>. Widest spread, lowest collision probability, but can retry almost immediately after a failure.</li>
+<li><strong>Equal jitter</strong> — <code>half = min(cap, base · 2^n) / 2; delay = half + uniform(0, half)</code>. Guarantees a minimum wait, so no retry lands too early, at the cost of a narrower spread.</li>
+<li><strong>Decorrelated jitter</strong> — <code>delay = min(cap, uniform(base, prev · 3))</code>. The delay random-walks upward from the previous value, combining a rising floor with a wide ceiling. This is the recommended default.</li>
+</ul>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> random
+
+
+<span class="token keyword">def</span> <span class="token function">full_jitter</span><span class="token punctuation">(</span>attempt<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">,</span> base<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">,</span> cap<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">float</span><span class="token punctuation">:</span>
+    <span class="token keyword">return</span> random<span class="token punctuation">.</span>uniform<span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token builtin">min</span><span class="token punctuation">(</span>cap<span class="token punctuation">,</span> base <span class="token operator">*</span> <span class="token punctuation">(</span><span class="token number">2</span> <span class="token operator">**</span> attempt<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">equal_jitter</span><span class="token punctuation">(</span>attempt<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">,</span> base<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">,</span> cap<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">float</span><span class="token punctuation">:</span>
+    ceiling <span class="token operator">=</span> <span class="token builtin">min</span><span class="token punctuation">(</span>cap<span class="token punctuation">,</span> base <span class="token operator">*</span> <span class="token punctuation">(</span><span class="token number">2</span> <span class="token operator">**</span> attempt<span class="token punctuation">)</span><span class="token punctuation">)</span>
+    half <span class="token operator">=</span> ceiling <span class="token operator">/</span> <span class="token number">2</span>
+    <span class="token keyword">return</span> half <span class="token operator">+</span> random<span class="token punctuation">.</span>uniform<span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> half<span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">decorrelated_jitter</span><span class="token punctuation">(</span>prev_delay<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">,</span> base<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">,</span> cap<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">float</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Random-walk the delay upward; independent of an attempt counter."""</span>
+    <span class="token keyword">return</span> <span class="token builtin">min</span><span class="token punctuation">(</span>cap<span class="token punctuation">,</span> random<span class="token punctuation">.</span>uniform<span class="token punctuation">(</span>base<span class="token punctuation">,</span> prev_delay <span class="token operator">*</span> <span class="token number">3</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>The SVG below compares the delay envelopes the three strategies produce across attempts. All grow, but the shaded spread — the range a given attempt can land in — is what disperses the herd.</p>
+<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Comparison of retry-time spread for full, equal, and decorrelated jitter across attempts" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+  <title>Retry-time spread of the three jitter variants</title>
+  <desc>Three horizontal tracks over an attempt axis. No-jitter exponential shows single points doubling each attempt. Full jitter shows wide bars from zero up to the exponential ceiling. Equal jitter shows bars covering the upper half of each ceiling. Decorrelated jitter shows a rising staircase band that widens with each attempt.</desc>
+  <!-- axis -->
+  <line x1="120" y1="40" x2="120" y2="260" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+  <line x1="120" y1="260" x2="720" y2="260" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+  <text x="420" y="285" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">retry attempt →</text>
+  <text x="60" y="150" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7" transform="rotate(-90 60 150)">delay spread</text>
+  <!-- attempt ticks -->
+  <text x="200" y="274" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.6">1</text>
+  <text x="320" y="274" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.6">2</text>
+  <text x="440" y="274" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.6">3</text>
+  <text x="560" y="274" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.6">4</text>
+  <text x="680" y="274" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.6">5</text>
+  <!-- No jitter: single points at ceiling -->
+  <text x="128" y="52" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.8" font-weight="600">no jitter (lockstep)</text>
+  <circle cx="200" cy="248" r="3" fill="currentColor" opacity="0.7"/>
+  <circle cx="320" cy="236" r="3" fill="currentColor" opacity="0.7"/>
+  <circle cx="440" cy="212" r="3" fill="currentColor" opacity="0.7"/>
+  <circle cx="560" cy="164" r="3" fill="currentColor" opacity="0.7"/>
+  <circle cx="680" cy="70" r="3" fill="currentColor" opacity="0.7"/>
+  <!-- Full jitter: bars from baseline(260) up to ceiling -->
+  <text x="128" y="66" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.55">full = U(0, ceiling)</text>
+  <rect x="194" y="248" width="12" height="12" fill="currentColor" opacity="0.18"/>
+  <rect x="314" y="236" width="12" height="24" fill="currentColor" opacity="0.18"/>
+  <rect x="434" y="212" width="12" height="48" fill="currentColor" opacity="0.18"/>
+  <rect x="554" y="164" width="12" height="96" fill="currentColor" opacity="0.18"/>
+  <rect x="674" y="70" width="12" height="190" fill="currentColor" opacity="0.18"/>
+  <!-- Equal jitter: bars covering upper half of ceiling -->
+  <rect x="210" y="254" width="10" height="6" fill="currentColor" opacity="0.3"/>
+  <rect x="330" y="248" width="10" height="12" fill="currentColor" opacity="0.3"/>
+  <rect x="450" y="236" width="10" height="24" fill="currentColor" opacity="0.3"/>
+  <rect x="570" y="212" width="10" height="48" fill="currentColor" opacity="0.3"/>
+  <rect x="690" y="165" width="10" height="95" fill="currentColor" opacity="0.3"/>
+  <text x="470" y="150" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.55">equal = ceiling/2 + U(0, ceiling/2)</text>
+  <!-- Decorrelated: rising widening band (polyline) -->
+  <path d="M180,250 L300,235 L420,205 L540,150 L660,80" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
+  <path d="M180,258 L300,250 L420,232 L540,196 L660,140" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55" stroke-dasharray="3,3"/>
+  <text x="360" y="120" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7" font-weight="600">decorrelated band</text>
+</svg>
+<h3 id="step-3-an-async-retry-decorator-around-an-aiohttp-post" tabindex="-1"><a class="heading-anchor" href="#step-3-an-async-retry-decorator-around-an-aiohttp-post">Step 3 — An Async Retry Decorator Around an aiohttp POST</a></h3>
+<p>The decorator wraps any coroutine that performs one delivery attempt. It uses decorrelated jitter, classifies every outcome, respects a <code>Retry-After</code> header when present, and raises a dedicated exception when the ladder is exhausted so the caller can route to a dead-letter queue.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">import</span> functools
+<span class="token keyword">import</span> logging
+<span class="token keyword">import</span> random
+<span class="token keyword">from</span> typing <span class="token keyword">import</span> Awaitable<span class="token punctuation">,</span> Callable
+
+logger <span class="token operator">=</span> logging<span class="token punctuation">.</span>getLogger<span class="token punctuation">(</span>__name__<span class="token punctuation">)</span>
+
+
+<span class="token keyword">class</span> <span class="token class-name">RetriesExhausted</span><span class="token punctuation">(</span>Exception<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""All attempts consumed; the caller should dead-letter the event."""</span>
+
+
+<span class="token keyword">class</span> <span class="token class-name">TerminalFailure</span><span class="token punctuation">(</span>Exception<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Non-retryable outcome; fail fast and dead-letter immediately."""</span>
+
+
+<span class="token keyword">def</span> <span class="token function">retry_decorrelated</span><span class="token punctuation">(</span>
+    max_attempts<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">6</span><span class="token punctuation">,</span>
+    base<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> <span class="token number">0.5</span><span class="token punctuation">,</span>     <span class="token comment"># seconds; first-attempt floor</span>
+    cap<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> <span class="token number">30.0</span><span class="token punctuation">,</span>     <span class="token comment"># seconds; ceiling for any single delay</span>
+<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">def</span> <span class="token function">wrapper</span><span class="token punctuation">(</span>fn<span class="token punctuation">:</span> Callable<span class="token punctuation">[</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">,</span> Awaitable<span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token decorator annotation punctuation">@functools<span class="token punctuation">.</span>wraps</span><span class="token punctuation">(</span>fn<span class="token punctuation">)</span>
+        <span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">inner</span><span class="token punctuation">(</span><span class="token operator">*</span>args<span class="token punctuation">,</span> <span class="token operator">**</span>kwargs<span class="token punctuation">)</span><span class="token punctuation">:</span>
+            prev <span class="token operator">=</span> base
+            <span class="token keyword">for</span> attempt <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">,</span> max_attempts <span class="token operator">+</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+                <span class="token keyword">try</span><span class="token punctuation">:</span>
+                    <span class="token keyword">return</span> <span class="token keyword">await</span> fn<span class="token punctuation">(</span><span class="token operator">*</span>args<span class="token punctuation">,</span> <span class="token operator">**</span>kwargs<span class="token punctuation">)</span>
+                <span class="token keyword">except</span> TerminalFailure<span class="token punctuation">:</span>
+                    <span class="token keyword">raise</span>  <span class="token comment"># never retry a permanent fault</span>
+                <span class="token keyword">except</span> Exception <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+                    <span class="token keyword">if</span> attempt <span class="token operator">==</span> max_attempts<span class="token punctuation">:</span>
+                        <span class="token keyword">raise</span> RetriesExhausted<span class="token punctuation">(</span><span class="token builtin">str</span><span class="token punctuation">(</span>exc<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token keyword">from</span> exc
+                    <span class="token comment"># Decorrelated jitter: walk upward from the last delay.</span>
+                    delay <span class="token operator">=</span> <span class="token builtin">min</span><span class="token punctuation">(</span>cap<span class="token punctuation">,</span> random<span class="token punctuation">.</span>uniform<span class="token punctuation">(</span>base<span class="token punctuation">,</span> prev <span class="token operator">*</span> <span class="token number">3</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+                    prev <span class="token operator">=</span> delay
+                    logger<span class="token punctuation">.</span>warning<span class="token punctuation">(</span>
+                        <span class="token string">"attempt %d/%d failed (%s); sleeping %.2fs"</span><span class="token punctuation">,</span>
+                        attempt<span class="token punctuation">,</span> max_attempts<span class="token punctuation">,</span> exc<span class="token punctuation">,</span> delay<span class="token punctuation">,</span>
+                    <span class="token punctuation">)</span>
+                    <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span>delay<span class="token punctuation">)</span>
+        <span class="token keyword">return</span> inner
+    <span class="token keyword">return</span> wrapper
+
+
+<span class="token decorator annotation punctuation">@retry_decorrelated</span><span class="token punctuation">(</span>max_attempts<span class="token operator">=</span><span class="token number">6</span><span class="token punctuation">,</span> base<span class="token operator">=</span><span class="token number">0.5</span><span class="token punctuation">,</span> cap<span class="token operator">=</span><span class="token number">30.0</span><span class="token punctuation">)</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">deliver_geojson</span><span class="token punctuation">(</span>
+    session<span class="token punctuation">:</span> aiohttp<span class="token punctuation">.</span>ClientSession<span class="token punctuation">,</span>
+    url<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span>
+    feature<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">,</span>
+    idempotency_key<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Single delivery attempt. Raises to signal the decorator to retry."""</span>
+    reason <span class="token operator">=</span> is_terminal_geometry<span class="token punctuation">(</span>feature<span class="token punctuation">)</span>
+    <span class="token keyword">if</span> reason <span class="token keyword">is</span> <span class="token keyword">not</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> TerminalFailure<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"unshippable geometry: </span><span class="token interpolation"><span class="token punctuation">{</span>reason<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+
+    headers <span class="token operator">=</span> <span class="token punctuation">{</span>
+        <span class="token string">"Content-Type"</span><span class="token punctuation">:</span> <span class="token string">"application/geo+json"</span><span class="token punctuation">,</span>
+        <span class="token comment"># The same key on every retry lets the receiver dedupe redeliveries.</span>
+        <span class="token string">"Idempotency-Key"</span><span class="token punctuation">:</span> idempotency_key<span class="token punctuation">,</span>
+    <span class="token punctuation">}</span>
+    timeout <span class="token operator">=</span> aiohttp<span class="token punctuation">.</span>ClientTimeout<span class="token punctuation">(</span>total<span class="token operator">=</span><span class="token number">10</span><span class="token punctuation">)</span>
+    <span class="token keyword">try</span><span class="token punctuation">:</span>
+        <span class="token keyword">async</span> <span class="token keyword">with</span> session<span class="token punctuation">.</span>post<span class="token punctuation">(</span>url<span class="token punctuation">,</span> json<span class="token operator">=</span>feature<span class="token punctuation">,</span> headers<span class="token operator">=</span>headers<span class="token punctuation">,</span>
+                                timeout<span class="token operator">=</span>timeout<span class="token punctuation">)</span> <span class="token keyword">as</span> resp<span class="token punctuation">:</span>
+            outcome <span class="token operator">=</span> classify_response<span class="token punctuation">(</span>resp<span class="token punctuation">.</span>status<span class="token punctuation">)</span>
+            <span class="token keyword">if</span> outcome <span class="token keyword">is</span> Outcome<span class="token punctuation">.</span>SUCCESS<span class="token punctuation">:</span>
+                <span class="token keyword">return</span>
+            <span class="token keyword">if</span> outcome <span class="token keyword">is</span> Outcome<span class="token punctuation">.</span>TERMINAL<span class="token punctuation">:</span>
+                <span class="token keyword">raise</span> TerminalFailure<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"HTTP </span><span class="token interpolation"><span class="token punctuation">{</span>resp<span class="token punctuation">.</span>status<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+            <span class="token comment"># Retryable: honour Retry-After if the server sent one.</span>
+            retry_after <span class="token operator">=</span> resp<span class="token punctuation">.</span>headers<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"Retry-After"</span><span class="token punctuation">)</span>
+            <span class="token keyword">if</span> retry_after <span class="token keyword">and</span> retry_after<span class="token punctuation">.</span>isdigit<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+                <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span><span class="token builtin">min</span><span class="token punctuation">(</span><span class="token builtin">float</span><span class="token punctuation">(</span>retry_after<span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token number">30.0</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+            <span class="token keyword">raise</span> RuntimeError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"retryable HTTP </span><span class="token interpolation"><span class="token punctuation">{</span>resp<span class="token punctuation">.</span>status<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+    <span class="token keyword">except</span> <span class="token punctuation">(</span>aiohttp<span class="token punctuation">.</span>ClientConnectionError<span class="token punctuation">,</span> aiohttp<span class="token punctuation">.</span>ServerTimeoutError<span class="token punctuation">,</span>
+            TimeoutError<span class="token punctuation">)</span> <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> RuntimeError<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"transport fault: </span><span class="token interpolation"><span class="token punctuation">{</span>exc<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span> <span class="token keyword">from</span> exc
+</code></pre>
+</div>
+<h3 id="step-4-pair-retries-with-idempotency-so-a-geometry-write-cannot-double-insert" tabindex="-1"><a class="heading-anchor" href="#step-4-pair-retries-with-idempotency-so-a-geometry-write-cannot-double-insert">Step 4 — Pair Retries with Idempotency So a Geometry Write Cannot Double-Insert</a></h3>
+<p>This is the non-negotiable rule of retries: <strong>a retry fires exactly when the client cannot know whether the first attempt succeeded.</strong> A read timeout can occur after the receiver has already inserted the polygon and committed the transaction — the write landed, but the acknowledgement never made it back. If the retry re-POSTs blindly, the receiver inserts the feature a second time: duplicate geometry, double-counted area, a corrupted spatial join downstream.</p>
+<p>The idempotency key sent in Step 3 is what makes the retry a no-op instead of a duplicate. On the receiver side, that key is derived deterministically from the normalised geometry and claimed atomically before the write, exactly as described in <a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks</a> within the broader discipline of <a href="/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a>. Retries and idempotency are two halves of one mechanism: retries provide <em>liveness</em> (the event eventually lands), idempotency provides <em>safety</em> (it lands at most once).</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> hashlib
+<span class="token keyword">import</span> json
+
+
+<span class="token keyword">def</span> <span class="token function">idempotency_key_for</span><span class="token punctuation">(</span>feature<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">,</span> device_id<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> event_type<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span>
+                        precision<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">7</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Deterministic key over the rounded geometry plus a business identifier.
+    The SAME event always yields the SAME key, so a retried POST is recognised
+    as a redelivery on the receiver and does not double-insert. Coordinates are
+    rounded (~1.1 cm at the equator, EPSG:4326) to absorb float drift.
+    """</span>
+    <span class="token keyword">def</span> <span class="token function">_round</span><span class="token punctuation">(</span>coords<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">if</span> coords <span class="token keyword">and</span> <span class="token builtin">isinstance</span><span class="token punctuation">(</span>coords<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token builtin">int</span><span class="token punctuation">,</span> <span class="token builtin">float</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+            <span class="token keyword">return</span> <span class="token punctuation">[</span><span class="token builtin">round</span><span class="token punctuation">(</span>c<span class="token punctuation">,</span> precision<span class="token punctuation">)</span> <span class="token keyword">for</span> c <span class="token keyword">in</span> coords<span class="token punctuation">]</span>
+        <span class="token keyword">return</span> <span class="token punctuation">[</span>_round<span class="token punctuation">(</span>part<span class="token punctuation">)</span> <span class="token keyword">for</span> part <span class="token keyword">in</span> coords<span class="token punctuation">]</span>
+
+    canonical <span class="token operator">=</span> <span class="token punctuation">{</span>
+        <span class="token string">"type"</span><span class="token punctuation">:</span> feature<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span><span class="token punctuation">[</span><span class="token string">"type"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+        <span class="token string">"coordinates"</span><span class="token punctuation">:</span> _round<span class="token punctuation">(</span>feature<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span><span class="token punctuation">[</span><span class="token string">"coordinates"</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+    <span class="token punctuation">}</span>
+    blob <span class="token operator">=</span> json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>canonical<span class="token punctuation">,</span> sort_keys<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span> separators<span class="token operator">=</span><span class="token punctuation">(</span><span class="token string">","</span><span class="token punctuation">,</span> <span class="token string">":"</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    composite <span class="token operator">=</span> <span class="token string-interpolation"><span class="token string">f"</span><span class="token interpolation"><span class="token punctuation">{</span>device_id<span class="token punctuation">}</span></span><span class="token string">:</span><span class="token interpolation"><span class="token punctuation">{</span>event_type<span class="token punctuation">}</span></span><span class="token string">:</span><span class="token interpolation"><span class="token punctuation">{</span>blob<span class="token punctuation">}</span></span><span class="token string">"</span></span>
+    <span class="token keyword">return</span> <span class="token string">"idem:v1:"</span> <span class="token operator">+</span> hashlib<span class="token punctuation">.</span>sha256<span class="token punctuation">(</span>composite<span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<h3 id="step-5-enforce-a-retry-budget-across-the-fleet" tabindex="-1"><a class="heading-anchor" href="#step-5-enforce-a-retry-budget-across-the-fleet">Step 5 — Enforce a Retry Budget Across the Fleet</a></h3>
+<p>Per-event backoff disperses a herd in time, but it does not cap <em>total</em> retry load. During a long outage, every event still climbs its full ladder, and a fleet of thousands multiplies that into a sustained flood aimed at an already-failing receiver. A retry budget bounds retries as a fraction of successful traffic — a token bucket refilled from successes and drained by retries. When the bucket is empty, retries are shed straight to the dead-letter queue.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> time
+
+
+<span class="token keyword">class</span> <span class="token class-name">RetryBudget</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Token-bucket retry budget shared across the dispatcher. Every success adds
+    `ratio` tokens (e.g. 0.1 → retries may add at most ~10% extra load); every
+    retry costs 1 token. When empty, retries are refused and the event is
+    dead-lettered instead of amplifying a downstream outage.
+    """</span>
+    <span class="token keyword">def</span> <span class="token function">__init__</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> ratio<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> <span class="token number">0.1</span><span class="token punctuation">,</span> ceiling<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> <span class="token number">100.0</span><span class="token punctuation">,</span>
+                 min_per_sec<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> <span class="token number">1.0</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        self<span class="token punctuation">.</span>ratio <span class="token operator">=</span> ratio
+        self<span class="token punctuation">.</span>ceiling <span class="token operator">=</span> ceiling
+        self<span class="token punctuation">.</span>min_per_sec <span class="token operator">=</span> min_per_sec
+        self<span class="token punctuation">.</span>tokens <span class="token operator">=</span> ceiling
+        self<span class="token punctuation">.</span>_last <span class="token operator">=</span> time<span class="token punctuation">.</span>monotonic<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+    <span class="token keyword">def</span> <span class="token function">_leak</span><span class="token punctuation">(</span>self<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        now <span class="token operator">=</span> time<span class="token punctuation">.</span>monotonic<span class="token punctuation">(</span><span class="token punctuation">)</span>
+        self<span class="token punctuation">.</span>tokens <span class="token operator">=</span> <span class="token builtin">min</span><span class="token punctuation">(</span>self<span class="token punctuation">.</span>ceiling<span class="token punctuation">,</span>
+                          self<span class="token punctuation">.</span>tokens <span class="token operator">+</span> self<span class="token punctuation">.</span>min_per_sec <span class="token operator">*</span> <span class="token punctuation">(</span>now <span class="token operator">-</span> self<span class="token punctuation">.</span>_last<span class="token punctuation">)</span><span class="token punctuation">)</span>
+        self<span class="token punctuation">.</span>_last <span class="token operator">=</span> now
+
+    <span class="token keyword">def</span> <span class="token function">record_success</span><span class="token punctuation">(</span>self<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        self<span class="token punctuation">.</span>_leak<span class="token punctuation">(</span><span class="token punctuation">)</span>
+        self<span class="token punctuation">.</span>tokens <span class="token operator">=</span> <span class="token builtin">min</span><span class="token punctuation">(</span>self<span class="token punctuation">.</span>ceiling<span class="token punctuation">,</span> self<span class="token punctuation">.</span>tokens <span class="token operator">+</span> self<span class="token punctuation">.</span>ratio<span class="token punctuation">)</span>
+
+    <span class="token keyword">def</span> <span class="token function">try_retry</span><span class="token punctuation">(</span>self<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+        self<span class="token punctuation">.</span>_leak<span class="token punctuation">(</span><span class="token punctuation">)</span>
+        <span class="token keyword">if</span> self<span class="token punctuation">.</span>tokens <span class="token operator">>=</span> <span class="token number">1.0</span><span class="token punctuation">:</span>
+            self<span class="token punctuation">.</span>tokens <span class="token operator">-=</span> <span class="token number">1.0</span>
+            <span class="token keyword">return</span> <span class="token boolean">True</span>
+        <span class="token keyword">return</span> <span class="token boolean">False</span>  <span class="token comment"># budget exhausted → caller must dead-letter</span>
+</code></pre>
+</div>
+<p>Sizing the ratio and the ceiling against each provider’s published retry window and error-rate SLA is its own discipline, covered in <a href="/queue-management-retry-delivery/exponential-backoff-jitter/tuning-retry-budgets-for-webhook-provider-slas/">Tuning Retry Budgets for Webhook Provider SLAs</a>.</p>
+<hr>
+<h2 id="delivery-guarantees-what-retries-actually-buy-you" tabindex="-1"><a class="heading-anchor" href="#delivery-guarantees-what-retries-actually-buy-you">Delivery Guarantees: What Retries Actually Buy You</a></h2>
+<p>Retries move a pipeline from best-effort toward <strong>at-least-once</strong> delivery — with a bounded budget, every event is either acknowledged, dead-lettered, or shed, and none is silently lost. At-least-once is the honest ceiling for a network with timeouts: the client can always be forced to retry after a lost acknowledgement, so duplicates are unavoidable <em>at the transport layer</em>. What upgrades the observable behaviour to <strong>effectively-once</strong> is the idempotency key from Step 4 — duplicates still arrive, but the receiver collapses them, so a feature is written at most once regardless of how many times it is delivered.</p>
+<p>True exactly-once across a network boundary requires a distributed transaction coordinator and is rarely justified for spatial ingestion given its latency cost. The pragmatic contract for almost every spatial webhook fleet is therefore <em>at-least-once delivery plus idempotent writes</em>. Ordering is a separate axis — retries reorder events by construction, since a retried event lands after later events that succeeded first — and reconciling that with spatial correctness is the subject of <a href="/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a>. When the retry ladder and the budget are both exhausted, the event must land somewhere durable and inspectable: <a href="/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a>.</p>
+<hr>
+<h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
+<p>A retry policy is only correct if its delay sequence stays inside the bounds you designed. This test asserts that decorrelated jitter never drops below the base floor, never exceeds the cap, and — over many trials — actually disperses rather than collapsing onto a single value.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> statistics
+
+
+<span class="token keyword">def</span> <span class="token function">decorrelated_sequence</span><span class="token punctuation">(</span>attempts<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">,</span> base<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">,</span> cap<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">,</span>
+                          rng_seed<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">float</span><span class="token punctuation">]</span><span class="token punctuation">:</span>
+    rnd <span class="token operator">=</span> random<span class="token punctuation">.</span>Random<span class="token punctuation">(</span>rng_seed<span class="token punctuation">)</span>
+    prev<span class="token punctuation">,</span> out <span class="token operator">=</span> base<span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+    <span class="token keyword">for</span> _ <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span>attempts<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        delay <span class="token operator">=</span> <span class="token builtin">min</span><span class="token punctuation">(</span>cap<span class="token punctuation">,</span> rnd<span class="token punctuation">.</span>uniform<span class="token punctuation">(</span>base<span class="token punctuation">,</span> prev <span class="token operator">*</span> <span class="token number">3</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+        out<span class="token punctuation">.</span>append<span class="token punctuation">(</span>delay<span class="token punctuation">)</span>
+        prev <span class="token operator">=</span> delay
+    <span class="token keyword">return</span> out
+
+
+<span class="token keyword">def</span> <span class="token function">test_backoff_sequence_bounds</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    base<span class="token punctuation">,</span> cap <span class="token operator">=</span> <span class="token number">0.5</span><span class="token punctuation">,</span> <span class="token number">30.0</span>
+    <span class="token keyword">for</span> seed <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span><span class="token number">500</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        seq <span class="token operator">=</span> decorrelated_sequence<span class="token punctuation">(</span><span class="token number">8</span><span class="token punctuation">,</span> base<span class="token punctuation">,</span> cap<span class="token punctuation">,</span> seed<span class="token punctuation">)</span>
+        <span class="token comment"># Bound 1: no delay is below the base floor.</span>
+        <span class="token keyword">assert</span> <span class="token builtin">min</span><span class="token punctuation">(</span>seq<span class="token punctuation">)</span> <span class="token operator">>=</span> base <span class="token operator">-</span> <span class="token number">1e-9</span><span class="token punctuation">,</span> <span class="token string-interpolation"><span class="token string">f"delay below base: </span><span class="token interpolation"><span class="token punctuation">{</span><span class="token builtin">min</span><span class="token punctuation">(</span>seq<span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">"</span></span>
+        <span class="token comment"># Bound 2: no delay exceeds the cap.</span>
+        <span class="token keyword">assert</span> <span class="token builtin">max</span><span class="token punctuation">(</span>seq<span class="token punctuation">)</span> <span class="token operator">&lt;=</span> cap <span class="token operator">+</span> <span class="token number">1e-9</span><span class="token punctuation">,</span> <span class="token string-interpolation"><span class="token string">f"delay above cap: </span><span class="token interpolation"><span class="token punctuation">{</span><span class="token builtin">max</span><span class="token punctuation">(</span>seq<span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">"</span></span>
+
+    <span class="token comment"># Bound 3: across seeds, attempt-1 delays are dispersed, not constant.</span>
+    first_delays <span class="token operator">=</span> <span class="token punctuation">[</span>decorrelated_sequence<span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">,</span> base<span class="token punctuation">,</span> cap<span class="token punctuation">,</span> s<span class="token punctuation">)</span><span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span>
+                    <span class="token keyword">for</span> s <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span><span class="token number">500</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+    <span class="token keyword">assert</span> statistics<span class="token punctuation">.</span>pstdev<span class="token punctuation">(</span>first_delays<span class="token punctuation">)</span> <span class="token operator">></span> <span class="token number">0.1</span><span class="token punctuation">,</span> <span class="token string">"jitter is not dispersing"</span>
+    <span class="token keyword">print</span><span class="token punctuation">(</span><span class="token string">"backoff bounds hold; jitter disperses the herd"</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">if</span> __name__ <span class="token operator">==</span> <span class="token string">"__main__"</span><span class="token punctuation">:</span>
+    test_backoff_sequence_bounds<span class="token punctuation">(</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>Run it with <code>pytest -q</code> or directly with <code>python</code>. The third assertion is the one that catches a subtly broken jitter implementation: a delay function that grows correctly but forgets to randomise will pass the bound checks yet still cause a thundering herd, and only the dispersion assertion exposes it. A worked, benchmarked version of this harness — with side-by-side timing of all three variants — lives in <a href="/queue-management-retry-delivery/exponential-backoff-jitter/implementing-exponential-backoff-with-jitter-in-python/">Implementing Exponential Backoff with Jitter in Python</a>.</p>
+<hr>
+<h2 id="troubleshooting" tabindex="-1"><a class="heading-anchor" href="#troubleshooting">Troubleshooting</a></h2>
+<div style="overflow-x:auto;">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely spatial cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Receiver recovers, then immediately falls over again</td>
+<td>No jitter — all producers retry in lockstep after the outage</td>
+<td>Switch from plain exponential to decorrelated jitter; confirm the dispersion test passes</td>
+</tr>
+<tr>
+<td>Duplicate polygons appear after a delivery timeout</td>
+<td>Retry re-POSTed a write that had already committed, with no idempotency key</td>
+<td>Send a stable <code>Idempotency-Key</code> derived from normalised geometry; claim it atomically before the write</td>
+</tr>
+<tr>
+<td>A single malformed geometry retries forever</td>
+<td>Invalid-geometry <code>422</code> classified as retryable instead of terminal</td>
+<td>Run the <code>shapely</code> topology check locally; map 4xx and invalid geometry to <code>TerminalFailure</code></td>
+</tr>
+<tr>
+<td>Retry load spikes and never subsides during an outage</td>
+<td>No retry budget — every event climbs its full ladder simultaneously</td>
+<td>Add the token-bucket <code>RetryBudget</code>; shed to the dead-letter queue when empty</td>
+</tr>
+<tr>
+<td>Retries fire far faster than expected</td>
+<td><code>Retry-After</code> header from a 429 ignored</td>
+<td>Honour <code>Retry-After</code> and clamp it to the cap before sleeping</td>
+</tr>
+<tr>
+<td>Delays occasionally exceed the intended ceiling</td>
+<td><code>cap</code> applied to the base but not to the jittered result</td>
+<td>Wrap the final draw in <code>min(cap, …)</code>; assert the upper bound in the verification test</td>
+</tr>
+<tr>
+<td>Duplicate keys collide across distinct events</td>
+<td>Idempotency key omits the business identifier, keying on geometry alone</td>
+<td>Include <code>device_id</code> and <code>event_type</code> in the composite before hashing</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<hr>
+<h2 id="faq" tabindex="-1"><a class="heading-anchor" href="#faq">FAQ</a></h2>
+<details class="faq">
+<summary><strong>Why do retries require idempotency for spatial payloads?</strong></summary>
+<p>A retry happens precisely when the client is unsure the first attempt succeeded — a timeout or dropped connection can occur after the receiver has already written the geometry. Without an idempotency key, the retried POST re-inserts the same feature, producing duplicate polygons, double-counted areas, and corrupted spatial joins. Deriving a deterministic key from the normalised geometry and claiming it atomically before the write makes the retry a no-op instead of a duplicate.</p>
+</details>
+<details class="faq">
+<summary><strong>Which jitter variant should I use for spatial webhook retries?</strong></summary>
+<p>Decorrelated jitter is the best default for most spatial webhook fleets. Full jitter minimises collisions but can retry too eagerly right after a failure; equal jitter guarantees a minimum wait but clusters more tightly; decorrelated jitter walks the delay upward from the previous value, giving both wide spread and a rising floor. AWS load tests found full and decorrelated jitter complete a contended workload in the fewest total calls.</p>
+</details>
+<details class="faq">
+<summary><strong>How do I tell a retryable failure from a non-retryable one?</strong></summary>
+<p>Retry on transient transport and server faults: connection errors, read timeouts, and 5xx responses such as 502, 503, and 504, plus 429 (respecting Retry-After). Do not retry client faults: 400, 401, 403, 404, 409, 422, and any invalid-geometry rejection. A self-intersecting polygon will fail identically on every attempt, so retrying it only wastes the retry budget and delays routing it to a dead-letter queue for inspection.</p>
+</details>
+<details class="faq">
+<summary><strong>What is a retry budget and why does it matter at fleet scale?</strong></summary>
+<p>A retry budget caps retries as a fraction of successful requests — for example, no more than 10 percent additional load from retries. Without a budget, a downstream outage causes every event to exhaust its full retry ladder simultaneously, multiplying load exactly when the receiver is already failing. A token-bucket budget sheds retries once the ratio is exceeded, sending events straight to the dead-letter queue instead of amplifying the outage.</p>
+</details>
+<hr>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
+<ul>
+<li><a href="/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a> — the parent section covering how spatial event pipelines move payloads reliably from producer to consumer</li>
+<li><a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks</a> — the receiver-side deduplication that makes every retry safe to redeliver</li>
+<li><a href="/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a> — where events land once the retry ladder and budget are exhausted</li>
+<li><a href="/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a> — reconciling at-least-once retries with the ordering constraints of spatial state</li>
+<li><a href="/queue-management-retry-delivery/exponential-backoff-jitter/implementing-exponential-backoff-with-jitter-in-python/">Implementing Exponential Backoff with Jitter in Python</a> — a self-contained, benchmarked implementation of all three jitter variants</li>
+<li><a href="/queue-management-retry-delivery/exponential-backoff-jitter/tuning-retry-budgets-for-webhook-provider-slas/">Tuning Retry Budgets for Webhook Provider SLAs</a> — sizing budget ratios and ceilings against published provider retry windows</li>
+</ul>
+
+        <h2 id="explore-this-section">Explore this section</h2>
+        <div class="children-grid">
+          <a class="card " href="/queue-management-retry-delivery/exponential-backoff-jitter/implementing-exponential-backoff-with-jitter-in-python/">
+            <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19c0-8 6-14 14-14 0 8-6 14-14 14z"/><path d="M5 19l6-6"/></svg></span>
+            <h3 class="card__title">Implementing Exponential Backoff with Jitter in Python</h3>
+            <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+          </a>
+          <a class="card card--mint" href="/queue-management-retry-delivery/exponential-backoff-jitter/tuning-retry-budgets-for-webhook-provider-slas/">
+            <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19c0-8 6-14 14-14 0 8-6 14-14 14z"/><path d="M5 19l6-6"/></svg></span>
+            <h3 class="card__title">Tuning Retry Budgets for Webhook Provider SLAs</h3>
+            <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+          </a>
+        </div>
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        <div class="aside-card">
+          <h3>Related in this section</h3>
+          <ul>
+            <li><a href="/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
+            <li><a href="/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
+            <li><a href="/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+          </ul>
+        </div>
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            <li><a href="/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a></li>
+            <li><a href="/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a></li>
+            <li><a href="/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a></li>
+            <li><a href="/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a></li>
+            <li><a href="/monitoring-observability-spatial/">Monitoring &amp; Observability for Spatial Pipelines</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</article>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="/">Home</a></li>
+          <li><a href="/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
+          <li><a href="/queue-management-retry-delivery/">Queues &amp; Retries</a></li>
+          <li><a href="/monitoring-observability-spatial/">Monitoring</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a></li>
+          <li><a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Queues &amp; Retries</h4>
+        <ul>
+          <li><a href="/queue-management-retry-delivery/">Overview</a></li>
+          <li><a href="/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+          <li><a href="/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
+          <li><a href="/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
+          <li><a href="/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Monitoring</h4>
+        <ul>
+          <li><a href="/monitoring-observability-spatial/">Overview</a></li>
+          <li><a href="/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a></li>
+          <li><a href="/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a></li>
+          <li><a href="/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging &amp; Tracing for Spatial Events</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

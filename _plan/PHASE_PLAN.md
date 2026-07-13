@@ -4,9 +4,9 @@
 
 - **Niche:** Python Geospatial Webhook & Event-Driven Architecture
 - **Audience:** Platform engineers, GIS backend devs, real-time spatial app builders, SaaS founders
-- **Live now:** 25 pages, 65,152 words
-- **Current phase:** foundation
-- **Next phase to build:** expansion
+- **Live now:** 51 pages, 177,396 words
+- **Current phase:** expansion
+- **Next phase to build:** maturity
 
 ## How to upgrade a phase
 
@@ -38,7 +38,7 @@ Work through every step in order. **Do not skip the uplift, the term cleanup, th
 8. **Record completion** (re-runs `qa_gates` and will NOT advance the phase unless they all pass; then updates page/word count, advances current→next phase, and rewrites this plan ready for the next phase). From the Django project (`/home/martin/PycharmProjects/Django-Pillar-Cluster-Long-Tail`):
 
    ```bash
-   .venv/bin/python manage.py finish_phase geospatialwebhook.com --completed expansion \
+   .venv/bin/python manage.py finish_phase geospatialwebhook.com --completed maturity \
        --blueprint "/home/martin/WebstormProjects/geospatialwebhook.com/_plan/blueprint.json"
    ```
 9. **Commit & deploy.** Build, deploy to Cloudflare, and push to GitHub:
@@ -46,12 +46,12 @@ Work through every step in order. **Do not skip the uplift, the term cleanup, th
    ```bash
    cd /home/martin/WebstormProjects/geospatialwebhook.com
    npm run deploy          # build + wrangler deploy (auth from the site .env)
-   git add -A && git commit -m "Upgrade to expansion phase" && git push
+   git add -A && git commit -m "Upgrade to maturity phase" && git push
    ```
 
 ## QA refresh (uplift to standard — NO new phase)
 
-Use this when you want to bring the site **fully up to the current standard and pass every gate, without building the next phase** — the site stays on its current phase (`foundation`).
+Use this when you want to bring the site **fully up to the current standard and pass every gate, without building the next phase** — the site stays on its current phase (`expansion`).
 
 ### Automated (recommended)
 
@@ -72,7 +72,7 @@ Do the checklist above **but SKIP step 3 (Build the next phase)** — i.e. actua
        --blueprint "/home/martin/WebstormProjects/geospatialwebhook.com/_plan/blueprint.json"
    cd /home/martin/WebstormProjects/geospatialwebhook.com
    npm run deploy
-   git add -A && git commit -m "QA refresh (foundation)" && git push
+   git add -A && git commit -m "QA refresh (expansion)" && git push
    ```
 
 ## Phase schedule
@@ -80,11 +80,11 @@ Do the checklist above **but SKIP step 3 (Build the next phase)** — i.e. actua
 | # | Phase | Status | Adds | Target total | Focus |
 |---|-------|--------|------|--------------|-------|
 | 1 | 1. Foundation | ✅ done | 2-3 pillars + 10-14 clusters + 8-12 long-tails | ~22 | Establish core authority: the main pillars and their primary clusters, with enough long-tails to validate demand. Get a consistent page skeleton in place. |
-| 2 | 2. Expansion | ➡️ NEXT | 1-2 pillars + 7-10 clusters + 18-25 long-tails | ~50 | Broaden coverage: fill out each pillar's clusters and add the high-intent long-tails around them. Strengthen interlinking between siblings. |
-| 3 | 3. Maturity | … future | 4-6 clusters + 28-40 long-tails | ~82 | Deepen the long tail: comprehensive how-tos, comparisons and edge-case pages under existing clusters. Ensure FAQ blocks and schema on every page. |
+| 2 | 2. Expansion | ✅ done | 1-2 pillars + 7-10 clusters + 18-25 long-tails | ~50 | Broaden coverage: fill out each pillar's clusters and add the high-intent long-tails around them. Strengthen interlinking between siblings. |
+| 3 | 3. Maturity | ➡️ NEXT | 4-6 clusters + 28-40 long-tails | ~82 | Deepen the long tail: comprehensive how-tos, comparisons and edge-case pages under existing clusters. Ensure FAQ blocks and schema on every page. |
 | 4 | 4. Authority | … future | 2-3 clusters + 20-30 long-tails | ~105 | Complete topical authority: remaining gaps, advanced/expert pages, and a tight internal link graph so every page is 1-2 clicks from its pillar. |
 
-## Priorities for the next phase (expansion)
+## Priorities for the next phase (maturity)
 
 - Queue management & retry/backoff pillar: the site description calls this out explicitly but no pillar yet covers retry strategies, exponential backoff with jitter, or dead-letter queue design for spatial payloads — high-value gap
 - Monitoring & observability cluster: production metrics specific to geo workloads (partition skew, geometry validation failure rate, consumer lag per geographic shard) are mentioned in pillars but have no dedicated cluster or long-tail pages

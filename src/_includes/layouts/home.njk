@@ -38,7 +38,7 @@ layout: base
         </div>
       </div>
       <div class="hero__visual" aria-hidden="true">
-        <svg viewBox="0 0 420 315" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">
+        <svg viewBox="0 0 420 315" width="420" height="315" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">
           <!-- Background map grid -->
           <rect width="420" height="315" rx="18" fill="none"/>
           <!-- Grid lines (lat/lon feel) -->
@@ -100,11 +100,11 @@ layout: base
 <section class="section">
   <div class="container container--wide">
     <div class="section__head">
-      <h2 class="section__title">Three pillars of a production spatial webhook stack</h2>
+      <h2 class="section__title">Five pillars of a production spatial webhook stack</h2>
       <p class="section__sub">
         Each section is a deep dive: architectural patterns first, then concrete Python
-        implementations, then the operational hardening that separates a prototype from a
-        platform.
+        implementations, then the operational hardening — queues, retries, and observability —
+        that separates a prototype from a platform.
       </p>
     </div>
     <div class="card-grid">
@@ -127,8 +127,9 @@ layout: base
     <div class="section__head">
       <h2 class="section__title">Start here</h2>
       <p class="section__sub">
-        Eight articles that cover the most common problems engineers hit when wiring up
-        geospatial webhooks for the first time. Read these before diving into a subsection.
+        The articles that cover the most common problems engineers hit when wiring up
+        geospatial webhooks — from first architecture through delivery guarantees,
+        partitioning, and production observability. Read these before diving into a subsection.
       </p>
     </div>
     <div class="card-grid">
@@ -178,6 +179,24 @@ layout: base
         <span class="card__icon">{{ icon("bolt") }}</span>
         <h3 class="card__title">Converting WKT to Protobuf for Low-Latency Routing</h3>
         <p class="card__text">Serialise Well-Known Text geometries into compact Protobuf messages to cut payload size and parse overhead in high-throughput spatial event queues.</p>
+        <span class="card__more">Read {{ icon("arrow-right") }}</span>
+      </a>
+      <a class="card card--rose" href="/core-event-fundamentals-architecture/spatial-partitioning-strategies/h3-vs-s2-vs-quadkey-for-spatial-partitioning/">
+        <span class="card__icon">{{ icon("route") }}</span>
+        <h3 class="card__title">H3 vs S2 vs Quadkey for Spatial Partitioning</h3>
+        <p class="card__text">A definitive comparison of the three discrete global grid systems as partition keys — cell shape, hierarchy, Python libraries, and skew behaviour under load.</p>
+        <span class="card__more">Read {{ icon("arrow-right") }}</span>
+      </a>
+      <a class="card" href="/queue-management-retry-delivery/broker-selection-partitioning/redis-streams-vs-kafka-for-geospatial-webhooks/">
+        <span class="card__icon">{{ icon("repeat") }}</span>
+        <h3 class="card__title">Redis Streams vs Kafka for Geospatial Webhooks</h3>
+        <p class="card__text">Throughput, retention, spatial partitioning, and ordering compared — with runnable producers and consumers for both brokers keyed by H3 cell.</p>
+        <span class="card__more">Read {{ icon("arrow-right") }}</span>
+      </a>
+      <a class="card card--mint" href="/monitoring-observability-spatial/consumer-lag-partition-skew/">
+        <span class="card__icon">{{ icon("activity") }}</span>
+        <h3 class="card__title">Consumer Lag &amp; Partition Skew Monitoring</h3>
+        <p class="card__text">Detect when H3-sharded streams pile onto dense urban cells: measure per-shard lag, compute a skew coefficient, and alert before consumers fall behind.</p>
         <span class="card__more">Read {{ icon("arrow-right") }}</span>
       </a>
     </div>

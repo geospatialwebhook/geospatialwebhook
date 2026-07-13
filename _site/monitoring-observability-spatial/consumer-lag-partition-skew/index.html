@@ -1,0 +1,844 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>Consumer Lag &amp; Partition Skew Monitoring · Geo Webhook</title>
+  <meta name="description" content="Measure Kafka consumer lag per geographic shard, compute a partition-skew coefficient for H3-partitioned spatial streams, alert on it, and remediate hot cells."/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360"/>
+  <meta name="color-scheme" content="light"/>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/"/>
+  <meta property="og:title" content="Consumer Lag &amp; Partition Skew Monitoring"/>
+  <meta property="og:description" content="Measure Kafka consumer lag per geographic shard, compute a partition-skew coefficient for H3-partitioned spatial streams, alert on it, and remediate hot cells."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Consumer Lag &amp; Partition Skew Monitoring"/>
+  <meta name="twitter:description" content="Measure Kafka consumer lag per geographic shard, compute a partition-skew coefficient for H3-partitioned spatial streams, alert on it, and remediate hot cells."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=9f5ca540"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },{ "@type": "ListItem", "position": 2, "name": "Monitoring Observability Spatial", "item": "https://www.geospatialwebhook.com/monitoring-observability-spatial/" },{ "@type": "ListItem", "position": 3, "name": "Consumer Lag Partition Skew", "item": "https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/" }
+    ]
+  }
+  </script>
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/#article",
+    "mainEntityOfPage": "https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/",
+    "headline": "Consumer Lag &amp; Partition Skew Monitoring",
+    "description": "Measure Kafka consumer lag per geographic shard, compute a partition-skew coefficient for H3-partitioned spatial streams, alert on it, and remediate hot cells.",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
+    "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
+    "image": "https://www.geospatialwebhook.com/og-image.png",
+    "url": "https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/",
+    "articleSection": "Monitoring Observability Spatial",
+    "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
+  }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="/core-event-fundamentals-architecture/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="/idempotency-spatial-deduplication/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="/spatial-payload-routing-parsing/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+      <a href="/queue-management-retry-delivery/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Queues &amp; Retries</span>
+      </a>
+      <a href="/monitoring-observability-spatial/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
+      </a>
+    </nav>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="/">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="/monitoring-observability-spatial/">Monitoring Observability Spatial</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">Consumer Lag Partition Skew</span>
+    </nav>
+
+    <h1 class="page__title">Consumer Lag &amp; Partition Skew Monitoring</h1>
+
+    <div class="page__layout">
+      <div class="markdown">
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Consumer Lag & Partition Skew Monitoring",
+      "description": "How to measure Kafka consumer lag per geographic shard, compute a partition-skew coefficient for spatially-partitioned event streams, alert on both, and remediate hot H3 cells with finer resolution, sub-partitioning, and key salting.",
+      "url": "https://geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/",
+      "datePublished": "2025-02-10",
+      "dateModified": "2026-07-13",
+      "author": {"@type": "Organization", "name": "geospatialwebhook.com"},
+      "publisher": {"@type": "Organization", "name": "geospatialwebhook.com"}
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatialwebhook.com/"},
+        {"@type": "ListItem", "position": 2, "name": "Monitoring & Observability for Spatial Pipelines", "item": "https://geospatialwebhook.com/monitoring-observability-spatial/"},
+        {"@type": "ListItem", "position": 3, "name": "Consumer Lag & Partition Skew Monitoring", "item": "https://geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/"}
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Monitor consumer lag and partition skew in spatial event streams",
+      "step": [
+        {"@type": "HowToStep", "position": 1, "name": "Poll per-partition consumer-group lag from the broker"},
+        {"@type": "HowToStep", "position": 2, "name": "Sample per-partition message rate over a fixed interval"},
+        {"@type": "HowToStep", "position": 3, "name": "Compute the skew coefficient as the coefficient of variation of per-partition rate"},
+        {"@type": "HowToStep", "position": 4, "name": "Attribute hot partitions back to their H3 cells"},
+        {"@type": "HowToStep", "position": 5, "name": "Alert on lag and skew, then remediate the hot cells"}
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How is partition skew different from ordinary consumer lag?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Consumer lag is the backlog on a single partition: log-end-offset minus committed-offset. Partition skew is the shape of that backlog across all partitions. A pipeline can have low total lag while being badly skewed, and it can have high uniform lag with no skew at all. Lag tells you a consumer group is falling behind; skew tells you the cause is a spatial hot spot rather than an under-scaled consumer. You need both metrics because the remediation differs: uniform lag is fixed by adding consumers, while skew is fixed by changing how keys map to partitions."}
+        },
+        {
+          "@type": "Question",
+          "name": "What coefficient of variation should trigger a skew alert?",
+          "acceptedAnswer": {"@type": "Answer", "text": "For a healthy, well-balanced spatial stream the coefficient of variation of per-partition message rate sits below 0.3. Values between 0.3 and 0.5 indicate mild imbalance that is usually tolerable. Above 0.5 a small number of dense urban cells are dominating throughput and specific partitions will chronically lag. Alert at a sustained CV above 0.5 held for several sample windows so you do not page on transient bursts, and treat a CV above 1.0 as a page-worthy incident because it means one partition is carrying more than the entire remaining fleet combined."}
+        },
+        {
+          "@type": "Question",
+          "name": "Does salting hot H3 cells break event ordering?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Yes, and that is the deliberate trade. Kafka only guarantees ordering within a single partition, so a stable per-cell key preserves the order of events for that cell. Appending a salt bucket spreads one hot cell across several partitions, which restores throughput balance but means two events for the same cell can now be processed out of order. Only salt cells that your skew monitor has actually flagged as hot, keep cold cells on their stable key, and make sure downstream consumers reconcile order with an event timestamp or sequence number rather than relying on arrival order."}
+        },
+        {
+          "@type": "Question",
+          "name": "Should I re-shard at a finer H3 resolution or sub-partition the hot cells?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Re-sharding the whole topic to a finer H3 resolution is the cleaner long-term fix when skew is systemic and many cells are hot, because it distributes the entire keyspace more evenly, but it is a disruptive migration that changes every key. Sub-partitioning or salting only the flagged cells is a surgical fix you can ship immediately without touching the majority of the traffic. In practice teams salt the handful of dense metros first to stop the bleeding, then plan a resolution change during a maintenance window if the underlying density gradient is permanent."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>Consumer lag on a spatially-partitioned stream is never uniform: partitioning by H3 cell or geohash concentrates traffic on dense urban cells, so a handful of partitions fall permanently behind while rural partitions idle — and the fix is to measure lag per partition, quantify the imbalance with a skew coefficient, and rebalance the hot cells rather than blindly adding consumers.</strong></p>
+<p>This topic belongs to <a href="/monitoring-observability-spatial/">Monitoring &amp; Observability for Spatial Pipelines</a>, the section covering how to instrument, measure, and alert on the health of geospatial event pipelines. Here the focus is the one failure mode that generic Kafka dashboards miss entirely: lag that is caused by the geography of your keys, not by the size of your consumer fleet.</p>
+<hr>
+<h2 id="prerequisites" tabindex="-1"><a class="heading-anchor" href="#prerequisites">Prerequisites</a></h2>
+<p>Confirm your stack and your mental model before instrumenting. Check off each item:</p>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Python 3.11+</strong> — required for <code>statistics.fmean</code>, the <code>dict[int, int]</code> generic syntax, and structural pattern matching used below</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong><code>aiokafka</code> 0.10+</strong> (or <code>confluent-kafka</code> 2.x) — async access to end offsets and consumer-group committed offsets</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong><code>h3</code> 4.x</strong> — to attribute hot partitions back to the H3 cells that feed them (cells derived from EPSG:4326 (WGS84) latitude/longitude)</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong><code>prometheus-client</code> 0.20+</strong> — to expose per-partition lag and the skew coefficient as scrapeable gauges</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>A keyed spatial topic</strong> — events already partitioned by a spatial key; see the partitioning design decisions in <a href="/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Consumer-group access</strong> — the monitor needs read access to the group’s committed offsets, ideally a dedicated read-only principal</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>A baseline</strong> — at least one week of normal traffic so you know what an unskewed CV looks like for your geography</label></li>
+</ul>
+<hr>
+<h2 id="architecture" tabindex="-1"><a class="heading-anchor" href="#architecture">Architecture</a></h2>
+<p>The monitor is a small out-of-band loop that never joins the consumer group it observes. It reads two numbers per partition from the broker — the newest offset and the group’s committed offset — turns them into a lag figure and a rate, and derives a single scalar that describes how lopsided the load is.</p>
+<ol>
+<li><strong>Offset collection</strong> — for every partition of the topic, read the log-end-offset (newest produced message) and the consumer group’s committed-offset. Their difference is the per-partition lag.</li>
+<li><strong>Rate sampling</strong> — remember each partition’s end-offset from the previous poll and divide the delta by the elapsed wall-clock time. This gives per-partition throughput in messages per second, which is what skew is actually measured over.</li>
+<li><strong>Skew computation</strong> — take the coefficient of variation (standard deviation ÷ mean) of the per-partition rate vector. A flat load profile yields a CV near zero; a few dominant cells push it above 0.5.</li>
+<li><strong>Attribution and alerting</strong> — map the hottest partitions back to their H3 cells so an on-call engineer sees “downtown Tokyo cell overloaded” instead of “partition 4 lagging,” then emit gauges and fire an alert when both lag and CV cross their thresholds.</li>
+</ol>
+<p>The diagram below shows a typical per-partition load profile for a stream keyed by H3 cell. The bars are message rate; the dashed line is the skew alert threshold. Three urban partitions punch through it while five rural partitions sit near the floor.</p>
+<svg viewBox="0 0 760 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart of per-partition message rate for an H3-partitioned stream, with three urban partitions exceeding a dashed skew alert threshold and five rural partitions well below it" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+  <title>Per-partition load profile with a skew threshold</title>
+  <desc>A vertical bar chart of eight Kafka partitions. Partitions 2, 4 and 6 carry heavy urban traffic and rise above a dashed horizontal skew alert threshold line, while partitions 0, 1, 3, 5 and 7 carry light rural traffic and stay far below it, illustrating spatial partition skew.</desc>
+  <!-- Title -->
+  <text x="380" y="24" text-anchor="middle" font-size="13" font-family="system-ui,sans-serif" fill="currentColor" font-weight="600">Per-partition message rate (msg/s)</text>
+  <!-- Baseline axis -->
+  <line x1="55" y1="280" x2="735" y2="280" stroke="currentColor" stroke-width="1.5" opacity="0.7"/>
+  <!-- Skew threshold line at rate 164 -> y=132 -->
+  <line x1="55" y1="132" x2="735" y2="132" stroke="currentColor" stroke-width="1.4" stroke-dasharray="6,4" opacity="0.7"/>
+  <text x="735" y="126" text-anchor="end" font-size="10" font-family="system-ui,sans-serif" fill="currentColor" opacity="0.8">skew alert threshold</text>
+  <!-- Bars: hot (opacity 0.55) rise above the line; cold (opacity 0.25) stay low -->
+  <!-- P0 rate 40 -->
+  <rect x="72" y="244" width="52" height="36" fill="currentColor" opacity="0.25"/>
+  <text x="98" y="238" text-anchor="middle" font-size="9" font-family="system-ui,sans-serif" fill="currentColor" opacity="0.7">40</text>
+  <text x="98" y="294" text-anchor="middle" font-size="10" font-family="system-ui,sans-serif" fill="currentColor" opacity="0.8">P0</text>
+  <!-- P1 rate 55 -->
+  <rect x="157" y="230" width="52" height="50" fill="currentColor" opacity="0.25"/>
+  <text x="183" y="224" text-anchor="middle" font-size="9" font-family="system-ui,sans-serif" fill="currentColor" opacity="0.7">55</text>
+  <text x="183" y="294" text-anchor="middle" font-size="10" font-family="system-ui,sans-serif" fill="currentColor" opacity="0.8">P1</text>
+  <!-- P2 rate 210 (hot) -->
+  <rect x="242" y="91" width="52" height="189" fill="currentColor" opacity="0.55"/>
+  <text x="268" y="85" text-anchor="middle" font-size="9" font-family="system-ui,sans-serif" fill="currentColor" opacity="0.85">210</text>
+  <text x="268" y="294" text-anchor="middle" font-size="10" font-family="system-ui,sans-serif" fill="currentColor" opacity="0.8">P2</text>
+  <!-- P3 rate 60 -->
+  <rect x="327" y="226" width="52" height="54" fill="currentColor" opacity="0.25"/>
+  <text x="353" y="220" text-anchor="middle" font-size="9" font-family="system-ui,sans-serif" fill="currentColor" opacity="0.7">60</text>
+  <text x="353" y="294" text-anchor="middle" font-size="10" font-family="system-ui,sans-serif" fill="currentColor" opacity="0.8">P3</text>
+  <!-- P4 rate 240 (hot) -->
+  <rect x="412" y="64" width="52" height="216" fill="currentColor" opacity="0.55"/>
+  <text x="438" y="58" text-anchor="middle" font-size="9" font-family="system-ui,sans-serif" fill="currentColor" opacity="0.85">240</text>
+  <text x="438" y="294" text-anchor="middle" font-size="10" font-family="system-ui,sans-serif" fill="currentColor" opacity="0.8">P4</text>
+  <!-- P5 rate 35 -->
+  <rect x="497" y="248" width="52" height="32" fill="currentColor" opacity="0.25"/>
+  <text x="523" y="242" text-anchor="middle" font-size="9" font-family="system-ui,sans-serif" fill="currentColor" opacity="0.7">35</text>
+  <text x="523" y="294" text-anchor="middle" font-size="10" font-family="system-ui,sans-serif" fill="currentColor" opacity="0.8">P5</text>
+  <!-- P6 rate 190 (hot) -->
+  <rect x="582" y="109" width="52" height="171" fill="currentColor" opacity="0.55"/>
+  <text x="608" y="103" text-anchor="middle" font-size="9" font-family="system-ui,sans-serif" fill="currentColor" opacity="0.85">190</text>
+  <text x="608" y="294" text-anchor="middle" font-size="10" font-family="system-ui,sans-serif" fill="currentColor" opacity="0.8">P6</text>
+  <!-- P7 rate 45 -->
+  <rect x="667" y="239" width="52" height="41" fill="currentColor" opacity="0.25"/>
+  <text x="693" y="233" text-anchor="middle" font-size="9" font-family="system-ui,sans-serif" fill="currentColor" opacity="0.7">45</text>
+  <text x="693" y="294" text-anchor="middle" font-size="10" font-family="system-ui,sans-serif" fill="currentColor" opacity="0.8">P7</text>
+  <!-- Legend -->
+  <rect x="240" y="312" width="14" height="10" fill="currentColor" opacity="0.55"/>
+  <text x="260" y="321" font-size="9" font-family="system-ui,sans-serif" fill="currentColor" opacity="0.8">urban / hot cell</text>
+  <rect x="380" y="312" width="14" height="10" fill="currentColor" opacity="0.25"/>
+  <text x="400" y="321" font-size="9" font-family="system-ui,sans-serif" fill="currentColor" opacity="0.8">rural / idle</text>
+</svg>
+<p>The visual asymmetry is the whole point. A generic “total lag” chart would average P2, P4 and P6 against the idle partitions and report a comfortable number while three partitions silently accumulate an unbounded backlog. The reason this happens specifically to spatial streams — and how the H3, S2 and Quadkey indexing choices change the density gradient — is covered in <a href="/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a>.</p>
+<hr>
+<h2 id="step-by-step-implementation" tabindex="-1"><a class="heading-anchor" href="#step-by-step-implementation">Step-by-Step Implementation</a></h2>
+<h3 id="step-1-poll-per-partition-consumer-group-lag" tabindex="-1"><a class="heading-anchor" href="#step-1-poll-per-partition-consumer-group-lag">Step 1 — Poll Per-Partition Consumer-Group Lag</a></h3>
+<p>Lag is <code>log-end-offset − committed-offset</code> per partition. Read both from the broker without joining the group, so the monitor never perturbs the consumer it observes.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">from</span> aiokafka <span class="token keyword">import</span> AIOKafkaConsumer
+<span class="token keyword">from</span> aiokafka<span class="token punctuation">.</span>admin <span class="token keyword">import</span> AIOKafkaAdminClient
+<span class="token keyword">from</span> aiokafka<span class="token punctuation">.</span>structs <span class="token keyword">import</span> TopicPartition
+
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">poll_partition_lag</span><span class="token punctuation">(</span>
+    bootstrap<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> group_id<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> topic<span class="token punctuation">:</span> <span class="token builtin">str</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">tuple</span><span class="token punctuation">[</span><span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">int</span><span class="token punctuation">,</span> <span class="token builtin">int</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">int</span><span class="token punctuation">,</span> <span class="token builtin">int</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Return (lag_by_partition, end_offset_by_partition) for one consumer
+    group on one topic. Lag is log-end-offset minus committed-offset.
+    The raw end offsets are returned as well so the caller can compute
+    per-partition throughput between polls (see Step 2).
+    """</span>
+    admin <span class="token operator">=</span> AIOKafkaAdminClient<span class="token punctuation">(</span>bootstrap_servers<span class="token operator">=</span>bootstrap<span class="token punctuation">)</span>
+    consumer <span class="token operator">=</span> AIOKafkaConsumer<span class="token punctuation">(</span>bootstrap_servers<span class="token operator">=</span>bootstrap<span class="token punctuation">,</span> enable_auto_commit<span class="token operator">=</span><span class="token boolean">False</span><span class="token punctuation">)</span>
+    <span class="token keyword">await</span> admin<span class="token punctuation">.</span>start<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">await</span> consumer<span class="token punctuation">.</span>start<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">try</span><span class="token punctuation">:</span>
+        <span class="token comment"># Partition metadata may not be resolved on the very first call.</span>
+        partitions <span class="token operator">=</span> consumer<span class="token punctuation">.</span>partitions_for_topic<span class="token punctuation">(</span>topic<span class="token punctuation">)</span>
+        <span class="token keyword">if</span> <span class="token keyword">not</span> partitions<span class="token punctuation">:</span>
+            <span class="token keyword">await</span> consumer<span class="token punctuation">.</span>_client<span class="token punctuation">.</span>force_metadata_update<span class="token punctuation">(</span><span class="token punctuation">)</span>
+            partitions <span class="token operator">=</span> consumer<span class="token punctuation">.</span>partitions_for_topic<span class="token punctuation">(</span>topic<span class="token punctuation">)</span> <span class="token keyword">or</span> <span class="token builtin">set</span><span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+        tps <span class="token operator">=</span> <span class="token punctuation">[</span>TopicPartition<span class="token punctuation">(</span>topic<span class="token punctuation">,</span> p<span class="token punctuation">)</span> <span class="token keyword">for</span> p <span class="token keyword">in</span> <span class="token builtin">sorted</span><span class="token punctuation">(</span>partitions<span class="token punctuation">)</span><span class="token punctuation">]</span>
+
+        <span class="token comment"># Newest offset per partition (the produce frontier).</span>
+        end_offsets <span class="token operator">=</span> <span class="token keyword">await</span> consumer<span class="token punctuation">.</span>end_offsets<span class="token punctuation">(</span>tps<span class="token punctuation">)</span>
+        <span class="token comment"># Committed offset per partition for the target consumer group.</span>
+        group_offsets <span class="token operator">=</span> <span class="token keyword">await</span> admin<span class="token punctuation">.</span>list_consumer_group_offsets<span class="token punctuation">(</span>group_id<span class="token punctuation">)</span>
+
+        lag<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">int</span><span class="token punctuation">,</span> <span class="token builtin">int</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token punctuation">}</span>
+        ends<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">int</span><span class="token punctuation">,</span> <span class="token builtin">int</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token punctuation">}</span>
+        <span class="token keyword">for</span> tp <span class="token keyword">in</span> tps<span class="token punctuation">:</span>
+            committed <span class="token operator">=</span> group_offsets<span class="token punctuation">.</span>get<span class="token punctuation">(</span>tp<span class="token punctuation">)</span>
+            committed_offset <span class="token operator">=</span> committed<span class="token punctuation">.</span>offset <span class="token keyword">if</span> committed <span class="token keyword">else</span> <span class="token number">0</span>
+            end <span class="token operator">=</span> end_offsets<span class="token punctuation">.</span>get<span class="token punctuation">(</span>tp<span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">)</span>
+            ends<span class="token punctuation">[</span>tp<span class="token punctuation">.</span>partition<span class="token punctuation">]</span> <span class="token operator">=</span> end
+            lag<span class="token punctuation">[</span>tp<span class="token punctuation">.</span>partition<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token builtin">max</span><span class="token punctuation">(</span>end <span class="token operator">-</span> committed_offset<span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> lag<span class="token punctuation">,</span> ends
+    <span class="token keyword">finally</span><span class="token punctuation">:</span>
+        <span class="token keyword">await</span> consumer<span class="token punctuation">.</span>stop<span class="token punctuation">(</span><span class="token punctuation">)</span>
+        <span class="token keyword">await</span> admin<span class="token punctuation">.</span>stop<span class="token punctuation">(</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>A partition absent from <code>group_offsets</code> means the group has never committed there — treat it as full lag from offset zero rather than skipping it, otherwise a brand-new hot partition hides until its first commit.</p>
+<h3 id="step-2-sample-per-partition-message-rate" tabindex="-1"><a class="heading-anchor" href="#step-2-sample-per-partition-message-rate">Step 2 — Sample Per-Partition Message Rate</a></h3>
+<p>Skew is measured over throughput, not backlog. Two partitions can share the same lag while one is receiving ten times the traffic. Diff the end offsets between successive polls to get messages per second.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> time
+
+
+<span class="token keyword">class</span> <span class="token class-name">PartitionRateSampler</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Convert successive end-offset snapshots into per-partition msg/s."""</span>
+
+    <span class="token keyword">def</span> <span class="token function">__init__</span><span class="token punctuation">(</span>self<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        self<span class="token punctuation">.</span>_last<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">int</span><span class="token punctuation">,</span> <span class="token builtin">tuple</span><span class="token punctuation">[</span><span class="token builtin">float</span><span class="token punctuation">,</span> <span class="token builtin">int</span><span class="token punctuation">]</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token punctuation">}</span>
+
+    <span class="token keyword">def</span> <span class="token function">update</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> end_offsets<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">int</span><span class="token punctuation">,</span> <span class="token builtin">int</span><span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">int</span><span class="token punctuation">,</span> <span class="token builtin">float</span><span class="token punctuation">]</span><span class="token punctuation">:</span>
+        now <span class="token operator">=</span> time<span class="token punctuation">.</span>monotonic<span class="token punctuation">(</span><span class="token punctuation">)</span>
+        rates<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">int</span><span class="token punctuation">,</span> <span class="token builtin">float</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token punctuation">}</span>
+        <span class="token keyword">for</span> partition<span class="token punctuation">,</span> offset <span class="token keyword">in</span> end_offsets<span class="token punctuation">.</span>items<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+            prev <span class="token operator">=</span> self<span class="token punctuation">.</span>_last<span class="token punctuation">.</span>get<span class="token punctuation">(</span>partition<span class="token punctuation">)</span>
+            <span class="token keyword">if</span> prev <span class="token keyword">is</span> <span class="token keyword">not</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+                prev_t<span class="token punctuation">,</span> prev_offset <span class="token operator">=</span> prev
+                dt <span class="token operator">=</span> now <span class="token operator">-</span> prev_t
+                <span class="token keyword">if</span> dt <span class="token operator">></span> <span class="token number">0</span><span class="token punctuation">:</span>
+                    <span class="token comment"># Guard against log truncation / retention resetting offsets.</span>
+                    rates<span class="token punctuation">[</span>partition<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token builtin">max</span><span class="token punctuation">(</span>offset <span class="token operator">-</span> prev_offset<span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">)</span> <span class="token operator">/</span> dt
+            self<span class="token punctuation">.</span>_last<span class="token punctuation">[</span>partition<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">(</span>now<span class="token punctuation">,</span> offset<span class="token punctuation">)</span>
+        <span class="token keyword">return</span> rates
+</code></pre>
+</div>
+<p>The first <code>update</code> returns an empty dict because there is no previous snapshot to diff against. Poll on a fixed interval (30–60 s is typical) so the rate denominator is stable and the CV is comparable across windows.</p>
+<h3 id="step-3-compute-the-skew-coefficient" tabindex="-1"><a class="heading-anchor" href="#step-3-compute-the-skew-coefficient">Step 3 — Compute the Skew Coefficient</a></h3>
+<p>The coefficient of variation — standard deviation divided by mean — is scale-free, so it stays meaningful whether the stream is doing 100 or 100,000 messages per second. That is exactly what you want from a skew metric.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> statistics
+
+
+<span class="token keyword">def</span> <span class="token function">coefficient_of_variation</span><span class="token punctuation">(</span>rates<span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">float</span><span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">float</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    CV = population stddev / mean of the per-partition rate vector.
+
+    CV ~ 0.0  : perfectly balanced load across partitions
+    CV &lt; 0.3  : healthy for a spatial stream
+    0.3 - 0.5 : mild, usually tolerable imbalance
+    CV > 0.5  : a few dense cells dominate; specific partitions will lag
+    CV > 1.0  : one partition carries more than the rest combined
+    """</span>
+    <span class="token keyword">if</span> <span class="token keyword">not</span> rates<span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token number">0.0</span>
+    mean <span class="token operator">=</span> statistics<span class="token punctuation">.</span>fmean<span class="token punctuation">(</span>rates<span class="token punctuation">)</span>
+    <span class="token keyword">if</span> mean <span class="token operator">==</span> <span class="token number">0</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token number">0.0</span>
+    stddev <span class="token operator">=</span> statistics<span class="token punctuation">.</span>pstdev<span class="token punctuation">(</span>rates<span class="token punctuation">)</span>
+    <span class="token keyword">return</span> stddev <span class="token operator">/</span> mean
+</code></pre>
+</div>
+<p>Use population standard deviation (<code>pstdev</code>), not sample (<code>stdev</code>): the partition set is the entire population you care about, not a sample drawn from a larger one. The distinction matters when a topic has only a handful of partitions.</p>
+<h3 id="step-4-attribute-hot-partitions-to-h3-cells" tabindex="-1"><a class="heading-anchor" href="#step-4-attribute-hot-partitions-to-h3-cells">Step 4 — Attribute Hot Partitions to H3 Cells</a></h3>
+<p>A lagging partition number is not actionable; the geography behind it is. Because Kafka’s default partitioner is deterministic — <code>murmur2(key) % num_partitions</code> — you can replay any H3 cell through the same function and discover which partition it lands on, then rank the cells feeding each hot partition.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> h3
+<span class="token keyword">from</span> kafka<span class="token punctuation">.</span>partitioner<span class="token punctuation">.</span>default <span class="token keyword">import</span> murmur2  <span class="token comment"># kafka-python's murmur2</span>
+
+
+<span class="token keyword">def</span> <span class="token function">partition_for_cell</span><span class="token punctuation">(</span>cell<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> num_partitions<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">int</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    Reproduce Kafka's default partitioner so a hot partition can be
+    attributed back to the H3 cells that route to it. `cell` is an H3
+    index string derived from an EPSG:4326 (WGS84) lat/lon.
+    """</span>
+    key <span class="token operator">=</span> cell<span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token string">"utf-8"</span><span class="token punctuation">)</span>
+    <span class="token comment"># toPositive(murmur2(key)) % numPartitions, matching the Java client.</span>
+    <span class="token keyword">return</span> <span class="token punctuation">(</span>murmur2<span class="token punctuation">(</span>key<span class="token punctuation">)</span> <span class="token operator">&amp;</span> <span class="token number">0x7FFFFFFF</span><span class="token punctuation">)</span> <span class="token operator">%</span> num_partitions
+
+
+<span class="token keyword">def</span> <span class="token function">cells_feeding_partition</span><span class="token punctuation">(</span>
+    candidate_cells<span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">]</span><span class="token punctuation">,</span> partition<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">,</span> num_partitions<span class="token punctuation">:</span> <span class="token builtin">int</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">]</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Filter a known set of active cells down to those routing to `partition`."""</span>
+    <span class="token keyword">return</span> <span class="token punctuation">[</span>
+        c <span class="token keyword">for</span> c <span class="token keyword">in</span> candidate_cells
+        <span class="token keyword">if</span> h3<span class="token punctuation">.</span>is_valid_cell<span class="token punctuation">(</span>c<span class="token punctuation">)</span> <span class="token keyword">and</span> partition_for_cell<span class="token punctuation">(</span>c<span class="token punctuation">,</span> num_partitions<span class="token punctuation">)</span> <span class="token operator">==</span> partition
+    <span class="token punctuation">]</span>
+</code></pre>
+</div>
+<p>Feed <code>candidate_cells</code> from the distinct cells observed in the last window of events. The output turns “P4 is lagging” into “cell <code>8928308280fffff</code> (downtown Manhattan) is the dominant contributor to P4,” which is what the on-call engineer needs. The mechanics of which spatial index produces the tightest density balance are compared on the <a href="/core-event-fundamentals-architecture/spatial-partitioning-strategies/h3-vs-s2-vs-quadkey-for-spatial-partitioning/">H3 vs S2 vs Quadkey for Spatial Partitioning</a> page.</p>
+<h3 id="step-5-alert-on-lag-and-skew" tabindex="-1"><a class="heading-anchor" href="#step-5-alert-on-lag-and-skew">Step 5 — Alert on Lag and Skew</a></h3>
+<p>Export both signals as Prometheus gauges and combine them in the alert rule. Lag alone over-pages during traffic spikes; skew alone misses a uniformly under-scaled consumer. The union of “backlog is growing” and “load is lopsided” is the precise condition that spatial rebalancing fixes.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> prometheus_client <span class="token keyword">import</span> Gauge
+
+lag_gauge <span class="token operator">=</span> Gauge<span class="token punctuation">(</span>
+    <span class="token string">"spatial_consumer_lag"</span><span class="token punctuation">,</span> <span class="token string">"Per-partition consumer lag"</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token string">"topic"</span><span class="token punctuation">,</span> <span class="token string">"partition"</span><span class="token punctuation">]</span>
+<span class="token punctuation">)</span>
+rate_gauge <span class="token operator">=</span> Gauge<span class="token punctuation">(</span>
+    <span class="token string">"spatial_partition_rate"</span><span class="token punctuation">,</span> <span class="token string">"Per-partition msg/s"</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token string">"topic"</span><span class="token punctuation">,</span> <span class="token string">"partition"</span><span class="token punctuation">]</span>
+<span class="token punctuation">)</span>
+skew_gauge <span class="token operator">=</span> Gauge<span class="token punctuation">(</span>
+    <span class="token string">"spatial_partition_skew_cv"</span><span class="token punctuation">,</span> <span class="token string">"Coefficient of variation of per-partition rate"</span><span class="token punctuation">,</span>
+    <span class="token punctuation">[</span><span class="token string">"topic"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+<span class="token punctuation">)</span>
+
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">monitor_loop</span><span class="token punctuation">(</span>
+    bootstrap<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> group_id<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> topic<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span>
+    interval_s<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> <span class="token number">45.0</span><span class="token punctuation">,</span> cv_alert<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> <span class="token number">0.5</span><span class="token punctuation">,</span>
+<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    sampler <span class="token operator">=</span> PartitionRateSampler<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">while</span> <span class="token boolean">True</span><span class="token punctuation">:</span>
+        lag<span class="token punctuation">,</span> ends <span class="token operator">=</span> <span class="token keyword">await</span> poll_partition_lag<span class="token punctuation">(</span>bootstrap<span class="token punctuation">,</span> group_id<span class="token punctuation">,</span> topic<span class="token punctuation">)</span>
+        rates <span class="token operator">=</span> sampler<span class="token punctuation">.</span>update<span class="token punctuation">(</span>ends<span class="token punctuation">)</span>
+
+        <span class="token keyword">for</span> partition<span class="token punctuation">,</span> value <span class="token keyword">in</span> lag<span class="token punctuation">.</span>items<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+            lag_gauge<span class="token punctuation">.</span>labels<span class="token punctuation">(</span>topic<span class="token operator">=</span>topic<span class="token punctuation">,</span> partition<span class="token operator">=</span><span class="token builtin">str</span><span class="token punctuation">(</span>partition<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">(</span>value<span class="token punctuation">)</span>
+        <span class="token keyword">for</span> partition<span class="token punctuation">,</span> value <span class="token keyword">in</span> rates<span class="token punctuation">.</span>items<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+            rate_gauge<span class="token punctuation">.</span>labels<span class="token punctuation">(</span>topic<span class="token operator">=</span>topic<span class="token punctuation">,</span> partition<span class="token operator">=</span><span class="token builtin">str</span><span class="token punctuation">(</span>partition<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">(</span>value<span class="token punctuation">)</span>
+
+        cv <span class="token operator">=</span> coefficient_of_variation<span class="token punctuation">(</span><span class="token builtin">list</span><span class="token punctuation">(</span>rates<span class="token punctuation">.</span>values<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+        skew_gauge<span class="token punctuation">.</span>labels<span class="token punctuation">(</span>topic<span class="token operator">=</span>topic<span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">(</span>cv<span class="token punctuation">)</span>
+
+        <span class="token keyword">if</span> cv <span class="token operator">></span> cv_alert <span class="token keyword">and</span> rates<span class="token punctuation">:</span>
+            hottest <span class="token operator">=</span> <span class="token builtin">max</span><span class="token punctuation">(</span>rates<span class="token punctuation">,</span> key<span class="token operator">=</span>rates<span class="token punctuation">.</span>get<span class="token punctuation">)</span>
+            <span class="token keyword">print</span><span class="token punctuation">(</span>
+                <span class="token string-interpolation"><span class="token string">f"SKEW ALERT topic=</span><span class="token interpolation"><span class="token punctuation">{</span>topic<span class="token punctuation">}</span></span><span class="token string"> cv=</span><span class="token interpolation"><span class="token punctuation">{</span>cv<span class="token punctuation">:</span><span class="token format-spec">.2f</span><span class="token punctuation">}</span></span><span class="token string"> "</span></span>
+                <span class="token string-interpolation"><span class="token string">f"hottest_partition=</span><span class="token interpolation"><span class="token punctuation">{</span>hottest<span class="token punctuation">}</span></span><span class="token string"> lag=</span><span class="token interpolation"><span class="token punctuation">{</span>lag<span class="token punctuation">.</span>get<span class="token punctuation">(</span>hottest<span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">"</span></span>
+            <span class="token punctuation">)</span>
+        <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span>interval_s<span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>The corresponding Prometheus rule fires only when both conditions hold, for example <code>spatial_partition_skew_cv &gt; 0.5 and max(spatial_consumer_lag) &gt; 50000</code> sustained over ten minutes. This same gauge naming convention plugs directly into the broader metric taxonomy described in <a href="/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a>.</p>
+<hr>
+<h2 id="spatial-validation-and-error-handling" tabindex="-1"><a class="heading-anchor" href="#spatial-validation-and-error-handling">Spatial Validation and Error Handling</a></h2>
+<p>The monitor consumes offsets, but the correctness of its output depends on the spatial keys behind them. Validate the snapshot before you compute or alert, so a metadata glitch never fires a false skew page.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> pydantic <span class="token keyword">import</span> BaseModel<span class="token punctuation">,</span> field_validator
+
+
+<span class="token keyword">class</span> <span class="token class-name">PartitionSnapshot</span><span class="token punctuation">(</span>BaseModel<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""A validated single-poll view before skew is computed."""</span>
+
+    topic<span class="token punctuation">:</span> <span class="token builtin">str</span>
+    lag<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">int</span><span class="token punctuation">,</span> <span class="token builtin">int</span><span class="token punctuation">]</span>
+    rates<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">int</span><span class="token punctuation">,</span> <span class="token builtin">float</span><span class="token punctuation">]</span>
+
+    <span class="token decorator annotation punctuation">@field_validator</span><span class="token punctuation">(</span><span class="token string">"lag"</span><span class="token punctuation">,</span> <span class="token string">"rates"</span><span class="token punctuation">)</span>
+    <span class="token decorator annotation punctuation">@classmethod</span>
+    <span class="token keyword">def</span> <span class="token function">no_negative_values</span><span class="token punctuation">(</span>cls<span class="token punctuation">,</span> v<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">:</span>
+        <span class="token comment"># Negative lag or rate signals an offset reset (retention/truncation),</span>
+        <span class="token comment"># not real traffic — clamp rather than propagate a garbage CV.</span>
+        <span class="token keyword">return</span> <span class="token punctuation">{</span>k<span class="token punctuation">:</span> <span class="token builtin">max</span><span class="token punctuation">(</span>val<span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">)</span> <span class="token keyword">for</span> k<span class="token punctuation">,</span> val <span class="token keyword">in</span> v<span class="token punctuation">.</span>items<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">}</span>
+
+    <span class="token keyword">def</span> <span class="token function">is_meaningful</span><span class="token punctuation">(</span>self<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+        <span class="token comment"># Skip skew computation until every partition has reported a rate;</span>
+        <span class="token comment"># a partial vector produces an inflated, misleading CV.</span>
+        <span class="token keyword">return</span> <span class="token builtin">bool</span><span class="token punctuation">(</span>self<span class="token punctuation">.</span>rates<span class="token punctuation">)</span> <span class="token keyword">and</span> <span class="token builtin">len</span><span class="token punctuation">(</span>self<span class="token punctuation">.</span>rates<span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token builtin">len</span><span class="token punctuation">(</span>self<span class="token punctuation">.</span>lag<span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>Three error conditions matter in production. First, an offset reset from log retention makes a delta negative — clamp it, as above, rather than letting it poison the mean. Second, a partition missing from the committed-offset map is a real state (never-committed), not an error, and must count as full lag. Third, an invalid or all-zero rate vector on the first poll must short-circuit before <code>coefficient_of_variation</code>, which is why <code>is_meaningful</code> gates the computation. Validating H3 cells with <code>h3.is_valid_cell</code> during attribution (Step 4) closes the loop: a malformed key that slipped past the producer would otherwise be silently misattributed to partition zero.</p>
+<hr>
+<h2 id="remediation-rebalancing-the-hot-cells" tabindex="-1"><a class="heading-anchor" href="#remediation-rebalancing-the-hot-cells">Remediation: Rebalancing the Hot Cells</a></h2>
+<p>Once the monitor names the hot cells, three remedies apply in increasing order of disruption.</p>
+<p><strong>Salt the flagged cells.</strong> The surgical fix: spread a single dense cell across several partitions by appending a bucket suffix to its key, while leaving cold cells on a stable key to preserve their ordering.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python">HOT_CELLS<span class="token punctuation">:</span> <span class="token builtin">set</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"8928308280fffff"</span><span class="token punctuation">}</span>  <span class="token comment"># cells flagged by the skew monitor</span>
+
+
+<span class="token keyword">def</span> <span class="token function">routing_key</span><span class="token punctuation">(</span>cell<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> event_id<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> salt_buckets<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">4</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""
+    For hot cells only, distribute events across `salt_buckets` synthetic
+    sub-keys so one dense urban cell no longer maps to a single partition.
+    Cold cells keep a stable, unsalted key to retain per-cell ordering.
+
+    Trade-off: salted cells lose strict per-cell ordering. Downstream
+    consumers must reconcile order using an event timestamp, not arrival.
+    """</span>
+    <span class="token keyword">if</span> cell <span class="token keyword">in</span> HOT_CELLS<span class="token punctuation">:</span>
+        bucket <span class="token operator">=</span> <span class="token builtin">hash</span><span class="token punctuation">(</span>event_id<span class="token punctuation">)</span> <span class="token operator">%</span> salt_buckets
+        <span class="token keyword">return</span> <span class="token string-interpolation"><span class="token string">f"</span><span class="token interpolation"><span class="token punctuation">{</span>cell<span class="token punctuation">}</span></span><span class="token string">#</span><span class="token interpolation"><span class="token punctuation">{</span>bucket<span class="token punctuation">}</span></span><span class="token string">"</span></span>
+    <span class="token keyword">return</span> cell
+</code></pre>
+</div>
+<p><strong>Sub-partition at a finer H3 resolution for hot cells.</strong> Instead of a random salt, re-key hot cells to their child cells (<code>h3.cell_to_children(cell, res + 1)</code>), which spreads load geographically and keeps neighbouring events together — useful when downstream joins are locality-sensitive.</p>
+<p><strong>Re-shard the whole topic at a finer resolution.</strong> The systemic fix when many cells are hot: raising the base H3 resolution flattens the density gradient across the entire keyspace. It is a full-topic migration that changes every key, so reserve it for a maintenance window once salting has stopped the immediate bleeding. The child page <a href="/monitoring-observability-spatial/consumer-lag-partition-skew/detecting-partition-skew-in-h3-sharded-streams/">Detecting Partition Skew in H3-Sharded Streams</a> walks through choosing between these three responses with worked density numbers.</p>
+<hr>
+<h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
+<p>Two properties must hold: the skew coefficient must be correct for known inputs, and partition attribution must be deterministic. Confirm both with pytest.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> math
+<span class="token keyword">import</span> pytest
+
+<span class="token keyword">from</span> skew_monitor <span class="token keyword">import</span> <span class="token punctuation">(</span>  <span class="token comment"># your module from the steps above</span>
+    coefficient_of_variation<span class="token punctuation">,</span>
+    partition_for_cell<span class="token punctuation">,</span>
+    PartitionRateSampler<span class="token punctuation">,</span>
+<span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_balanced_load_has_near_zero_cv</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token comment"># Identical rates -> zero variance -> CV of exactly 0.</span>
+    <span class="token keyword">assert</span> coefficient_of_variation<span class="token punctuation">(</span><span class="token punctuation">[</span><span class="token number">100.0</span><span class="token punctuation">,</span> <span class="token number">100.0</span><span class="token punctuation">,</span> <span class="token number">100.0</span><span class="token punctuation">,</span> <span class="token number">100.0</span><span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token number">0.0</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_skewed_load_exceeds_threshold</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token comment"># Three idle partitions and one dominant one -> CV well above 0.5.</span>
+    cv <span class="token operator">=</span> coefficient_of_variation<span class="token punctuation">(</span><span class="token punctuation">[</span><span class="token number">10.0</span><span class="token punctuation">,</span> <span class="token number">10.0</span><span class="token punctuation">,</span> <span class="token number">10.0</span><span class="token punctuation">,</span> <span class="token number">240.0</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> cv <span class="token operator">></span> <span class="token number">0.5</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_cv_is_scale_free</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token comment"># Multiplying every rate by a constant must not change the CV.</span>
+    base <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token number">40.0</span><span class="token punctuation">,</span> <span class="token number">55.0</span><span class="token punctuation">,</span> <span class="token number">210.0</span><span class="token punctuation">,</span> <span class="token number">60.0</span><span class="token punctuation">]</span>
+    scaled <span class="token operator">=</span> <span class="token punctuation">[</span>r <span class="token operator">*</span> <span class="token number">1000</span> <span class="token keyword">for</span> r <span class="token keyword">in</span> base<span class="token punctuation">]</span>
+    <span class="token keyword">assert</span> math<span class="token punctuation">.</span>isclose<span class="token punctuation">(</span>
+        coefficient_of_variation<span class="token punctuation">(</span>base<span class="token punctuation">)</span><span class="token punctuation">,</span>
+        coefficient_of_variation<span class="token punctuation">(</span>scaled<span class="token punctuation">)</span><span class="token punctuation">,</span>
+        rel_tol<span class="token operator">=</span><span class="token number">1e-9</span><span class="token punctuation">,</span>
+    <span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_partition_attribution_is_deterministic</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token comment"># The same cell must always map to the same partition (12 partitions).</span>
+    cell <span class="token operator">=</span> <span class="token string">"8928308280fffff"</span>
+    first <span class="token operator">=</span> partition_for_cell<span class="token punctuation">(</span>cell<span class="token punctuation">,</span> <span class="token number">12</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> <span class="token builtin">all</span><span class="token punctuation">(</span>partition_for_cell<span class="token punctuation">(</span>cell<span class="token punctuation">,</span> <span class="token number">12</span><span class="token punctuation">)</span> <span class="token operator">==</span> first <span class="token keyword">for</span> _ <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span><span class="token number">100</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> <span class="token number">0</span> <span class="token operator">&lt;=</span> first <span class="token operator">&lt;</span> <span class="token number">12</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_rate_sampler_needs_two_snapshots</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    sampler <span class="token operator">=</span> PartitionRateSampler<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> sampler<span class="token punctuation">.</span>update<span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token number">0</span><span class="token punctuation">:</span> <span class="token number">1000</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">:</span> <span class="token number">2000</span><span class="token punctuation">}</span><span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token punctuation">{</span><span class="token punctuation">}</span>  <span class="token comment"># first poll: no baseline</span>
+    rates <span class="token operator">=</span> sampler<span class="token punctuation">.</span>update<span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token number">0</span><span class="token punctuation">:</span> <span class="token number">1600</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">:</span> <span class="token number">2050</span><span class="token punctuation">}</span><span class="token punctuation">)</span>        <span class="token comment"># second poll: has deltas</span>
+    <span class="token keyword">assert</span> rates<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span> <span class="token operator">></span> rates<span class="token punctuation">[</span><span class="token number">1</span><span class="token punctuation">]</span>  <span class="token comment"># partition 0 grew faster</span>
+</code></pre>
+</div>
+<p>Run with <code>pytest -v</code>. The scale-free test is the one that catches regressions: if someone swaps the coefficient of variation for a raw standard deviation, that assertion fails immediately, because standard deviation grows with traffic volume and would trigger false skew alerts every peak hour.</p>
+<hr>
+<h2 id="troubleshooting" tabindex="-1"><a class="heading-anchor" href="#troubleshooting">Troubleshooting</a></h2>
+<div style="overflow-x:auto;">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely spatial cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Total lag looks fine but some consumers never catch up</td>
+<td>Skew hidden by averaging; hot partitions masked by idle ones</td>
+<td>Compute per-partition lag and the CV; stop trusting a single total-lag number</td>
+</tr>
+<tr>
+<td>Skew CV spikes then recovers every evening</td>
+<td>Diurnal traffic shifting to one metro’s cells during local peak</td>
+<td>Alert on sustained CV over several windows, not instantaneous values</td>
+</tr>
+<tr>
+<td>Adding consumers does not reduce lag on the busy partition</td>
+<td>One partition is the bottleneck; more consumers cannot split a single partition</td>
+<td>Salt or sub-partition the hot cell so its load spans multiple partitions</td>
+</tr>
+<tr>
+<td>Rate vector shows a negative value</td>
+<td>Log retention or truncation reset the end offset below the prior snapshot</td>
+<td>Clamp deltas to zero in the sampler; do not feed negatives into the CV</td>
+</tr>
+<tr>
+<td>A hot partition maps back to “no cells”</td>
+<td>Attribution used the wrong partition count or a stale cell list</td>
+<td>Pass the live <code>num_partitions</code> and rebuild the candidate cell set each window</td>
+</tr>
+<tr>
+<td>CV reads absurdly high right after startup</td>
+<td>Skew computed on the first, partial rate snapshot</td>
+<td>Gate the computation behind <code>is_meaningful</code>; require every partition to report</td>
+</tr>
+<tr>
+<td>Salting a cell fixed lag but broke downstream ordering</td>
+<td>Salt spread one cell across partitions, losing per-cell order</td>
+<td>Reconcile order downstream by event timestamp; only salt flagged hot cells</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<hr>
+<h2 id="faq" tabindex="-1"><a class="heading-anchor" href="#faq">FAQ</a></h2>
+<details class="faq">
+<summary><strong>How is partition skew different from ordinary consumer lag?</strong></summary>
+<p>Consumer lag is the backlog on a single partition: log-end-offset minus committed-offset. Partition skew is the shape of that backlog across all partitions. A pipeline can have low total lag while being badly skewed, and it can have high uniform lag with no skew at all. Lag tells you a consumer group is falling behind; skew tells you the cause is a spatial hot spot rather than an under-scaled consumer. You need both metrics because the remediation differs: uniform lag is fixed by adding consumers, while skew is fixed by changing how keys map to partitions.</p>
+</details>
+<details class="faq">
+<summary><strong>What coefficient of variation should trigger a skew alert?</strong></summary>
+<p>For a healthy, well-balanced spatial stream the coefficient of variation of per-partition message rate sits below 0.3. Values between 0.3 and 0.5 indicate mild imbalance that is usually tolerable. Above 0.5 a small number of dense urban cells are dominating throughput and specific partitions will chronically lag. Alert at a sustained CV above 0.5 held for several sample windows so you do not page on transient bursts, and treat a CV above 1.0 as a page-worthy incident because it means one partition is carrying more than the entire remaining fleet combined.</p>
+</details>
+<details class="faq">
+<summary><strong>Does salting hot H3 cells break event ordering?</strong></summary>
+<p>Yes, and that is the deliberate trade. Kafka only guarantees ordering within a single partition, so a stable per-cell key preserves the order of events for that cell. Appending a salt bucket spreads one hot cell across several partitions, which restores throughput balance but means two events for the same cell can now be processed out of order. Only salt cells that your skew monitor has actually flagged as hot, keep cold cells on their stable key, and make sure downstream consumers reconcile order with an event timestamp or sequence number rather than relying on arrival order.</p>
+</details>
+<details class="faq">
+<summary><strong>Should I re-shard at a finer H3 resolution or sub-partition the hot cells?</strong></summary>
+<p>Re-sharding the whole topic to a finer H3 resolution is the cleaner long-term fix when skew is systemic and many cells are hot, because it distributes the entire keyspace more evenly, but it is a disruptive migration that changes every key. Sub-partitioning or salting only the flagged cells is a surgical fix you can ship immediately without touching the majority of the traffic. In practice teams salt the handful of dense metros first to stop the bleeding, then plan a resolution change during a maintenance window if the underlying density gradient is permanent.</p>
+</details>
+<hr>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
+<ul>
+<li><a href="/monitoring-observability-spatial/">Monitoring &amp; Observability for Spatial Pipelines</a> — the parent section covering health, metrics, tracing, and alerting across geospatial event pipelines</li>
+<li><a href="/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a> — the metric taxonomy and Prometheus conventions the lag and skew gauges plug into</li>
+<li><a href="/monitoring-observability-spatial/consumer-lag-partition-skew/detecting-partition-skew-in-h3-sharded-streams/">Detecting Partition Skew in H3-Sharded Streams</a> — a focused walkthrough of choosing between salting, sub-partitioning, and re-sharding with worked density numbers</li>
+<li><a href="/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a> — the upstream partitioning decisions that determine how much skew you will see</li>
+<li><a href="/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a> — how spatial keys map to partitions and why dense cells concentrate load</li>
+</ul>
+
+        <h2 id="explore-this-section">Explore this section</h2>
+        <div class="children-grid">
+          <a class="card " href="/monitoring-observability-spatial/consumer-lag-partition-skew/detecting-partition-skew-in-h3-sharded-streams/">
+            <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19c0-8 6-14 14-14 0 8-6 14-14 14z"/><path d="M5 19l6-6"/></svg></span>
+            <h3 class="card__title">Detecting Partition Skew in H3-Sharded Streams</h3>
+            <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+          </a>
+        </div>
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        <div class="aside-card">
+          <h3>Related in this section</h3>
+          <ul>
+            <li><a href="/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a></li>
+            <li><a href="/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging &amp; Tracing for Spatial Events</a></li>
+          </ul>
+        </div>
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            <li><a href="/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a></li>
+            <li><a href="/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a></li>
+            <li><a href="/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a></li>
+            <li><a href="/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a></li>
+            <li><a href="/monitoring-observability-spatial/">Monitoring &amp; Observability for Spatial Pipelines</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</article>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="/">Home</a></li>
+          <li><a href="/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
+          <li><a href="/queue-management-retry-delivery/">Queues &amp; Retries</a></li>
+          <li><a href="/monitoring-observability-spatial/">Monitoring</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a></li>
+          <li><a href="/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Queues &amp; Retries</h4>
+        <ul>
+          <li><a href="/queue-management-retry-delivery/">Overview</a></li>
+          <li><a href="/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+          <li><a href="/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
+          <li><a href="/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
+          <li><a href="/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Monitoring</h4>
+        <ul>
+          <li><a href="/monitoring-observability-spatial/">Overview</a></li>
+          <li><a href="/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a></li>
+          <li><a href="/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a></li>
+          <li><a href="/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging &amp; Tracing for Spatial Events</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
