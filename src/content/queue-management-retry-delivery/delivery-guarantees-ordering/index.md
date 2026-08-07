@@ -72,6 +72,35 @@ dateModified: "2026-07-13"
 
 **Spatial webhook pipelines rarely need global ordering, but they always need per-feature ordering: a feature-update event applied before its create, or an old create replayed after a delete, silently resurrects stale geometry — and the fix is a version-guarded idempotent consumer, not a stronger broker.**
 
+<figure class="fig">
+<svg viewBox="0 0 760 244" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Out-of-order delivery of create, update and delete events, with and without a version guard on the consumer">
+<title>What a version guard does that a stronger broker cannot</title>
+<desc>Three events for parcel 4471 are produced in order — create at version one, update at version two, delete at version three — but a partition rebalance delivers them as update, delete, create. An unguarded consumer applies each event as it arrives, so the final write is the create, and the parcel is resurrected with its original geometry despite having been deleted; the store ends in a state that never existed. A version-guarded consumer compares each event's version against the row's current version and applies only strictly newer ones, so the update at version two applies, the delete at version three applies, and the late create at version one is discarded as stale. The final state is deleted, which is correct, and it is correct for any arrival order — which is the point: the guard makes the outcome independent of delivery order rather than depending on the broker to preserve it.</desc>
+<rect x="0" y="0" width="760" height="244" fill="var(--fig-bg)"/>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-ink)">Produced in order · delivered out of order after a rebalance</text>
+<rect x="14" y="30" width="140" height="34" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="84" y="45" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">update · v2</text>
+<text x="84" y="57" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">arrives 1st</text>
+<rect x="162" y="30" width="140" height="34" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="232" y="45" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">delete · v3</text>
+<text x="232" y="57" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">arrives 2nd</text>
+<rect x="310" y="30" width="140" height="34" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="380" y="45" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">create · v1</text>
+<text x="380" y="57" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">arrives 3rd — late</text>
+<rect x="14" y="80" width="732" height="66" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="26" y="98" font-size="10" font-weight="600" fill="var(--fig-ink)">Unguarded — last write wins</text>
+<text x="26" y="116" font-size="9.5" fill="var(--fig-ink-soft)">apply update → apply delete → apply create</text>
+<text x="300" y="116" font-size="9.5" font-weight="600" fill="var(--fig-rose-edge)">final state: parcel exists, v1 geometry</text>
+<text x="26" y="134" font-size="9" fill="var(--fig-ink-soft)">A deleted parcel is back on the map. Nothing errored, no metric moved, and the store holds a state that was never produced.</text>
+<rect x="14" y="158" width="732" height="66" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="26" y="176" font-size="10" font-weight="600" fill="var(--fig-ink)">Version-guarded — WHERE version &lt; :incoming</text>
+<text x="26" y="194" font-size="9.5" fill="var(--fig-ink-soft)">v2 &gt; v0 apply → v3 &gt; v2 apply → v1 &lt; v3 discard</text>
+<text x="300" y="194" font-size="9.5" font-weight="600" fill="var(--fig-mint-edge)">final state: deleted — for every arrival order</text>
+<text x="26" y="212" font-size="9" fill="var(--fig-ink-soft)">The guard makes the outcome independent of delivery order, which is why it replaces ordering rather than merely supplementing it.</text>
+</svg>
+<figcaption><b>Figure 1.</b> A stronger broker narrows the window in which reordering happens; it never closes it, because a rebalance or a retry can always deliver late. The version guard makes the final state the same whatever the order — so it is the guarantee, and the broker's ordering is an optimisation.</figcaption>
+</figure>
+
 This topic sits within [Queue Management, Retries & Delivery Guarantees](https://www.geospatialwebhook.com/queue-management-retry-delivery/), the section covering how spatial events move reliably from producer to consumer once you accept that networks drop, reorder, and duplicate messages.
 
 ---
@@ -141,7 +170,7 @@ The design separates three concerns that are often conflated: the *delivery guar
   <text x="648" y="235" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">stale create dropped</text>
   <text x="380" y="290" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.55">Result: stored geometry stays at v2 despite the create arriving last — no phantom resurrection.</text>
 </svg>
-<figcaption><b>Figure 1.</b> Per-key ordering with a version guard reconciling an out-of-order arrival</figcaption>
+<figcaption><b>Figure 2.</b> Per-key ordering with a version guard reconciling an out-of-order arrival</figcaption>
 </figure>
 
 **Layer breakdown:**
@@ -306,6 +335,43 @@ Keep the window tight — 100-500 ms is typical. The buffer is an optimization t
 ---
 
 ## Spatial Validation and Error Handling
+
+<figure class="fig">
+<svg viewBox="0 0 760 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Why a delete must leave a versioned tombstone rather than removing the row outright">
+<title>Delete the geometry, keep the version</title>
+<desc>Two ways of handling a delete for parcel 4471 at version three, followed by a late-arriving create at version one. If the delete removes the row outright, the version is removed with it, so when the stale create arrives the consumer finds no row, has nothing to compare against, and inserts the parcel afresh — the guard cannot fire because the state it depends on was thrown away. If the delete instead writes a tombstone that clears the geometry but keeps id 4471 at version three with a deleted flag, the late create at version one compares against version three, loses, and is discarded. The tombstone is retained for at least the maximum replay window, typically the dead-letter retention period, after which it can be reaped.</desc>
+<rect x="0" y="0" width="760" height="232" fill="var(--fig-bg)"/>
+<defs>
+<marker id="tb-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker>
+</defs>
+<rect x="14" y="26" width="360" height="120" rx="7" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="26" y="46" font-size="10" font-weight="600" fill="var(--fig-ink)">DELETE FROM parcels WHERE id = 4471</text>
+<rect x="26" y="56" width="150" height="34" rx="4" fill="var(--fig-bg)" stroke="var(--fig-line-soft)" stroke-width="1.1" stroke-dasharray="4,3"/>
+<text x="101" y="77" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">no row · no version</text>
+<line x1="180" y1="73" x2="212" y2="73" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#tb-a)"/>
+<rect x="216" y="56" width="146" height="34" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="289" y="71" text-anchor="middle" font-size="9" fill="var(--fig-ink)">late create v1 arrives</text>
+<text x="289" y="83" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">nothing to compare</text>
+<text x="26" y="112" font-size="9.5" font-weight="600" fill="var(--fig-rose-edge)">parcel reinserted — the guard never runs</text>
+<text x="26" y="130" font-size="9" fill="var(--fig-ink-soft)">The delete threw away the very state the version check depends on.</text>
+<rect x="386" y="26" width="360" height="120" rx="7" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="398" y="46" font-size="10" font-weight="600" fill="var(--fig-ink)">UPDATE … SET geom = NULL, deleted = true</text>
+<rect x="398" y="56" width="150" height="34" rx="4" fill="var(--fig-bg)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="473" y="71" text-anchor="middle" font-size="9" fill="var(--fig-ink)">4471 · v3 · deleted</text>
+<text x="473" y="83" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">geometry gone, version kept</text>
+<line x1="552" y1="73" x2="584" y2="73" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#tb-a)"/>
+<rect x="588" y="56" width="146" height="34" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="661" y="71" text-anchor="middle" font-size="9" fill="var(--fig-ink)">late create v1 arrives</text>
+<text x="661" y="83" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">v1 &lt; v3 — discarded</text>
+<text x="398" y="112" font-size="9.5" font-weight="600" fill="var(--fig-mint-edge)">stays deleted — correctly</text>
+<text x="398" y="130" font-size="9" fill="var(--fig-ink-soft)">The tombstone is the only record that the delete ever happened.</text>
+<rect x="14" y="160" width="732" height="62" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="178" font-size="10" font-weight="600" fill="var(--fig-ink)">How long to keep a tombstone</text>
+<text x="26" y="196" font-size="9.5" fill="var(--fig-ink-soft)">At least the longest window an event can still arrive from — in practice the dead-letter retention period, since a replay is the</text>
+<text x="26" y="209" font-size="9.5" fill="var(--fig-ink-soft)">slowest legitimate source of a stale event. Reap earlier and a replayed create beats a tombstone that no longer exists.</text>
+</svg>
+<figcaption><b>Figure 3.</b> A hard delete discards the version the guard compares against, so the guard silently stops working exactly for deletes — the case where resurrection is most damaging. Tombstone retention has to outlast your longest replay path.</figcaption>
+</figure>
 
 Ordering metadata can be valid while the geometry is not. Validate topology and CRS *after* the version guard admits an event but *before* it becomes stored state, so you never persist an invalid shape or waste validation cycles on events you will reject.
 

@@ -577,6 +577,46 @@ logger <span class="token operator">=</span> logging<span class="token punctuati
 <p>Because the idempotency key is assigned at ingestion and carried through unchanged, the dead-letter record inherits the exactly-once guarantee described in <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a> — replay does not have to reinvent it.</p>
 <hr>
 <h2 id="spatial-validation-and-error-handling" tabindex="-1"><a class="heading-anchor" href="#spatial-validation-and-error-handling">Spatial Validation and Error Handling</a></h2>
+<figure class="fig">
+<svg viewBox="0 0 760 218" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Routing transient failures and deterministic failures to different dead-letter destinations">
+<title>Two failure classes, two destinations</title>
+<desc>A failure classifier splits dead-lettered events by whether a retry could ever succeed. A broker timeout, a connection reset or a 503 is transient: it is retried on the backoff ladder and only reaches the retry dead-letter store once the budget is spent, where an automated replay job re-injects it when the downstream recovers, and the alert threshold is a rate. A self-intersecting polygon, a missing CRS or a schema violation is deterministic: it will fail identically on every attempt, so retrying it only burns budget and delays discovery. It goes straight to a poison store that never auto-replays and alerts on the first record, because the fix is upstream. Sending both to one queue means either replaying poison forever or never auto-replaying anything.</desc>
+<rect x="0" y="0" width="760" height="218" fill="var(--fig-bg)"/>
+<defs><marker id="rt-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<polygon points="90,64 172,100 90,136 8,100" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.5"/>
+<text x="90" y="96" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">could a retry</text>
+<text x="90" y="110" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">ever succeed?</text>
+<line x1="174" y1="86" x2="212" y2="60" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#rt-a)"/>
+<text x="180" y="52" font-size="8.5" fill="var(--fig-mint-edge)" font-weight="600">yes</text>
+<line x1="174" y1="114" x2="212" y2="142" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#rt-a)"/>
+<text x="180" y="156" font-size="8.5" fill="var(--fig-rose-edge)" font-weight="600">no</text>
+<rect x="216" y="26" width="238" height="62" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="228" y="44" font-size="9.5" font-weight="600" fill="var(--fig-ink)">transient — broker timeout, 503, reset</text>
+<text x="228" y="59" font-size="8.5" fill="var(--fig-ink-soft)">backoff ladder first; dead-lettered only</text>
+<text x="228" y="71" font-size="8.5" fill="var(--fig-ink-soft)">once the retry budget is spent</text>
+<text x="228" y="83" font-size="8.5" fill="var(--fig-mint-edge)">alert on rate, not on the first record</text>
+<line x1="456" y1="57" x2="490" y2="57" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#rt-a)"/>
+<rect x="494" y="26" width="252" height="62" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="506" y="44" font-size="9.5" font-weight="600" fill="var(--fig-ink)">retry store — auto-replay</text>
+<text x="506" y="59" font-size="8.5" fill="var(--fig-ink-soft)">a job re-injects when the downstream recovers,</text>
+<text x="506" y="71" font-size="8.5" fill="var(--fig-ink-soft)">reusing the original idempotency key verbatim</text>
+<text x="506" y="83" font-size="8.5" fill="var(--fig-ink-soft)">so a re-injection that already ran short-circuits</text>
+<rect x="216" y="112" width="238" height="62" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="228" y="130" font-size="9.5" font-weight="600" fill="var(--fig-ink)">deterministic — bad geometry, no CRS</text>
+<text x="228" y="145" font-size="8.5" fill="var(--fig-ink-soft)">fails identically on attempt 1 and attempt 50;</text>
+<text x="228" y="157" font-size="8.5" fill="var(--fig-ink-soft)">retrying burns budget and delays discovery</text>
+<text x="228" y="169" font-size="8.5" fill="var(--fig-rose-edge)">alert on the first record — the fix is upstream</text>
+<line x1="456" y1="143" x2="490" y2="143" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#rt-a)"/>
+<rect x="494" y="112" width="252" height="62" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="506" y="130" font-size="9.5" font-weight="600" fill="var(--fig-ink)">poison store — never auto-replays</text>
+<text x="506" y="145" font-size="8.5" fill="var(--fig-ink-soft)">re-injection only after the producer is fixed,</text>
+<text x="506" y="157" font-size="8.5" fill="var(--fig-ink-soft)">or after the payload is corrected by hand</text>
+<text x="506" y="169" font-size="8.5" fill="var(--fig-ink-soft)">holds the shapely error that names the vertex</text>
+<rect x="8" y="188" width="738" height="26" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="20" y="205" font-size="9.5" fill="var(--fig-ink)">One shared queue forces a single policy on both: either it auto-replays poison forever, or it never auto-replays the outage that would have healed itself.</text>
+</svg>
+<figcaption><b>Figure 2.</b> The split is by whether a retry could ever succeed, not by severity. That single question decides retention, alert threshold and whether automatic replay is safe — which is why the two classes cannot share a destination.</figcaption>
+</figure>
 <p>The envelope is only as trustworthy as the error detail it records. Two failure modes deserve explicit handling: a geometry that is <em>structurally</em> valid JSON but topologically broken, and a payload whose declared CRS does not match what the consumer expected.</p>
 <div class="code-block" data-lang="python">
   <div class="code-block__header">
@@ -667,6 +707,39 @@ logger <span class="token operator">=</span> logging<span class="token punctuati
 <p><strong>How the guarantee holds:</strong> the consumer performs its atomic idempotency claim <em>before</em> any spatial side effect, so a replayed event whose work already completed short-circuits. Because the dead-letter envelope carries the original <code>idempotency_key</code>, replay is effectively-once end-to-end. The backoff-and-jitter mechanics that feed this path are detailed in <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a>, and the safe-replay procedure itself is covered in <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/replaying-dead-letter-spatial-events-safely/">Replaying Dead-Letter Spatial Events Safely</a>.</p>
 <hr>
 <h2 id="storage-backends" tabindex="-1"><a class="heading-anchor" href="#storage-backends">Storage Backends</a></h2>
+<figure class="fig">
+<svg viewBox="0 0 760 226" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Dead-letter record split between an inline envelope and an object-store pointer for oversized geometry">
+<title>Why the dead-letter record splits from the geometry</title>
+<desc>A failed event carrying a 14-megabyte multipolygon cannot be stored inline: a dead-letter table row that large makes triage queries scan gigabytes and pushes the row past most brokers' message limits, so the dead-letter write itself starts failing — the one path that must never fail. Instead the envelope keeps only what triage needs, about 900 bytes: the failed stage, the exact shapely error, the CRS with its EPSG code, the idempotency key, the bounding box and a content hash. The geometry goes to object storage under that hash, and the envelope holds the pointer. An operator scanning failures reads bounding boxes and error strings without ever touching a payload, and replay dereferences the pointer only for the records it actually re-injects. The content hash also makes the offload idempotent, so re-dead-lettering the same event does not duplicate the blob.</desc>
+<rect x="0" y="0" width="760" height="226" fill="var(--fig-bg)"/>
+<defs><marker id="dq-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<rect x="14" y="34" width="150" height="52" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="89" y="54" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">failed event</text>
+<text x="89" y="68" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">14 MB multipolygon</text>
+<text x="89" y="80" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">topology repair failed</text>
+<line x1="166" y1="60" x2="200" y2="60" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#dq-a)"/>
+<rect x="204" y="26" width="270" height="68" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="216" y="44" font-size="9.5" font-weight="600" fill="var(--fig-ink)">envelope — 900 bytes, queryable</text>
+<text x="216" y="59" font-size="8.5" fill="var(--fig-ink-soft)">stage · shapely error · EPSG:27700 · idem key</text>
+<text x="216" y="71" font-size="8.5" fill="var(--fig-ink-soft)">bbox · sha256 · attempt count · first_seen</text>
+<text x="216" y="86" font-size="8.5" fill="var(--fig-mint-edge)">triage never deserialises a geometry</text>
+<line x1="476" y1="60" x2="510" y2="60" stroke="var(--fig-line)" stroke-width="1.3" stroke-dasharray="4,3" marker-end="url(#dq-a)"/>
+<rect x="514" y="26" width="232" height="68" rx="6" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.4"/>
+<text x="526" y="44" font-size="9.5" font-weight="600" fill="var(--fig-ink)">object store — s3://dlq/&lt;sha256&gt;</text>
+<text x="526" y="59" font-size="8.5" fill="var(--fig-ink-soft)">the 14 MB body, written once</text>
+<text x="526" y="71" font-size="8.5" fill="var(--fig-ink-soft)">keyed by content hash ⇒ offload is idempotent</text>
+<text x="526" y="86" font-size="8.5" fill="var(--fig-ink-soft)">dereferenced only on replay</text>
+<rect x="14" y="112" width="732" height="46" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="26" y="130" font-size="10" font-weight="600" fill="var(--fig-ink)">Storing it inline breaks the one path that must not fail</text>
+<text x="26" y="143" font-size="9" fill="var(--fig-ink-soft)">A 14 MB row exceeds most brokers' message limit, so the dead-letter write is itself rejected and the event is lost outright.</text>
+<text x="26" y="154" font-size="9" fill="var(--fig-ink-soft)">A triage query over one day of such rows also scans gigabytes to answer "what failed near this bbox?".</text>
+<rect x="14" y="170" width="732" height="46" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="188" font-size="10" font-weight="600" fill="var(--fig-ink)">Retention has to be set on both halves</text>
+<text x="26" y="201" font-size="9" fill="var(--fig-ink-soft)">Expire the blob before the envelope and replay finds a dangling pointer; expire the envelope first and the blob leaks forever.</text>
+<text x="26" y="212" font-size="9" fill="var(--fig-ink-soft)">Tie both lifecycles to the same retention policy.</text>
+</svg>
+<figcaption><b>Figure 3.</b> Splitting the record is what keeps the dead-letter write cheap enough never to fail and the triage query cheap enough to run. Note that retention must be configured on both halves or replay breaks in one direction and storage leaks in the other.</figcaption>
+</figure>
 <p>The dead-letter store choice trades queryability against operational simplicity.</p>
 <div style="overflow-x:auto;">
 <div class="table-wrap"><table>

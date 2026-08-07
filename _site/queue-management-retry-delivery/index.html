@@ -266,6 +266,40 @@
 <h2 id="why-synchronous-delivery-breaks-on-spatial-workloads" tabindex="-1"><a class="heading-anchor" href="#why-synchronous-delivery-breaks-on-spatial-workloads">Why Synchronous Delivery Breaks on Spatial Workloads</a></h2>
 <p>Non-spatial webhook queues are hard enough. Spatial workloads add three multipliers that make naive synchronous or best-effort delivery untenable.</p>
 <p><strong>Payloads are heavy and variable.</strong> A point-location ping is a few hundred bytes; a multipolygon land-cover change with tens of thousands of vertices is several megabytes. Processing time is dominated not by I/O but by CPU — coordinate transformation, topology repair, and validity checks. When a single message can take 40 ms of <code>shapely</code> work and another takes 2 ms, a synchronous handler blocks the event loop unpredictably, and tail latency balloons. The queue exists precisely to move that variable-cost work off the request path so acceptance stays fast and bounded.</p>
+<figure class="fig">
+<svg viewBox="0 0 760 246" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Acceptance latency percentiles with synchronous geometry processing on the request path versus enqueue-and-acknowledge">
+<title>What variable geometry cost does to acceptance latency</title>
+<desc>Acceptance latency percentiles for the same mixed workload, in which most payloads are point pings costing about two milliseconds of shapely work while a small fraction are multipolygons costing forty milliseconds or more. Processing synchronously on the request path gives a median of six milliseconds but a 95th percentile of forty-eight and a 99th of four hundred and ten, because one heavy geometry blocks the event loop and every request queued behind it inherits the wait. Enqueueing and acknowledging immediately gives a median of two milliseconds, a 95th of four and a 99th of nine, because acceptance no longer depends on payload complexity. The heavy work still costs the same; it has simply moved off the path whose latency the caller measures, and where a timeout would cause a retry.</desc>
+<rect x="0" y="0" width="760" height="246" fill="var(--fig-bg)"/>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-ink)">Acceptance latency, same workload — log scale</text>
+<line x1="110" y1="36" x2="110" y2="176" stroke="var(--fig-line)" stroke-width="1.2"/>
+<text x="70" y="60" font-size="9.5" fill="var(--fig-ink-soft)">p50</text>
+<text x="70" y="104" font-size="9.5" fill="var(--fig-ink-soft)">p95</text>
+<text x="70" y="148" font-size="9.5" fill="var(--fig-ink-soft)">p99</text>
+<rect x="110" y="46" width="126" height="18" rx="3" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.1"/>
+<text x="244" y="59" font-size="9" fill="var(--fig-ink-soft)">6 ms</text>
+<rect x="110" y="90" width="290" height="18" rx="3" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.1"/>
+<text x="408" y="103" font-size="9" fill="var(--fig-ink-soft)">48 ms</text>
+<rect x="110" y="134" width="500" height="18" rx="3" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="618" y="143" font-size="9" font-weight="600" fill="var(--fig-rose-edge)">410 ms — past the</text>
+<text x="618" y="154" font-size="9" font-weight="600" fill="var(--fig-rose-edge)">sender's timeout</text>
+<rect x="110" y="66" width="44" height="18" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.1"/>
+<text x="162" y="79" font-size="9" fill="var(--fig-ink-soft)">2 ms</text>
+<rect x="110" y="110" width="80" height="18" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.1"/>
+<text x="198" y="123" font-size="9" fill="var(--fig-ink-soft)">4 ms</text>
+<rect x="110" y="154" width="112" height="18" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.1"/>
+<text x="230" y="167" font-size="9" fill="var(--fig-ink-soft)">9 ms</text>
+<rect x="632" y="42" width="114" height="26" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="642" y="59" font-size="9" fill="var(--fig-ink)">synchronous</text>
+<rect x="632" y="72" width="114" height="26" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="642" y="89" font-size="9" fill="var(--fig-ink)">enqueue + ack</text>
+<rect x="14" y="190" width="732" height="48" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="208" font-size="10" font-weight="600" fill="var(--fig-ink)">The CPU work does not get cheaper — it moves off the path the caller measures</text>
+<text x="26" y="223" font-size="9" fill="var(--fig-ink-soft)">A 40 ms multipolygon still costs 40 ms. Synchronously, every request queued behind it inherits that wait, which is why p99 degrades far</text>
+<text x="26" y="235" font-size="9" fill="var(--fig-ink-soft)">out of proportion to the share of heavy payloads. A p99 past the sender's timeout turns one slow geometry into a retry storm.</text>
+</svg>
+<figcaption><b>Figure 1.</b> Tail latency, not mean, is what breaks a synchronous spatial handler: heavy geometries are rare enough to look harmless in an average and frequent enough to dominate p99 — where the sender's timeout sits.</figcaption>
+</figure>
 <p><strong>Volume is bursty and geographically correlated.</strong> Sensor fleets, tile-update pipelines, and vehicle trackers do not emit a smooth stream. A weather front, a shift change, or a batch reprocessing job produces a spike concentrated in a region — which means the load is not just high, it is skewed toward a subset of partitions. A queue that spreads work evenly across workers is the only thing that keeps one hot region from starving the rest.</p>
 <p><strong>Failure is expensive and easy to get wrong.</strong> When delivery fails, the two naive responses are both wrong. Dropping the event silently corrupts the map state — a feature change is simply lost. Retrying immediately and forever hammers a struggling downstream and, without an idempotent consumer, multiplies a transient blip into duplicated geometry. The correct behavior sits in between: bounded, decorrelated retries for transient faults, and a durable side-channel for payloads that are structurally broken. Getting this wrong shows up as either data loss or a retry storm, and both are hard to diagnose after the fact.</p>
 <p>The answer is an explicit delivery layer: producers publish to a durable broker, consumers pull work at their own pace, retries are bounded and randomized, and poison messages are quarantined with enough spatial context to be repaired and replayed.</p>
@@ -325,7 +359,7 @@
   <!-- Caption -->
   <text x="380" y="328" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="currentColor" opacity="0.4">Figure 1 — One spatial event's paths: success to state, transient failure to retry, exhaustion to the dead-letter queue.</text>
 </svg>
-<figcaption><b>Figure 1.</b> Durable Spatial Delivery Layer</figcaption>
+<figcaption><b>Figure 2.</b> Durable Spatial Delivery Layer</figcaption>
 </figure>
 <p>Each element is independently observable and independently scalable. The producer is stateless and fast because it only publishes. The broker owns durability and ordering per partition. The consumer pool scales horizontally to drain the queue. The retry loop and DLQ isolate failure so that one poison payload never blocks the shard behind it. The sections below build each element in Python.</p>
 <hr>
@@ -558,6 +592,56 @@ GROUP <span class="token operator">=</span> <span class="token string">"geometry
 <h3 id="failure-modes-and-delivery-guarantees" tabindex="-1"><a class="heading-anchor" href="#failure-modes-and-delivery-guarantees">Failure Modes and Delivery Guarantees</a></h3>
 <p><strong>Choosing a guarantee.</strong> The honest target for a spatial webhook stack is at-least-once delivery from the broker paired with an idempotent consumer, which together approximate exactly-once <em>effect</em> without paying for distributed exactly-once <em>transport</em>. True end-to-end exactly-once requires transactional coupling between the broker and the datastore that few stacks can justify. At-least-once plus a deterministic idempotency key is cheaper, more robust, and degrades gracefully.</p>
 <p><strong>Poison-message loops.</strong> Without a retry cap and a DLQ, a single un-processable geometry is redelivered forever, permanently occupying a consumer slot and blocking the ordered messages behind it on its partition. A bounded retry budget plus dead-lettering is what breaks the loop.</p>
+<figure class="fig">
+<svg viewBox="0 0 760 254" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A poison message blocking an ordered partition, and how a retry cap plus dead-letter queue restores flow">
+<title>One un-processable geometry stalls everything behind it</title>
+<desc>An ordered partition holds five events. The event at the head is a self-intersecting polygon that fails topology repair on every attempt. Without a retry cap it is redelivered indefinitely, and because the broker guarantees order within a partition the four events behind it — all perfectly valid — are never delivered, so one malformed geometry silently freezes an entire region's updates while the consumer looks busy rather than stuck. With a bounded retry budget the same event is attempted five times, then written to the dead-letter queue with its stage, error and CRS, the offset advances, and the four queued events flow immediately. The failure becomes one dead-lettered record and a metric rather than a stalled partition.</desc>
+<rect x="0" y="0" width="760" height="254" fill="var(--fig-bg)"/>
+<defs>
+<marker id="pz-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker>
+</defs>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-rose-edge)">No retry cap — the partition stops</text>
+<rect x="14" y="30" width="92" height="40" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="60" y="48" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">offset 4471</text>
+<text x="60" y="61" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">bow-tie polygon</text>
+<rect x="110" y="30" width="72" height="40" rx="5" fill="var(--fig-earth)" stroke="var(--fig-line-soft)" stroke-width="1.1"/>
+<text x="146" y="54" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">4472</text>
+<rect x="186" y="30" width="72" height="40" rx="5" fill="var(--fig-earth)" stroke="var(--fig-line-soft)" stroke-width="1.1"/>
+<text x="222" y="54" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">4473</text>
+<rect x="262" y="30" width="72" height="40" rx="5" fill="var(--fig-earth)" stroke="var(--fig-line-soft)" stroke-width="1.1"/>
+<text x="298" y="54" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">4474</text>
+<rect x="338" y="30" width="72" height="40" rx="5" fill="var(--fig-earth)" stroke="var(--fig-line-soft)" stroke-width="1.1"/>
+<text x="374" y="54" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">4475</text>
+<path d="M60 70 q -34 26 0 26 q 34 0 0 -26" fill="none" stroke="var(--fig-rose-edge)" stroke-width="1.5" marker-end="url(#pz-a)"/>
+<text x="96" y="92" font-size="9" fill="var(--fig-rose-edge)" font-weight="600">redelivered forever</text>
+<text x="426" y="54" font-size="9" fill="var(--fig-rose-edge)" font-weight="600">4 valid events, never delivered</text>
+<text x="426" y="68" font-size="8.5" fill="var(--fig-ink-soft)">the consumer looks busy, not stuck — no alert fires</text>
+<line x1="14" y1="118" x2="746" y2="118" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="140" font-size="10.5" font-weight="600" fill="var(--fig-mint-edge)">Bounded budget + DLQ — the partition drains</text>
+<rect x="14" y="150" width="92" height="40" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.4"/>
+<text x="60" y="168" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">offset 4471</text>
+<text x="60" y="181" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">5 attempts, then out</text>
+<line x1="108" y1="170" x2="140" y2="170" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#pz-a)"/>
+<rect x="144" y="150" width="130" height="40" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="209" y="167" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">dead-letter queue</text>
+<text x="209" y="180" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">stage · error · CRS · key</text>
+<line x1="278" y1="170" x2="310" y2="170" stroke="var(--fig-line)" stroke-width="1.3" stroke-dasharray="4,3" marker-end="url(#pz-a)"/>
+<text x="316" y="166" font-size="8.5" fill="var(--fig-ink-soft)">offset advances</text>
+<text x="316" y="178" font-size="8.5" fill="var(--fig-ink-soft)">triage happens off the hot path</text>
+<rect x="470" y="150" width="66" height="40" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="503" y="174" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">4472 ✓</text>
+<rect x="540" y="150" width="66" height="40" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="573" y="174" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">4473 ✓</text>
+<rect x="610" y="150" width="66" height="40" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="643" y="174" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">4474 ✓</text>
+<rect x="680" y="150" width="66" height="40" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="713" y="174" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">4475 ✓</text>
+<rect x="14" y="208" width="732" height="38" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="26" y="225" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Per-partition ordering is exactly what makes a poison message dangerous.</text>
+<text x="26" y="239" font-size="9" fill="var(--fig-ink-soft)">The guarantee you wanted for correctness is what propagates one bad geometry into a region-wide stall. The cap is not optional.</text>
+</svg>
+<figcaption><b>Figure 3.</b> The ordering guarantee and the poison-message failure are the same mechanism seen twice. A retry cap converts an indefinite stall into one dead-lettered record and a metric you can alert on.</figcaption>
+</figure>
 <p><strong>Consumer crash mid-batch.</strong> Because acknowledgment follows processing, a crash leaves entries in the pending list, and a reclaim mechanism (Redis <code>XAUTOCLAIM</code>, or a Kafka rebalance) reassigns them. This is the mechanism that delivers at-least-once — and the reason the consumer must tolerate seeing the same event twice.</p>
 <p><strong>Backpressure and lag.</strong> When producers outrun consumers, lag grows on the hottest partitions first. The mitigation is horizontal consumer scaling bounded by the partition count — you cannot have more parallel consumers than partitions in a group — which is why partition count is a capacity decision made up front, not a knob turned later.</p>
 <h3 id="geo-specific-delivery-metrics" tabindex="-1"><a class="heading-anchor" href="#geo-specific-delivery-metrics">Geo-Specific Delivery Metrics</a></h3>
