@@ -85,15 +85,16 @@ This topic is part of [Core Event Fundamentals & Architecture](https://www.geosp
 
 The pipeline has four sequential layers. Each layer has a single responsibility and a defined failure exit so that a bad payload cannot travel further than one stage.
 
+<figure class="fig">
 <svg
-  viewBox="0 0 760 220"
+  viewBox="0 52 760 168"
   xmlns="http://www.w3.org/2000/svg"
   role="img"
   aria-label="Four-stage tile update event pipeline diagram"
-  style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;"
 >
   <title>Four-stage tile update event pipeline</title>
   <desc>A left-to-right flow diagram showing: Webhook Source → Stage 1 Ingestion and Verification → Stage 2 Validation and Enrichment → Stage 3 Partition Router → Stage 4 Tile Worker and Broadcast. A Dead-Letter Queue branches off Stage 2.</desc>
+  <rect x="0" y="52" width="760" height="168" fill="var(--fig-bg)"/>
   <!-- Source box -->
   <rect x="4" y="80" width="100" height="60" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
   <text x="54" y="106" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif">Webhook</text>
@@ -142,6 +143,8 @@ The pipeline has four sequential layers. Each layer has a single responsibility 
     </marker>
   </defs>
 </svg>
+<figcaption><b>Figure 1.</b> Four-stage tile update event pipeline</figcaption>
+</figure>
 
 **Stage 1 — Ingestion & Verification:** The edge endpoint authenticates the request with HMAC-SHA256, applies TLS termination, and writes accepted payloads to a raw ingestion topic with a monotonic timestamp and an upstream-derived idempotency key. Rejected requests return `401 Unauthorized` immediately.
 
@@ -219,15 +222,16 @@ Tile events must be partitioned so that all mutations to the same tile region la
 
 The routing guarantee is two-sided: events sharing a `zoom:quadkey` are pinned to one partition and processed strictly in arrival order, while events for disjoint regions fan out across partitions and run fully in parallel.
 
+<figure class="fig">
 <svg
-  viewBox="0 0 720 300"
+  viewBox="0 0 720 267"
   xmlns="http://www.w3.org/2000/svg"
   role="img"
   aria-label="Diagram showing quadkey-based partition routing: same-region events stay ordered on one partition while disjoint regions run in parallel"
-  style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;"
 >
   <title>Quadkey partition routing preserves per-region order and cross-region parallelism</title>
   <desc>Incoming tile events are hashed by their zoom:quadkey key. Three events for quadkey 0231 are routed to the same partition and processed in order; an event for quadkey 1200 is routed to a different partition that runs concurrently.</desc>
+  <rect x="0" y="0" width="720" height="267" fill="var(--fig-bg)"/>
   <!-- Incoming events column -->
   <text x="80" y="24" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" font-family="system-ui,sans-serif">Incoming events</text>
   <rect x="14" y="40" width="132" height="30" rx="5" fill="none" stroke="currentColor" stroke-width="1.4"/>
@@ -273,6 +277,8 @@ The routing guarantee is two-sided: events sharing a `zoom:quadkey` are pinned t
     </marker>
   </defs>
 </svg>
+<figcaption><b>Figure 2.</b> Quadkey partition routing preserves per-region order and cross-region parallelism</figcaption>
+</figure>
 
 ```python
 def quadkey(zoom: int, x: int, y: int) -> str:

@@ -17,8 +17,21 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
   <link rel="manifest" href="/manifest.json"/>
 
-  <meta name="theme-color" content="#d56360"/>
-  <meta name="color-scheme" content="light"/>
+  <meta name="theme-color" content="#d56360" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
 
   
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -50,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=180687f5"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -143,6 +156,18 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
       </a>
     </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle"
+            aria-label="Switch to dark theme" title="Switch to dark theme">
+      <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.4v2.3M12 19.3v2.3M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.3M19.3 12h2.3M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+      </svg>
+    </button>
   </div>
 </header>
 
@@ -248,9 +273,11 @@
 <hr>
 <h2 id="architecture-blueprint" tabindex="-1"><a class="heading-anchor" href="#architecture-blueprint">Architecture Blueprint</a></h2>
 <p>The retry path is a small state machine wrapped around a single HTTP POST. Every failure is classified before a delay is ever computed, every retry re-claims an idempotency key, and exhaustion has exactly one destination.</p>
-<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Retry state machine for spatial webhook delivery with jittered backoff and dead-letter exit" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 8 719 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Retry state machine for spatial webhook delivery with jittered backoff and dead-letter exit">
   <title>Jittered retry state machine for spatial webhook delivery</title>
   <desc>Flow from an outbound GeoJSON POST through failure classification: terminal 4xx and invalid geometry exit immediately to the dead-letter queue, retryable 5xx and timeout compute a decorrelated-jitter delay under a retry budget and loop back to the POST, and success acknowledges.</desc>
+  <rect x="0" y="8" width="719" height="290" fill="var(--fig-bg)"/>
   <defs>
     <marker id="bo-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
       <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.6"/>
@@ -299,6 +326,8 @@
   <line x1="72" y1="40" x2="72" y2="118" stroke="currentColor" stroke-width="1.5" marker-end="url(#bo-arr)" opacity="0.5"/>
   <text x="360" y="32" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.6">retry attempt n+1</text>
 </svg>
+<figcaption><b>Figure 1.</b> Jittered retry state machine for spatial webhook delivery</figcaption>
+</figure>
 <p><strong>Layer breakdown:</strong></p>
 <ol>
 <li><strong>Dispatch</strong> — the payload is POSTed as GeoJSON under a stable idempotency key. The key is derived once and reused for every retry of the same event, so the receiver can recognise a redelivery.</li>
@@ -409,9 +438,11 @@ RETRYABLE_STATUS <span class="token operator">=</span> <span class="token punctu
 </code></pre>
 </div>
 <p>The SVG below compares the delay envelopes the three strategies produce across attempts. All grow, but the shaded spread — the range a given attempt can land in — is what disperses the herd.</p>
-<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Comparison of retry-time spread for full, equal, and decorrelated jitter across attempts" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="16 26 718 274" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Comparison of retry-time spread for full, equal, and decorrelated jitter across attempts">
   <title>Retry-time spread of the three jitter variants</title>
   <desc>Three horizontal tracks over an attempt axis. No-jitter exponential shows single points doubling each attempt. Full jitter shows wide bars from zero up to the exponential ceiling. Equal jitter shows bars covering the upper half of each ceiling. Decorrelated jitter shows a rising staircase band that widens with each attempt.</desc>
+  <rect x="16" y="26" width="718" height="274" fill="var(--fig-bg)"/>
   <!-- axis -->
   <line x1="120" y1="40" x2="120" y2="260" stroke="currentColor" stroke-width="1" opacity="0.4"/>
   <line x1="120" y1="260" x2="720" y2="260" stroke="currentColor" stroke-width="1" opacity="0.4"/>
@@ -449,6 +480,8 @@ RETRYABLE_STATUS <span class="token operator">=</span> <span class="token punctu
   <path d="M180,258 L300,250 L420,232 L540,196 L660,140" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55" stroke-dasharray="3,3"/>
   <text x="360" y="120" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7" font-weight="600">decorrelated band</text>
 </svg>
+<figcaption><b>Figure 2.</b> Retry-time spread of the three jitter variants</figcaption>
+</figure>
 <h3 id="step-3-an-async-retry-decorator-around-an-aiohttp-post" tabindex="-1"><a class="heading-anchor" href="#step-3-an-async-retry-decorator-around-an-aiohttp-post">Step 3 — An Async Retry Decorator Around an aiohttp POST</a></h3>
 <p>The decorator wraps any coroutine that performs one delivery attempt. It uses decorrelated jitter, classifies every outcome, respects a <code>Retry-After</code> header when present, and raises a dedicated exception when the ladder is exhausted so the caller can route to a dead-letter queue.</p>
 <div class="code-block" data-lang="python">
@@ -769,9 +802,9 @@ logger <span class="token operator">=</span> logging<span class="token punctuati
         <div class="aside-card">
           <h3>Related in this section</h3>
           <ul>
-            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
             <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
             <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
           </ul>
         </div>
         <div class="aside-card">
@@ -879,7 +912,7 @@ logger <span class="token operator">=</span> logging<span class="token punctuati
 </footer>
 
   </div>
-  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script src="/assets/js/site.js?v=c31b7b80" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

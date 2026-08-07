@@ -85,9 +85,11 @@ GeoJSON is text. Every coordinate is written as ASCII digits, wrapped in a `"coo
 
 The diagram shows the split most production systems converge on: a binary format on the hot path, GeoJSON everywhere a human or a generic tool touches the data, and a single canonical decode step that unifies them.
 
-<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Dual-format spatial event pipeline with a canonical GeoJSON core" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 10 760 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Dual-format spatial event pipeline with a canonical GeoJSON core">
   <title>Dual-format spatial event pipeline</title>
   <desc>A high-frequency sensor firehose sends Protobuf and a low-frequency admin webhook sends GeoJSON; both are decoded into one canonical GeoJSON form that feeds validation, idempotency hashing, and storage.</desc>
+  <rect x="0" y="10" width="760" height="256" fill="var(--fig-bg)"/>
   <defs>
     <marker id="pb-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor"/>
@@ -114,6 +116,8 @@ The diagram shows the split most production systems converge on: a binary format
   <rect x="562" y="200" width="190" height="46" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
   <text x="657" y="227" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif">Storage / PostGIS</text>
 </svg>
+<figcaption><b>Figure 1.</b> Dual-format spatial event pipeline</figcaption>
+</figure>
 
 ### Head-to-head comparison
 

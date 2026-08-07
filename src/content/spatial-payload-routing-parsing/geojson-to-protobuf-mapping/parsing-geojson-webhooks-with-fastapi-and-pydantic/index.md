@@ -85,9 +85,11 @@ If you are only logging payloads or your producer is fully trusted and inside yo
 
 The diagram below shows the fail-fast order. Cheap checks run first (signature over raw bytes, then structural parse); the spatial bound and ring checks run inside the model only once the JSON is well-formed. Any failure short-circuits to a typed HTTP error before the payload reaches your processor.
 
-<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="GeoJSON webhook validation flow diagram" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 14 664 275" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="GeoJSON webhook validation flow diagram">
   <title>GeoJSON webhook validation flow</title>
   <desc>A flowchart showing four sequential gates: read raw body and verify HMAC, parse JSON into Pydantic models, validate coordinate bounds and ring closure, then accept and route downstream. Signature failures return 401, structural failures return 422, and accepted payloads return 202 to an async processor.</desc>
+  <rect x="0" y="14" width="664" height="275" fill="var(--fig-bg)"/>
   <defs>
     <marker id="gj-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor"/>
@@ -135,6 +137,8 @@ The diagram below shows the fail-fast order. Cheap checks run first (signature o
   <line x1="450" y1="200" x2="450" y2="225" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#gj-arr-dash)" opacity="0.7"/>
   <text x="569" y="150" font-size="9" fill="currentColor" font-family="sans-serif" opacity="0.8">out of bounds</text>
 </svg>
+<figcaption><b>Figure 1.</b> GeoJSON webhook validation flow</figcaption>
+</figure>
 
 ## Complete runnable code block
 

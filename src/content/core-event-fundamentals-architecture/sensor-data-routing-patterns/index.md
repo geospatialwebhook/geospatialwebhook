@@ -91,9 +91,11 @@ Before deploying a spatial routing pipeline, confirm your environment meets thes
 
 The routing pipeline is a five-stage, stage-isolated sequence. Each stage enforces strict contracts so individual phases can be scaled or replaced independently.
 
-<svg viewBox="0 0 780 310" role="img" aria-label="Five-stage sensor data routing pipeline diagram" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:780px;height:auto;font-family:inherit;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 6 780 294" role="img" aria-label="Five-stage sensor data routing pipeline diagram" xmlns="http://www.w3.org/2000/svg">
   <title>Sensor Data Routing Pipeline</title>
   <desc>Data flows left-to-right through five stages: Ingestion &amp; Validation, Spatial Classification, Route Resolution, Broker Dispatch, and Consumer Sync. Invalid events are sent to a Dead-Letter Queue below Stage 1. Suppression and deduplication occur at Stage 3.</desc>
+  <rect x="0" y="6" width="780" height="294" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
       <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.55"/>
@@ -151,6 +153,8 @@ The routing pipeline is a five-stage, stage-isolated sequence. Each stage enforc
   <!-- Footer label -->
   <text x="390" y="284" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.4">Sensor Data Routing Pipeline — geospatialwebhook.com</text>
 </svg>
+<figcaption><b>Figure 1.</b> Sensor Data Routing Pipeline</figcaption>
+</figure>
 
 ---
 
@@ -338,9 +342,11 @@ Partitioning strategy directly impacts consumer scaling and spatial locality. Ha
 
 The choice of partition key is a one-way door at production scale — it determines whether consumers can be scaled by sensor or by geography, and the two strategies move events to different partitions for the same input stream:
 
-<svg viewBox="0 0 760 320" role="img" aria-label="Comparison of device-ID hash partitioning versus H3 spatial partitioning" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:760px;height:auto;font-family:inherit;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="46 0 668 320" role="img" aria-label="Comparison of device-ID hash partitioning versus H3 spatial partitioning" xmlns="http://www.w3.org/2000/svg">
   <title>Partition Key Strategy: device_id Hash vs H3 Cell</title>
   <desc>Two routing strategies for the same sensor stream. Hash partitioning on device_id sends every event from one sensor to the same partition, preserving per-sensor order. H3 cell partitioning sends events from the same geographic area to the same partition, preserving spatial locality regardless of which sensor produced them.</desc>
+  <rect x="46" y="0" width="668" height="320" fill="var(--fig-bg)"/>
   <defs>
     <marker id="parr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
       <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.55"/>
@@ -387,6 +393,8 @@ The choice of partition key is a one-way door at production scale — it determi
   <line x1="638" y1="160" x2="600" y2="244" stroke="currentColor" stroke-width="1.1" marker-end="url(#parr)" opacity="0.4"/>
   <text x="380" y="304" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.4">Partition Key Strategy — geospatialwebhook.com</text>
 </svg>
+<figcaption><b>Figure 2.</b> Partition Key Strategy: device_id Hash vs H3 Cell</figcaption>
+</figure>
 
 ```python
 import asyncio

@@ -17,8 +17,21 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
   <link rel="manifest" href="/manifest.json"/>
 
-  <meta name="theme-color" content="#d56360"/>
-  <meta name="color-scheme" content="light"/>
+  <meta name="theme-color" content="#d56360" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
 
   
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -50,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=180687f5"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -143,6 +156,18 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
       </a>
     </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle"
+            aria-label="Switch to dark theme" title="Switch to dark theme">
+      <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.4v2.3M12 19.3v2.3M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.3M19.3 12h2.3M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+      </svg>
+    </button>
   </div>
 </header>
 
@@ -242,9 +267,11 @@
 <h2 id="why-label-choice-makes-or-breaks-this-metric" tabindex="-1"><a class="heading-anchor" href="#why-label-choice-makes-or-breaks-this-metric">Why label choice makes or breaks this metric</a></h2>
 <p>Prometheus stores one independent time series for every unique combination of metric name and label values. A Counter labelled <code>result</code> (2 values) × <code>reason</code> (5 values) is at most 10 series — cheap, fast, and permanent. The moment you add a <code>feature_id</code> or a raw coordinate string as a label, cardinality becomes unbounded: every payload mints a new series, the client process leaks memory holding them, and the Prometheus server’s ingestion and query paths grind to a halt. This failure mode is the single most common way geospatial teams break their monitoring stack.</p>
 <p>The discipline, then, is to classify every validation outcome into a small, fixed enum <em>before</em> it touches a label. The diagram below shows the flow: a geometry enters, Shapely checks run, the outcome collapses to one bounded <code>reason</code>, and the Counter advances by exactly one.</p>
-<svg viewBox="0 0 760 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Geometry validation to bounded Prometheus counter label flow" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 15 668 172" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Geometry validation to bounded Prometheus counter label flow">
   <title>Geometry validation outcome to a bounded Prometheus counter label</title>
   <desc>A geometry payload enters a validate wrapper running Shapely checks. The outcome is classified into one of a fixed set of reasons — self_intersection, too_few_points, nan_coord, crs_mismatch or none — then increments a single counter labelled by result and reason. A side note warns against labelling by feature id or coordinates.</desc>
+  <rect x="0" y="15" width="668" height="172" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
       <path d="M0,0 L0,7 L8,3.5 Z" fill="currentColor" opacity="0.55"/>
@@ -281,6 +308,8 @@
   <text x="380" y="40" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7" font-weight="600">Never label by feature_id or raw coordinates — unbounded cardinality</text>
   <line x1="380" y1="48" x2="380" y2="78" stroke="currentColor" stroke-opacity="0.3" stroke-width="1.2" stroke-dasharray="3,3"/>
 </svg>
+<figcaption><b>Figure 1.</b> Geometry validation outcome to a bounded Prometheus counter label</figcaption>
+</figure>
 <hr>
 <h2 id="complete-runnable-implementation" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-implementation">Complete runnable implementation</a></h2>
 <p>The module below is self-contained. It declares two Counters — one for validation outcomes and one for reprojections labelled by source EPSG — wraps Shapely in a <code>validate()</code> function that maps every failure to a fixed reason, and exposes <code>/metrics</code> through the <code>prometheus_client</code> ASGI app so a FastAPI or Starlette handler can mount it. Install with <code>pip install prometheus-client shapely</code>.</p>
@@ -710,7 +739,7 @@ metrics_app <span class="token operator">=</span> make_asgi_app<span class="toke
 </footer>
 
   </div>
-  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script src="/assets/js/site.js?v=c31b7b80" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

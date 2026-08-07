@@ -17,8 +17,21 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
   <link rel="manifest" href="/manifest.json"/>
 
-  <meta name="theme-color" content="#d56360"/>
-  <meta name="color-scheme" content="light"/>
+  <meta name="theme-color" content="#d56360" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
 
   
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -50,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=180687f5"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -143,6 +156,18 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
       </a>
     </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle"
+            aria-label="Switch to dark theme" title="Switch to dark theme">
+      <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.4v2.3M12 19.3v2.3M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.3M19.3 12h2.3M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+      </svg>
+    </button>
   </div>
 </header>
 
@@ -230,9 +255,11 @@
 <hr>
 <h2 id="architecture-four-layers-from-webhook-to-binary-topic" tabindex="-1"><a class="heading-anchor" href="#architecture-four-layers-from-webhook-to-binary-topic">Architecture: Four Layers from Webhook to Binary Topic</a></h2>
 <p>The mapping pipeline sits between your webhook receiver and your message broker. Each layer has one responsibility, and keeping them isolated is what lets you scale serialization independently of network I/O and reject bad geometry before it ever touches the broker.</p>
-<svg viewBox="0 0 720 340" role="img" aria-label="Four-layer pipeline mapping a GeoJSON webhook to a protobuf topic: receiver, normalizer, serializer, broker" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="6 9 714 324" role="img" aria-label="Four-layer pipeline mapping a GeoJSON webhook to a protobuf topic: receiver, normalizer, serializer, broker" xmlns="http://www.w3.org/2000/svg">
   <title>GeoJSON to Protobuf Mapping Pipeline</title>
   <desc>Four connected boxes showing the data path: (1) Webhook Receiver validates the GeoJSON schema with Pydantic and returns 422 on bad geometry; (2) Normalizer reprojects coordinates to EPSG:4326 using cached pyproj transformers; (3) Serializer builds the generated protobuf message and produces compact binary bytes; (4) Broker publishes to a binary topic with exponential backoff retries and a dead-letter queue for fatal errors.</desc>
+  <rect x="6" y="9" width="714" height="324" fill="var(--fig-bg)"/>
   <defs>
     <marker id="ptp-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
@@ -273,6 +300,8 @@
   <text x="572" y="300" font-size="11" fill="currentColor" opacity="0.6" text-anchor="start">Compact protobuf bytes →</text>
   <text x="572" y="316" font-size="11" fill="currentColor" opacity="0.6" text-anchor="start">downstream consumers</text>
 </svg>
+<figcaption><b>Figure 1.</b> GeoJSON to Protobuf Mapping Pipeline</figcaption>
+</figure>
 <p><strong>Layer 1 — Webhook Receiver:</strong> validates the incoming GeoJSON feature collection against a strict schema, verifies the delivery signature, and returns <code>422 Unprocessable Entity</code> for malformed geometry before any encoding work happens.</p>
 <p><strong>Layer 2 — Normalizer:</strong> reprojects every coordinate to the canonical EPSG:4326 (WGS84) coordinate space using cached <code>pyproj</code> transformers, so the binary message never mixes projections.</p>
 <p><strong>Layer 3 — Serializer:</strong> maps the validated, normalized geometry onto the generated protobuf message and produces a compact binary blob. This stage is CPU-bound and is kept off the event loop’s I/O path.</p>
@@ -839,7 +868,7 @@ SAMPLE <span class="token operator">=</span> <span class="token punctuation">{</
 </footer>
 
   </div>
-  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script src="/assets/js/site.js?v=c31b7b80" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

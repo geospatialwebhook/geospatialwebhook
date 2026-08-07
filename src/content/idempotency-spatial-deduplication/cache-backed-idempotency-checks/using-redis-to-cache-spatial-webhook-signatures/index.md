@@ -84,9 +84,11 @@ For architectures where the same event must be deduplicated across independent m
 
 The diagram below shows how a spatial webhook travels from provider delivery through signature caching to either processing or discard.
 
-<svg viewBox="0 0 680 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Spatial webhook signature caching flow: provider delivers event, receiver normalizes payload, computes HMAC, checks Redis SET NX EX, then either processes or discards the event" style="width:100%;max-width:680px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 46 564 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Spatial webhook signature caching flow: provider delivers event, receiver normalizes payload, computes HMAC, checks Redis SET NX EX, then either processes or discards the event">
   <title>Spatial webhook signature caching flow</title>
   <desc>A left-to-right flow diagram showing a webhook provider delivering to an HTTP receiver, which normalizes the GeoJSON payload, computes an HMAC-SHA256 signature, runs SET NX EX in Redis, then branches: new events go to spatial processing, duplicates are discarded with HTTP 200.</desc>
+  <rect x="0" y="46" width="564" height="160" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
       <polygon points="0 0, 8 3, 0 6" fill="currentColor" opacity="0.6"/>
@@ -121,6 +123,8 @@ The diagram below shows how a spatial webhook travels from provider delivery thr
   <text x="415" y="100" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.75">OK</text>
   <text x="415" y="148" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.75">nil</text>
 </svg>
+<figcaption><b>Figure 1.</b> Spatial webhook signature caching flow</figcaption>
+</figure>
 
 ## Complete Runnable Implementation
 

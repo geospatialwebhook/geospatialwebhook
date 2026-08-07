@@ -94,9 +94,11 @@ Before wiring up a dead-letter path, confirm your stack meets the following base
 
 A dead-letter queue is not a second inbox. It is a branch off the consumer that captures *why* an event could not be processed, in enough spatial detail that a human or an automated replay job can act on it later. The consumer attempts processing, and only when a failure is classified as terminal (or the retry budget is spent) does the event cross into the dead-letter branch with a fully populated envelope.
 
-<svg viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Consumer pipeline with a dead-letter branch capturing failed geospatial events" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 16 753 302" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Consumer pipeline with a dead-letter branch capturing failed geospatial events">
   <title>Spatial dead-letter branch off the consumer</title>
   <desc>A broker delivers events to a consumer that runs parse, CRS transform, and topology validation stages. Transient failures loop back through retry with backoff; terminal failures branch down into a dead-letter envelope which writes to a durable store and offloads oversized geometry to object storage. A replay worker reads the store and re-injects events using the preserved idempotency key.</desc>
+  <rect x="0" y="16" width="753" height="302" fill="var(--fig-bg)"/>
   <defs>
     <marker id="dlq-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
       <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.6"/>
@@ -119,7 +121,7 @@ A dead-letter queue is not a second inbox. It is a branch off the consumer that 
   <text x="482" y="49" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Processed</text>
   <text x="482" y="63" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">DB · tiles</text>
   <!-- transient retry loop -->
-  <path d="M244 102 q -70 26 -70 -10" fill="none" stroke="currentColor" stroke-width="1.2" marker-end="url(#dlq-arr)" opacity="0.4" stroke-dasharray="4,3"/>
+  <path d="M244 104 q -36 36 -70 0" fill="none" stroke="currentColor" stroke-width="1.2" marker-end="url(#dlq-arr)" opacity="0.4" stroke-dasharray="4,3"/>
   <text x="118" y="120" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.6">transient → retry + backoff</text>
   <!-- terminal branch down -->
   <line x1="244" y1="102" x2="244" y2="150" stroke="currentColor" stroke-width="1.5" marker-end="url(#dlq-arr)" opacity="0.55"/>
@@ -150,6 +152,8 @@ A dead-letter queue is not a second inbox. It is a branch off the consumer that 
   <line x1="650" y1="65" x2="124" y2="65" stroke="currentColor" stroke-width="1.2" marker-end="url(#dlq-arr)" opacity="0.4" stroke-dasharray="4,3"/>
   <text x="655" y="160" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.6">re-inject</text>
 </svg>
+<figcaption><b>Figure 1.</b> Spatial dead-letter branch off the consumer</figcaption>
+</figure>
 
 **Layer breakdown:**
 

@@ -96,9 +96,11 @@ It is not the right tool when you are chasing a single distributed request acros
 
 The six panels map one-to-one onto the pipeline stages, so a red panel points at the failing stage. Throughput and failure ratios come from `rate()` over monotonic counters; DLQ depth and consumer lag are instantaneous gauges; latency is a histogram reduced to its 95th percentile. The mock below shows the layout that keeps the causal chain readable left-to-right, top-to-bottom.
 
-<svg viewBox="0 0 760 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Grafana dashboard layout for geospatial webhook health with six panels" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="6 2 747 338" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Grafana dashboard layout for geospatial webhook health with six panels">
   <title>Geospatial webhook health dashboard layout</title>
   <desc>A six-panel grid mock. Top row: ingestion rate, geometry validation failure percent, dedup hit ratio. Bottom row: consumer lag by partition, DLQ depth, P95 stage latency. Each panel is a labelled rectangle representing a Grafana time-series or stat panel.</desc>
+  <rect x="6" y="2" width="747" height="338" fill="var(--fig-bg)"/>
   <text x="20" y="30" font-size="13" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Geospatial Webhook Health</text>
   <text x="740" y="30" text-anchor="end" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.6">last 6h · 15s scrape</text>
   <!-- Row 1 -->
@@ -132,6 +134,8 @@ The six panels map one-to-one onto the pipeline stages, so a red panel points at
   <text x="620" y="236" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">seconds · time series by stage</text>
   <polyline points="520,300 560,292 600,296 640,278 680,286 720,270" fill="none" stroke="currentColor" stroke-opacity="0.5" stroke-width="1.5"/>
 </svg>
+<figcaption><b>Figure 1.</b> Geospatial webhook health dashboard layout</figcaption>
+</figure>
 
 ---
 

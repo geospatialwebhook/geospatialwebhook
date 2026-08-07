@@ -93,9 +93,11 @@ Before wiring up a conflict resolution layer, verify the following are in place:
 
 The diagram below shows the four-layer path from raw webhook delivery to committed spatial state. Each layer has a single responsibility so failures are isolated and the pipeline remains resumable.
 
-<svg viewBox="0 0 760 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four-layer conflict resolution pipeline from webhook ingestion to spatial state commit, with duplicate short-circuit, dead-letter branch, and the three resolution policies" style="width:100%;max-width:760px;height:auto;font-family:inherit;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="6 10 747 450" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four-layer conflict resolution pipeline from webhook ingestion to spatial state commit, with duplicate short-circuit, dead-letter branch, and the three resolution policies">
   <title>Conflict Resolution Pipeline</title>
   <desc>Four numbered layers laid out left to right: Ingestion and Normalization, Idempotency Gate, Spatial Conflict Evaluation, and Atomic Commit, connected by arrows. The Idempotency Gate short-circuits exact duplicates with a 200 OK; the Conflict Evaluation layer branches irreconcilable updates to a dead-letter queue. A lower panel compares the three resolution policies: last-write-wins, semantic merge, and manual review.</desc>
+  <rect x="6" y="10" width="747" height="450" fill="var(--fig-bg)"/>
   <defs>
     <marker id="crs-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
@@ -172,6 +174,8 @@ The diagram below shows the four-layer path from raw webhook delivery to committ
   <text x="612" y="401" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">edit for replay</text>
   <text x="612" y="418" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.55">For regulatory data</text>
 </svg>
+<figcaption><b>Figure 1.</b> Conflict Resolution Pipeline</figcaption>
+</figure>
 
 The pipeline has four numbered layers:
 

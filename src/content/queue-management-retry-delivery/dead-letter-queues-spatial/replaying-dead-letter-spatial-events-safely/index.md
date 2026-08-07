@@ -100,9 +100,11 @@ The defence is the same deduplication gate the pipeline already runs at ingest. 
 
 Two spatial-specific hazards ride alongside the double-write problem. First, geometry: many events dead-letter *because* their geometry was invalid, so blindly replaying them reproduces the same failure. Second, ordering: an event can sit in the DLQ while newer events for the same feature flow through, so a naive replay can overwrite fresh state with a stale reading.
 
-<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Safe dead-letter replay pipeline for spatial events" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 56 710 188" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Safe dead-letter replay pipeline for spatial events">
   <title>Safe dead-letter replay pipeline for spatial events</title>
   <desc>A data-flow diagram: the spatial DLQ feeds a replay worker that sorts events by observation time, repairs geometry with shapely.make_valid, and emits through a rate limiter back into the ingest pipeline, whose deduplication gate absorbs any duplicate before the consumer applies state.</desc>
+  <rect x="0" y="56" width="710" height="188" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
       <path d="M0,0 L0,7 L8,3.5 Z" fill="currentColor" opacity="0.55"/>
@@ -135,6 +137,8 @@ Two spatial-specific hazards ride alongside the double-write problem. First, geo
   <text x="621" y="156" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">applies state</text>
   <text x="621" y="170" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">last-write-wins</text>
 </svg>
+<figcaption><b>Figure 1.</b> Safe dead-letter replay pipeline for spatial events</figcaption>
+</figure>
 
 ---
 

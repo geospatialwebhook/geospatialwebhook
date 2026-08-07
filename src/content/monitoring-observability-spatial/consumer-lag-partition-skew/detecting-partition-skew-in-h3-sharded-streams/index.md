@@ -98,9 +98,11 @@ Sharding by H3 cell gives you locality: every event for a given hexagon lands on
 
 The right thing to measure is the *shape* of the per-partition count vector, not any single partition's absolute rate. Two summary statistics do this well. The coefficient of variation, `stdev / mean`, is zero when every partition holds the same count and grows without bound as mass concentrates; it reacts sharply to a single outlier, which makes it a good alerting trigger. The Gini coefficient measures inequality on a 0–1 scale — 0 is perfect equality, 1 is total concentration in one partition — and reads more intuitively on a dashboard. Both derive from the same count vector, so compute them together.
 
-<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Partition skew detection pipeline from Kafka offsets to a Prometheus alert" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 81 749 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Partition skew detection pipeline from Kafka offsets to a Prometheus alert">
   <title>Partition skew detection pipeline</title>
   <desc>A four-stage flow: Kafka partition offsets are sampled at the start and end of a window to produce a per-partition count vector, which is reduced to a coefficient of variation and Gini scalar, published as a Prometheus gauge, and compared against a threshold that fires an alert only after a sustained breach.</desc>
+  <rect x="0" y="81" width="749" height="140" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
       <path d="M0,0 L0,7 L8,3.5 Z" fill="currentColor" opacity="0.55"/>
@@ -134,6 +136,8 @@ The right thing to measure is the *shape* of the per-partition count vector, not
   <text x="646" y="155" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">k windows</text>
   <text x="646" y="205" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.45">SUSTAINED</text>
 </svg>
+<figcaption><b>Figure 1.</b> Partition skew detection pipeline</figcaption>
+</figure>
 
 ---
 

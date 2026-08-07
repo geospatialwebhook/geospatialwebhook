@@ -17,8 +17,21 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
   <link rel="manifest" href="/manifest.json"/>
 
-  <meta name="theme-color" content="#d56360"/>
-  <meta name="color-scheme" content="light"/>
+  <meta name="theme-color" content="#d56360" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
 
   
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -50,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=180687f5"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -143,6 +156,18 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
       </a>
     </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle"
+            aria-label="Switch to dark theme" title="Switch to dark theme">
+      <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.4v2.3M12 19.3v2.3M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.3M19.3 12h2.3M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+      </svg>
+    </button>
   </div>
 </header>
 
@@ -232,9 +257,11 @@
 <p>For architectures where the same event must be deduplicated across independent microservices rather than at ingress, pair this approach with an outbox pattern; Redis alone does not span transaction boundaries.</p>
 <h2 id="flow-from-http-ingress-to-conditional-processing" tabindex="-1"><a class="heading-anchor" href="#flow-from-http-ingress-to-conditional-processing">Flow: From HTTP Ingress to Conditional Processing</a></h2>
 <p>The diagram below shows how a spatial webhook travels from provider delivery through signature caching to either processing or discard.</p>
-<svg viewBox="0 0 680 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Spatial webhook signature caching flow: provider delivers event, receiver normalizes payload, computes HMAC, checks Redis SET NX EX, then either processes or discards the event" style="width:100%;max-width:680px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 46 564 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Spatial webhook signature caching flow: provider delivers event, receiver normalizes payload, computes HMAC, checks Redis SET NX EX, then either processes or discards the event">
   <title>Spatial webhook signature caching flow</title>
   <desc>A left-to-right flow diagram showing a webhook provider delivering to an HTTP receiver, which normalizes the GeoJSON payload, computes an HMAC-SHA256 signature, runs SET NX EX in Redis, then branches: new events go to spatial processing, duplicates are discarded with HTTP 200.</desc>
+  <rect x="0" y="46" width="564" height="160" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
       <polygon points="0 0, 8 3, 0 6" fill="currentColor" opacity="0.6"/>
@@ -269,6 +296,8 @@
   <text x="415" y="100" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.75">OK</text>
   <text x="415" y="148" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.75">nil</text>
 </svg>
+<figcaption><b>Figure 1.</b> Spatial webhook signature caching flow</figcaption>
+</figure>
 <h2 id="complete-runnable-implementation" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-implementation">Complete Runnable Implementation</a></h2>
 <p>The snippet below is self-contained: normalize, sign, check, and branch in one function. The <code>normalize_geojson</code> step is critical — without it, floating-point drift in coordinate arrays causes logically identical retries to produce different signatures and bypass the cache. For a deeper look at this canonicalization problem, see <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/">Generating Deterministic Idempotency Keys for GeoJSON Events</a>.</p>
 <div class="code-block" data-lang="python">
@@ -616,7 +645,7 @@ SAMPLE_PAYLOAD <span class="token operator">=</span> <span class="token punctuat
 </footer>
 
   </div>
-  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script src="/assets/js/site.js?v=c31b7b80" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

@@ -105,9 +105,11 @@ The answer is an explicit delivery layer: producers publish to a durable broker,
 
 The delivery layer has five moving parts arranged around a broker. A producer accepts the webhook and publishes; the broker durably holds the event on a partition; a consumer pulls and processes; failed processing enters a bounded retry loop; and messages that exhaust their budget are quarantined in a dead-letter queue. The diagram traces one spatial event through every path.
 
-<svg viewBox="0 0 760 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A spatial event flowing from producer to a partitioned broker to a consumer, with a retry loop that re-enqueues transient failures and a dead-letter queue that captures exhausted or poison messages" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="4 106 756 234" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A spatial event flowing from producer to a partitioned broker to a consumer, with a retry loop that re-enqueues transient failures and a dead-letter queue that captures exhausted or poison messages">
   <title>Durable Spatial Delivery Layer</title>
   <desc>A GeoJSON event enters a producer, is published to a broker partitioned by H3 cell, and is pulled by a consumer. Successful processing flows to downstream state. Transient failures enter a retry loop with exponential backoff and jitter that re-enqueues the event. When the retry budget is exhausted, or a payload is structurally invalid, it is routed to a dead-letter queue that preserves geometry and CRS context.</desc>
+  <rect x="4" y="106" width="756" height="234" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arr-q" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
@@ -156,6 +158,8 @@ The delivery layer has five moving parts arranged around a broker. A producer ac
   <!-- Caption -->
   <text x="380" y="328" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="currentColor" opacity="0.4">Figure 1 — One spatial event's paths: success to state, transient failure to retry, exhaustion to the dead-letter queue.</text>
 </svg>
+<figcaption><b>Figure 1.</b> Durable Spatial Delivery Layer</figcaption>
+</figure>
 
 Each element is independently observable and independently scalable. The producer is stateless and fast because it only publishes. The broker owns durability and ordering per partition. The consumer pool scales horizontally to drain the queue. The retry loop and DLQ isolate failure so that one poison payload never blocks the shard behind it. The sections below build each element in Python.
 

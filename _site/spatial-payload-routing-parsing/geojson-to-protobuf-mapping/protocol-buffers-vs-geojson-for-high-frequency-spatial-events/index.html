@@ -17,8 +17,21 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
   <link rel="manifest" href="/manifest.json"/>
 
-  <meta name="theme-color" content="#d56360"/>
-  <meta name="color-scheme" content="light"/>
+  <meta name="theme-color" content="#d56360" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
 
   
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -50,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=180687f5"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -143,6 +156,18 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
       </a>
     </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle"
+            aria-label="Switch to dark theme" title="Switch to dark theme">
+      <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.4v2.3M12 19.3v2.3M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.3M19.3 12h2.3M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+      </svg>
+    </button>
   </div>
 </header>
 
@@ -233,9 +258,11 @@
 <h2 id="why-the-wire-format-matters-at-scale" tabindex="-1"><a class="heading-anchor" href="#why-the-wire-format-matters-at-scale">Why the wire format matters at scale</a></h2>
 <p>GeoJSON is text. Every coordinate is written as ASCII digits, wrapped in a <code>&quot;coordinates&quot;</code> key, and surrounded by quotes, brackets, and whitespace. A single <code>[-73.985428, 40.748817]</code> position costs over twenty bytes and forces the receiver to run a JSON tokenizer and parse each number from a string. Protocol Buffers encodes the same position as two 8-byte IEEE 754 doubles in a packed field with a one-byte tag: no key names, no quotes, no decimal-to-ASCII expansion, and no tokenizer. At 10,000 events per second that structural difference compounds into megabytes per second of network and a measurable share of a CPU core.</p>
 <p>The diagram shows the split most production systems converge on: a binary format on the hot path, GeoJSON everywhere a human or a generic tool touches the data, and a single canonical decode step that unifies them.</p>
-<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Dual-format spatial event pipeline with a canonical GeoJSON core" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 10 760 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Dual-format spatial event pipeline with a canonical GeoJSON core">
   <title>Dual-format spatial event pipeline</title>
   <desc>A high-frequency sensor firehose sends Protobuf and a low-frequency admin webhook sends GeoJSON; both are decoded into one canonical GeoJSON form that feeds validation, idempotency hashing, and storage.</desc>
+  <rect x="0" y="10" width="760" height="256" fill="var(--fig-bg)"/>
   <defs>
     <marker id="pb-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor"/>
@@ -262,6 +289,8 @@
   <rect x="562" y="200" width="190" height="46" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
   <text x="657" y="227" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif">Storage / PostGIS</text>
 </svg>
+<figcaption><b>Figure 1.</b> Dual-format spatial event pipeline</figcaption>
+</figure>
 <h3 id="head-to-head-comparison" tabindex="-1"><a class="heading-anchor" href="#head-to-head-comparison">Head-to-head comparison</a></h3>
 <p>The multipliers below are representative for coordinate-dense geometries (lines and polygons with tens to hundreds of vertices) and are illustrative starting points; your own geometries and CPUs will vary, so treat them as a hypothesis to measure, not a guarantee.</p>
 <div class="table-wrap"><table>
@@ -666,7 +695,7 @@ protobuf_bytes <span class="token operator">=</span> encode_protobuf<span class=
 </footer>
 
   </div>
-  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script src="/assets/js/site.js?v=c31b7b80" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

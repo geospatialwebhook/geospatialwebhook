@@ -104,34 +104,53 @@
     });
   }
 
-  /* ===== 4. Mermaid (CDN-free fallback: only initialize if pre.mermaid exists) ===== */
-  function setupMermaid() {
-    if (!document.querySelector("pre.mermaid")) return;
-    // Load mermaid only when needed, from local copy.
-    const s = document.createElement("script");
-    s.src = "/assets/js/mermaid.min.js";
-    s.onload = function () {
-      if (window.mermaid) {
-        window.mermaid.initialize({
-          startOnLoad: false,
-          theme: "base",
-          themeVariables: {
-            primaryColor: "#fbd0b5",
-            primaryTextColor: "#4a3825",
-            primaryBorderColor: "#b85a39",
-            lineColor: "#8f7150",
-            secondaryColor: "#b7e1c4",
-            tertiaryColor: "#fff5ee",
-            fontFamily: "Inter, system-ui, sans-serif",
-          },
-        });
-        window.mermaid.run({ querySelector: "pre.mermaid" });
+  /* ===== 4. Theme toggle =====
+     The stored choice is already applied by the inline <head> script, so all
+     this does is keep the control's label truthful and write the next choice.
+     With no stored choice the page follows prefers-color-scheme, and the first
+     click commits whatever the reader is looking at to the opposite.
+  */
+  function setupThemeToggle() {
+    const btn = document.getElementById("theme-toggle");
+    if (!btn) return;
+
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
+
+    function active() {
+      const explicit = document.documentElement.getAttribute("data-theme");
+      if (explicit === "dark" || explicit === "light") return explicit;
+      return prefersDark.matches ? "dark" : "light";
+    }
+
+    function syncLabel() {
+      const next = active() === "dark" ? "light" : "dark";
+      const label = "Switch to " + next + " theme";
+      btn.setAttribute("aria-label", label);
+      btn.setAttribute("title", label);
+    }
+
+    btn.addEventListener("click", () => {
+      const next = active() === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      try {
+        localStorage.setItem("gsw-theme", next);
+      } catch (e) {
+        /* private mode — the choice just does not survive the page */
       }
+      syncLabel();
+    });
+
+    // Follow the OS while the reader has not chosen one explicitly.
+    const onSchemeChange = () => {
+      if (!document.documentElement.hasAttribute("data-theme")) syncLabel();
     };
-    s.onerror = function () {
-      // No mermaid library available — leave the rendered text in place (still readable).
-    };
-    document.head.appendChild(s);
+    if (prefersDark.addEventListener) {
+      prefersDark.addEventListener("change", onSchemeChange);
+    } else if (prefersDark.addListener) {
+      prefersDark.addListener(onSchemeChange);
+    }
+
+    syncLabel();
   }
 
   /* ===== 5. Smooth scroll offset for in-page anchor clicks (defensive) =====
@@ -158,7 +177,7 @@
     setupCopyButtons();
     setupTaskLists();
     setupFaq();
-    setupMermaid();
+    setupThemeToggle();
     setupAnchorOffsets();
   }
 

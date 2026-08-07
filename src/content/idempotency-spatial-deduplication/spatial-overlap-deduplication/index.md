@@ -117,9 +117,11 @@ Hash-based filters either drop legitimate updates or let duplicates through. Spa
 
 The pipeline separates concerns across four layers to keep expensive spatial computation off the hot path.
 
-<svg viewBox="0 0 740 400" role="img" aria-label="Four-layer spatial overlap deduplication pipeline diagram" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:740px;height:auto;font-family:inherit;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 16 740 362" role="img" aria-label="Four-layer spatial overlap deduplication pipeline diagram" xmlns="http://www.w3.org/2000/svg">
   <title>Spatial Overlap Deduplication Pipeline</title>
   <desc>Data flows left to right through four layers: Webhook Ingress, Payload Normalisation, Cache Lookup, and Spatial Predicate. A cache hit suppresses the event immediately. An overlap above threshold suppresses and logs. A cache miss combined with overlap below threshold forwards the event to the downstream processor.</desc>
+  <rect x="0" y="16" width="740" height="362" fill="var(--fig-bg)"/>
   <defs>
     <marker id="sodp-arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
@@ -172,6 +174,8 @@ The pipeline separates concerns across four layers to keep expensive spatial com
   <text x="372" y="268" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">MISS</text>
   <text x="582" y="268" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">below threshold</text>
 </svg>
+<figcaption><b>Figure 1.</b> Spatial Overlap Deduplication Pipeline</figcaption>
+</figure>
 
 **Layer 1 — Webhook ingress:** FastAPI or aiohttp receives the raw POST and immediately validates the HTTP signature (see [Securing Webhook Endpoints with Spatial Token Validation](https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/securing-webhook-endpoints-with-spatial-token-validation/)). The raw body is enqueued for async processing without blocking the HTTP response.
 
@@ -304,9 +308,11 @@ For cache misses, retrieve candidate geometries from the recent event store and 
 
 The decision itself is a single ratio: project both shapes to an equal-area CRS, divide the intersection area by the incoming geometry's area, and compare against the threshold. The diagram below shows why a near-identical retry is suppressed while a genuinely shifted footprint passes through.
 
-<svg viewBox="0 0 720 250" role="img" aria-label="Equal-area overlap ratio comparison: a near-duplicate geometry above threshold is suppressed, a shifted geometry below threshold passes" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;height:auto;font-family:inherit;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="56 2 608 248" role="img" aria-label="Equal-area overlap ratio comparison: a near-duplicate geometry above threshold is suppressed, a shifted geometry below threshold passes" xmlns="http://www.w3.org/2000/svg">
   <title>Overlap Ratio Decides Suppression</title>
   <desc>Two scenarios. On the left, an incoming polygon overlaps a stored polygon by 0.91 of its area, exceeding the 0.85 threshold, so the event is suppressed. On the right, the incoming polygon overlaps by only 0.42, below the threshold, so the event is forwarded as a novel spatial update.</desc>
+  <rect x="56" y="2" width="608" height="248" fill="var(--fig-bg)"/>
   <!-- Left scenario: high overlap, suppressed -->
   <text x="170" y="28" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Near-duplicate retry</text>
   <!-- stored polygon -->
@@ -329,6 +335,8 @@ The decision itself is a single ratio: project both shapes to an equal-area CRS,
   <rect x="240" y="232" width="16" height="10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="4,2"/>
   <text x="264" y="241" font-size="10" fill="currentColor" opacity="0.7">incoming geometry</text>
 </svg>
+<figcaption><b>Figure 2.</b> Overlap Ratio Decides Suppression</figcaption>
+</figure>
 
 ```python
 from shapely.strtree import STRtree

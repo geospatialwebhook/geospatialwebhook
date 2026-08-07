@@ -101,9 +101,11 @@ The monitor is a small out-of-band loop that never joins the consumer group it o
 
 The diagram below shows a typical per-partition load profile for a stream keyed by H3 cell. The bars are message rate; the dashed line is the skew alert threshold. Three urban partitions punch through it while five rural partitions sit near the floor.
 
-<svg viewBox="0 0 760 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart of per-partition message rate for an H3-partitioned stream, with three urban partitions exceeding a dashed skew alert threshold and five rural partitions well below it" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="41 0 707 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart of per-partition message rate for an H3-partitioned stream, with three urban partitions exceeding a dashed skew alert threshold and five rural partitions well below it">
   <title>Per-partition load profile with a skew threshold</title>
   <desc>A vertical bar chart of eight Kafka partitions. Partitions 2, 4 and 6 carry heavy urban traffic and rise above a dashed horizontal skew alert threshold line, while partitions 0, 1, 3, 5 and 7 carry light rural traffic and stay far below it, illustrating spatial partition skew.</desc>
+  <rect x="41" y="0" width="707" height="330" fill="var(--fig-bg)"/>
   <!-- Title -->
   <text x="380" y="24" text-anchor="middle" font-size="13" font-family="system-ui,sans-serif" fill="currentColor" font-weight="600">Per-partition message rate (msg/s)</text>
   <!-- Baseline axis -->
@@ -150,6 +152,8 @@ The diagram below shows a typical per-partition load profile for a stream keyed 
   <rect x="380" y="312" width="14" height="10" fill="currentColor" opacity="0.25"/>
   <text x="400" y="321" font-size="9" font-family="system-ui,sans-serif" fill="currentColor" opacity="0.8">rural / idle</text>
 </svg>
+<figcaption><b>Figure 1.</b> Per-partition load profile with a skew threshold</figcaption>
+</figure>
 
 The visual asymmetry is the whole point. A generic "total lag" chart would average P2, P4 and P6 against the idle partitions and report a comfortable number while three partitions silently accumulate an unbounded backlog. The reason this happens specifically to spatial streams — and how the H3, S2 and Quadkey indexing choices change the density gradient — is covered in [Spatial Partitioning Strategies for Event Streams](https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/).
 

@@ -93,9 +93,11 @@ If you only need to push a single event type to a single internal service with n
 
 The pipeline operates across four logical layers. Each isolates a single concern so that failures do not cascade and each layer can scale independently.
 
-<svg viewBox="0 0 780 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four-layer geospatial webhook pipeline: Ingestion, Validation, Broker, Dispatcher" style="width:100%;max-width:780px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 16 780 319" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four-layer geospatial webhook pipeline: Ingestion, Validation, Broker, Dispatcher">
   <title>Four-layer geospatial webhook pipeline</title>
   <desc>Data flows left-to-right from the Ingestion layer through Spatial Validation, then a Message Broker, to the Async Dispatcher which delivers signed payloads to consumer endpoints.</desc>
+  <rect x="0" y="16" width="780" height="319" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.55"/>
@@ -157,6 +159,8 @@ The pipeline operates across four logical layers. Each isolates a single concern
   <path d="M675,232 Q675,300 470,300 Q265,300 90,300 Q90,265 90,260" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.35" marker-end="url(#arr)"/>
   <text x="390" y="318" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.5">DLQ replay path</text>
 </svg>
+<figcaption><b>Figure 1.</b> Four-layer geospatial webhook pipeline</figcaption>
+</figure>
 
 **Layer 1 — Ingestion:** Receives raw feature mutations and normalizes them into a canonical schema: `event_id` (UUID), `feature_id`, `geometry` (GeoJSON dict), `change_type` (`create | update | delete`), and `properties`. This layer is write-optimized and never blocks downstream workers.
 
@@ -421,6 +425,43 @@ async def dispatch_event(
 
 1. **Coordinate ring orientation.** RFC 7946 requires exterior rings to be counter-clockwise and interior rings (holes) to be clockwise. Shapely's `is_valid` check does not enforce RFC 7946 winding order — it only checks topological validity. Call `shapely.geometry.mapping(geom)` after `geom = orient(geom, sign=1.0)` from `shapely.ops` before serializing to JSON.
 
+<figure class="fig">
+<svg viewBox="0 0 760 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ring winding order: topologically valid but RFC 7946 non-conformant polygons, and what orient fixes">
+<title>Topological validity and RFC 7946 winding are different checks</title>
+<desc>Three versions of the same polygon with a hole. The first has a counter-clockwise exterior ring and a clockwise hole, which is what RFC 7946 requires; shapely reports it valid and consumers agree on its meaning. The second has both rings counter-clockwise: shapely still reports it valid because winding does not affect topology, but a strict RFC 7946 consumer may read the second ring as a second solid region rather than a hole, so the same bytes describe two different shapes. The third reverses both rings, which is likewise topologically valid and non-conformant. Only calling orient with a positive sign before serialising normalises all three to the first form, and shapely's is_valid never flags the difference.</desc>
+<rect x="0" y="0" width="760" height="240" fill="var(--fig-bg)"/>
+<defs>
+<marker id="w-cw" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-rose-edge)"/></marker>
+<marker id="w-ccw" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-mint-edge)"/></marker>
+</defs>
+<rect x="14" y="26" width="230" height="164" rx="7" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<text x="129" y="46" text-anchor="middle" font-size="10" font-weight="600" fill="var(--fig-ink)">RFC 7946 conformant</text>
+<rect x="54" y="58" width="150" height="96" fill="none" stroke="var(--fig-mint-edge)" stroke-width="2"/>
+<path d="M54 154 L54 58" stroke="var(--fig-mint-edge)" stroke-width="2" marker-end="url(#w-ccw)"/>
+<rect x="104" y="86" width="52" height="42" fill="var(--fig-bg)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<path d="M104 86 L156 86" stroke="var(--fig-rose-edge)" stroke-width="1.6" marker-end="url(#w-cw)"/>
+<text x="129" y="172" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">exterior CCW · hole CW · is_valid ✓</text>
+<rect x="258" y="26" width="230" height="164" rx="7" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.6"/>
+<text x="373" y="46" text-anchor="middle" font-size="10" font-weight="600" fill="var(--fig-ink)">valid, non-conformant</text>
+<rect x="298" y="58" width="150" height="96" fill="none" stroke="var(--fig-mint-edge)" stroke-width="2"/>
+<path d="M298 154 L298 58" stroke="var(--fig-mint-edge)" stroke-width="2" marker-end="url(#w-ccw)"/>
+<rect x="348" y="86" width="52" height="42" fill="var(--fig-bg)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<path d="M400 86 L348 86" stroke="var(--fig-mint-edge)" stroke-width="1.6" marker-end="url(#w-ccw)"/>
+<text x="373" y="172" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">both CCW · is_valid ✓ · hole or island?</text>
+<rect x="502" y="26" width="244" height="164" rx="7" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.6"/>
+<text x="624" y="46" text-anchor="middle" font-size="10" font-weight="600" fill="var(--fig-ink)">valid, non-conformant</text>
+<rect x="548" y="58" width="150" height="96" fill="none" stroke="var(--fig-rose-edge)" stroke-width="2"/>
+<path d="M548 58 L548 154" stroke="var(--fig-rose-edge)" stroke-width="2" marker-end="url(#w-cw)"/>
+<rect x="598" y="86" width="52" height="42" fill="var(--fig-bg)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<path d="M650 86 L598 86" stroke="var(--fig-mint-edge)" stroke-width="1.6" marker-end="url(#w-ccw)"/>
+<text x="624" y="172" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">both reversed · is_valid ✓</text>
+<rect x="14" y="204" width="732" height="30" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="26" y="216" font-size="9.5" font-weight="600" fill="var(--fig-ink)">shapely.is_valid answers "is this topologically sound?", not "does this mean what RFC 7946 says it means?"</text>
+<text x="26" y="229" font-size="9" fill="var(--fig-ink-soft)">Call orient(geom, sign=1.0) before mapping() — it is the only step that makes all three serialise identically.</text>
+</svg>
+<figcaption><b>Figure 2.</b> All three polygons pass <code>is_valid</code>. Only the first is RFC 7946 conformant, and the difference decides whether a strict consumer reads the inner ring as a hole or as a second solid region.</figcaption>
+</figure>
+
 2. **CRS mismatch on ingestion.** PostGIS may emit geometries in a projected CRS such as EPSG:3857 (Web Mercator). Passing those coordinates directly into a GeoJSON payload violates RFC 7946. Reproject to WGS 84 (EPSG:4326) using `pyproj.Transformer` before the Pydantic validator runs, as described in [Handling Mixed CRS Payloads in Python Event Handlers](https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/handling-mixed-crs-payloads-in-python-event-handlers/).
 
 3. **Precision loss during serialization.** Python's `json.dumps` serializes floats with up to 17 significant digits, but `model_dump(mode="json")` from Pydantic may round coordinates via intermediate float conversion. For high-precision geometries (cadastral surveys, survey-grade GPS), serialize coordinates explicitly to a fixed decimal place (e.g., 7 d.p. ≈ 1 cm accuracy) using a custom JSON encoder rather than relying on default float formatting.
@@ -430,6 +471,48 @@ async def dispatch_event(
 5. **HMAC signature drift on large payloads.** If the consumer reconstructs the body from a different key ordering than the dispatcher's `sort_keys=True`, the HMAC will not match. Standardize on `sort_keys=True, separators=(",", ":")` on both sides, and document this contract in your API reference. Mismatches surface as 401s, not 5xxs, so they bypass retry logic — log them explicitly.
 
 6. **Session lifecycle in async frameworks.** Creating a new `aiohttp.ClientSession` inside `deliver_with_retry` (one per attempt) opens a new TCP connection and TLS handshake on every retry. The code above creates one session per worker process via the `lifespan` context manager — the deprecated `@app.on_event("startup")` hook still works but is being phased out, so prefer `lifespan` on new services. When using Celery workers instead of FastAPI, create the session in a `celery.signals.worker_process_init` handler and close it in `worker_process_shutdown`.
+
+<figure class="fig">
+<svg viewBox="0 0 760 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cost of creating an aiohttp session per retry attempt versus reusing one session for the worker's lifetime">
+<title>Where a per-attempt ClientSession spends its time</title>
+<desc>A retry ladder of four attempts drawn twice. With a new ClientSession per attempt, each attempt pays a DNS lookup of about 12 milliseconds, a TCP handshake of about 30 milliseconds and a TLS handshake of about 68 milliseconds before the 40-millisecond request itself, so four attempts cost about 600 milliseconds of which 440 is connection setup repeated four times. With one session created at worker start, the first attempt pays the same 110-millisecond setup once and the remaining three reuse the pooled connection, so four attempts cost about 270 milliseconds. The setup work is not merely duplicated but is paid precisely when the downstream service is already struggling, which is what turns a retry storm into a connection storm.</desc>
+<rect x="0" y="0" width="760" height="232" fill="var(--fig-bg)"/>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-rose-edge)">A new ClientSession per attempt — 600 ms</text>
+<rect x="160" y="28" width="34" height="20" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1"/>
+<rect x="194" y="28" width="84" height="20" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1"/>
+<rect x="278" y="28" width="112" height="20" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<text x="14" y="43" font-size="9" fill="var(--fig-ink-soft)">attempt 1</text>
+<text x="400" y="43" font-size="8.5" fill="var(--fig-ink-soft)">DNS 12 · TCP 30 · TLS 68 · request 40</text>
+<rect x="160" y="52" width="34" height="20" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1"/>
+<rect x="194" y="52" width="84" height="20" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1"/>
+<rect x="278" y="52" width="112" height="20" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<text x="14" y="67" font-size="9" fill="var(--fig-ink-soft)">attempt 2</text>
+<text x="400" y="67" font-size="8.5" fill="var(--fig-rose-edge)">the whole handshake, again</text>
+<rect x="160" y="76" width="34" height="20" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1"/>
+<rect x="194" y="76" width="84" height="20" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1"/>
+<rect x="278" y="76" width="112" height="20" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<text x="14" y="91" font-size="9" fill="var(--fig-ink-soft)">attempt 3</text>
+<text x="400" y="91" font-size="8.5" fill="var(--fig-rose-edge)">against a host already failing</text>
+<rect x="160" y="100" width="34" height="20" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1"/>
+<rect x="194" y="100" width="84" height="20" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1"/>
+<rect x="278" y="100" width="112" height="20" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<text x="14" y="115" font-size="9" fill="var(--fig-ink-soft)">attempt 4</text>
+<text x="400" y="115" font-size="8.5" fill="var(--fig-rose-edge)">440 ms of the 600 is setup</text>
+<line x1="14" y1="132" x2="746" y2="132" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="152" font-size="10.5" font-weight="600" fill="var(--fig-mint-edge)">One session for the worker's lifetime — 270 ms</text>
+<rect x="160" y="160" width="34" height="20" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1"/>
+<rect x="194" y="160" width="84" height="20" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1"/>
+<rect x="278" y="160" width="112" height="20" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<text x="14" y="175" font-size="9" fill="var(--fig-ink-soft)">attempt 1</text>
+<text x="400" y="175" font-size="8.5" fill="var(--fig-ink-soft)">setup paid once, at worker start</text>
+<rect x="278" y="184" width="112" height="20" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<text x="14" y="199" font-size="9" fill="var(--fig-ink-soft)">attempts 2–4</text>
+<text x="180" y="199" font-size="8.5" fill="var(--fig-mint-edge)">pooled connection reused — straight to the request</text>
+<rect x="14" y="212" width="732" height="18" rx="4" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.1"/>
+<text x="26" y="225" font-size="9" fill="var(--fig-ink)">Create the session in the lifespan context (FastAPI) or worker_process_init (Celery) — never inside the retry loop.</text>
+</svg>
+<figcaption><b>Figure 3.</b> A per-attempt session does not merely duplicate the handshake — it opens a fresh connection to a host that is already failing, which is how a retry storm becomes a connection storm.</figcaption>
+</figure>
 
 ---
 

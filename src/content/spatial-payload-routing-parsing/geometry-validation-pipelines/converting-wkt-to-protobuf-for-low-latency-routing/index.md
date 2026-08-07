@@ -81,9 +81,11 @@ If your consumers stay in one language and need full topology on every message, 
 
 ## Conversion data flow
 
-<svg viewBox="0 0 720 240" role="img" aria-label="Data flow converting a WKT string through shapely validation and coordinate flattening into a Protobuf binary payload published to the routing broker" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;font-family:inherit;color:currentColor">
+<figure class="fig">
+<svg viewBox="0 15 632 225" role="img" aria-label="Data flow converting a WKT string through shapely validation and coordinate flattening into a Protobuf binary payload published to the routing broker" xmlns="http://www.w3.org/2000/svg">
   <title>WKT to Protobuf conversion pipeline</title>
   <desc>A WKT string is parsed and validated by shapely, flattened into a single coordinate array, serialized into a flat proto3 SpatialRoute message, and published to the routing broker where a bounding-box fast path filters most messages before full reconstruction.</desc>
+  <rect x="0" y="15" width="632" height="225" fill="var(--fig-bg)"/>
   <defs>
     <marker id="wkt2pb-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0 0 L10 5 L0 10 z" fill="currentColor"></path>
@@ -127,6 +129,8 @@ If your consumers stay in one language and need full topology on every message, 
     <text x="494" y="56" font-size="10">~4 KB / 500 verts</text>
   </g>
 </svg>
+<figcaption><b>Figure 1.</b> WKT to Protobuf conversion pipeline</figcaption>
+</figure>
 
 ## Complete runnable conversion
 

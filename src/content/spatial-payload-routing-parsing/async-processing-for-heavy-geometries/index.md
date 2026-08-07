@@ -92,9 +92,11 @@ Before building an asynchronous geometry pipeline, confirm your environment meet
 
 The pipeline separates concerns into four layers. The webhook endpoint only performs lightweight I/O; all CPU work happens downstream in isolated processes.
 
-<svg viewBox="0 0 720 340" role="img" aria-label="Four-layer async geometry pipeline: HTTP ingestion, queue, worker pool, and persistence" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="6 0 708 324" role="img" aria-label="Four-layer async geometry pipeline: HTTP ingestion, queue, worker pool, and persistence" xmlns="http://www.w3.org/2000/svg">
   <title>Async Geometry Pipeline Architecture</title>
   <desc>Four-layer pipeline showing data flow from webhook HTTP ingestion through a message queue, into a ProcessPoolExecutor worker pool for spatial validation and projection, then to a PostGIS database and event callback.</desc>
+  <rect x="6" y="0" width="708" height="324" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
@@ -158,6 +160,8 @@ The pipeline separates concerns into four layers. The webhook endpoint only perf
   <line x1="330" y1="155" x2="359" y2="155" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow)" opacity="0.55"/>
   <line x1="535" y1="155" x2="554" y2="155" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow)" opacity="0.55"/>
 </svg>
+<figcaption><b>Figure 1.</b> Async Geometry Pipeline Architecture</figcaption>
+</figure>
 
 **Layer 1 — Ingestion:** The FastAPI endpoint receives raw bytes, validates the HMAC signature and `Content-Length`, publishes the payload to the queue, and responds `202 Accepted` in under 100 ms.
 

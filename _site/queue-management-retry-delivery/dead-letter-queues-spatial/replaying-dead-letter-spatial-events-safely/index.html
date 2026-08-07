@@ -17,8 +17,21 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
   <link rel="manifest" href="/manifest.json"/>
 
-  <meta name="theme-color" content="#d56360"/>
-  <meta name="color-scheme" content="light"/>
+  <meta name="theme-color" content="#d56360" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
 
   
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -50,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=180687f5"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -143,6 +156,18 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
       </a>
     </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle"
+            aria-label="Switch to dark theme" title="Switch to dark theme">
+      <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.4v2.3M12 19.3v2.3M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.3M19.3 12h2.3M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+      </svg>
+    </button>
   </div>
 </header>
 
@@ -243,9 +268,11 @@
 <p>A dead-letter queue is the terminal stop for events that exhausted their retry budget. The dangerous assumption is that a dead-lettered event was <em>never applied</em>. That is frequently false. An event commonly reaches the DLQ after its side effect partially succeeded — the row was written to PostGIS but the broker never saw the acknowledgement, so the delivery was retried, re-failed on a downstream timeout, and eventually dead-lettered. If you replay that event as if it were new, you apply it a second time: a double-write, a duplicated feature, or a doubled counter.</p>
 <p>The defence is the same deduplication gate the pipeline already runs at ingest. If you re-submit under the <em>same</em> idempotency key the event carried at first ingest, the gate recognises the replay as a duplicate and drops it — the replay becomes a no-op for anything already applied, and a normal apply for anything that never landed. This is exactly why the key must be computed once, at ingest, and then travel with the event into the DLQ envelope. Regenerating it on replay defeats the entire mechanism. The canonical, content-derived keys described in <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/generating-deterministic-idempotency-keys-for-geojson-events/">generating deterministic idempotency keys for GeoJSON events</a> are ideal here because they are reproducible, but on replay you should still prefer the <em>stored</em> key over recomputing, so that a change in canonicalization logic between ingest and replay cannot shift it.</p>
 <p>Two spatial-specific hazards ride alongside the double-write problem. First, geometry: many events dead-letter <em>because</em> their geometry was invalid, so blindly replaying them reproduces the same failure. Second, ordering: an event can sit in the DLQ while newer events for the same feature flow through, so a naive replay can overwrite fresh state with a stale reading.</p>
-<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Safe dead-letter replay pipeline for spatial events" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 56 710 188" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Safe dead-letter replay pipeline for spatial events">
   <title>Safe dead-letter replay pipeline for spatial events</title>
   <desc>A data-flow diagram: the spatial DLQ feeds a replay worker that sorts events by observation time, repairs geometry with shapely.make_valid, and emits through a rate limiter back into the ingest pipeline, whose deduplication gate absorbs any duplicate before the consumer applies state.</desc>
+  <rect x="0" y="56" width="710" height="188" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
       <path d="M0,0 L0,7 L8,3.5 Z" fill="currentColor" opacity="0.55"/>
@@ -278,6 +305,8 @@
   <text x="621" y="156" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">applies state</text>
   <text x="621" y="170" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">last-write-wins</text>
 </svg>
+<figcaption><b>Figure 1.</b> Safe dead-letter replay pipeline for spatial events</figcaption>
+</figure>
 <hr>
 <h2 id="complete-runnable-implementation" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-implementation">Complete runnable implementation</a></h2>
 <p>The replay worker below is self-contained and runnable. It models the DLQ as an in-memory list of envelopes so you can run it directly, but <code>pull_dlq_batch</code> and <code>submit_to_pipeline</code> are the two seams you replace with your real broker (Redis Streams <code>XAUTOCLAIM</code>, a Kafka DLQ topic, or a PostGIS-backed queue). It preserves the stored idempotency key, repairs geometry with <code>shapely.make_valid</code>, drops unrecoverable poison pills, orders by observation time, and paces emission with a simple token-bucket limiter.</p>
@@ -769,7 +798,7 @@ VALID_POINT <span class="token operator">=</span> <span class="token punctuation
 </footer>
 
   </div>
-  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script src="/assets/js/site.js?v=c31b7b80" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

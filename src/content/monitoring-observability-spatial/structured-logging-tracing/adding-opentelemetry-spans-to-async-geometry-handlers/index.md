@@ -101,9 +101,11 @@ First, `await` boundaries are fine — the context travels with the coroutine �
 
 The diagram shows the shape you want: one root span per delivery, three nested child spans, and a fourth span that crosses a `create_task` boundary yet stays inside the same trace because the context was re-attached by hand.
 
-<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One webhook event producing a single OpenTelemetry trace across four async stages" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="6 16 753 268" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One webhook event producing a single OpenTelemetry trace across four async stages">
   <title>A single trace across four async geometry stages</title>
   <desc>A root span labelled process_geometry_event spans the full width. Beneath it, three nested child spans — validate_geometry, reproject, and publish — sit in sequence. The publish span sits below a dashed create_task boundary, with an arrow showing the OpenTelemetry context being carried across it so publish remains a child of the root rather than a new trace.</desc>
+  <rect x="6" y="16" width="753" height="268" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
       <path d="M0,0 L0,7 L8,3.5 Z" fill="currentColor" opacity="0.55"/>
@@ -131,6 +133,8 @@ The diagram shows the shape you want: one root span per delivery, three nested c
   <text x="400" y="233" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">publish</text>
   <text x="300" y="268" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.6">still a child of the root — same trace_id, parent = process_geometry_event</text>
 </svg>
+<figcaption><b>Figure 1.</b> A single trace across four async geometry stages</figcaption>
+</figure>
 
 ---
 

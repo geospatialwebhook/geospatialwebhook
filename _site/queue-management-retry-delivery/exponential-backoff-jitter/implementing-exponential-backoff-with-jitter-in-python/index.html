@@ -17,8 +17,21 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
   <link rel="manifest" href="/manifest.json"/>
 
-  <meta name="theme-color" content="#d56360"/>
-  <meta name="color-scheme" content="light"/>
+  <meta name="theme-color" content="#d56360" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
 
   
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -50,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=180687f5"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -143,6 +156,18 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
       </a>
     </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle"
+            aria-label="Switch to dark theme" title="Switch to dark theme">
+      <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.4v2.3M12 19.3v2.3M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.3M19.3 12h2.3M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+      </svg>
+    </button>
   </div>
 </header>
 
@@ -242,9 +267,11 @@
 <h2 id="why-retries-without-jitter-cause-storms" tabindex="-1"><a class="heading-anchor" href="#why-retries-without-jitter-cause-storms">Why retries without jitter cause storms</a></h2>
 <p>Plain exponential backoff doubles a fixed delay: 1s, 2s, 4s, 8s. If a downstream tile service drops for thirty seconds, every sender that failed at the same moment computes the <em>same</em> deterministic schedule and retries at the same instants. The recovering endpoint is hit by synchronized waves — a <strong>retry storm</strong> — that can knock it back over just as it comes up.</p>
 <p>Jitter randomizes each delay so the retries scatter across the window. Of the three AWS-documented variants — full jitter, equal jitter, and decorrelated jitter — decorrelated jitter gives the best throughput under contention because each delay is derived from the <em>previous</em> delay rather than from a fixed exponent, letting the backoff both grow and occasionally shrink to probe for recovery.</p>
-<svg viewBox="0 0 760 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Comparison of synchronized retries without jitter versus spread-out retries with decorrelated jitter" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 3 753 247" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Comparison of synchronized retries without jitter versus spread-out retries with decorrelated jitter">
   <title>Retry storm without jitter versus spread retries with decorrelated jitter</title>
   <desc>Two horizontal timelines. The top timeline shows four senders all retrying at the same three instants, forming tall synchronized spikes. The bottom timeline shows the same senders with decorrelated jitter, their retries scattered evenly across the window with no overlap.</desc>
+  <rect x="0" y="3" width="753" height="247" fill="var(--fig-bg)"/>
   <!-- top: no jitter -->
   <text x="8" y="30" font-size="12" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Without jitter — synchronized storm</text>
   <line x1="20" y1="90" x2="740" y2="90" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5"/>
@@ -277,6 +304,8 @@
   </g>
   <text x="380" y="234" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">time →</text>
 </svg>
+<figcaption><b>Figure 1.</b> Retry storm without jitter versus spread retries with decorrelated jitter</figcaption>
+</figure>
 <hr>
 <h2 id="complete-runnable-implementation" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-implementation">Complete runnable implementation</a></h2>
 <p>The helper below is self-contained. It re-POSTs a GeoJSON payload with <code>aiohttp</code>, computes a decorrelated-jitter delay each attempt, honours <code>Retry-After</code>, and refuses to retry unless you explicitly mark the call idempotent-safe. It records <code>observation_time</code> once from wall-clock at ingestion and measures backoff with a monotonic clock so an NTP correction mid-retry can never produce a negative sleep.</p>
@@ -687,7 +716,7 @@ RETRYABLE_STATUS <span class="token operator">=</span> <span class="token builti
 </footer>
 
   </div>
-  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script src="/assets/js/site.js?v=c31b7b80" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

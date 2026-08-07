@@ -17,8 +17,21 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
   <link rel="manifest" href="/manifest.json"/>
 
-  <meta name="theme-color" content="#d56360"/>
-  <meta name="color-scheme" content="light"/>
+  <meta name="theme-color" content="#d56360" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
 
   
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -50,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=180687f5"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -143,6 +156,18 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
       </a>
     </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle"
+            aria-label="Switch to dark theme" title="Switch to dark theme">
+      <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.4v2.3M12 19.3v2.3M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.3M19.3 12h2.3M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+      </svg>
+    </button>
   </div>
 </header>
 
@@ -235,9 +260,11 @@
 </script>
 <p>In modern geospatial platforms, the shift from synchronous polling to event-driven architectures has fundamentally changed how spatial data is ingested, processed, and served. For platform engineers, GIS backend developers, real-time spatial app builders, and SaaS founders, understanding the foundational event model is the baseline requirement for building resilient, low-latency spatial systems that survive production load.</p>
 <p>Event-driven architecture (EDA) decouples producers from consumers through message brokers or streaming platforms, enabling systems to react to geographic changes as they happen. When applied to Python-based geospatial workloads, this paradigm requires deliberate attention to coordinate reference systems, spatial indexing, payload standardization, and delivery semantics — concerns that generic event-system tutorials entirely ignore.</p>
-<svg viewBox="0 0 840 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Geospatial event pipeline overview: from spatial mutation through a normalise-and-validate layer into a partitioned broker and out to downstream consumers" style="width:100%;max-width:840px;height:auto;display:block;margin:2rem auto;color:inherit;">
+<figure class="fig">
+<svg viewBox="0 26 840 328" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Geospatial event pipeline overview: from spatial mutation through a normalise-and-validate layer into a partitioned broker and out to downstream consumers">
   <title>Geospatial Event Pipeline Overview</title>
   <desc>Data flow from a spatial mutation — feature edit, sensor reading, tile state change, or webhook POST — through a normalisation and validation layer, into a partitioned message broker keyed by spatial index, and out to downstream consumers: tile server, analytics engine, webhook receiver, and spatial database writer. A dead-letter queue captures malformed events.</desc>
+  <rect x="0" y="26" width="840" height="328" fill="var(--fig-bg)"/>
   <defs>
     <marker id="gw-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
       <path d="M0,0 L0,7 L9,3.5 z" fill="currentColor" opacity="0.55"/>
@@ -322,6 +349,8 @@
   <line x1="606" y1="180" x2="680" y2="202" stroke="currentColor" stroke-width="1.4" marker-end="url(#gw-arrow)" opacity="0.5"/>
   <line x1="606" y1="190" x2="680" y2="254" stroke="currentColor" stroke-width="1.4" marker-end="url(#gw-arrow)" opacity="0.5"/>
 </svg>
+<figcaption><b>Figure 1.</b> Geospatial Event Pipeline Overview</figcaption>
+</figure>
 <h2 id="the-anatomy-of-a-geospatial-event" tabindex="-1"><a class="heading-anchor" href="#the-anatomy-of-a-geospatial-event">The Anatomy of a Geospatial Event</a></h2>
 <p>A spatial event is more than a generic JSON payload. It is a structured representation of a change in geographic state, accompanied by metadata that dictates routing, processing priority, and consumer expectations. Every well-formed event contains four layers:</p>
 <ol>
@@ -331,6 +360,46 @@
 <li><strong>Routing Instructions:</strong> Topic and partition keys, consumer group tags, and priority levels that the broker uses to direct the event without any consumer needing to inspect the geometry.</li>
 </ol>
 <p>Standardizing this structure prevents downstream parsing failures and enables cross-service interoperability. The <a href="https://cloudevents.io/">CloudEvents specification</a> provides a vendor-neutral envelope format, while <a href="https://datatracker.ietf.org/doc/html/rfc7946">RFC 7946</a> remains the authoritative standard for encoding geospatial features in JSON. Aligning your internal event schema with both standards reduces integration friction and accelerates onboarding for third-party consumers.</p>
+<figure class="fig">
+<svg viewBox="0 0 760 286" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The four layers of a spatial event envelope and which pipeline stage reads each one">
+<title>The four layers of a spatial event envelope</title>
+<desc>An annotated envelope split into four stacked bands. Event metadata carries event id, occurred at and schema version, and is read by the idempotency and replay stages. Spatial context carries the geometry in EPSG:4326 plus precomputed H3, S2 and quadkey index keys, and is read by validation. Payload data carries the attribute delta and is read only by the consumer. Routing instructions carry the topic and partition key and are read by the broker alone, which never parses the geometry.</desc>
+<rect x="0" y="0" width="760" height="286" fill="var(--fig-bg)"/>
+<defs>
+<marker id="an-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+<path d="M0,0 L8,3 L0,6 Z" fill="var(--fig-line)"/>
+</marker>
+</defs>
+<text x="14" y="20" font-size="11" font-weight="600" fill="var(--fig-ink)">One event envelope</text>
+<text x="472" y="20" font-size="11" font-weight="600" fill="var(--fig-ink)">Read by</text>
+<rect x="14" y="30" width="430" height="52" rx="7" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.4"/>
+<text x="28" y="50" font-size="11" font-weight="600" fill="var(--fig-ink)">1 · Event metadata</text>
+<text x="28" y="68" font-size="10" fill="var(--fig-ink-soft)">event_id · occurred_at · source · schema_version</text>
+<rect x="14" y="90" width="430" height="66" rx="7" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="28" y="110" font-size="11" font-weight="600" fill="var(--fig-ink)">2 · Spatial context</text>
+<text x="28" y="128" font-size="10" fill="var(--fig-ink-soft)">geometry in EPSG:4326 (canonical, one CRS)</text>
+<text x="28" y="145" font-size="10" fill="var(--fig-ink-soft)">h3_r7 · s2_cell · quadkey — precomputed at publish</text>
+<rect x="14" y="164" width="430" height="52" rx="7" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.4"/>
+<text x="28" y="184" font-size="11" font-weight="600" fill="var(--fig-ink)">3 · Payload data</text>
+<text x="28" y="202" font-size="10" fill="var(--fig-ink-soft)">attribute delta · sensor reading · tile status</text>
+<rect x="14" y="224" width="430" height="52" rx="7" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.4"/>
+<text x="28" y="244" font-size="11" font-weight="600" fill="var(--fig-ink)">4 · Routing instructions</text>
+<text x="28" y="262" font-size="10" fill="var(--fig-ink-soft)">topic · partition_key · consumer group · priority</text>
+<line x1="448" y1="56" x2="516" y2="56" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#an-arr)"/>
+<text x="522" y="53" font-size="10" fill="var(--fig-ink)">Idempotency + replay</text>
+<text x="522" y="67" font-size="9" fill="var(--fig-ink-soft)">dedup store, DLQ re-injection</text>
+<line x1="448" y1="123" x2="516" y2="123" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#an-arr)"/>
+<text x="522" y="120" font-size="10" fill="var(--fig-ink)">Validation + routing</text>
+<text x="522" y="134" font-size="9" fill="var(--fig-ink-soft)">topology check, shard selection</text>
+<line x1="448" y1="190" x2="516" y2="190" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#an-arr)"/>
+<text x="522" y="187" font-size="10" fill="var(--fig-ink)">Consumer only</text>
+<text x="522" y="201" font-size="9" fill="var(--fig-ink-soft)">the sole layer a broker ignores</text>
+<line x1="448" y1="250" x2="516" y2="250" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#an-arr)"/>
+<text x="522" y="247" font-size="10" fill="var(--fig-ink)">Broker only</text>
+<text x="522" y="261" font-size="9" fill="var(--fig-ink-soft)">never parses the geometry</text>
+</svg>
+<figcaption><b>Figure 2.</b> The four layers of a spatial event envelope. Layers 1, 2 and 4 exist so that the infrastructure — dedup store, validator, broker — can do its job without ever deserialising layer 3.</figcaption>
+</figure>
 <p>When designing spatial events, always normalize geometries to EPSG:4326 before serialization, as covered in detail in <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a>. Storing mixed coordinate reference systems in an event stream forces every consumer to perform expensive reprojection at runtime, introducing latency and dramatically increasing the probability of spatial misalignment at the consumer boundary. Additionally, embedding spatial index keys directly in the event envelope allows downstream services to shard or route data without parsing the full geometry payload — a critical optimization once throughput exceeds a few thousand events per second.</p>
 <p>Defining delivery expectations early is equally important. Geospatial workflows commonly involve downstream consumers with very different tolerance for message loss or duplication. Tile servers and analytics engines may accept at-least-once delivery, while financial or regulatory compliance systems require exactly-once semantics. Establishing delivery guarantees upfront dictates your broker choice, acknowledgment strategy, and idempotency key design — and changes these decisions later is expensive.</p>
 <h2 id="architectural-patterns-for-spatial-workflows" tabindex="-1"><a class="heading-anchor" href="#architectural-patterns-for-spatial-workflows">Architectural Patterns for Spatial Workflows</a></h2>
@@ -533,6 +602,69 @@
 <h2 id="spatial-specific-concerns" tabindex="-1"><a class="heading-anchor" href="#spatial-specific-concerns">Spatial-Specific Concerns</a></h2>
 <h3 id="crs-normalization" tabindex="-1"><a class="heading-anchor" href="#crs-normalization">CRS Normalization</a></h3>
 <p>Every event pipeline must enforce a single canonical coordinate reference system at the producer boundary. The practical choice for most internet-facing systems is EPSG:4326 (WGS 84 geographic, longitude/latitude). For purely internal pipelines that feed tiled web maps, EPSG:3857 (Web Mercator) can reduce per-event reprojection overhead at the consumer, but it introduces non-trivial area distortion at high latitudes that breaks spatial analytics.</p>
+<figure class="fig">
+<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Normalising coordinate reference systems at the producer boundary versus letting every consumer reproject">
+<title>Where the reprojection cost lands: producer boundary versus consumer</title>
+<desc>Two arrangements of the same pipeline. Above, three producers publish in EPSG:27700, EPSG:3857 and EPSG:4326, the stream carries mixed CRS, and each of the three consumers must reproject, so the transform runs nine times and any consumer that forgets misaligns silently. Below, each producer normalises to EPSG:4326 once at its own boundary, the stream is single-CRS, and the three consumers read directly, so the transform runs three times and a mislabelled CRS is rejected at the boundary rather than discovered downstream.</desc>
+<rect x="0" y="0" width="760" height="300" fill="var(--fig-bg)"/>
+<defs>
+<marker id="crs-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+<path d="M0,0 L8,3 L0,6 Z" fill="var(--fig-line)"/>
+</marker>
+</defs>
+<text x="14" y="18" font-size="11" font-weight="600" fill="var(--fig-rose-edge)">Reproject at the consumer — 9 transforms</text>
+<rect x="14" y="28" width="96" height="26" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="62" y="45" text-anchor="middle" font-size="9.5" fill="var(--fig-ink)">EPSG:27700</text>
+<rect x="14" y="60" width="96" height="26" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="62" y="77" text-anchor="middle" font-size="9.5" fill="var(--fig-ink)">EPSG:3857</text>
+<rect x="14" y="92" width="96" height="26" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="62" y="109" text-anchor="middle" font-size="9.5" fill="var(--fig-ink)">EPSG:4326</text>
+<line x1="112" y1="73" x2="176" y2="73" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#crs-arr)"/>
+<rect x="180" y="44" width="150" height="58" rx="7" fill="var(--fig-earth)" stroke="var(--fig-rose-edge)" stroke-width="1.6" stroke-dasharray="5,3"/>
+<text x="255" y="66" text-anchor="middle" font-size="10.5" font-weight="600" fill="var(--fig-ink)">mixed-CRS stream</text>
+<text x="255" y="83" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">every event a different datum</text>
+<line x1="332" y1="73" x2="392" y2="55" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#crs-arr)"/>
+<line x1="332" y1="73" x2="392" y2="73" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#crs-arr)"/>
+<line x1="332" y1="73" x2="392" y2="91" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#crs-arr)"/>
+<rect x="396" y="30" width="150" height="30" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="471" y="49" text-anchor="middle" font-size="9.5" fill="var(--fig-ink)">tile server + reproject</text>
+<rect x="396" y="66" width="150" height="30" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="471" y="85" text-anchor="middle" font-size="9.5" fill="var(--fig-ink)">analytics + reproject</text>
+<rect x="396" y="102" width="150" height="30" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="471" y="121" text-anchor="middle" font-size="9.5" fill="var(--fig-ink)">alerting + reproject</text>
+<text x="558" y="66" font-size="9.5" fill="var(--fig-rose-edge)" font-weight="600">3 producers x 3 consumers</text>
+<text x="558" y="81" font-size="9" fill="var(--fig-ink-soft)">one consumer that forgets</text>
+<text x="558" y="94" font-size="9" fill="var(--fig-ink-soft)">misaligns without erroring</text>
+<line x1="14" y1="152" x2="746" y2="152" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="176" font-size="11" font-weight="600" fill="var(--fig-mint-edge)">Normalise at the producer — 3 transforms</text>
+<rect x="14" y="186" width="96" height="26" rx="5" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.2"/>
+<text x="62" y="203" text-anchor="middle" font-size="9.5" fill="var(--fig-ink)">EPSG:27700</text>
+<rect x="14" y="218" width="96" height="26" rx="5" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.2"/>
+<text x="62" y="235" text-anchor="middle" font-size="9.5" fill="var(--fig-ink)">EPSG:3857</text>
+<rect x="14" y="250" width="96" height="26" rx="5" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.2"/>
+<text x="62" y="267" text-anchor="middle" font-size="9.5" fill="var(--fig-ink)">EPSG:4326</text>
+<line x1="112" y1="199" x2="174" y2="212" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#crs-arr)"/>
+<line x1="112" y1="231" x2="174" y2="231" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#crs-arr)"/>
+<line x1="112" y1="263" x2="174" y2="250" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#crs-arr)"/>
+<rect x="178" y="202" width="152" height="58" rx="7" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<text x="254" y="224" text-anchor="middle" font-size="10.5" font-weight="600" fill="var(--fig-ink)">normalise once</text>
+<text x="254" y="241" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">to EPSG:4326, then validate</text>
+<text x="254" y="254" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">a wrong CRS fails here</text>
+<line x1="332" y1="231" x2="392" y2="213" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#crs-arr)"/>
+<line x1="332" y1="231" x2="392" y2="231" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#crs-arr)"/>
+<line x1="332" y1="231" x2="392" y2="249" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#crs-arr)"/>
+<rect x="396" y="188" width="150" height="30" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="471" y="207" text-anchor="middle" font-size="9.5" fill="var(--fig-ink)">tile server — reads</text>
+<rect x="396" y="224" width="150" height="30" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="471" y="243" text-anchor="middle" font-size="9.5" fill="var(--fig-ink)">analytics — reads</text>
+<rect x="396" y="260" width="150" height="30" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="471" y="279" text-anchor="middle" font-size="9.5" fill="var(--fig-ink)">alerting — reads</text>
+<text x="558" y="224" font-size="9.5" fill="var(--fig-mint-edge)" font-weight="600">one transform per producer</text>
+<text x="558" y="239" font-size="9" fill="var(--fig-ink-soft)">consumers cannot forget a</text>
+<text x="558" y="252" font-size="9" fill="var(--fig-ink-soft)">step they never perform</text>
+</svg>
+<figcaption><b>Figure 3.</b> The reprojection cost is the same transform either way — what changes is how many times it runs and, more importantly, whether forgetting it is possible at all.</figcaption>
+</figure>
 <div class="code-block" data-lang="python">
   <div class="code-block__header">
     <span class="code-block__lang">python</span>
@@ -884,7 +1016,7 @@ _SPATIAL_EXECUTOR <span class="token operator">=</span> ProcessPoolExecutor<span
 </footer>
 
   </div>
-  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script src="/assets/js/site.js?v=c31b7b80" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

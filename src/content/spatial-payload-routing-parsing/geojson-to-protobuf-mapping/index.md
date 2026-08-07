@@ -83,9 +83,11 @@ GeoJSON remains the de facto interchange format for spatial data because it is h
 
 The mapping pipeline sits between your webhook receiver and your message broker. Each layer has one responsibility, and keeping them isolated is what lets you scale serialization independently of network I/O and reject bad geometry before it ever touches the broker.
 
-<svg viewBox="0 0 720 340" role="img" aria-label="Four-layer pipeline mapping a GeoJSON webhook to a protobuf topic: receiver, normalizer, serializer, broker" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="6 9 714 324" role="img" aria-label="Four-layer pipeline mapping a GeoJSON webhook to a protobuf topic: receiver, normalizer, serializer, broker" xmlns="http://www.w3.org/2000/svg">
   <title>GeoJSON to Protobuf Mapping Pipeline</title>
   <desc>Four connected boxes showing the data path: (1) Webhook Receiver validates the GeoJSON schema with Pydantic and returns 422 on bad geometry; (2) Normalizer reprojects coordinates to EPSG:4326 using cached pyproj transformers; (3) Serializer builds the generated protobuf message and produces compact binary bytes; (4) Broker publishes to a binary topic with exponential backoff retries and a dead-letter queue for fatal errors.</desc>
+  <rect x="6" y="9" width="714" height="324" fill="var(--fig-bg)"/>
   <defs>
     <marker id="ptp-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
@@ -126,6 +128,8 @@ The mapping pipeline sits between your webhook receiver and your message broker.
   <text x="572" y="300" font-size="11" fill="currentColor" opacity="0.6" text-anchor="start">Compact protobuf bytes →</text>
   <text x="572" y="316" font-size="11" fill="currentColor" opacity="0.6" text-anchor="start">downstream consumers</text>
 </svg>
+<figcaption><b>Figure 1.</b> GeoJSON to Protobuf Mapping Pipeline</figcaption>
+</figure>
 
 **Layer 1 — Webhook Receiver:** validates the incoming GeoJSON feature collection against a strict schema, verifies the delivery signature, and returns `422 Unprocessable Entity` for malformed geometry before any encoding work happens.
 

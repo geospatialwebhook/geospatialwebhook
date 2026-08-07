@@ -88,9 +88,11 @@ Before implementing, confirm your stack meets these baselines:
 
 A spatial feature change moves through four layers before a consumer acknowledges receipt:
 
-<svg viewBox="0 0 760 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Feature change trigger pipeline: PostGIS CDC stream flows through geometry validation and CloudEvents enveloping, into a message broker, then through an async webhook dispatcher to a downstream consumer" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="6 4 734 207" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Feature change trigger pipeline: PostGIS CDC stream flows through geometry validation and CloudEvents enveloping, into a message broker, then through an async webhook dispatcher to a downstream consumer">
   <title>Feature change trigger pipeline</title>
   <desc>Four-stage pipeline diagram. Stage 1 Source: PostGIS logical replication (CDC / WAL). Stage 2 Normalise: CRS to EPSG:4326, topology check, CloudEvents wrap, idempotency key. Stage 3 Route: Kafka or Redis broker with spatial partition key. Stage 4 Deliver: dispatcher with HMAC-SHA256 signing, exponential backoff, DLQ on failure, then consumer endpoint.</desc>
+  <rect x="6" y="4" width="734" height="207" fill="var(--fig-bg)"/>
   <defs>
     <marker id="fct-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
       <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.55"/>
@@ -134,6 +136,8 @@ A spatial feature change moves through four layers before a consumer acknowledge
   <!-- Delivery guarantee note -->
   <text x="380" y="195" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.45">at-least-once · idempotency key carried in envelope id field</text>
 </svg>
+<figcaption><b>Figure 1.</b> Feature change trigger pipeline</figcaption>
+</figure>
 
 ## Step-by-step implementation
 
@@ -142,6 +146,44 @@ A spatial feature change moves through four layers before a consumer acknowledge
 Spatial databases rarely emit events in a webhook-ready format. Use PostgreSQL logical replication with the `pgoutput` plugin, or a Debezium CDC connector, to stream committed `INSERT`, `UPDATE`, and `DELETE` operations from your feature tables without polling.
 
 Logical decoding guarantees events are emitted only after the originating transaction commits — no phantom updates from rolled-back writes. Extract four fields at minimum: primary key, old geometry (for `UPDATE`/`DELETE`), new geometry, and the operation type.
+
+<figure class="fig">
+<svg viewBox="0 0 760 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Polling a feature table versus reading the write-ahead log, and what each does with a rolled-back transaction">
+<title>Polling versus logical decoding on a rolled-back edit</title>
+<desc>A surveyor opens a transaction, updates a parcel geometry, and the transaction later rolls back. A poller running every thirty seconds happens to read the table mid-transaction under read-uncommitted or via a dirty snapshot and emits a webhook for a geometry that never existed, and it has no way to retract it — downstream tiles are now rendered from a phantom edit. A logical-decoding stream reading the write-ahead log with the pgoutput plugin sees nothing at all until commit, so the rollback simply produces no event. The same contrast applies to intermediate states: a transaction touching a parcel three times before committing yields three polled events but exactly one decoded event, carrying the committed geometry.</desc>
+<rect x="0" y="0" width="760" height="250" fill="var(--fig-bg)"/>
+<defs>
+<marker id="cdc-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker>
+</defs>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-ink)">One transaction: three edits to parcel 4471, then ROLLBACK</text>
+<line x1="120" y1="46" x2="620" y2="46" stroke="var(--fig-line)" stroke-width="1.3"/>
+<circle cx="150" cy="46" r="4" fill="var(--fig-earth-edge)"/>
+<circle cx="270" cy="46" r="4" fill="var(--fig-earth-edge)"/>
+<circle cx="390" cy="46" r="4" fill="var(--fig-earth-edge)"/>
+<circle cx="560" cy="46" r="5.5" fill="var(--fig-rose-edge)"/>
+<text x="150" y="36" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">edit 1</text>
+<text x="270" y="36" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">edit 2</text>
+<text x="390" y="36" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">edit 3</text>
+<text x="560" y="36" text-anchor="middle" font-size="8.5" font-weight="600" fill="var(--fig-rose-edge)">ROLLBACK</text>
+<text x="60" y="50" font-size="9" fill="var(--fig-ink-soft)">BEGIN</text>
+<rect x="14" y="70" width="732" height="72" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="26" y="88" font-size="10" font-weight="600" fill="var(--fig-ink)">Poller — SELECT … WHERE updated_at &gt; :last, every 30 s</text>
+<circle cx="210" cy="108" r="4" fill="var(--fig-rose-edge)"/>
+<circle cx="330" cy="108" r="4" fill="var(--fig-rose-edge)"/>
+<circle cx="450" cy="108" r="4" fill="var(--fig-rose-edge)"/>
+<line x1="210" y1="100" x2="210" y2="96" stroke="var(--fig-rose-edge)" stroke-width="1"/>
+<text x="26" y="112" font-size="9" fill="var(--fig-ink-soft)">webhooks sent:</text>
+<text x="480" y="112" font-size="9" fill="var(--fig-rose-edge)" font-weight="600">3 events for a geometry that never committed</text>
+<text x="26" y="132" font-size="9" fill="var(--fig-ink-soft)">No retraction exists. Tiles are now rendered from a phantom edit, and the next poll shows the old geometry as a "new" change.</text>
+<rect x="14" y="152" width="732" height="72" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="26" y="170" font-size="10" font-weight="600" fill="var(--fig-ink)">Logical decoding — pgoutput on the write-ahead log</text>
+<text x="26" y="194" font-size="9" fill="var(--fig-ink-soft)">webhooks sent:</text>
+<text x="120" y="194" font-size="9" fill="var(--fig-mint-edge)" font-weight="600">none — the decoder emits only at commit, and this transaction never committed</text>
+<text x="26" y="214" font-size="9" fill="var(--fig-ink-soft)">Had it committed, it would emit exactly one event carrying the final geometry — not one per intermediate write.</text>
+<rect x="14" y="232" width="732" height="0" fill="none"/>
+</svg>
+<figcaption><b>Figure 2.</b> The guarantee is not "fewer events" but "only real ones": logical decoding emits after commit, so a rolled-back edit produces silence rather than a webhook you cannot take back.</figcaption>
+</figure>
 
 ```python
 import asyncpg
@@ -368,6 +410,27 @@ Beyond topology checks, handle these spatial-specific failure modes before they 
 - **Coordinate ring orientation:** GeoJSON exterior rings must be counter-clockwise (RFC 7946 §3.1.6). Shapely's `orient()` corrects this silently; PostGIS may not.
 - **Geometry type change:** A polygon becoming a multipolygon on `UPDATE` is a legal mutation but can break consumers that cast the geometry type. Include both the old and new geometry types in the event envelope's `spatialoperation` context.
 - **Oversized payloads:** Complex boundaries often exceed broker message limits. Simplify with `shapely.simplify(tolerance=0.00001, preserve_topology=True)` and include a `simplified: true` flag in the envelope properties so consumers can request the full geometry from the source API if needed.
+
+<figure class="fig">
+<svg viewBox="0 0 760 244" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Simplifying an oversized boundary under the broker message limit, and the flag that lets a consumer recover the full geometry">
+<title>Simplifying an oversized boundary without losing the original</title>
+<desc>A coastal administrative boundary of 41,800 vertices serialises to 1.9 megabytes of GeoJSON, well over a broker's one-megabyte message limit, so the publish is rejected outright. Simplifying with a tolerance of 0.00001 degrees and preserve_topology set to true reduces it to about 6,200 vertices and 280 kilobytes, which fits. The topology is preserved so the polygon stays valid and its holes stay holes, but the coastline detail is genuinely gone. The envelope therefore carries simplified set to true alongside the tolerance and the source feature URL, so a consumer that needs survey-grade vertices — a cadastral or compliance reader — knows the payload is lossy and can fetch the original, while a tile renderer simply uses what it was sent.</desc>
+<rect x="0" y="0" width="760" height="244" fill="var(--fig-bg)"/>
+<rect x="14" y="26" width="352" height="140" rx="7" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="190" y="46" text-anchor="middle" font-size="10" font-weight="600" fill="var(--fig-ink)">original — 41,800 vertices · 1.9 MB</text>
+<path d="M50 132 C70 96 62 118 84 92 C104 68 96 100 118 78 C140 58 132 92 156 74 C180 56 172 96 196 82 C220 68 214 104 238 90 C262 76 258 112 282 100 C306 88 300 124 330 110 L330 148 L50 148 Z" fill="var(--fig-bg)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="190" y="160" text-anchor="middle" font-size="8.5" fill="var(--fig-rose-edge)">exceeds the 1 MB broker limit — publish rejected</text>
+<rect x="394" y="26" width="352" height="140" rx="7" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="570" y="46" text-anchor="middle" font-size="10" font-weight="600" fill="var(--fig-ink)">simplified — 6,200 vertices · 280 KB</text>
+<path d="M430 132 L464 92 L498 78 L536 74 L576 82 L618 90 L662 100 L710 110 L710 148 L430 148 Z" fill="var(--fig-bg)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<text x="570" y="160" text-anchor="middle" font-size="8.5" fill="var(--fig-mint-edge)">fits · still valid · holes still holes</text>
+<rect x="14" y="178" width="732" height="56" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="196" font-size="10" font-weight="600" fill="var(--fig-ink)">The detail is genuinely gone — so the envelope has to say so</text>
+<text x="26" y="212" font-size="9.5" fill="var(--fig-ink-soft)">"simplified": true · "tolerance_deg": 0.00001 · "source_feature_url": "…/features/4471"</text>
+<text x="26" y="227" font-size="9" fill="var(--fig-ink-soft)">A tile renderer uses the payload as sent. A cadastral or compliance consumer sees the flag and fetches the original instead of trusting a lossy boundary.</text>
+</svg>
+<figcaption><b>Figure 3.</b> <code>preserve_topology=True</code> keeps the polygon valid, not faithful. The <code>simplified</code> flag is what stops a downstream consumer from treating a smoothed coastline as survey data.</figcaption>
+</figure>
 
 ## Retry, backoff and delivery guarantees
 

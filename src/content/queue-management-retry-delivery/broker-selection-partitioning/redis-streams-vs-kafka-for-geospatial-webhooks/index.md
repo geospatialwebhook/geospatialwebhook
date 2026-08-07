@@ -115,9 +115,11 @@ A generic "Redis vs Kafka" comparison ignores what makes geospatial traffic dist
 
 The second spatial twist is **locality**. You usually want all events touching the same region to land on the same consumer, so per-region state (a running geofence count, a tile version) stays coherent and ordered. Kafka gives you this directly: hash the message key to a partition, key on an H3 cell, and every event for that cell is ordered on one partition. Redis Streams has no key-to-consumer affinity — a consumer group is a work-stealing pool — so you recreate locality by sharding into multiple streams. The diagram below contrasts the two models.
 
-<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Kafka key-based partitioning versus Redis Streams consumer-group distribution for spatial events" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="1 0 756 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Kafka key-based partitioning versus Redis Streams consumer-group distribution for spatial events">
   <title>Spatial partitioning: Kafka partition-by-key vs Redis Streams consumer group</title>
   <desc>Top row: H3-keyed events routed to fixed Kafka partitions, each partition consumed by one worker preserving per-region order. Bottom row: events pushed to a single Redis stream then work-stolen by a consumer group with no key affinity, so a region can spread across workers.</desc>
+  <rect x="1" y="0" width="756" height="280" fill="var(--fig-bg)"/>
   <defs>
     <marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
       <path d="M0,0 L0,7 L8,3.5 Z" fill="currentColor" opacity="0.55"/>
@@ -160,6 +162,8 @@ The second spatial twist is **locality**. You usually want all events touching t
   <text x="497" y="253" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">consumer 1</text>
   <text x="642" y="225" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">cell A may split</text>
 </svg>
+<figcaption><b>Figure 1.</b> Spatial partitioning: Kafka partition-by-key vs Redis Streams consumer group</figcaption>
+</figure>
 
 If per-region ordering matters, this is the crux: Kafka enforces it through the partition, whereas Redis Streams needs you to shard streams by cell to approximate it. The tradeoffs of choosing the cell system itself — resolution, cell shape, neighbour behaviour — are covered in [H3 vs S2 vs Quadkey for spatial partitioning](https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/h3-vs-s2-vs-quadkey-for-spatial-partitioning/).
 

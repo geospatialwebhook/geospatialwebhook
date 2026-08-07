@@ -90,9 +90,11 @@ This page is part of [Core Event Fundamentals & Architecture](https://www.geospa
 
 Every spatial webhook request passes through four sequential checkpoints before any coordinate is forwarded to the downstream broker. Each layer can independently reject the request with its own HTTP error code — a payload that fails signature verification never reaches the rate limiter, and a rate-limited request never touches the idempotency store.
 
-<svg viewBox="0 0 820 460" role="img" aria-label="Four-layer webhook security boundary diagram" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:820px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 0 820 460" role="img" aria-label="Four-layer webhook security boundary diagram" xmlns="http://www.w3.org/2000/svg">
   <title>Webhook Security Boundaries — Four-Layer Architecture</title>
   <desc>A spatial mutation event passes through four independent security layers — TLS ingress isolation, HMAC-SHA256 signature verification, region-scoped rate limiting, and context-bound token plus idempotency check — before being dispatched asynchronously to a message broker. Each layer has its own reject path with a distinct HTTP error code.</desc>
+  <rect x="0" y="0" width="820" height="460" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arrowfwd" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
       <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.55"/>
@@ -182,6 +184,8 @@ Every spatial webhook request passes through four sequential checkpoints before 
   <!-- Bottom note -->
   <text x="410" y="418" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.35" font-family="sans-serif">Dashed arrows = rejection paths. Events only reach the broker after passing all four layers.</text>
 </svg>
+<figcaption><b>Figure 1.</b> Webhook Security Boundaries — Four-Layer Architecture</figcaption>
+</figure>
 
 **Layer 1** handles network-level concerns: TLS termination, dedicated path isolation, spatial schema validation, and WGS84 (EPSG:4326) bounds enforcement. **Layer 2** provides cryptographic proof that the payload is authentic and recent. **Layer 3** protects downstream capacity using geographic partition keys rather than raw IP addresses. **Layer 4** ensures authentication tokens are scoped to a specific region and event type, and that each event is processed exactly once.
 
@@ -426,6 +430,43 @@ Beyond schema validation, spatial webhook handlers must handle geometry edge cas
 
 **Coordinate reference system drift.** Upstream SDKs or IoT gateways may silently emit coordinates in EPSG:3857 (Web Mercator) without advertising this. X/Y values above 20,000,000 in absolute terms are a strong signal of EPSG:3857 data masquerading as EPSG:4326. Reject or re-project using `pyproj`:
 
+<figure class="fig">
+<svg viewBox="0 0 760 244" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Number line contrasting the valid EPSG:4326 coordinate range with the EPSG:3857 range, showing why a magnitude test detects undeclared Web Mercator">
+<title>Detecting undeclared EPSG:3857 by coordinate magnitude</title>
+<desc>Two coordinate ranges drawn on a shared logarithmic magnitude axis. Valid EPSG:4326 longitude spans minus 180 to 180 and latitude minus 90 to 90, so every legitimate value sits below 180. EPSG:3857 spans roughly minus 20,037,508 to 20,037,508 metres, five orders of magnitude larger. A payload claiming EPSG:4326 while carrying the value 1,491,000 falls in the gap between the two, which no valid geographic coordinate can occupy, so a single magnitude test flags it. The blind spot is shown too: a Web Mercator point near the origin, such as 120 metres east and 95 metres north off the Gulf of Guinea, is numerically indistinguishable from a valid degree pair, which is why the magnitude test rejects rather than silently reprojects.</desc>
+<rect x="0" y="0" width="760" height="244" fill="var(--fig-bg)"/>
+<line x1="60" y1="120" x2="716" y2="120" stroke="var(--fig-line)" stroke-width="1.3"/>
+<line x1="60" y1="114" x2="60" y2="126" stroke="var(--fig-line)" stroke-width="1.1"/>
+<line x1="224" y1="114" x2="224" y2="126" stroke="var(--fig-line)" stroke-width="1.1"/>
+<line x1="388" y1="114" x2="388" y2="126" stroke="var(--fig-line)" stroke-width="1.1"/>
+<line x1="552" y1="114" x2="552" y2="126" stroke="var(--fig-line)" stroke-width="1.1"/>
+<line x1="716" y1="114" x2="716" y2="126" stroke="var(--fig-line)" stroke-width="1.1"/>
+<text x="60" y="140" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">1</text>
+<text x="224" y="140" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">180</text>
+<text x="388" y="140" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">10³</text>
+<text x="552" y="140" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">10⁵</text>
+<text x="716" y="140" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">2×10⁷</text>
+<text x="388" y="158" text-anchor="middle" font-size="9.5" fill="var(--fig-ink-soft)">absolute coordinate magnitude, log scale</text>
+<rect x="60" y="76" width="164" height="30" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="142" y="95" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">EPSG:4326 — every valid value</text>
+<rect x="224" y="76" width="492" height="30" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="470" y="95" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">no geographic coordinate can be here — EPSG:3857 metres</text>
+<line x1="596" y1="60" x2="596" y2="76" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<circle cx="596" cy="91" r="4.5" fill="var(--fig-rose-edge)"/>
+<rect x="486" y="30" width="220" height="30" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="596" y="49" text-anchor="middle" font-size="9.5" fill="var(--fig-ink)">x = 1,491,000 declared "EPSG:4326" ⇒ reject</text>
+<rect x="60" y="180" width="330" height="52" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="72" y="198" font-size="9.5" font-weight="600" fill="var(--fig-ink)">The blind spot the test cannot cover</text>
+<text x="72" y="213" font-size="9" fill="var(--fig-ink-soft)">(120, 95) in metres is a real Web Mercator point</text>
+<text x="72" y="225" font-size="9" fill="var(--fig-ink-soft)">off the Gulf of Guinea — and a valid degree pair too</text>
+<rect x="400" y="180" width="316" height="52" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="412" y="198" font-size="9.5" font-weight="600" fill="var(--fig-ink)">So the magnitude test rejects, never reprojects</text>
+<text x="412" y="213" font-size="9" fill="var(--fig-ink-soft)">It proves a payload is wrong, not that one is right.</text>
+<text x="412" y="225" font-size="9" fill="var(--fig-ink-soft)">A declared, validated CRS field is the only real fix.</text>
+</svg>
+<figcaption><b>Figure 2.</b> The five-order-of-magnitude gap between the two ranges is what makes the heuristic work at all. It catches the common case and is silent on the rare one near the origin — so treat it as a tripwire, not as CRS detection.</figcaption>
+</figure>
+
 ```python
 from pyproj import Transformer
 
@@ -440,6 +481,40 @@ def reproject_if_needed(coords: list[float], source_epsg: int) -> list[float]:
 Mixed CRS streams require per-payload detection and normalization before routing; the [handling mixed CRS payloads](https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/handling-mixed-crs-payloads-in-python-event-handlers/) guide covers the detection heuristics in detail.
 
 **Self-intersecting polygons.** A polygon with crossing rings passes JSON schema validation but will corrupt spatial index operations. Call `shapely.validation.make_valid()` and log the original geometry before discarding the malformed version so you can investigate upstream SDK bugs.
+
+<figure class="fig">
+<svg viewBox="0 0 760 248" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four geometries that pass GeoJSON schema validation but break different downstream stages">
+<title>Geometries that parse cleanly and still break the pipeline</title>
+<desc>Four shapes drawn side by side, each valid against the GeoJSON schema. A bow-tie polygon whose exterior ring crosses itself has an area that is undefined and corrupts spatial joins; make_valid splits it into two polygons. A polygon whose first and last vertex differ is an unclosed ring, which raises a topological error only when the first request arrives rather than at startup. An empty point carries no coordinates at all, so any centroid or index-key derivation returns null and the partition key becomes null. A single-vertex linestring has zero length, so a buffer operation returns an empty geometry and the feature silently disappears. In each case the schema check passes and the failure surfaces several stages later.</desc>
+<rect x="0" y="0" width="760" height="248" fill="var(--fig-bg)"/>
+<rect x="14" y="26" width="176" height="120" rx="7" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="102" y="44" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">self-intersecting</text>
+<path d="M42 62 L162 122 L42 122 L162 62 Z" fill="none" stroke="var(--fig-rose-edge)" stroke-width="1.8"/>
+<circle cx="102" cy="92" r="3" fill="var(--fig-rose-edge)"/>
+<text x="102" y="140" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">area undefined · joins corrupt</text>
+<rect x="200" y="26" width="176" height="120" rx="7" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="288" y="44" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">unclosed ring</text>
+<polyline points="228,120 228,64 348,64 348,120" fill="none" stroke="var(--fig-gold-edge)" stroke-width="1.8"/>
+<circle cx="228" cy="120" r="3.5" fill="var(--fig-gold-edge)"/>
+<circle cx="348" cy="120" r="3.5" fill="none" stroke="var(--fig-gold-edge)" stroke-width="1.6"/>
+<text x="288" y="140" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">first ≠ last · errors at request 1</text>
+<rect x="386" y="26" width="176" height="120" rx="7" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="474" y="44" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">POINT EMPTY</text>
+<circle cx="474" cy="92" r="22" fill="none" stroke="var(--fig-earth-edge)" stroke-width="1.6" stroke-dasharray="4,3"/>
+<line x1="460" y1="78" x2="488" y2="106" stroke="var(--fig-earth-edge)" stroke-width="1.6"/>
+<text x="474" y="140" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">no coords · partition key null</text>
+<rect x="572" y="26" width="174" height="120" rx="7" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.3"/>
+<text x="659" y="44" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">1-vertex linestring</text>
+<circle cx="659" cy="92" r="4" fill="var(--fig-peach-edge)"/>
+<text x="659" y="140" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">zero length · buffer ⇒ empty</text>
+<rect x="14" y="160" width="732" height="26" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="26" y="177" font-size="9.5" fill="var(--fig-ink)">All four are valid GeoJSON. A schema validator accepts every one of them — the shape is well-formed, the meaning is not.</text>
+<rect x="14" y="192" width="732" height="42" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="26" y="209" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Where each one actually surfaces:</text>
+<text x="26" y="225" font-size="9" fill="var(--fig-ink-soft)">at the spatial join · at the first request after deploy · at partition assignment · silently, as a feature that never arrives</text>
+</svg>
+<figcaption><b>Figure 3.</b> Schema validity and topological validity are different properties, and only the first is free. Each of these surfaces at a different stage, which is why the topology check belongs at ingest rather than wherever the crash happens to appear.</figcaption>
+</figure>
 
 **Empty or degenerate geometries.** A `POINT EMPTY` or a `LINESTRING` with a single vertex passes GeoJSON parsing but breaks downstream topology checks. Validate `geom.is_empty` and `len(geom.coords) > 1` before dispatch.
 

@@ -98,9 +98,11 @@ Prometheus stores one independent time series for every unique combination of me
 
 The discipline, then, is to classify every validation outcome into a small, fixed enum *before* it touches a label. The diagram below shows the flow: a geometry enters, Shapely checks run, the outcome collapses to one bounded `reason`, and the Counter advances by exactly one.
 
-<svg viewBox="0 0 760 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Geometry validation to bounded Prometheus counter label flow" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 15 668 172" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Geometry validation to bounded Prometheus counter label flow">
   <title>Geometry validation outcome to a bounded Prometheus counter label</title>
   <desc>A geometry payload enters a validate wrapper running Shapely checks. The outcome is classified into one of a fixed set of reasons — self_intersection, too_few_points, nan_coord, crs_mismatch or none — then increments a single counter labelled by result and reason. A side note warns against labelling by feature id or coordinates.</desc>
+  <rect x="0" y="15" width="668" height="172" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
       <path d="M0,0 L0,7 L8,3.5 Z" fill="currentColor" opacity="0.55"/>
@@ -137,6 +139,8 @@ The discipline, then, is to classify every validation outcome into a small, fixe
   <text x="380" y="40" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7" font-weight="600">Never label by feature_id or raw coordinates — unbounded cardinality</text>
   <line x1="380" y1="48" x2="380" y2="78" stroke="currentColor" stroke-opacity="0.3" stroke-width="1.2" stroke-dasharray="3,3"/>
 </svg>
+<figcaption><b>Figure 1.</b> Geometry validation outcome to a bounded Prometheus counter label</figcaption>
+</figure>
 
 ---
 

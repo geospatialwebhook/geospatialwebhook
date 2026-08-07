@@ -17,8 +17,21 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
   <link rel="manifest" href="/manifest.json"/>
 
-  <meta name="theme-color" content="#d56360"/>
-  <meta name="color-scheme" content="light"/>
+  <meta name="theme-color" content="#d56360" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
 
   
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -50,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=180687f5"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -143,6 +156,18 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
       </a>
     </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle"
+            aria-label="Switch to dark theme" title="Switch to dark theme">
+      <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.4v2.3M12 19.3v2.3M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.3M19.3 12h2.3M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+      </svg>
+    </button>
   </div>
 </header>
 
@@ -242,9 +267,11 @@
 <h2 id="why-out-of-order-delivery-corrupts-spatial-state" tabindex="-1"><a class="heading-anchor" href="#why-out-of-order-delivery-corrupts-spatial-state">Why out-of-order delivery corrupts spatial state</a></h2>
 <p>At-least-once delivery and ordering are two separate guarantees, and most pipelines have neither for free. A feature — a parcel boundary, a vehicle position, a flood-zone polygon — emits an update at 12:00:00 and a correction at 12:00:03. The 12:00:00 event hits a transient failure, gets retried, and lands <em>after</em> the 12:00:03 event. If your consumer blindly writes whatever it receives, the last message processed wins, and the stored geometry silently reverts to the older, wrong shape. Nothing errors; the map is just quietly stale.</p>
 <p>The fix is to stop trusting arrival order and start trusting an ordering token carried <em>inside</em> each event — a per-feature <code>version</code> counter or, more commonly for sensor data, the source <code>observed_at</code> timestamp. The consumer compares that token against what is already stored and applies the write only if it is strictly newer. This is a form of last-writer-wins conflict resolution where “last” means <em>newest observation</em>, not <em>newest arrival</em>; the deeper trade-offs of that choice are covered in <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies</a>.</p>
-<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Out-of-order spatial event consumer decision flow" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 16 753 183" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Out-of-order spatial event consumer decision flow">
   <title>Idempotent out-of-order consumer decision flow</title>
   <desc>An event arrives and flows through a Redis idempotency-key check that drops exact duplicates, then a PostGIS conditional upsert that compares the incoming observation time against the stored observation time, applying the write only when the incoming event is strictly newer and otherwise skipping it as stale. All three outcomes acknowledge the message.</desc>
+  <rect x="0" y="16" width="753" height="183" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
       <path d="M0,0 L0,7 L8,3.5 Z" fill="currentColor" opacity="0.55"/>
@@ -282,6 +309,8 @@
   <text x="650" y="145" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Row updated</text>
   <text x="650" y="161" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">newest geometry wins → ack</text>
 </svg>
+<figcaption><b>Figure 1.</b> Idempotent out-of-order consumer decision flow</figcaption>
+</figure>
 <hr>
 <h2 id="complete-runnable-implementation" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-implementation">Complete runnable implementation</a></h2>
 <p>The consumer below is self-contained and async. It reads events from an in-memory queue (swap in your Kafka or Redis Streams client), performs a Redis idempotency check to drop exact duplicates, then issues a single-statement PostGIS conditional upsert that persists the feature only when the incoming observation is strictly newer. Geometry arrives as GeoJSON in EPSG:4326 (WGS84) per RFC 7946 and is handed to PostGIS via <code>ST_GeomFromGeoJSON</code>. The idempotency key is assumed to be a content digest computed upstream (see the related links); here we only check and record it.</p>
@@ -704,7 +733,7 @@ GEOM_NEW <span class="token operator">=</span> <span class="token punctuation">{
 </footer>
 
   </div>
-  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script src="/assets/js/site.js?v=c31b7b80" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

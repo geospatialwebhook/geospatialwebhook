@@ -88,9 +88,11 @@ The hard part is not the CIDR match — the stdlib `ipaddress` module makes that
 
 If you trust the leftmost value, an attacker simply sends `X-Forwarded-For: <an-allowlisted-ip>` and walks straight through. The correct approach is to count from the right: skip exactly the number of proxies you operate, and the address at that position is the true client. The diagram below shows a single-load-balancer deployment where trust depth is one.
 
-<svg viewBox="0 0 760 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="X-Forwarded-For hop resolution behind one trusted load balancer" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 26 760 207" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="X-Forwarded-For hop resolution behind one trusted load balancer">
   <title>Resolving the true client IP from X-Forwarded-For</title>
   <desc>A left-to-right flow: an untrusted client with a forgeable X-Forwarded-For entry connects to a trusted load balancer, which appends the real client IP and forwards to the app. The app counts one hop back from the right of the header to select the true client address, then checks it against the CIDR allowlist.</desc>
+  <rect x="0" y="26" width="760" height="207" fill="var(--fig-bg)"/>
   <defs>
     <marker id="a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor"/>
@@ -123,6 +125,8 @@ If you trust the leftmost value, an attacker simply sends `X-Forwarded-For: <an-
   <line x1="330" y1="180" x2="330" y2="200" stroke="currentColor" stroke-width="1.2" marker-end="url(#a)"/>
   <text x="330" y="216" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">count 1 hop from the right → trust this address</text>
 </svg>
+<figcaption><b>Figure 1.</b> Resolving the true client IP from X-Forwarded-For</figcaption>
+</figure>
 
 ## Complete runnable implementation
 
@@ -250,11 +254,84 @@ Because the check runs in middleware, it composes cleanly with the signature lay
 
 2. **Wrong proxy hop count.** If you add a CDN in front of your existing load balancer, the trusted depth becomes two, not one. A stale `trusted_proxy_hops` silently reads the wrong position, either admitting forged addresses or rejecting everyone. Treat hop count as an infrastructure-coupled config value and update it whenever the ingress path changes.
 
+<figure class="fig">
+<svg viewBox="0 0 760 274" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The same X-Forwarded-For chain read at three different trusted-hop depths, showing correct, forgeable and self-denying outcomes">
+<title>Reading the same header at three trust depths</title>
+<desc>One request arrives through a CDN and a load balancer, so its X-Forwarded-For chain reads: forged value, real client, CDN edge. With the trusted hop count correctly set to two, the receiver counts two entries in from the right and selects the real client address 203.0.113.44, which matches the allowlist and is accepted. With a stale hop count of one, left over from before the CDN was added, it selects the CDN edge address instead, which is not the provider and is rejected — every legitimate event fails. With the hop count set to three it walks past the end of the chain into the attacker-controlled leftmost entry, which the attacker has set to an allowlisted address, and the forged request is accepted.</desc>
+<rect x="0" y="0" width="760" height="274" fill="var(--fig-bg)"/>
+<text x="14" y="18" font-size="10.5" font-weight="600" fill="var(--fig-ink)">One chain, written left to right as it passed through each hop:</text>
+<rect x="14" y="26" width="216" height="30" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="122" y="39" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">198.51.100.7</text>
+<text x="122" y="51" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">client-written — forgeable</text>
+<rect x="234" y="26" width="216" height="30" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="342" y="39" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">203.0.113.44</text>
+<text x="342" y="51" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">real client — written by the CDN</text>
+<rect x="454" y="26" width="216" height="30" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="562" y="39" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">192.0.2.10</text>
+<text x="562" y="51" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">CDN edge — written by your LB</text>
+<text x="678" y="45" font-size="9" fill="var(--fig-ink-soft)">← count from here</text>
+<rect x="14" y="76" width="732" height="56" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="26" y="94" font-size="10" font-weight="600" fill="var(--fig-ink)">hops = 2 — correct: CDN + load balancer</text>
+<text x="26" y="110" font-size="9.5" fill="var(--fig-ink-soft)">selects 203.0.113.44 · in the provider's CIDR · ACCEPT</text>
+<text x="26" y="124" font-size="9" fill="var(--fig-ink-soft)">The only depth that names an address neither the client nor an intermediary could forge.</text>
+<rect x="14" y="142" width="732" height="56" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.5"/>
+<text x="26" y="160" font-size="10" font-weight="600" fill="var(--fig-ink)">hops = 1 — stale: set before the CDN was added</text>
+<text x="26" y="176" font-size="9.5" fill="var(--fig-ink-soft)">selects 192.0.2.10 · your own CDN edge, not the provider · REJECT</text>
+<text x="26" y="190" font-size="9" fill="var(--fig-ink-soft)">Fails loudly — every event 403s, so you find it in minutes.</text>
+<rect x="14" y="208" width="732" height="56" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="26" y="226" font-size="10" font-weight="600" fill="var(--fig-ink)">hops = 3 — too deep: walks past the chain into client-written space</text>
+<text x="26" y="242" font-size="9.5" fill="var(--fig-ink-soft)">selects 198.51.100.7 · whatever the attacker typed · ACCEPT</text>
+<text x="26" y="256" font-size="9" fill="var(--fig-ink-soft)">Fails silently — the allowlist still "passes", which is why a short chain must be rejected, not guessed at.</text>
+</svg>
+<figcaption><b>Figure 2.</b> Hop count is not a tuning parameter — it is a statement about your ingress topology, and only one value is right. Note the asymmetry: too shallow fails closed and you notice, too deep fails open and you do not.</figcaption>
+</figure>
+
 3. **IPv6 and IPv4-mapped addresses.** Providers increasingly send over IPv6. `ipaddress.ip_network` and `ip_address` handle both families, but an IPv4-only allowlist will reject an IPv6 sender outright. Include the provider's IPv6 ranges, and be aware that a client reaching you as `::ffff:203.0.113.44` (IPv4-mapped IPv6) will not match a plain IPv4 `/24` unless you normalize it. Enumerate both families explicitly.
 
 4. **Provider IP ranges change.** Managed platforms rotate and expand their egress ranges, sometimes with little notice. A hardcoded allowlist becomes an outage the day they add a subnet. Load ranges from a refreshable source and monitor the rate of `403`s from *near-miss* addresses so a range change surfaces as an alert, not a silent drop of legitimate events.
 
 5. **Cloud NAT egress sharing.** If your provider runs on a shared cloud platform, its outbound traffic may leave through NAT ranges shared with thousands of unrelated tenants. Allowlisting that range admits anything running on the same platform — including an attacker who spins up a VM there. This is precisely why IP allowlisting is *necessary but not sufficient*: it must be paired with a per-request signature that only your provider can produce.
+
+<figure class="fig">
+<svg viewBox="0 0 760 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A shared cloud NAT egress range admits every tenant on the platform, so a signature gate is required behind it">
+<title>Why a shared NAT range is necessary but not sufficient</title>
+<desc>The allowlisted CIDR 198.51.100.0/22 is a cloud provider's shared NAT egress range. Inside it sit your webhook provider's workers, thousands of unrelated tenants, and an attacker's virtual machine spun up on the same platform for the price of an hourly instance. All three leave through the same addresses, so the IP gate admits all three identically. Only the second gate, an HMAC signature over the raw body, separates them: the provider holds the shared secret and passes, while the unrelated tenants and the attacker's VM do not and are rejected.</desc>
+<rect x="0" y="0" width="760" height="250" fill="var(--fig-bg)"/>
+<defs>
+<marker id="nat-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+<path d="M0,0 L8,3 L0,6 Z" fill="var(--fig-line)"/>
+</marker>
+</defs>
+<rect x="14" y="26" width="250" height="196" rx="8" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.6" stroke-dasharray="6,3"/>
+<text x="139" y="46" text-anchor="middle" font-size="10.5" font-weight="600" fill="var(--fig-ink)">allowlisted: 198.51.100.0/22</text>
+<text x="139" y="60" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">one shared cloud NAT egress range</text>
+<rect x="30" y="72" width="218" height="34" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="139" y="88" text-anchor="middle" font-size="9.5" fill="var(--fig-ink)">your webhook provider</text>
+<text x="139" y="100" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">holds the shared secret</text>
+<rect x="30" y="112" width="218" height="34" rx="5" fill="var(--fig-earth)" stroke="var(--fig-line-soft)" stroke-width="1.2"/>
+<text x="139" y="128" text-anchor="middle" font-size="9.5" fill="var(--fig-ink-soft)">~40,000 unrelated tenants</text>
+<text x="139" y="140" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">same egress addresses</text>
+<rect x="30" y="152" width="218" height="34" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="139" y="168" text-anchor="middle" font-size="9.5" fill="var(--fig-ink)">attacker's VM</text>
+<text x="139" y="180" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">cost to enter the range: one hour of compute</text>
+<text x="139" y="206" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">all three leave through the same /22</text>
+<line x1="266" y1="124" x2="316" y2="124" stroke="var(--fig-line)" stroke-width="1.4" marker-end="url(#nat-arr)"/>
+<rect x="320" y="88" width="140" height="72" rx="7" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.5"/>
+<text x="390" y="112" text-anchor="middle" font-size="10" font-weight="600" fill="var(--fig-ink)">Gate 1 — CIDR</text>
+<text x="390" y="128" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">admits all three</text>
+<text x="390" y="145" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">cuts internet-wide noise</text>
+<line x1="462" y1="124" x2="512" y2="124" stroke="var(--fig-line)" stroke-width="1.4" marker-end="url(#nat-arr)"/>
+<rect x="516" y="88" width="150" height="72" rx="7" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="591" y="112" text-anchor="middle" font-size="10" font-weight="600" fill="var(--fig-ink)">Gate 2 — HMAC</text>
+<text x="591" y="128" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">admits the provider only</text>
+<text x="591" y="145" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">the gate that actually authenticates</text>
+<text x="674" y="118" font-size="9" fill="var(--fig-mint-edge)" font-weight="600">✓ 1 of 3</text>
+<text x="674" y="132" font-size="8.5" fill="var(--fig-rose-edge)">✗ 2 of 3</text>
+<rect x="14" y="228" width="732" height="20" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="26" y="242" font-size="9.5" fill="var(--fig-ink)">An allowlist narrows who can reach you. It never establishes who they are — that is always the signature's job.</text>
+</svg>
+<figcaption><b>Figure 3.</b> The allowlist earns its place by cutting internet-wide scanning noise, not by authenticating anyone. Behind a shared NAT range its trust boundary is "anyone with a credit card on this cloud".</figcaption>
+</figure>
 
 6. **Spoofing at the network layer.** Source-IP spoofing is impractical for a completed TCP/TLS handshake, but header-level spoofing via `X-Forwarded-For` is trivial and is the realistic threat here. The signature check is what closes the gap; the IP gate only reduces the volume of requests that reach it.
 

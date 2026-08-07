@@ -26,9 +26,11 @@ If every source already agrees on `EPSG:4326`, skip this and validate topology o
 
 The handler runs as a deterministic pipeline: resolve the source CRS, build (or reuse) a transformer keyed by the source/target EPSG pair, transform the geometry, re-validate topology after the transform, then route the clean payload onward or quarantine the failure.
 
-<svg viewBox="0 0 720 320" role="img" aria-label="Mixed-CRS normalization flow: resolve the source CRS, look up a cached transformer, transform to EPSG:4326, re-validate topology, then route the clean payload or quarantine unresolvable input" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 26 720 254" role="img" aria-label="Mixed-CRS normalization flow: resolve the source CRS, look up a cached transformer, transform to EPSG:4326, re-validate topology, then route the clean payload or quarantine unresolvable input" xmlns="http://www.w3.org/2000/svg">
   <title>Mixed-CRS normalization flow</title>
   <desc>A spatial webhook payload enters a resolver that determines its source CRS from an explicit field, a GeoJSON crs member, or coordinate-magnitude inference. A cached transformer keyed by source and target EPSG codes converts the geometry to EPSG:4326. Topology is re-validated after the transform; clean payloads are routed downstream and unresolvable CRS or invalid geometry is sent to a quarantine queue.</desc>
+  <rect x="0" y="26" width="720" height="254" fill="var(--fig-bg)"/>
   <defs>
     <marker id="crsarr" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.55"/>
@@ -82,6 +84,8 @@ The handler runs as a deterministic pipeline: resolve the source CRS, build (or 
   <text x="89" y="156" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.55">payload in (mixed CRS)</text>
   <line x1="89" y1="128" x2="89" y2="146" stroke="currentColor" stroke-width="1" opacity="0.35" stroke-dasharray="3,2"/>
 </svg>
+<figcaption><b>Figure 1.</b> Mixed-CRS normalization flow</figcaption>
+</figure>
 
 ## Complete runnable handler
 

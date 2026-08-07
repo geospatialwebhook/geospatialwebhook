@@ -110,9 +110,11 @@ The solution requires a layered approach: deterministic key generation, stateful
 
 A production-grade spatial webhook pipeline must separate ingestion, idempotency validation, spatial evaluation, and persistence into distinct, independently observable stages. The following diagram shows the data path from raw webhook arrival to committed state.
 
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 520" role="img" aria-label="Spatial idempotency pipeline: five stages from webhook receiver through idempotency cache, spatial evaluator, conflict resolver, to persistence layer" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 10 726 501" role="img" aria-label="Spatial idempotency pipeline: five stages from webhook receiver through idempotency cache, spatial evaluator, conflict resolver, to persistence layer">
   <title>Spatial Idempotency Pipeline</title>
   <desc>Five-stage pipeline diagram showing how a geospatial webhook flows through payload normalization, Redis idempotency check, PostGIS spatial overlap evaluation, conflict resolution, and atomic upsert to the persistence layer. A duplicate exit branch from Stage 2 returns 200 OK without further processing.</desc>
+  <rect x="0" y="10" width="726" height="501" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arr-idem" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
@@ -164,6 +166,8 @@ A production-grade spatial webhook pipeline must separate ingestion, idempotency
   <!-- Caption -->
   <text x="360" y="494" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="currentColor" opacity="0.4">Figure 1 — Five-stage spatial idempotency pipeline. Stage 2 short-circuits duplicates before any PostGIS query runs.</text>
 </svg>
+<figcaption><b>Figure 1.</b> Spatial Idempotency Pipeline</figcaption>
+</figure>
 
 The labeled components map to four architectural layers: a normalization and fingerprinting step at ingestion, an atomic cache gate, a spatial database query for topology evaluation, and a conflict-aware persistence write. Each layer is independently testable and observable.
 

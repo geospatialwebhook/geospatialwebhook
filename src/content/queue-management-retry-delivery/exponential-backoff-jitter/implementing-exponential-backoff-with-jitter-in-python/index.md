@@ -98,9 +98,11 @@ Plain exponential backoff doubles a fixed delay: 1s, 2s, 4s, 8s. If a downstream
 
 Jitter randomizes each delay so the retries scatter across the window. Of the three AWS-documented variants — full jitter, equal jitter, and decorrelated jitter — decorrelated jitter gives the best throughput under contention because each delay is derived from the *previous* delay rather than from a fixed exponent, letting the backoff both grow and occasionally shrink to probe for recovery.
 
-<svg viewBox="0 0 760 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Comparison of synchronized retries without jitter versus spread-out retries with decorrelated jitter" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 3 753 247" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Comparison of synchronized retries without jitter versus spread-out retries with decorrelated jitter">
   <title>Retry storm without jitter versus spread retries with decorrelated jitter</title>
   <desc>Two horizontal timelines. The top timeline shows four senders all retrying at the same three instants, forming tall synchronized spikes. The bottom timeline shows the same senders with decorrelated jitter, their retries scattered evenly across the window with no overlap.</desc>
+  <rect x="0" y="3" width="753" height="247" fill="var(--fig-bg)"/>
   <!-- top: no jitter -->
   <text x="8" y="30" font-size="12" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Without jitter — synchronized storm</text>
   <line x1="20" y1="90" x2="740" y2="90" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5"/>
@@ -133,6 +135,8 @@ Jitter randomizes each delay so the retries scatter across the window. Of the th
   </g>
   <text x="380" y="234" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">time →</text>
 </svg>
+<figcaption><b>Figure 1.</b> Retry storm without jitter versus spread retries with decorrelated jitter</figcaption>
+</figure>
 
 ---
 

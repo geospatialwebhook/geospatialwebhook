@@ -95,9 +95,11 @@ Anchor your rules to external standards: the [RFC 7946 GeoJSON specification](ht
 
 The diagram below shows the four-stage path from a raw webhook delivery to a validated geometry published on the broker. Each stage either passes the payload forward, hands it to the repair branch, or isolates it for review — so a single bad payload can never stall the stream.
 
-<svg viewBox="0 0 760 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four-stage geometry validation pipeline from webhook ingestion to validated publish, with a structural-reject branch returning HTTP 400, a topology repair branch, and a dead-letter branch for fatal errors" style="width:100%;max-width:760px;height:auto;font-family:inherit;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="6 10 747 450" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four-stage geometry validation pipeline from webhook ingestion to validated publish, with a structural-reject branch returning HTTP 400, a topology repair branch, and a dead-letter branch for fatal errors">
   <title>Geometry Validation Pipeline</title>
   <desc>Four numbered stages laid out left to right: Schema and Type, Coordinate Bounds, Topology and Repair, and CRS Alignment, connected by arrows toward a validated publish. The Schema stage rejects structural errors with HTTP 400; the Topology stage branches to a repair queue or, when repair fails, to a dead-letter queue. A lower panel compares the three error tiers: recoverable, structural, and fatal.</desc>
+  <rect x="6" y="10" width="747" height="450" fill="var(--fig-bg)"/>
   <defs>
     <marker id="gv-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
@@ -174,6 +176,8 @@ The diagram below shows the four-stage path from a raw webhook delivery to a val
   <text x="612" y="401" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">with full context</text>
   <text x="612" y="418" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.55">Manual triage</text>
 </svg>
+<figcaption><b>Figure 1.</b> Geometry Validation Pipeline</figcaption>
+</figure>
 
 The pipeline has four numbered stages:
 

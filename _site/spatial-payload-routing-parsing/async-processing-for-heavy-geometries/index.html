@@ -17,8 +17,21 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
   <link rel="manifest" href="/manifest.json"/>
 
-  <meta name="theme-color" content="#d56360"/>
-  <meta name="color-scheme" content="light"/>
+  <meta name="theme-color" content="#d56360" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
 
   
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -50,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=180687f5"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -143,6 +156,18 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
       </a>
     </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle"
+            aria-label="Switch to dark theme" title="Switch to dark theme">
+      <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.4v2.3M12 19.3v2.3M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.3M19.3 12h2.3M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+      </svg>
+    </button>
   </div>
 </header>
 
@@ -242,9 +267,11 @@
 <hr>
 <h2 id="architecture-overview" tabindex="-1"><a class="heading-anchor" href="#architecture-overview">Architecture Overview</a></h2>
 <p>The pipeline separates concerns into four layers. The webhook endpoint only performs lightweight I/O; all CPU work happens downstream in isolated processes.</p>
-<svg viewBox="0 0 720 340" role="img" aria-label="Four-layer async geometry pipeline: HTTP ingestion, queue, worker pool, and persistence" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="6 0 708 324" role="img" aria-label="Four-layer async geometry pipeline: HTTP ingestion, queue, worker pool, and persistence" xmlns="http://www.w3.org/2000/svg">
   <title>Async Geometry Pipeline Architecture</title>
   <desc>Four-layer pipeline showing data flow from webhook HTTP ingestion through a message queue, into a ProcessPoolExecutor worker pool for spatial validation and projection, then to a PostGIS database and event callback.</desc>
+  <rect x="6" y="0" width="708" height="324" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
@@ -308,6 +335,8 @@
   <line x1="330" y1="155" x2="359" y2="155" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow)" opacity="0.55"/>
   <line x1="535" y1="155" x2="554" y2="155" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow)" opacity="0.55"/>
 </svg>
+<figcaption><b>Figure 1.</b> Async Geometry Pipeline Architecture</figcaption>
+</figure>
 <p><strong>Layer 1 — Ingestion:</strong> The FastAPI endpoint receives raw bytes, validates the HMAC signature and <code>Content-Length</code>, publishes the payload to the queue, and responds <code>202 Accepted</code> in under 100 ms.</p>
 <p><strong>Layer 2 — Queue:</strong> An async consumer reads from Redis Streams or RabbitMQ. This buffer absorbs traffic spikes and decouples ingestion throughput from worker capacity. Tasks that exceed the retry ceiling move to a dead-letter queue for inspection.</p>
 <p><strong>Layer 3 — Worker Pool:</strong> A <code>ProcessPoolExecutor</code> runs topology repair (<code>make_valid</code>), CRS normalization to EPSG:4326 (WGS 84), Pydantic schema validation, and coordinate transformation in separate OS processes, bypassing the GIL entirely.</p>
@@ -887,7 +916,7 @@ SAMPLE_FEATURE <span class="token operator">=</span> <span class="token punctuat
 </footer>
 
   </div>
-  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script src="/assets/js/site.js?v=c31b7b80" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

@@ -11,9 +11,11 @@ eleventyExcludeFromCollections: true
     <div class="markdown">
       <h1>You're offline</h1>
       <p>It looks like your network is unavailable. Pages you've already visited may still load from the cache. Reconnect to fetch the latest updates.</p>
-<svg viewBox="0 0 560 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Service worker cache pipeline: browser request routed through service worker to cache or network" style="width:100%;max-width:560px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="-8 4 465 152" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Service worker cache pipeline: browser request routed through service worker to cache or network">
   <title>Service Worker Cache Pipeline</title>
   <desc>A three-stage flow diagram showing a browser request passing through the service worker, which checks the cache store first; on a cache hit the response is served immediately, and on a cache miss the request falls through to the network.</desc>
+  <rect x="-8" y="4" width="465" height="152" fill="var(--fig-bg)"/>
   <defs>
     <marker id="sw-arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
@@ -38,6 +40,8 @@ eleventyExcludeFromCollections: true
   <text x="430" y="48" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.5">HIT</text>
   <text x="430" y="118" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.5">MISS</text>
 </svg>
+<figcaption><b>Figure 1.</b> Service worker cache pipeline</figcaption>
+</figure>
       <p><a href="/">Return to the home page</a></p>
     </div>
   </div>

@@ -11,8 +11,6 @@ require("prismjs/components/prism-json");
 require("prismjs/components/prism-sql");
 require("prismjs/components/prism-yaml");
 
-const ASCII_DIAGRAM_RE = /[│├└─▼▲←→]|[\s]{2,}▼/;
-
 function escapeHtml(s) {
   return s
     .replace(/&/g, "&amp;")
@@ -20,37 +18,6 @@ function escapeHtml(s) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
-}
-
-function asciiDiagramToMermaid(raw) {
-  // Detect a vertical "Step → Step → Step" ASCII diagram and convert to mermaid flowchart.
-  const lines = raw.split("\n").map((l) => l.trim()).filter(Boolean);
-  const nodes = lines.filter(
-    (l) => !/^[│▼▲|]+$/.test(l) && !/^[─┌┐└┘├┤┬┴┼]+$/.test(l)
-  );
-  if (nodes.length < 2) return null;
-  // For each step:
-  //  - lines like "[Name] → description" → take "Name" as title, description as subtitle
-  //  - bare lines → use as title
-  const clean = nodes.map((n) => {
-    const bracket = n.match(/^\[([^\]]+)\]\s*(?:→\s*(.+))?$/);
-    if (bracket) {
-      const title = bracket[1].trim();
-      const desc = (bracket[2] || "").trim();
-      return desc ? `${title} — ${desc}` : title;
-    }
-    return n.replace(/^→\s*/, "").trim();
-  });
-  // Sanitize for mermaid node bracket content.
-  const sanitize = (s) => s.replace(/[\[\]"]/g, "").replace(/\s+/g, " ");
-  let out = "flowchart TD\n";
-  for (let i = 0; i < clean.length; i++) {
-    out += `  N${i}["${sanitize(clean[i])}"]\n`;
-  }
-  for (let i = 0; i < clean.length - 1; i++) {
-    out += `  N${i} --> N${i + 1}\n`;
-  }
-  return out;
 }
 
 const md = markdownIt({
@@ -66,15 +33,6 @@ md.renderer.rules.fence = function (tokens, idx) {
   const code = token.content;
   const info = token.info ? token.info.trim() : "";
   const lang = info.split(/\s+/)[0] || "";
-
-  // ASCII pipeline diagrams → mermaid.
-  const isDiagramLang = !lang || lang === "text" || lang === "txt";
-  if (isDiagramLang && ASCII_DIAGRAM_RE.test(code)) {
-    const mer = asciiDiagramToMermaid(code);
-    if (mer) {
-      return `<pre class="mermaid" tabindex="0">${escapeHtml(mer)}</pre>\n`;
-    }
-  }
 
   let highlighted;
   if (lang && Prism.languages[lang]) {
@@ -123,6 +81,39 @@ const CANONICAL_ORIGIN = "https://www.geospatialwebhook.com";
 
 module.exports = function (eleventyConfig) {
   eleventyConfig.setLibrary("md", md);
+
+  // A blank line inside a <figure> block ends markdown-it's HTML block, so the
+  // remainder of the SVG is re-parsed as markdown and its <text> labels spill
+  // into the prose as stray words. It renders as plausible-looking paragraphs
+  // rather than an error, so fail the build instead of shipping it.
+  eleventyConfig.on("eleventy.before", () => {
+    const fs = require("fs");
+    const walk = (dir) =>
+      fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+        const p = path.join(dir, e.name);
+        return e.isDirectory() ? walk(p) : [p];
+      });
+    const offenders = [];
+    for (const file of walk(path.join(__dirname, "src"))) {
+      if (!/\.(md|njk)$/.test(file)) continue;
+      const text = fs.readFileSync(file, "utf8");
+      const re = /<figure\b[^>]*>[\s\S]*?<\/figure>/g;
+      let m;
+      while ((m = re.exec(text))) {
+        if (/\n[ \t]*\n/.test(m[0])) {
+          const line = text.slice(0, m.index).split("\n").length;
+          offenders.push(`${path.relative(__dirname, file)}:${line}`);
+        }
+      }
+    }
+    if (offenders.length) {
+      throw new Error(
+        "Blank line inside a <figure> block — markdown-it will end the HTML " +
+          "block there and leak the SVG into the prose:\n  " +
+          offenders.join("\n  ")
+      );
+    }
+  });
 
   // Rewrite every root-relative anchor href in the built HTML to an absolute
   // canonical (www) URL, so all internal navigation links are fully-qualified.

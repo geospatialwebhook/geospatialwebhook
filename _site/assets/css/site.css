@@ -70,6 +70,208 @@
   --font-sans:    "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
   --font-display: "Fraunces", "Source Serif Pro", Georgia, serif;
   --font-mono:    "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Surfaces that are not a flat palette step */
+  --header-bg:      rgba(255, 245, 238, 0.85);
+  --code-header-bg: linear-gradient(180deg, #f6ecd9, #f1e3c8);
+  --footer-veil:    rgba(255,255,255,0.55);
+  --on-accent:      #ffffff;   /* ink drawn ON a saturated accent fill */
+
+  /* Syntax colours — all clear 4.5:1 on --code-bg in the active theme */
+  --tok-comment: #7a5a48;
+  --tok-punct:   #6b5238;
+  --tok-num:     #9a4428;
+  --tok-str:     #256040;
+  --tok-op:      #6b5238;
+  --tok-kw:      #b33030;
+  --tok-fn:      #9a4018;
+  --tok-var:     #7a5200;
+
+  /* ---- Figure tokens ----------------------------------------------------
+     Every hand-authored inline SVG draws itself from THIS set and nothing
+     else. Both themes redefine the same names, so a diagram flips wholesale
+     with the page instead of needing per-shape overrides. Each fill is
+     paired with an ink that clears WCAG AA against it in the active theme. */
+  --fig-bg:      #ffffff;   /* full-canvas background rect            */
+  --fig-ink:     #2f2418;   /* primary label text                      */
+  --fig-ink-soft:#5b4a37;   /* secondary label text                    */
+  --fig-line:    #8f7150;   /* strokes, arrows, connectors             */
+  --fig-line-soft:#c4ad91;  /* gridlines, guides, dividers             */
+  --fig-peach:   #fbd0b5;   /* fill 1 — ingress / producer             */
+  --fig-mint:    #b7e1c4;   /* fill 2 — success / validated            */
+  --fig-earth:   #ece0cd;   /* fill 3 — storage / neutral stage        */
+  --fig-rose:    #fde7e6;   /* fill 4 — failure / dead-letter          */
+  --fig-gold:    #f6e3a4;   /* fill 5 — retry / in-flight              */
+  --fig-peach-edge: #b85a39;
+  --fig-mint-edge:  #256040;
+  --fig-earth-edge: #8f7150;
+  --fig-rose-edge:  #d56360;
+  --fig-gold-edge:  #a8801a;
+}
+
+/* ===== Dark theme =====
+   The palette scale is used strictly by role — 50/100 are surfaces, 200 are
+   borders, 400-600 are marks and text — so the whole theme is one remap of
+   that scale plus the handful of tokens that are not a flat palette step.
+   Component rules below stay untouched and flip wholesale: page, header,
+   cards, code, tables AND the interiors of the inline-SVG figures.
+
+   An explicit data-theme wins in both directions; the OS preference applies
+   only when the reader has not chosen. */
+:root[data-theme="dark"] {
+  --peach-50:  #2b2018;
+  --peach-100: #3f2b1e;
+  --peach-200: #6a4630;
+  --peach-300: #d79a76;
+  --peach-400: #e5a582;
+  --peach-500: #efb391;
+  --peach-600: #f8c5a3;
+
+  --mint-50:   #17281e;
+  --mint-100:  #1e3d2c;
+  --mint-200:  #2f5f45;
+  --mint-300:  #7fc59b;
+  --mint-400:  #74c091;
+  --mint-500:  #8ed3a8;
+  --mint-600:  #a9dfbe;
+
+  --earth-50:  #262019;
+  --earth-100: #372f24;
+  --earth-200: #504634;
+  --earth-300: #8f7c60;
+  --earth-400: #c3ae93;
+  --earth-500: #dcc9ab;
+  --earth-600: #efe0c8;
+
+  --rose-100: #43272a;
+  --rose-300: #8f5457;
+  --rose-500: #f2a8a5;
+
+  --gold-200: #46391a;
+  --gold-400: #e9cd74;
+
+  --surface:    #211d17;
+  --ink:        #f2e9dd;
+  --ink-soft:   #dccbb4;
+  --muted:      #bfae95;
+  --line:       #3d3428;
+
+  --code-bg:        #1b1813;
+  --code-inline-bg: #26211a;
+  --code-border:    #3d3428;
+  --code-ink:       #ece0cd;
+
+  --header-bg:      rgba(23, 20, 15, 0.86);
+  --code-header-bg: linear-gradient(180deg, #27221a, #1f1b15);
+  --footer-veil:    rgba(0,0,0,0.22);
+  --on-accent:      #17140f;
+
+  --tok-comment: #9d8a76;
+  --tok-punct:   #c2b39d;
+  --tok-num:     #f0a882;
+  --tok-str:     #92d3ab;
+  --tok-op:      #d5c1a2;
+  --tok-kw:      #f28d8d;
+  --tok-fn:      #f3b98c;
+  --tok-var:     #e2c46e;
+
+  --shadow-1: 0 1px 2px rgba(0,0,0,.36), 0 4px 14px rgba(0,0,0,.34);
+  --shadow-2: 0 4px 8px rgba(0,0,0,.40), 0 18px 36px rgba(0,0,0,.44);
+
+  --fig-bg:      #211d17;
+  --fig-ink:     #f2e9dd;
+  --fig-ink-soft:#d6c5ad;
+  --fig-line:    #c0ab90;
+  --fig-line-soft:#5c5040;
+  --fig-peach:   #5e3826;
+  --fig-mint:    #204c36;
+  --fig-earth:   #40372a;
+  --fig-rose:    #5c2e2d;
+  --fig-gold:    #4f4220;
+  --fig-peach-edge: #f3b290;
+  --fig-mint-edge:  #8ccda3;
+  --fig-earth-edge: #d8c2a3;
+  --fig-rose-edge:  #f3b3b0;
+  --fig-gold-edge:  #f6e3a4;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --peach-50:  #2b2018;
+    --peach-100: #3f2b1e;
+    --peach-200: #6a4630;
+    --peach-300: #d79a76;
+    --peach-400: #e5a582;
+    --peach-500: #efb391;
+    --peach-600: #f8c5a3;
+
+    --mint-50:   #17281e;
+    --mint-100:  #1e3d2c;
+    --mint-200:  #2f5f45;
+    --mint-300:  #7fc59b;
+    --mint-400:  #74c091;
+    --mint-500:  #8ed3a8;
+    --mint-600:  #a9dfbe;
+
+    --earth-50:  #262019;
+    --earth-100: #372f24;
+    --earth-200: #504634;
+    --earth-300: #8f7c60;
+    --earth-400: #c3ae93;
+    --earth-500: #dcc9ab;
+    --earth-600: #efe0c8;
+
+    --rose-100: #43272a;
+    --rose-300: #8f5457;
+    --rose-500: #f2a8a5;
+
+    --gold-200: #46391a;
+    --gold-400: #e9cd74;
+
+    --surface:    #211d17;
+    --ink:        #f2e9dd;
+    --ink-soft:   #dccbb4;
+    --muted:      #bfae95;
+    --line:       #3d3428;
+
+    --code-bg:        #1b1813;
+    --code-inline-bg: #26211a;
+    --code-border:    #3d3428;
+    --code-ink:       #ece0cd;
+
+    --header-bg:      rgba(23, 20, 15, 0.86);
+    --code-header-bg: linear-gradient(180deg, #27221a, #1f1b15);
+    --footer-veil:    rgba(0,0,0,0.22);
+    --on-accent:      #17140f;
+
+    --tok-comment: #9d8a76;
+    --tok-punct:   #c2b39d;
+    --tok-num:     #f0a882;
+    --tok-str:     #92d3ab;
+    --tok-op:      #d5c1a2;
+    --tok-kw:      #f28d8d;
+    --tok-fn:      #f3b98c;
+    --tok-var:     #e2c46e;
+
+    --shadow-1: 0 1px 2px rgba(0,0,0,.36), 0 4px 14px rgba(0,0,0,.34);
+    --shadow-2: 0 4px 8px rgba(0,0,0,.40), 0 18px 36px rgba(0,0,0,.44);
+
+    --fig-bg:      #211d17;
+    --fig-ink:     #f2e9dd;
+    --fig-ink-soft:#d6c5ad;
+    --fig-line:    #c0ab90;
+    --fig-line-soft:#5c5040;
+    --fig-peach:   #5e3826;
+    --fig-mint:    #204c36;
+    --fig-earth:   #40372a;
+    --fig-rose:    #5c2e2d;
+    --fig-gold:    #4f4220;
+    --fig-peach-edge: #f3b290;
+    --fig-mint-edge:  #8ccda3;
+    --fig-earth-edge: #d8c2a3;
+    --fig-rose-edge:  #f3b3b0;
+    --fig-gold-edge:  #f6e3a4;
+  }
 }
 
 /* Reset */
@@ -140,7 +342,7 @@ h1, h2, h3, h4, h5 {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(255, 245, 238, 0.85);
+  background: var(--header-bg);
   backdrop-filter: saturate(140%) blur(10px);
   -webkit-backdrop-filter: saturate(140%) blur(10px);
   border-bottom: 1px solid var(--line);
@@ -211,6 +413,43 @@ h1, h2, h3, h4, h5 {
   border-color: var(--mint-200);
 }
 .site-nav a svg { width: 18px; height: 18px; flex: 0 0 auto; }
+
+/* ===== Theme toggle ===== */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  flex: 0 0 auto;
+  margin-left: .35rem;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--earth-500);
+  cursor: pointer;
+  transition: background .18s ease, color .18s ease, border-color .18s ease;
+}
+.theme-toggle:hover, .theme-toggle:focus-visible {
+  background: var(--peach-100);
+  color: var(--peach-600);
+  border-color: var(--peach-200);
+}
+.theme-toggle:focus-visible { outline: 2px solid var(--mint-400); outline-offset: 2px; }
+.theme-toggle svg { width: 19px; height: 19px; }
+/* Show the icon for the theme the button would switch TO. */
+.theme-toggle .theme-toggle__moon { display: block; }
+.theme-toggle .theme-toggle__sun  { display: none; }
+:root[data-theme="dark"] .theme-toggle .theme-toggle__moon { display: none; }
+:root[data-theme="dark"] .theme-toggle .theme-toggle__sun  { display: block; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .theme-toggle .theme-toggle__moon { display: none; }
+  :root:not([data-theme="light"]) .theme-toggle .theme-toggle__sun  { display: block; }
+  :root[data-theme="dark"] .theme-toggle .theme-toggle__moon { display: none; }
+  :root[data-theme="dark"] .theme-toggle .theme-toggle__sun  { display: block; }
+}
 
 /* Compact header for narrow screens: hide subtitle, hide nav labels (icons only) */
 @media (max-width: 720px) {
@@ -522,7 +761,7 @@ h1, h2, h3, h4, h5 {
   align-items: center;
   justify-content: space-between;
   padding: .35rem .55rem .35rem .85rem;
-  background: linear-gradient(180deg, #f6ecd9, #f1e3c8);
+  background: var(--code-header-bg);
   border-bottom: 1px solid var(--code-border);
   font-size: .78rem;
 }
@@ -555,7 +794,7 @@ h1, h2, h3, h4, h5 {
 }
 .code-block__copy.is-copied {
   background: var(--mint-500);
-  color: #fff;
+  color: var(--on-accent);
   border-color: var(--mint-500);
 }
 .code-block pre {
@@ -576,38 +815,70 @@ h1, h2, h3, h4, h5 {
   border: none;
 }
 
-/* Prism token colors tuned to Whimsical Garden — all pass 4.5:1 on code-bg (#fbf5ec) */
+/* Prism token colours — driven by the --tok-* tokens so both themes clear
+   4.5:1 on their own --code-bg without a duplicated dark rule set. */
 .token.comment, .token.prolog, .token.doctype, .token.cdata {
-  color: #7a5a48; font-style: italic;
+  color: var(--tok-comment); font-style: italic;
 }
-.token.punctuation { color: #6b5238; }
+.token.punctuation { color: var(--tok-punct); }
 .token.namespace { opacity: .7; }
 .token.property, .token.tag, .token.boolean, .token.number, .token.constant, .token.symbol, .token.deleted {
-  color: #9a4428;
+  color: var(--tok-num);
 }
 .token.selector, .token.attr-name, .token.string, .token.char, .token.builtin, .token.inserted {
-  color: var(--mint-600);
+  color: var(--tok-str);
 }
 .token.operator, .token.entity, .token.url, .language-css .token.string, .style .token.string {
-  color: var(--earth-500);
+  color: var(--tok-op);
 }
 .token.atrule, .token.attr-value, .token.keyword {
-  color: #b33030; font-weight: 600;
+  color: var(--tok-kw); font-weight: 600;
 }
 .token.function, .token.class-name {
-  color: #9a4018;
+  color: var(--tok-fn);
 }
-.token.regex, .token.important, .token.variable { color: #7a5200; }
+.token.regex, .token.important, .token.variable { color: var(--tok-var); }
 
-/* Mermaid: light theme tweaks */
-pre.mermaid {
-  background: var(--mint-50);
-  border: 1px solid var(--mint-200);
+/* ===== Figures (hand-authored inline SVG) =====
+   A figure is a plain block in the prose column: it starts at the left text
+   edge and ends at the right one, exactly as wide as the paragraph above it.
+   Nothing here centres or caps the drawing — an SVG that stops short of the
+   measure reads as a stray image rather than part of the argument. */
+.markdown figure.fig {
+  margin: 1.7em 0;
+  width: 100%;
+  max-width: 100%;
+}
+/* Beats the `svg:not([width]):not([height])` icon default on specificity, so
+   authored diagrams size to the column while UI glyphs stay 1em. */
+.markdown figure.fig > svg {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 1rem;
-  margin: 1.3em 0;
-  text-align: center;
-  overflow-x: auto;
+  background: var(--fig-bg);
+  color: var(--fig-ink);
+  /* Set on the <svg>, not on <text>: a rule targeting text would beat each
+     label's own font-size presentation attribute and flatten the hierarchy.
+     Here it is only the fallback a label without an attribute inherits, so
+     the prose font-size can never leak into the drawing. */
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1;
+}
+.markdown figure.fig > figcaption {
+  margin-top: .6rem;
+  font-size: .88rem;
+  line-height: 1.5;
+  color: var(--muted);
+  font-family: var(--font-sans);
+}
+.markdown figure.fig > figcaption b,
+.markdown figure.fig > figcaption strong {
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
 /* Tables */
@@ -676,7 +947,7 @@ pre.mermaid {
   position: absolute;
   left: 3px; top: -1px;
   width: 5px; height: 10px;
-  border: solid #fff;
+  border: solid var(--on-accent);
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
@@ -782,7 +1053,7 @@ pre.mermaid {
   margin-top: auto;
   border-top: 1px solid var(--line);
   background:
-    linear-gradient(180deg, transparent, rgba(255,255,255,0.55)),
+    linear-gradient(180deg, transparent, var(--footer-veil)),
     var(--peach-100);
   padding: 2rem 0 1.2rem;
   color: var(--ink-soft);

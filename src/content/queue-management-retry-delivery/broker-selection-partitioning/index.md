@@ -115,9 +115,11 @@ Whatever broker you choose, the partition key is where the spatial correctness l
 
 The pipeline routes every event through a keying stage before it touches the broker. Coordinates are quantised to a discrete spatial cell, the cell becomes the partition key, and the broker's partitioner maps that key to a fixed partition. Events sharing a cell therefore share a partition and are consumed in order by a single consumer.
 
-<svg viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Spatial events routed to broker partitions by H3 cell key" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 0 714 302" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Spatial events routed to broker partitions by H3 cell key">
   <title>Spatial events routed to partitions by H3 cell</title>
   <desc>Diagram showing four incoming spatial events being quantised to H3 cells, hashed to a partition key, and routed so that events in the same cell land on the same broker partition while a dense cell fans out across two partitions via salting.</desc>
+  <rect x="0" y="0" width="714" height="302" fill="var(--fig-bg)"/>
   <defs>
     <marker id="bp-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
       <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.6"/>
@@ -164,6 +166,8 @@ The pipeline routes every event through a keying stage before it touches the bro
   <line x1="370" y1="172" x2="498" y2="205" stroke="currentColor" stroke-width="1.3" marker-end="url(#bp-arr)" opacity="0.5"/>
   <line x1="370" y1="178" x2="498" y2="265" stroke="currentColor" stroke-width="1.3" marker-end="url(#bp-arr)" opacity="0.5"/>
 </svg>
+<figcaption><b>Figure 1.</b> Spatial events routed to partitions by H3 cell</figcaption>
+</figure>
 
 **Layer breakdown:**
 

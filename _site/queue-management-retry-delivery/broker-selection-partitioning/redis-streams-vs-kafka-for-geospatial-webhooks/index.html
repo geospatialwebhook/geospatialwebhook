@@ -17,8 +17,21 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
   <link rel="manifest" href="/manifest.json"/>
 
-  <meta name="theme-color" content="#d56360"/>
-  <meta name="color-scheme" content="light"/>
+  <meta name="theme-color" content="#d56360" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
 
   
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -50,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=180687f5"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -143,6 +156,18 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
       </a>
     </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle"
+            aria-label="Switch to dark theme" title="Switch to dark theme">
+      <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.4v2.3M12 19.3v2.3M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.3M19.3 12h2.3M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+      </svg>
+    </button>
   </div>
 </header>
 
@@ -296,9 +321,11 @@
 <h2 id="why-the-spatial-workload-changes-the-calculus" tabindex="-1"><a class="heading-anchor" href="#why-the-spatial-workload-changes-the-calculus">Why the spatial workload changes the calculus</a></h2>
 <p>A generic “Redis vs Kafka” comparison ignores what makes geospatial traffic distinctive: payloads carry geometry, and geometry is both large and order-sensitive. A stream of vehicle GPS pings is tiny and tolerant of reordering; a stream of edited parcel polygons or re-tiled raster footprints is neither. The broker that wins depends on which of those you are moving.</p>
 <p>The second spatial twist is <strong>locality</strong>. You usually want all events touching the same region to land on the same consumer, so per-region state (a running geofence count, a tile version) stays coherent and ordered. Kafka gives you this directly: hash the message key to a partition, key on an H3 cell, and every event for that cell is ordered on one partition. Redis Streams has no key-to-consumer affinity — a consumer group is a work-stealing pool — so you recreate locality by sharding into multiple streams. The diagram below contrasts the two models.</p>
-<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Kafka key-based partitioning versus Redis Streams consumer-group distribution for spatial events" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="1 0 756 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Kafka key-based partitioning versus Redis Streams consumer-group distribution for spatial events">
   <title>Spatial partitioning: Kafka partition-by-key vs Redis Streams consumer group</title>
   <desc>Top row: H3-keyed events routed to fixed Kafka partitions, each partition consumed by one worker preserving per-region order. Bottom row: events pushed to a single Redis stream then work-stolen by a consumer group with no key affinity, so a region can spread across workers.</desc>
+  <rect x="1" y="0" width="756" height="280" fill="var(--fig-bg)"/>
   <defs>
     <marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
       <path d="M0,0 L0,7 L8,3.5 Z" fill="currentColor" opacity="0.55"/>
@@ -341,6 +368,8 @@
   <text x="497" y="253" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">consumer 1</text>
   <text x="642" y="225" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">cell A may split</text>
 </svg>
+<figcaption><b>Figure 1.</b> Spatial partitioning: Kafka partition-by-key vs Redis Streams consumer group</figcaption>
+</figure>
 <p>If per-region ordering matters, this is the crux: Kafka enforces it through the partition, whereas Redis Streams needs you to shard streams by cell to approximate it. The tradeoffs of choosing the cell system itself — resolution, cell shape, neighbour behaviour — are covered in <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/h3-vs-s2-vs-quadkey-for-spatial-partitioning/">H3 vs S2 vs Quadkey for spatial partitioning</a>.</p>
 <hr>
 <h2 id="complete-runnable-implementation" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-implementation">Complete runnable implementation</a></h2>
@@ -738,7 +767,7 @@ GROUP <span class="token operator">=</span> <span class="token string">"tile-wor
 </footer>
 
   </div>
-  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script src="/assets/js/site.js?v=c31b7b80" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

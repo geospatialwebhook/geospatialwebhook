@@ -92,9 +92,11 @@ Before implementing this pattern, confirm your stack meets the following baselin
 
 The pipeline enforces a strict order: normalise first, hash second, look up third. No spatial computation occurs until the cache confirms the event is new.
 
-<svg viewBox="0 0 760 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cache-backed idempotency pipeline for geospatial webhooks" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 25 760 149" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cache-backed idempotency pipeline for geospatial webhooks">
   <title>Cache-backed idempotency pipeline</title>
   <desc>Data-flow diagram showing the five stages from webhook ingestion through cache check to conditional spatial processing, with a short-circuit path for duplicates.</desc>
+  <rect x="0" y="25" width="760" height="149" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
       <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.6"/>
@@ -145,6 +147,8 @@ The pipeline enforces a strict order: normalise first, hash second, look up thir
   <text x="510" y="92" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.5">④ DEDUPLICATE</text>
   <text x="674" y="92" text-anchor="middle" font-size="9" fill="currentColor" font-family="inherit" opacity="0.5">⑤ PROCESS</text>
 </svg>
+<figcaption><b>Figure 1.</b> Cache-backed idempotency pipeline</figcaption>
+</figure>
 
 **Layer breakdown:**
 
@@ -427,9 +431,11 @@ The at-least-once delivery model and its interaction with spatial state are expl
 
 A Redis connection failure must not silently drop valid events. Implement a two-tier fallback: the distributed cache is the fast path, and a database UNIQUE constraint is the durable safety net that catches duplicates whenever the cache is unreachable.
 
-<svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two-tier idempotency fallback decision flow from Redis to a PostgreSQL unique constraint" style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 29 720 271" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two-tier idempotency fallback decision flow from Redis to a PostgreSQL unique constraint">
   <title>Two-tier idempotency fallback decision flow</title>
   <desc>Decision diagram: a request first attempts an atomic Redis claim; on a Redis connection error it falls back to a PostgreSQL insert with an ON CONFLICT clause, and in both tiers a hit short-circuits as a duplicate while a miss proceeds to spatial processing.</desc>
+  <rect x="0" y="29" width="720" height="271" fill="var(--fig-bg)"/>
   <defs>
     <marker id="fb-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
       <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.6"/>
@@ -469,6 +475,8 @@ A Redis connection failure must not silently drop valid events. Implement a two-
   <text x="633" y="142" text-anchor="middle" font-size="11" fill="currentColor" font-family="inherit" font-weight="600">Spatial</text>
   <text x="633" y="157" text-anchor="middle" font-size="10" fill="currentColor" font-family="inherit" opacity="0.8">processing</text>
 </svg>
+<figcaption><b>Figure 2.</b> Two-tier idempotency fallback decision flow</figcaption>
+</figure>
 
 ```python
 from contextlib import asynccontextmanager

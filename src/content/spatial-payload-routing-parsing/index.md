@@ -97,9 +97,11 @@ This guide covers the architectural patterns, Python implementation strategies, 
 
 A spatial payload does not travel from source to consumer in a single hop. In a well-designed event-driven system, it passes through three distinct logical layers, each with a narrow, well-defined responsibility.
 
-<svg viewBox="0 0 720 300" role="img" aria-label="Three-layer spatial ingestion pipeline: Ingestion Gateway, Routing Engine, and Parsing and Normalisation Layer" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="6 46 708 238" role="img" aria-label="Three-layer spatial ingestion pipeline: Ingestion Gateway, Routing Engine, and Parsing and Normalisation Layer" xmlns="http://www.w3.org/2000/svg">
   <title>Spatial Ingestion Pipeline</title>
   <desc>Diagram showing how a spatial webhook payload flows from the Ingestion Gateway through the Routing Engine into the Parsing and Normalisation Layer before reaching downstream consumers.</desc>
+  <rect x="6" y="46" width="708" height="238" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.55"/>
@@ -145,6 +147,8 @@ A spatial payload does not travel from source to consumer in a single hop. In a 
   <text x="620" y="268" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.55">Downstream consumers</text>
   <line x1="620" y1="242" x2="620" y2="255" stroke="currentColor" stroke-width="1" opacity="0.35" stroke-dasharray="3,2"/>
 </svg>
+<figcaption><b>Figure 1.</b> Spatial Ingestion Pipeline</figcaption>
+</figure>
 
 **Layer 1 — Ingestion Gateway.** Accepts HTTP webhook payloads, applies rate limiting, validates HMAC signatures (as detailed in [Securing Webhook Endpoints with Spatial Token Validation](https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/securing-webhook-endpoints-with-spatial-token-validation/)), and pushes raw messages to a message broker — Apache Kafka, RabbitMQ, AWS Kinesis, or Redis Streams. The gateway acknowledges immediately and never blocks on parsing.
 

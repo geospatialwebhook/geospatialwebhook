@@ -100,9 +100,11 @@ Two design decisions carry the schema. First, `raw_payload` is `JSONB`, not `TEX
 
 The diagram below shows where the DLQ write sits relative to Celery's retry loop.
 
-<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Celery task retry loop feeding a PostGIS dead-letter queue" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 45 760 164" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Celery task retry loop feeding a PostGIS dead-letter queue">
   <title>Celery retry loop feeding a PostGIS spatial DLQ</title>
   <desc>A spatial webhook enters a Celery task. On a transient error the task is retried via autoretry_for up to max_retries. When retries are exhausted, the on_failure hook writes one row into a PostGIS dlq table with a nullable geometry column and a failure_stage label.</desc>
+  <rect x="0" y="45" width="760" height="164" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
       <path d="M0,0 L0,7 L8,3.5 Z" fill="currentColor" opacity="0.55"/>
@@ -137,6 +139,8 @@ The diagram below shows where the DLQ write sits relative to Celery's retry loop
   <text x="636" y="168" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">failure_stage · error</text>
   <text x="636" y="183" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.5">GiST index (WHERE geom NOT NULL)</text>
 </svg>
+<figcaption><b>Figure 1.</b> Celery retry loop feeding a PostGIS spatial DLQ</figcaption>
+</figure>
 
 ---
 

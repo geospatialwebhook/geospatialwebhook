@@ -75,9 +75,11 @@ This page is part of [Sensor Data Routing Patterns](https://www.geospatialwebhoo
 
 ---
 
-<svg viewBox="0 0 760 380" role="img" aria-label="At-least-once delivery flow for a GIS webhook" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="39 0 700 374" role="img" aria-label="At-least-once delivery flow for a GIS webhook" xmlns="http://www.w3.org/2000/svg">
   <title>At-least-once delivery flow for a GIS webhook</title>
   <desc>Five-lane flow: the Sender POSTs a spatial payload to the HTTP Receiver, which returns 200 OK immediately and enqueues the raw payload. A Background Worker derives an idempotency key and runs an atomic SET NX EX against Redis. If the key already exists the duplicate is skipped; if it is new the worker validates and writes the geometry to PostGIS. After MAX_RETRIES are exhausted the event is routed to a dead-letter queue.</desc>
+  <rect x="39" y="0" width="700" height="374" fill="var(--fig-bg)"/>
   <defs>
     <marker id="alo-arr" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
@@ -123,6 +125,8 @@ This page is part of [Sensor Data Routing Patterns](https://www.geospatialwebhoo
   <line x1="395" y1="334" x2="541" y2="334" stroke="currentColor" stroke-width="1.5" opacity="0.55" stroke-dasharray="3,3" marker-end="url(#alo-arr)"/>
   <text x="470" y="328" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7">DEL key → allow replay</text>
 </svg>
+<figcaption><b>Figure 1.</b> At-least-once delivery flow for a GIS webhook</figcaption>
+</figure>
 
 ## When to use this pattern
 

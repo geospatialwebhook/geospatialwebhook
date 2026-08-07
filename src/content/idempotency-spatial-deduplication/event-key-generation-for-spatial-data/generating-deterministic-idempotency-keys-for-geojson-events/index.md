@@ -106,9 +106,11 @@ Robust [idempotency and spatial deduplication](https://www.geospatialwebhook.com
 
 The diagram below shows how a raw webhook body moves through each transformation stage before reaching the hash function.
 
-<svg viewBox="0 0 760 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="GeoJSON idempotency key generation pipeline" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 66 760 132" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="GeoJSON idempotency key generation pipeline">
   <title>GeoJSON idempotency key generation pipeline</title>
   <desc>A five-stage data-flow diagram: raw GeoJSON payload passes through an envelope stripper, then a float normaliser, then an alphabetical key sorter with compact serialisation, and finally a SHA-256 or BLAKE2b hash function that outputs the hex idempotency key.</desc>
+  <rect x="0" y="66" width="760" height="132" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
       <path d="M0,0 L0,7 L8,3.5 Z" fill="currentColor" opacity="0.55"/>
@@ -153,6 +155,8 @@ The diagram below shows how a raw webhook body moves through each transformation
   <text x="685" y="152" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">idempotency key</text>
   <text x="685" y="182" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.45">OUTPUT</text>
 </svg>
+<figcaption><b>Figure 1.</b> GeoJSON idempotency key generation pipeline</figcaption>
+</figure>
 
 ---
 

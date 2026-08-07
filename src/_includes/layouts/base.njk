@@ -27,8 +27,23 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
   <link rel="manifest" href="/manifest.json"/>
 
-  <meta name="theme-color" content="{{ site.themeColor }}"/>
-  <meta name="color-scheme" content="light"/>
+  <meta name="theme-color" content="{{ site.themeColor }}" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  {# Resolve the theme BEFORE first paint: a stored choice wins, otherwise the
+     OS preference is left to CSS. Inline and synchronous on purpose — deferring
+     it would paint the light theme first and flash. #}
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
 
   {# Apple iOS PWA meta tags #}
   <meta name="apple-mobile-web-app-capable" content="yes"/>

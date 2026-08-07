@@ -98,9 +98,11 @@ Kafka guarantees ordering only *within a partition*, and it assigns a message to
 
 The fix is to decouple the two roles H3 plays. Use a **coarse resolution for the partition key** so a whole neighbourhood or metro district collapses into one cell and one partition, and keep a **fine resolution in the payload** for downstream aggregation and heat-mapping. H3's hierarchy makes this cheap: a fine cell is always fully contained by exactly one coarse parent, so `h3.cell_to_parent` recovers the routing cell from the analytics cell without touching the original coordinates. Choosing the index family itself — H3 versus alternatives — is covered in [H3 vs S2 vs Quadkey for spatial partitioning](https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/h3-vs-s2-vs-quadkey-for-spatial-partitioning/); this page assumes you have already settled on H3.
 
-<svg viewBox="0 0 760 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="H3-keyed Kafka partitioning data flow" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 26 760 208" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="H3-keyed Kafka partitioning data flow">
   <title>H3-keyed Kafka partitioning data flow</title>
   <desc>A GeoJSON event has its centroid computed, is indexed to a coarse H3 cell used as the partition key, and murmur2 hashing maps that key to one of three partitions; two nearby events share a cell and therefore land on the same partition, preserving per-cell order.</desc>
+  <rect x="0" y="26" width="760" height="208" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
       <path d="M0,0 L0,7 L8,3.5 Z" fill="currentColor" opacity="0.55"/>
@@ -138,6 +140,8 @@ The fix is to decouple the two roles H3 plays. Use a **coarse resolution for the
   <line x1="488" y1="130" x2="598" y2="128" stroke="currentColor" stroke-opacity="0.55" stroke-width="1.5" marker-end="url(#arr)"/>
   <line x1="488" y1="140" x2="598" y2="192" stroke="currentColor" stroke-opacity="0.3" stroke-width="1.5" marker-end="url(#arr)"/>
 </svg>
+<figcaption><b>Figure 1.</b> H3-keyed Kafka partitioning data flow</figcaption>
+</figure>
 
 ---
 

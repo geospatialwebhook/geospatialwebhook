@@ -17,8 +17,21 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
   <link rel="manifest" href="/manifest.json"/>
 
-  <meta name="theme-color" content="#d56360"/>
-  <meta name="color-scheme" content="light"/>
+  <meta name="theme-color" content="#d56360" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
 
   
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -50,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=180687f5"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -143,6 +156,18 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
       </a>
     </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle"
+            aria-label="Switch to dark theme" title="Switch to dark theme">
+      <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.4v2.3M12 19.3v2.3M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.3M19.3 12h2.3M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+      </svg>
+    </button>
   </div>
 </header>
 
@@ -233,9 +258,45 @@
 <p>For general-purpose event ingestion where location is metadata, standard HMAC/JWT validation with IP allowlists and rate limiting is sufficient. Reserve spatial attestation for systems where “where did this event originate?” is a security question, not just an analytics one.</p>
 <h2 id="validation-flow" tabindex="-1"><a class="heading-anchor" href="#validation-flow">Validation flow</a></h2>
 <p>The diagram below shows the fail-fast sequence. Each gate is ordered to minimize compute: cheapest checks (TTL, decode) run first; the most expensive check (spatial containment) runs last.</p>
-<svg viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Spatial token validation sequence diagram" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 0 760 268" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Funnel of five validation gates showing per-gate compute cost and how much traffic each removes, justifying cheapest-first ordering">
+<title>Why the containment check runs last</title>
+<desc>Ten thousand incoming requests pass through five gates in cost order. Decode costs about 0.8 microseconds and drops 1,200 malformed tokens. The TTL check costs about 0.2 microseconds and drops 2,600 expired ones. HMAC verification costs about 3.1 microseconds and drops 5,900 forgeries. Point construction costs about 12 microseconds and drops 40. Prepared-geometry containment costs about 85 microseconds and drops 190, leaving 70 accepted. Because the three cheap gates remove 97 percent of traffic first, the expensive containment test runs on only 300 requests: about 25 milliseconds of work per ten thousand. Running containment first would cost 850 milliseconds for the same result, a 34-fold increase, and would hand an attacker a cheap way to burn CPU.</desc>
+<rect x="0" y="0" width="760" height="268" fill="var(--fig-bg)"/>
+<text x="14" y="18" font-size="10.5" font-weight="600" fill="var(--fig-ink)">10,000 requests in — gates ordered cheapest first</text>
+<rect x="14" y="28" width="600" height="30" rx="4" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="26" y="47" font-size="9.5" font-weight="600" fill="var(--fig-ink)">1 · decode base64url — 0.8 µs</text>
+<text x="470" y="47" font-size="9" fill="var(--fig-ink-soft)">−1,200 malformed</text>
+<text x="622" y="47" font-size="9" fill="var(--fig-ink-soft)">8,800 left</text>
+<rect x="14" y="64" width="528" height="30" rx="4" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="26" y="83" font-size="9.5" font-weight="600" fill="var(--fig-ink)">2 · TTL window — 0.2 µs</text>
+<text x="398" y="83" font-size="9" fill="var(--fig-ink-soft)">−2,600 expired</text>
+<text x="550" y="83" font-size="9" fill="var(--fig-ink-soft)">6,200 left</text>
+<rect x="14" y="100" width="372" height="30" rx="4" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="26" y="119" font-size="9.5" font-weight="600" fill="var(--fig-ink)">3 · HMAC compare — 3.1 µs</text>
+<text x="242" y="119" font-size="9" fill="var(--fig-ink-soft)">−5,900 forged</text>
+<text x="394" y="119" font-size="9" fill="var(--fig-ink-soft)">300 left</text>
+<rect x="14" y="136" width="342" height="30" rx="4" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.2"/>
+<text x="26" y="155" font-size="9.5" font-weight="600" fill="var(--fig-ink)">4 · build Point — 12 µs</text>
+<text x="222" y="155" font-size="9" fill="var(--fig-ink-soft)">−40 bad coords</text>
+<text x="364" y="155" font-size="9" fill="var(--fig-ink-soft)">260 left</text>
+<rect x="14" y="172" width="300" height="30" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="26" y="191" font-size="9.5" font-weight="600" fill="var(--fig-ink)">5 · prepared containment — 85 µs</text>
+<text x="322" y="191" font-size="9" fill="var(--fig-ink-soft)">−190 outside the zone</text>
+<rect x="14" y="208" width="120" height="26" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="74" y="225" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">70 accepted</text>
+<rect x="392" y="208" width="354" height="26" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="404" y="225" font-size="9.5" fill="var(--fig-ink)">containment runs 300× — about 25 ms per 10k requests</text>
+<rect x="14" y="240" width="732" height="24" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="26" y="257" font-size="9.5" fill="var(--fig-ink)">Reverse the order and containment runs 10,000× — 850 ms per 10k, a 34× bill, and an attacker can raise it for free with junk tokens.</text>
+</svg>
+<figcaption><b>Figure 1.</b> Gate ordering is a denial-of-service control as much as an optimisation: the expensive spatial test must sit behind the cheap authenticity tests, so unauthenticated traffic can never reach it.</figcaption>
+</figure>
+<figure class="fig">
+<svg viewBox="0 16 757 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Spatial token validation sequence diagram">
   <title>Spatial token validation sequence</title>
   <desc>A flowchart showing five sequential validation gates arranged left-to-right then wrapping to a second row: decode token, TTL check, HMAC verify, spatial containment check, and finally accept or route to dead-letter queue. Failure at any gate sends the event to the dead-letter queue shown at the bottom.</desc>
+  <rect x="0" y="16" width="757" height="290" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor"/>
@@ -302,6 +363,8 @@
   <line x1="669" y1="240" x2="585" y2="248" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-dash)" opacity="0.7"/>
   <text x="669" y="218" text-anchor="middle" font-size="9" fill="currentColor" font-family="sans-serif" opacity="0.8">outside zone</text>
 </svg>
+<figcaption><b>Figure 2.</b> Spatial token validation sequence</figcaption>
+</figure>
 <h2 id="complete-runnable-implementation" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-implementation">Complete runnable implementation</a></h2>
 <p>The FastAPI endpoint below is self-contained: paste it into a project that has <code>fastapi</code>, <code>shapely</code>, and <code>python-multipart</code> installed and run it with <code>uvicorn app:app</code>. Every spatial-specific choice is annotated inline.</p>
 <p>If your devices report coordinates in a projected CRS such as EPSG:3857, reproject them to WGS 84 (EPSG:4326) before computing the HMAC — the approach for this is covered in <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a>.</p>
@@ -539,6 +602,48 @@ AUTHORIZED_ZONE <span class="token operator">=</span> prep<span class="token pun
 <p><strong>Replay from a different spatial context.</strong> An attacker can capture a valid token emitted from within the authorized zone and replay it from outside. The TTL window limits the replay window, but for high-security contexts consider binding the token to a per-request nonce (a UUID the server issues and the client echoes back). This composes directly with <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/using-redis-to-cache-spatial-webhook-signatures/">using Redis to cache spatial webhook signatures</a> for nonce deduplication within the TTL window.</p>
 </li>
 </ol>
+<figure class="fig">
+<svg viewBox="0 0 760 258" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A captured spatial token replayed from outside the zone, and the three bindings that stop it">
+<title>What a spatial token proves, and what it does not</title>
+<desc>A legitimate device inside the dispatch zone emits a token binding its coordinates and a timestamp under an HMAC. An attacker captures that token on the wire and replays it verbatim from four hundred kilometres away. Because the token attests to the coordinates written into it rather than to where the request came from, the signature still verifies and the containment check still passes — the payload says the device is inside the zone. Only three additional bindings close the gap: a short time-to-live, which bounds the replay to the window's width; a server-issued nonce echoed back by the client, which makes each token single-use; and channel binding to the device's mutual-TLS certificate, which ties the token to the connection that carried it.</desc>
+<rect x="0" y="0" width="760" height="258" fill="var(--fig-bg)"/>
+<defs>
+<marker id="tk-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+<path d="M0,0 L8,3 L0,6 Z" fill="var(--fig-line)"/>
+</marker>
+</defs>
+<ellipse cx="104" cy="82" rx="90" ry="52" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="104" y="46" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-mint-edge)">authorised zone</text>
+<circle cx="104" cy="86" r="5" fill="var(--fig-mint-edge)"/>
+<text x="104" y="106" text-anchor="middle" font-size="9" fill="var(--fig-ink)">device · 52.52, 13.40</text>
+<line x1="196" y1="86" x2="252" y2="86" stroke="var(--fig-line)" stroke-width="1.4" marker-end="url(#tk-arr)"/>
+<rect x="256" y="60" width="180" height="52" rx="6" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="346" y="80" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">token = HMAC(lat, lon, ts)</text>
+<text x="346" y="96" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">attests to the numbers inside it</text>
+<circle cx="346" cy="140" r="5" fill="var(--fig-rose-edge)"/>
+<text x="346" y="160" text-anchor="middle" font-size="9" fill="var(--fig-rose-edge)" font-weight="600">captured on the wire</text>
+<line x1="346" y1="114" x2="346" y2="132" stroke="var(--fig-rose-edge)" stroke-width="1.3" stroke-dasharray="3,2" marker-end="url(#tk-arr)"/>
+<line x1="380" y1="140" x2="452" y2="140" stroke="var(--fig-rose-edge)" stroke-width="1.4" stroke-dasharray="4,3" marker-end="url(#tk-arr)"/>
+<rect x="456" y="118" width="180" height="44" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="546" y="136" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">replayed from 400 km away</text>
+<text x="546" y="152" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">signature valid · containment passes</text>
+<text x="648" y="142" font-size="9" fill="var(--fig-rose-edge)" font-weight="600">✗ accepted</text>
+<text x="14" y="188" font-size="10.5" font-weight="600" fill="var(--fig-ink)">Three bindings that close the gap — the token alone cannot:</text>
+<rect x="14" y="196" width="238" height="48" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="26" y="214" font-size="9.5" font-weight="600" fill="var(--fig-ink)">short TTL</text>
+<text x="26" y="229" font-size="9" fill="var(--fig-ink-soft)">bounds how long the capture</text>
+<text x="26" y="240" font-size="9" fill="var(--fig-ink-soft)">stays useful — never to zero</text>
+<rect x="260" y="196" width="238" height="48" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="272" y="214" font-size="9.5" font-weight="600" fill="var(--fig-ink)">server-issued nonce</text>
+<text x="272" y="229" font-size="9" fill="var(--fig-ink-soft)">makes the token single-use,</text>
+<text x="272" y="240" font-size="9" fill="var(--fig-ink-soft)">so the second use is caught</text>
+<rect x="506" y="196" width="240" height="48" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="518" y="214" font-size="9.5" font-weight="600" fill="var(--fig-ink)">channel binding (mTLS)</text>
+<text x="518" y="229" font-size="9" fill="var(--fig-ink-soft)">ties the token to the connection</text>
+<text x="518" y="240" font-size="9" fill="var(--fig-ink-soft)">that carried it — the strongest</text>
+</svg>
+<figcaption><b>Figure 3.</b> A spatial token attests to the coordinates written into it, not to where the request originated. That distinction is the whole attack surface — the coordinates are asserted by the very device you do not trust.</figcaption>
+</figure>
 <h2 id="minimal-verification-snippet" tabindex="-1"><a class="heading-anchor" href="#minimal-verification-snippet">Minimal verification snippet</a></h2>
 <p>Run this with <code>pytest</code> after installing <code>fastapi</code>, <code>httpx</code>, <code>shapely</code>, and <code>pytest-asyncio</code>:</p>
 <div class="code-block" data-lang="python">
@@ -765,7 +870,7 @@ client <span class="token operator">=</span> TestClient<span class="token punctu
 </footer>
 
   </div>
-  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script src="/assets/js/site.js?v=c31b7b80" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

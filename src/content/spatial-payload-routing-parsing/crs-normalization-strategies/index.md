@@ -92,9 +92,11 @@ Confirm your environment meets these baseline requirements before building a nor
 
 Normalization sits between raw ingestion and any spatially aware consumer. It runs as three ordered layers: detect the source CRS, reproject through a cached transformer, then emit a canonical geometry. Anything that cannot be resolved is quarantined rather than guessed at.
 
-<svg viewBox="0 0 720 320" role="img" aria-label="Three-layer CRS normalization flow: detection, cached reprojection, and canonical emission, with a quarantine branch for unresolvable CRS" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 7 720 293" role="img" aria-label="Three-layer CRS normalization flow: detection, cached reprojection, and canonical emission, with a quarantine branch for unresolvable CRS" xmlns="http://www.w3.org/2000/svg">
   <title>CRS Normalization Data Flow</title>
   <desc>A payload enters a detection layer that reads explicit CRS metadata, vendor headers, or coordinate-bounds heuristics. Resolved payloads pass to a reprojection layer backed by a thread-safe transformer cache, then to a canonical emission layer that serializes EPSG:4326 GeoJSON. Payloads with no resolvable CRS branch to a dead-letter quarantine.</desc>
+  <rect x="0" y="7" width="720" height="293" fill="var(--fig-bg)"/>
   <defs>
     <marker id="crsArrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
@@ -149,6 +151,8 @@ Normalization sits between raw ingestion and any spatially aware consumer. It ru
   <line x1="251" y1="286" x2="365" y2="286" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#crsArrow)" opacity="0.5"/>
   <line x1="453" y1="262" x2="453" y2="278" stroke="currentColor" stroke-width="0" opacity="0"/>
 </svg>
+<figcaption><b>Figure 1.</b> CRS Normalization Data Flow</figcaption>
+</figure>
 
 **Layer 1 — Detect CRS:** Resolve the source projection from explicit GeoJSON `crs`/`srid` metadata, then a vendor header, then a coordinate-bounds heuristic. Payloads that resolve to nothing branch to quarantine instead of defaulting silently.
 

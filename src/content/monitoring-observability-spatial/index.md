@@ -109,9 +109,11 @@ The remedy is to instrument the pipeline at the level of the data it carries. Th
 
 Metrics, logs, and traces answer different questions and you need all three. Metrics answer "is the system healthy, and is it getting worse?" — they are cheap, aggregate, and drive alerts. Logs answer "what exactly happened to this event?" — they are detailed, per-event, and drive forensic investigation. Traces answer "where did this event spend its time, across every service and handler it touched?" — they connect causally-related work across the async boundaries that make spatial pipelines hard to reason about. The diagram below shows all three planes wrapped around the same pipeline, each tapping the stages it needs.
 
-<svg viewBox="0 0 760 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three instrumentation planes — metrics, logs, and traces — wrapped around a four-stage spatial pipeline of receive, validate, transform CRS, and persist" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="6 2 747 418" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three instrumentation planes — metrics, logs, and traces — wrapped around a four-stage spatial pipeline of receive, validate, transform CRS, and persist">
   <title>Three Observability Planes Around a Spatial Pipeline</title>
   <desc>A central horizontal spatial pipeline of four stages — Receive and parse, Validate topology, Transform CRS, Persist and dispatch — with a metrics plane above feeding Prometheus, a logs plane below feeding a structured log store, and a traces plane spanning all four stages feeding an OpenTelemetry collector.</desc>
+  <rect x="6" y="2" width="747" height="418" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arr-obs" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
@@ -156,6 +158,8 @@ Metrics, logs, and traces answer different questions and you need all three. Met
   <rect x="30" y="280" width="675" height="26" rx="6" fill="none" stroke="currentColor" stroke-width="1" opacity="0.35" stroke-dasharray="4 3"/>
   <text x="367" y="297" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9" fill="currentColor" opacity="0.6">one OpenTelemetry trace spans all stages · context propagated as broker headers → OTel collector</text>
 </svg>
+<figcaption><b>Figure 1.</b> Three Observability Planes Around a Spatial Pipeline</figcaption>
+</figure>
 
 A practical implication of this layering is that each plane has a different cost profile and therefore a different sampling strategy. Metrics are always-on and aggregate, so you keep them all. Logs are per-event and can be voluminous, so you emit them structured but may sample the successful path and always keep failures. Traces are the most expensive per event, so you sample them — but you bias sampling toward the interesting: always trace an event that failed validation or hit a hot shard, sample the boring successes at a low rate. Getting this right is what keeps observability affordable at spatial-webhook volumes.
 

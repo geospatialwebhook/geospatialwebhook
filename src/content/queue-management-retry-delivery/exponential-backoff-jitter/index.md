@@ -103,9 +103,11 @@ Exponential backoff breaks the synchronisation over *time* by making each succes
 
 The retry path is a small state machine wrapped around a single HTTP POST. Every failure is classified before a delay is ever computed, every retry re-claims an idempotency key, and exhaustion has exactly one destination.
 
-<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Retry state machine for spatial webhook delivery with jittered backoff and dead-letter exit" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 8 719 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Retry state machine for spatial webhook delivery with jittered backoff and dead-letter exit">
   <title>Jittered retry state machine for spatial webhook delivery</title>
   <desc>Flow from an outbound GeoJSON POST through failure classification: terminal 4xx and invalid geometry exit immediately to the dead-letter queue, retryable 5xx and timeout compute a decorrelated-jitter delay under a retry budget and loop back to the POST, and success acknowledges.</desc>
+  <rect x="0" y="8" width="719" height="290" fill="var(--fig-bg)"/>
   <defs>
     <marker id="bo-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
       <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.6"/>
@@ -154,6 +156,8 @@ The retry path is a small state machine wrapped around a single HTTP POST. Every
   <line x1="72" y1="40" x2="72" y2="118" stroke="currentColor" stroke-width="1.5" marker-end="url(#bo-arr)" opacity="0.5"/>
   <text x="360" y="32" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.6">retry attempt n+1</text>
 </svg>
+<figcaption><b>Figure 1.</b> Jittered retry state machine for spatial webhook delivery</figcaption>
+</figure>
 
 **Layer breakdown:**
 
@@ -254,9 +258,11 @@ def decorrelated_jitter(prev_delay: float, base: float, cap: float) -> float:
 
 The SVG below compares the delay envelopes the three strategies produce across attempts. All grow, but the shaded spread — the range a given attempt can land in — is what disperses the herd.
 
-<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Comparison of retry-time spread for full, equal, and decorrelated jitter across attempts" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="16 26 718 274" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Comparison of retry-time spread for full, equal, and decorrelated jitter across attempts">
   <title>Retry-time spread of the three jitter variants</title>
   <desc>Three horizontal tracks over an attempt axis. No-jitter exponential shows single points doubling each attempt. Full jitter shows wide bars from zero up to the exponential ceiling. Equal jitter shows bars covering the upper half of each ceiling. Decorrelated jitter shows a rising staircase band that widens with each attempt.</desc>
+  <rect x="16" y="26" width="718" height="274" fill="var(--fig-bg)"/>
   <!-- axis -->
   <line x1="120" y1="40" x2="120" y2="260" stroke="currentColor" stroke-width="1" opacity="0.4"/>
   <line x1="120" y1="260" x2="720" y2="260" stroke="currentColor" stroke-width="1" opacity="0.4"/>
@@ -294,6 +300,8 @@ The SVG below compares the delay envelopes the three strategies produce across a
   <path d="M180,258 L300,250 L420,232 L540,196 L660,140" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55" stroke-dasharray="3,3"/>
   <text x="360" y="120" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7" font-weight="600">decorrelated band</text>
 </svg>
+<figcaption><b>Figure 2.</b> Retry-time spread of the three jitter variants</figcaption>
+</figure>
 
 ### Step 3 — An Async Retry Decorator Around an aiohttp POST
 

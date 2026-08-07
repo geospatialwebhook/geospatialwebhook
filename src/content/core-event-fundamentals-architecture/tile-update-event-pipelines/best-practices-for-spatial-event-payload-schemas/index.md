@@ -86,9 +86,11 @@ This approach is appropriate over a minimal ad-hoc JSON structure in three situa
 
 ---
 
-<svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Spatial event payload schema: five isolated domains flowing left to right from GIS source to broker to consumers" style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 26 720 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Spatial event payload schema: five isolated domains flowing left to right from GIS source to broker to consumers">
   <title>Spatial event payload schema: five isolated domains</title>
   <desc>Diagram showing a GeoJSON feature mutation entering the ingress validator, which produces a CloudEvents envelope containing five domains — Geometry, BBox, Temporal, Routing, Precision — before delivery to the message broker and downstream consumers.</desc>
+  <rect x="0" y="26" width="720" height="256" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.5"/>
@@ -151,6 +153,8 @@ This approach is appropriate over a minimal ad-hoc JSON structure in three situa
   <rect x="652" y="154" width="60" height="28" rx="5" fill="none" stroke="currentColor" stroke-opacity="0.3" stroke-width="1"/>
   <text x="682" y="173" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.7">Audit log</text>
 </svg>
+<figcaption><b>Figure 1.</b> Spatial event payload schema: five isolated domains</figcaption>
+</figure>
 
 ## Schema anatomy: five isolated domains
 

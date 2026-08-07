@@ -17,8 +17,21 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
   <link rel="manifest" href="/manifest.json"/>
 
-  <meta name="theme-color" content="#d56360"/>
-  <meta name="color-scheme" content="light"/>
+  <meta name="theme-color" content="#d56360" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
 
   
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -50,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=180687f5"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -143,6 +156,18 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
       </a>
     </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle"
+            aria-label="Switch to dark theme" title="Switch to dark theme">
+      <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.4v2.3M12 19.3v2.3M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.3M19.3 12h2.3M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+      </svg>
+    </button>
   </div>
 </header>
 
@@ -249,9 +274,11 @@
 <hr>
 <h2 id="the-three-instrumentation-planes-around-a-spatial-pipeline" tabindex="-1"><a class="heading-anchor" href="#the-three-instrumentation-planes-around-a-spatial-pipeline">The Three Instrumentation Planes Around a Spatial Pipeline</a></h2>
 <p>Metrics, logs, and traces answer different questions and you need all three. Metrics answer “is the system healthy, and is it getting worse?” — they are cheap, aggregate, and drive alerts. Logs answer “what exactly happened to this event?” — they are detailed, per-event, and drive forensic investigation. Traces answer “where did this event spend its time, across every service and handler it touched?” — they connect causally-related work across the async boundaries that make spatial pipelines hard to reason about. The diagram below shows all three planes wrapped around the same pipeline, each tapping the stages it needs.</p>
-<svg viewBox="0 0 760 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three instrumentation planes — metrics, logs, and traces — wrapped around a four-stage spatial pipeline of receive, validate, transform CRS, and persist" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="6 2 747 418" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three instrumentation planes — metrics, logs, and traces — wrapped around a four-stage spatial pipeline of receive, validate, transform CRS, and persist">
   <title>Three Observability Planes Around a Spatial Pipeline</title>
   <desc>A central horizontal spatial pipeline of four stages — Receive and parse, Validate topology, Transform CRS, Persist and dispatch — with a metrics plane above feeding Prometheus, a logs plane below feeding a structured log store, and a traces plane spanning all four stages feeding an OpenTelemetry collector.</desc>
+  <rect x="6" y="2" width="747" height="418" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arr-obs" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
@@ -296,6 +323,8 @@
   <rect x="30" y="280" width="675" height="26" rx="6" fill="none" stroke="currentColor" stroke-width="1" opacity="0.35" stroke-dasharray="4 3"/>
   <text x="367" y="297" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9" fill="currentColor" opacity="0.6">one OpenTelemetry trace spans all stages · context propagated as broker headers → OTel collector</text>
 </svg>
+<figcaption><b>Figure 1.</b> Three Observability Planes Around a Spatial Pipeline</figcaption>
+</figure>
 <p>A practical implication of this layering is that each plane has a different cost profile and therefore a different sampling strategy. Metrics are always-on and aggregate, so you keep them all. Logs are per-event and can be voluminous, so you emit them structured but may sample the successful path and always keep failures. Traces are the most expensive per event, so you sample them — but you bias sampling toward the interesting: always trace an event that failed validation or hit a hot shard, sample the boring successes at a low rate. Getting this right is what keeps observability affordable at spatial-webhook volumes.</p>
 <hr>
 <h2 id="the-metrics-that-only-matter-for-geo-workloads" tabindex="-1"><a class="heading-anchor" href="#the-metrics-that-only-matter-for-geo-workloads">The Metrics That Only Matter for Geo Workloads</a></h2>
@@ -676,7 +705,7 @@ tracer <span class="token operator">=</span> trace<span class="token punctuation
 </footer>
 
   </div>
-  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script src="/assets/js/site.js?v=c31b7b80" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

@@ -81,9 +81,11 @@ If the heavy step is instead a remote call — fetching a WFS tile or an elevati
 
 The event loop never executes geometry code. It submits the work to a pool of worker processes and immediately returns to servicing sockets; only the originating coroutine suspends on the returned future.
 
-<svg viewBox="0 0 760 300" role="img" aria-label="The asyncio event loop offloads CPU-bound geometry parsing to separate worker processes via run_in_executor and awaits a future" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="6 4 728 280" role="img" aria-label="The asyncio event loop offloads CPU-bound geometry parsing to separate worker processes via run_in_executor and awaits a future" xmlns="http://www.w3.org/2000/svg">
   <title>Offloading geometry parsing off the event loop</title>
   <desc>An async webhook handler calls loop.run_in_executor to submit each payload to a ProcessPoolExecutor. Worker processes run Shapely and pyproj past the GIL boundary, while the single event-loop thread stays free to accept new connections and only awaits a future.</desc>
+  <rect x="6" y="4" width="728" height="280" fill="var(--fig-bg)"/>
   <defs>
     <marker id="ag-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
       <path d="M0,0 L0,7 L9,3.5 z" fill="currentColor" opacity="0.6"/>
@@ -125,6 +127,8 @@ The event loop never executes geometry code. It submits the work to a pool of wo
   <!-- arrow back (result) -->
   <line x1="398" y1="152" x2="221" y2="184" stroke="currentColor" stroke-width="1.4" marker-end="url(#ag-arrow)" opacity="0.4" stroke-dasharray="4 4"/>
 </svg>
+<figcaption><b>Figure 1.</b> Offloading geometry parsing off the event loop</figcaption>
+</figure>
 
 ## Complete Runnable Example
 

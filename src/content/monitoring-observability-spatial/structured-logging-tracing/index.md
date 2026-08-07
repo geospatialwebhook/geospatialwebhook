@@ -101,9 +101,11 @@ Observability for an async spatial pipeline has three planes that share one set 
 
 The trace waterfall is the payoff — one event, four spans, one trace id, read top to bottom in wall-clock time:
 
-<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OpenTelemetry trace waterfall for one spatial webhook event across ingress, validate, publish, and consume spans" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 6 760 278" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OpenTelemetry trace waterfall for one spatial webhook event across ingress, validate, publish, and consume spans">
   <title>Trace waterfall for one spatial webhook event</title>
   <desc>A horizontal waterfall showing four spans on a shared timeline: an ingress root span spanning the full width, a validate child span, a publish child span, and a consume span that re-parents after the broker hop. A dashed vertical line marks the broker boundary where the traceparent header carries context forward.</desc>
+  <rect x="0" y="6" width="760" height="278" fill="var(--fig-bg)"/>
   <defs>
     <marker id="tw-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
       <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.6"/>
@@ -140,6 +142,8 @@ The trace waterfall is the payoff — one event, four spans, one trace id, read 
   <!-- shared attributes footer -->
   <text x="150" y="262" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.6">every span: geo.crs=EPSG:4326 · geo.h3_cell · geo.bbox · geo.feature_id · correlation_id</text>
 </svg>
+<figcaption><b>Figure 1.</b> Trace waterfall for one spatial webhook event</figcaption>
+</figure>
 
 The dashed line is the only place things break in practice. In-process the context plane keeps everyone in sync; at the broker hop the process context is gone and both the correlation id and the `traceparent` must be carried explicitly in the message. Everything downstream depends on that handoff, so it gets its own step below.
 

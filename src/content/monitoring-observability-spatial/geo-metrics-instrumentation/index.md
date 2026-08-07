@@ -99,9 +99,11 @@ Instrumentation in the Prometheus model is pull-based, and that shapes the whole
 3. **`/metrics` exposition** — an ASGI sub-app (or the `make_asgi_app()` helper) renders the registry to the Prometheus text exposition format on demand, when scraped.
 4. **Prometheus scrape** — the Prometheus server pulls `/metrics` on its configured interval (commonly 15s), stores the samples, and makes them queryable in PromQL and Grafana.
 
-<svg viewBox="0 0 760 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Instrumentation flow from FastAPI handler through the metric registry and /metrics endpoint to the Prometheus server" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 62 760 113" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Instrumentation flow from FastAPI handler through the metric registry and /metrics endpoint to the Prometheus server">
   <title>Geo-metrics instrumentation flow</title>
   <desc>The FastAPI geometry handler mutates in-process metric objects; those objects live in the CollectorRegistry; the /metrics ASGI endpoint renders the registry as text; and the Prometheus server pulls that endpoint on its own scrape interval.</desc>
+  <rect x="0" y="62" width="760" height="113" fill="var(--fig-bg)"/>
   <defs>
     <marker id="gm-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
       <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.6"/>
@@ -137,6 +139,8 @@ Instrumentation in the Prometheus model is pull-based, and that shapes the whole
   <text x="459" y="86" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.5">③ EXPOSE</text>
   <text x="693" y="86" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.5">④ SCRAPE</text>
 </svg>
+<figcaption><b>Figure 1.</b> Geo-metrics instrumentation flow</figcaption>
+</figure>
 
 ### The core geo metric set
 

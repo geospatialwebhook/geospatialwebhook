@@ -17,8 +17,21 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
   <link rel="manifest" href="/manifest.json"/>
 
-  <meta name="theme-color" content="#d56360"/>
-  <meta name="color-scheme" content="light"/>
+  <meta name="theme-color" content="#d56360" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
 
   
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -50,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=180687f5"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -143,6 +156,18 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
       </a>
     </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle"
+            aria-label="Switch to dark theme" title="Switch to dark theme">
+      <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.4v2.3M12 19.3v2.3M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.3M19.3 12h2.3M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+      </svg>
+    </button>
   </div>
 </header>
 
@@ -242,9 +267,11 @@
 <h2 id="why-an-unbudgeted-retry-loop-breaks" tabindex="-1"><a class="heading-anchor" href="#why-an-unbudgeted-retry-loop-breaks">Why an unbudgeted retry loop breaks</a></h2>
 <p>A retry loop written as “back off exponentially until it works” has no relationship to the two clocks that actually govern correctness: the provider’s retry window and the idempotency-key TTL. When those three timelines drift apart, spatial pipelines fail in two directions.</p>
 <p>Give up too early and you drop a delivery the provider still considered in-flight — the sender sees a 5xx, exhausts <em>its</em> budget against your prematurely-closed consumer, and a valid tile update or sensor event is lost. Retry too long and the more insidious failure appears: your idempotency key expires mid-retry. Because the key was the only record that this event had been seen, the next attempt looks brand-new. A <code>Feature</code> in EPSG:4326 (WGS84) gets written twice, a boundary-change event replays, and downstream spatial indexes diverge. The budget’s job is to make the three timelines nest correctly, as the diagram shows.</p>
-<svg viewBox="0 0 760 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Retry budget nested inside provider retry window and idempotency-key TTL" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="46 0 714 238" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Retry budget nested inside provider retry window and idempotency-key TTL">
   <title>Nesting the retry budget inside the provider window and the idempotency TTL</title>
   <desc>Three stacked horizontal timelines sharing a start. The innermost bar is the consumer retry budget with tick marks for attempts, the middle bar is the provider retry window which is longer, and the outermost bar is the Redis idempotency-key TTL which extends furthest right; a dashed marker shows the dead-letter hand-off occurring before the TTL ends.</desc>
+  <rect x="46" y="0" width="714" height="238" fill="var(--fig-bg)"/>
   <defs>
     <marker id="ra" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
       <path d="M0,0 L0,7 L8,3.5 Z" fill="currentColor" opacity="0.55"/>
@@ -272,6 +299,8 @@
   <line x1="690" y1="177" x2="720" y2="177" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.5" marker-end="url(#ra)"/>
   <text x="726" y="180" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.6">expiry</text>
 </svg>
+<figcaption><b>Figure 1.</b> Nesting the retry budget inside the provider window and the idempotency TTL</figcaption>
+</figure>
 <p>The invariant is simple: <strong>retry budget ≤ provider window ≤ idempotency TTL.</strong> The budget hands off to the dead-letter queue before the key expires, so every event ends in exactly one terminal state.</p>
 <hr>
 <h2 id="a-worked-example-a-72-hour-provider-window" tabindex="-1"><a class="heading-anchor" href="#a-worked-example-a-72-hour-provider-window">A worked example: a 72-hour provider window</a></h2>
@@ -635,7 +664,7 @@
 </footer>
 
   </div>
-  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script src="/assets/js/site.js?v=c31b7b80" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

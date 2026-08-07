@@ -90,9 +90,47 @@ This is **not** the right tool when you need to attest *where* an event physical
 
 HMAC-SHA256 is a keyed hash over an exact byte sequence. The sender computes it over the bytes it puts on the wire; you must recompute it over the identical bytes. The spatial trap is that GeoJSON is JSON, and it is tempting to let your framework decode the JSON into a model and then hash *that*. But the moment you `json.loads()` and `json.dumps()` a payload — or worse, round-trip it through a geometry library — the bytes change in at least four ways that all break the digest.
 
-<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram contrasting verifying HMAC over raw bytes versus over reserialized GeoJSON" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 0 760 288" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four byte-level changes a JSON round-trip makes to a GeoJSON payload, each of which alone breaks the HMAC digest">
+<title>The four ways a JSON round-trip changes the bytes</title>
+<desc>The sender's raw bytes are shown above the same payload after json.loads followed by json.dumps. Four spans differ: the key order is normalised so type sorts before coordinates, the longitude 13.4 is re-emitted as 13.400000000000001, the separator whitespace after each colon and comma is inserted, and the non-ASCII place name is escaped to a backslash-u sequence. Each difference alone changes the SHA-256 digest completely, so the recomputed signature shares no prefix with the sender's.</desc>
+<rect x="0" y="0" width="760" height="288" fill="var(--fig-bg)"/>
+<text x="14" y="20" font-size="11" font-weight="600" fill="var(--fig-mint-edge)">What the sender hashed — the exact bytes on the wire</text>
+<rect x="14" y="28" width="732" height="42" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="26" y="46" font-size="10.5" font-family="monospace" fill="var(--fig-ink)">{"coordinates":[13.4,52.52],"type":"Point","name":"Berlin Mitte"}</text>
+<text x="26" y="62" font-size="9" fill="var(--fig-ink-soft)">sha256 = 9f2c1a7b8e04d3…  ✓ matches X-Signature-256</text>
+<text x="14" y="98" font-size="11" font-weight="600" fill="var(--fig-rose-edge)">What json.dumps(json.loads(body)) produces — four spans differ</text>
+<rect x="14" y="106" width="732" height="42" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="26" y="124" font-size="10.5" font-family="monospace" fill="var(--fig-ink)">{"type": "Point", "coordinates": [13.400000000000001, 52.52], "name": "Berlin Mitte"}</text>
+<text x="26" y="140" font-size="9" fill="var(--fig-ink-soft)">sha256 = 41ba6d09fc72e5…  ✗ shares no prefix — a digest has no partial credit</text>
+<rect x="14" y="168" width="176" height="52" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="24" y="186" font-size="10" font-weight="600" fill="var(--fig-ink)">1 · Key order</text>
+<text x="24" y="201" font-size="9" fill="var(--fig-ink-soft)">dicts re-emit in insertion</text>
+<text x="24" y="213" font-size="9" fill="var(--fig-ink-soft)">order, not the sender's</text>
+<rect x="200" y="168" width="176" height="52" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="210" y="186" font-size="10" font-weight="600" fill="var(--fig-ink)">2 · Float repr</text>
+<text x="210" y="201" font-size="9" fill="var(--fig-ink-soft)">13.4 → 13.400000000000001</text>
+<text x="210" y="213" font-size="9" fill="var(--fig-ink-soft)">binary64 has no exact 13.4</text>
+<rect x="386" y="168" width="176" height="52" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="396" y="186" font-size="10" font-weight="600" fill="var(--fig-ink)">3 · Separators</text>
+<text x="396" y="201" font-size="9" fill="var(--fig-ink-soft)">default dumps adds a space</text>
+<text x="396" y="213" font-size="9" fill="var(--fig-ink-soft)">after every : and ,</text>
+<rect x="572" y="168" width="174" height="52" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="582" y="186" font-size="10" font-weight="600" fill="var(--fig-ink)">4 · Unicode</text>
+<text x="582" y="201" font-size="9" fill="var(--fig-ink-soft)">ensure_ascii escapes any</text>
+<text x="582" y="213" font-size="9" fill="var(--fig-ink-soft)">non-ASCII place name</text>
+<rect x="14" y="236" width="732" height="40" rx="6" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="26" y="254" font-size="10" font-weight="600" fill="var(--fig-ink)">Any one of the four is fatal on its own.</text>
+<text x="26" y="269" font-size="9.5" fill="var(--fig-ink-soft)">Read the body once as bytes, verify against those bytes, and only then parse. Never re-derive the bytes you verify.</text>
+</svg>
+<figcaption><b>Figure 1.</b> Four independent reasons a round-tripped payload hashes differently. This is why the verification step has to hold the original <code>bytes</code> — reconstructing them after parsing is not possible in general.</figcaption>
+</figure>
+
+<figure class="fig">
+<svg viewBox="0 46 760 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram contrasting verifying HMAC over raw bytes versus over reserialized GeoJSON">
   <title>Verify over raw bytes, not reserialized GeoJSON</title>
   <desc>The raw request body flows into an HMAC-SHA256 comparison that matches the sender's signature and passes. A second path first parses and reserializes the GeoJSON — reordering keys, rounding floats, changing whitespace — producing different bytes whose HMAC no longer matches, and fails.</desc>
+  <rect x="0" y="46" width="760" height="220" fill="var(--fig-bg)"/>
   <defs>
     <marker id="ah" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor"/>
@@ -124,6 +162,8 @@ HMAC-SHA256 is a keyed hash over an exact byte sequence. The sender computes it 
   <text x="688" y="212" text-anchor="middle" font-size="12" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.8">mismatch</text>
   <text x="688" y="228" text-anchor="middle" font-size="12" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.8">FAIL</text>
 </svg>
+<figcaption><b>Figure 2.</b> Verify over raw bytes, not reserialized GeoJSON</figcaption>
+</figure>
 
 First, **key order**. A sender may emit `{"type":"Feature","geometry":{...},"properties":{...}}`; a naive re-dump under a different insertion order or a `sort_keys=True` policy rearranges those keys. Second, **float representation**. `json.loads` turns `2.000000` into the Python float `2.0`, and re-dumping writes `2.0` — the string changed. Coordinate arrays such as `[-122.41942, 37.77493]` are especially fragile because any library that rounds to a fixed precision rewrites every vertex. Third, **whitespace and separators**: the sender's compact `,` / `:` separators become `, ` / `: ` under default `json.dumps`. Fourth, and uniquely spatial, **CRS reprojection**. If your pipeline reprojects incoming coordinates from EPSG:4326 (WGS84) to EPSG:3857 (Web Mercator) before you hash, every number is different and the digest cannot possibly match. RFC 7946 mandates EPSG:4326 for GeoJSON, but many internal payloads carry other CRSs — never let that transform run ahead of verification.
 
@@ -242,6 +282,48 @@ The load-bearing detail is the `Depends(verify_signature)` wiring: FastAPI resol
 2. **CRS reprojection before verification.** Reprojecting coordinates from EPSG:4326 (WGS84) to EPSG:3857 (Web Mercator) — or any datum shift — rewrites every number. It must run strictly after the HMAC passes. Keep reprojection out of middleware that sits in front of the signature check.
 
 3. **Timing attacks via `==`.** String equality short-circuits at the first mismatched byte, leaking how far an attacker's guess matched. Always use `hmac.compare_digest`, which runs in constant time.
+
+<figure class="fig">
+<svg viewBox="0 0 760 274" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Response time against the number of correctly guessed leading signature bytes, comparing short-circuit equality with constant-time comparison">
+<title>What == leaks that compare_digest does not</title>
+<desc>Mean rejection time plotted against how many leading bytes of the signature an attacker has guessed correctly, from zero to seven. With the equality operator the comparison exits at the first mismatched byte, so the curve climbs in a visible staircase from about 0.4 to 3.2 microseconds — each extra correct byte costs one more loop iteration, and that difference is measurable over enough samples. With hmac.compare_digest the line is flat at about 3.4 microseconds regardless of the prefix, because every byte is always compared. The staircase is the side channel: it turns forging a signature from guessing all thirty-two bytes at once into guessing one byte at a time.</desc>
+<rect x="0" y="0" width="760" height="274" fill="var(--fig-bg)"/>
+<line x1="72" y1="34" x2="72" y2="196" stroke="var(--fig-line)" stroke-width="1.2"/>
+<line x1="72" y1="196" x2="536" y2="196" stroke="var(--fig-line)" stroke-width="1.2"/>
+<line x1="72" y1="156" x2="536" y2="156" stroke="var(--fig-line-soft)" stroke-width="0.7" stroke-dasharray="3,3"/>
+<line x1="72" y1="116" x2="536" y2="116" stroke="var(--fig-line-soft)" stroke-width="0.7" stroke-dasharray="3,3"/>
+<line x1="72" y1="76" x2="536" y2="76" stroke="var(--fig-line-soft)" stroke-width="0.7" stroke-dasharray="3,3"/>
+<text x="66" y="199" text-anchor="end" font-size="9" fill="var(--fig-ink-soft)">0</text>
+<text x="66" y="159" text-anchor="end" font-size="9" fill="var(--fig-ink-soft)">1</text>
+<text x="66" y="119" text-anchor="end" font-size="9" fill="var(--fig-ink-soft)">2</text>
+<text x="66" y="79" text-anchor="end" font-size="9" fill="var(--fig-ink-soft)">3</text>
+<text x="66" y="39" text-anchor="end" font-size="9" fill="var(--fig-ink-soft)">4</text>
+<text x="30" y="118" font-size="9.5" fill="var(--fig-ink-soft)" transform="rotate(-90 30 118)" text-anchor="middle">mean reject time (µs)</text>
+<polyline points="72,180 130,174 130,164 188,164 188,150 246,150 246,134 304,134 304,118 362,118 362,102 420,102 420,86 478,86 478,68 536,68" fill="none" stroke="var(--fig-rose-edge)" stroke-width="2.2"/>
+<polyline points="72,60 536,60" fill="none" stroke="var(--fig-mint-edge)" stroke-width="2.2"/>
+<circle cx="72" cy="180" r="3" fill="var(--fig-rose-edge)"/>
+<circle cx="188" cy="164" r="3" fill="var(--fig-rose-edge)"/>
+<circle cx="304" cy="134" r="3" fill="var(--fig-rose-edge)"/>
+<circle cx="420" cy="102" r="3" fill="var(--fig-rose-edge)"/>
+<circle cx="536" cy="68" r="3" fill="var(--fig-rose-edge)"/>
+<text x="72" y="212" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">0</text>
+<text x="188" y="212" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">2</text>
+<text x="304" y="212" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">4</text>
+<text x="420" y="212" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">6</text>
+<text x="536" y="212" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">8</text>
+<text x="304" y="230" text-anchor="middle" font-size="9.5" fill="var(--fig-ink-soft)">leading signature bytes the attacker has guessed correctly</text>
+<rect x="556" y="56" width="192" height="42" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="566" y="73" font-size="10" font-weight="600" fill="var(--fig-ink)">hmac.compare_digest</text>
+<text x="566" y="88" font-size="9" fill="var(--fig-ink-soft)">flat — every byte always read</text>
+<rect x="556" y="110" width="192" height="56" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="566" y="127" font-size="10" font-weight="600" fill="var(--fig-ink)">received == expected</text>
+<text x="566" y="142" font-size="9" fill="var(--fig-ink-soft)">one step per correct byte —</text>
+<text x="566" y="154" font-size="9" fill="var(--fig-ink-soft)">the staircase IS the leak</text>
+<rect x="72" y="240" width="676" height="26" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="84" y="257" font-size="9.5" fill="var(--fig-ink)">Cost of a forgery: 256³² guesses against a flat line, but only 32 × 256 against a staircase — one byte at a time.</text>
+</svg>
+<figcaption><b>Figure 3.</b> The staircase is what an attacker measures. Averaged over enough requests, a sub-microsecond step is recoverable, which reduces forging a 32-byte signature from an intractable search to about 8,000 probes.</figcaption>
+</figure>
 
 4. **Body already consumed.** A request stream reads once. If middleware or an earlier dependency parsed the body first, `request.body()` yields empty bytes and the digest is computed over nothing. Read and cache the raw body inside the signature dependency before any model binding.
 

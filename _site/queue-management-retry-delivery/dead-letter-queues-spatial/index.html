@@ -17,8 +17,21 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
   <link rel="manifest" href="/manifest.json"/>
 
-  <meta name="theme-color" content="#d56360"/>
-  <meta name="color-scheme" content="light"/>
+  <meta name="theme-color" content="#d56360" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
 
   
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -50,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=180687f5"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -143,6 +156,18 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
       </a>
     </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle"
+            aria-label="Switch to dark theme" title="Switch to dark theme">
+      <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.4v2.3M12 19.3v2.3M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.3M19.3 12h2.3M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+      </svg>
+    </button>
   </div>
 </header>
 
@@ -244,9 +269,11 @@
 <hr>
 <h2 id="architecture-overview" tabindex="-1"><a class="heading-anchor" href="#architecture-overview">Architecture Overview</a></h2>
 <p>A dead-letter queue is not a second inbox. It is a branch off the consumer that captures <em>why</em> an event could not be processed, in enough spatial detail that a human or an automated replay job can act on it later. The consumer attempts processing, and only when a failure is classified as terminal (or the retry budget is spent) does the event cross into the dead-letter branch with a fully populated envelope.</p>
-<svg viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Consumer pipeline with a dead-letter branch capturing failed geospatial events" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 16 753 302" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Consumer pipeline with a dead-letter branch capturing failed geospatial events">
   <title>Spatial dead-letter branch off the consumer</title>
   <desc>A broker delivers events to a consumer that runs parse, CRS transform, and topology validation stages. Transient failures loop back through retry with backoff; terminal failures branch down into a dead-letter envelope which writes to a durable store and offloads oversized geometry to object storage. A replay worker reads the store and re-injects events using the preserved idempotency key.</desc>
+  <rect x="0" y="16" width="753" height="302" fill="var(--fig-bg)"/>
   <defs>
     <marker id="dlq-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
       <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.6"/>
@@ -269,7 +296,7 @@
   <text x="482" y="49" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Processed</text>
   <text x="482" y="63" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">DB · tiles</text>
   <!-- transient retry loop -->
-  <path d="M244 102 q -70 26 -70 -10" fill="none" stroke="currentColor" stroke-width="1.2" marker-end="url(#dlq-arr)" opacity="0.4" stroke-dasharray="4,3"/>
+  <path d="M244 104 q -36 36 -70 0" fill="none" stroke="currentColor" stroke-width="1.2" marker-end="url(#dlq-arr)" opacity="0.4" stroke-dasharray="4,3"/>
   <text x="118" y="120" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.6">transient → retry + backoff</text>
   <!-- terminal branch down -->
   <line x1="244" y1="102" x2="244" y2="150" stroke="currentColor" stroke-width="1.5" marker-end="url(#dlq-arr)" opacity="0.55"/>
@@ -300,6 +327,8 @@
   <line x1="650" y1="65" x2="124" y2="65" stroke="currentColor" stroke-width="1.2" marker-end="url(#dlq-arr)" opacity="0.4" stroke-dasharray="4,3"/>
   <text x="655" y="160" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.6">re-inject</text>
 </svg>
+<figcaption><b>Figure 1.</b> Spatial dead-letter branch off the consumer</figcaption>
+</figure>
 <p><strong>Layer breakdown:</strong></p>
 <ol>
 <li><strong>Consumer with classified failure</strong> — each processing stage (parse, CRS transform, topology validation, spatial join) can fail. The consumer maps the raised exception to a failure class before deciding where the event goes.</li>
@@ -961,7 +990,7 @@ PAYLOAD <span class="token operator">=</span> <span class="token punctuation">{<
 </footer>
 
   </div>
-  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script src="/assets/js/site.js?v=c31b7b80" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

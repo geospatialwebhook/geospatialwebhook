@@ -83,9 +83,11 @@ Real-time geospatial webhooks and event streams present a core architectural pro
 
 The key generation pipeline sits between your webhook receiver and your processing layer. Understanding each layer before writing code prevents the most common failure modes — particularly floating-point drift and CRS confusion.
 
-<svg viewBox="0 0 720 320" role="img" aria-label="Four-layer pipeline: webhook receiver, normalizer, hasher, Redis key store" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="6 71 708 173" role="img" aria-label="Four-layer pipeline: webhook receiver, normalizer, hasher, Redis key store" xmlns="http://www.w3.org/2000/svg">
   <title>Event Key Generation Pipeline</title>
   <desc>Four connected boxes showing the data path: (1) Webhook Receiver validates schema; (2) Normalizer strips metadata, rounds coords, closes rings; (3) Hasher serializes canonically and applies SHA-256; (4) Redis Key Store performs atomic SET NX EX check before allowing processing.</desc>
+  <rect x="6" y="71" width="708" height="173" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
@@ -125,6 +127,8 @@ The key generation pipeline sits between your webhook receiver and your processi
   <text x="20" y="95" font-size="10" fill="currentColor" opacity="0.6">Incoming GeoJSON payload</text>
   <text x="580" y="95" font-size="10" fill="currentColor" opacity="0.6">Idempotent processing</text>
 </svg>
+<figcaption><b>Figure 1.</b> Event Key Generation Pipeline</figcaption>
+</figure>
 
 **Layer 1 — Webhook Receiver:** validates the incoming GeoJSON payload against a strict schema and returns `400 Bad Request` for malformed geometry before any key logic runs.
 

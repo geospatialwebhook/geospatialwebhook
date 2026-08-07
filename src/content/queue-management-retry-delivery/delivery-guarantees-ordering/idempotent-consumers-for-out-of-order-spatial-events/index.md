@@ -98,9 +98,11 @@ At-least-once delivery and ordering are two separate guarantees, and most pipeli
 
 The fix is to stop trusting arrival order and start trusting an ordering token carried *inside* each event — a per-feature `version` counter or, more commonly for sensor data, the source `observed_at` timestamp. The consumer compares that token against what is already stored and applies the write only if it is strictly newer. This is a form of last-writer-wins conflict resolution where "last" means *newest observation*, not *newest arrival*; the deeper trade-offs of that choice are covered in [Conflict Resolution Strategies](https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/).
 
-<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Out-of-order spatial event consumer decision flow" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 16 753 183" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Out-of-order spatial event consumer decision flow">
   <title>Idempotent out-of-order consumer decision flow</title>
   <desc>An event arrives and flows through a Redis idempotency-key check that drops exact duplicates, then a PostGIS conditional upsert that compares the incoming observation time against the stored observation time, applying the write only when the incoming event is strictly newer and otherwise skipping it as stale. All three outcomes acknowledge the message.</desc>
+  <rect x="0" y="16" width="753" height="183" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
       <path d="M0,0 L0,7 L8,3.5 Z" fill="currentColor" opacity="0.55"/>
@@ -138,6 +140,8 @@ The fix is to stop trusting arrival order and start trusting an ordering token c
   <text x="650" y="145" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">Row updated</text>
   <text x="650" y="161" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">newest geometry wins → ack</text>
 </svg>
+<figcaption><b>Figure 1.</b> Idempotent out-of-order consumer decision flow</figcaption>
+</figure>
 
 ---
 

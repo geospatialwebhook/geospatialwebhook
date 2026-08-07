@@ -93,9 +93,64 @@ The instinct is to sign a timestamp and reject stale messages. That is necessary
 
 So you need two orthogonal defences working together. The signed timestamp bounds *how long* a captured message is dangerous. The per-message nonce bounds *how many times* any single message is accepted — exactly once. Neither substitutes for the other.
 
-<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two-gate replay defence: freshness window then single-use nonce claim in Redis" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 0 760 262" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Timeline of five replay attempts against a captured webhook showing which gate rejects each one">
+<title>Which gate catches a replay, and when</title>
+<desc>A timeline from the moment a valid webhook is captured at t plus zero to eleven minutes later, with the five-minute freshness window shaded. The original delivery at t plus zero seconds passes both gates and applies the geometry mutation. A replay four seconds later is inside the window so the freshness gate lets it through, but the nonce is already claimed and it is rejected. A burst of two hundred replays at ninety seconds is likewise inside the window and every one is stopped by the nonce gate. A replay at six minutes fails the freshness gate before the nonce store is even consulted. A replay at eleven minutes, after the nonce TTL has expired, is still rejected because freshness is checked first — which is why the nonce TTL must be at least the width of the window.</desc>
+<rect x="0" y="0" width="760" height="262" fill="var(--fig-bg)"/>
+<defs>
+<marker id="rp-arr" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto">
+<path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/>
+</marker>
+</defs>
+<rect x="60" y="86" width="330" height="34" fill="var(--fig-mint)" opacity="0.5"/>
+<text x="225" y="78" text-anchor="middle" font-size="10" font-weight="600" fill="var(--fig-mint-edge)">freshness window — 5 min</text>
+<rect x="390" y="86" width="316" height="34" fill="var(--fig-rose)" opacity="0.45"/>
+<text x="548" y="78" text-anchor="middle" font-size="10" font-weight="600" fill="var(--fig-rose-edge)">stale — rejected before the nonce store is read</text>
+<line x1="60" y1="120" x2="726" y2="120" stroke="var(--fig-line)" stroke-width="1.4" marker-end="url(#rp-arr)"/>
+<line x1="60" y1="114" x2="60" y2="126" stroke="var(--fig-line)" stroke-width="1.2"/>
+<line x1="126" y1="114" x2="126" y2="126" stroke="var(--fig-line)" stroke-width="1.2"/>
+<line x1="192" y1="114" x2="192" y2="126" stroke="var(--fig-line)" stroke-width="1.2"/>
+<line x1="390" y1="114" x2="390" y2="126" stroke="var(--fig-line)" stroke-width="1.6"/>
+<line x1="522" y1="114" x2="522" y2="126" stroke="var(--fig-line)" stroke-width="1.2"/>
+<line x1="720" y1="114" x2="720" y2="126" stroke="var(--fig-line)" stroke-width="1.2"/>
+<text x="60" y="140" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">t+0</text>
+<text x="126" y="140" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">1 min</text>
+<text x="192" y="140" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">2 min</text>
+<text x="390" y="140" text-anchor="middle" font-size="9" font-weight="700" fill="var(--fig-ink)">5 min</text>
+<text x="522" y="140" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">7 min</text>
+<text x="720" y="140" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">11 min</text>
+<line x1="60" y1="86" x2="60" y2="56" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<rect x="14" y="26" width="150" height="30" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="89" y="45" text-anchor="middle" font-size="9.5" fill="var(--fig-ink)">original — applied ✓</text>
+<line x1="105" y1="120" x2="105" y2="166" stroke="var(--fig-rose-edge)" stroke-width="1.2" stroke-dasharray="3,2"/>
+<rect x="34" y="166" width="150" height="34" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="109" y="182" text-anchor="middle" font-size="9.5" fill="var(--fig-ink)">replay at t+4s</text>
+<text x="109" y="195" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">nonce gate — 409</text>
+<line x1="258" y1="120" x2="258" y2="166" stroke="var(--fig-rose-edge)" stroke-width="1.2" stroke-dasharray="3,2"/>
+<rect x="196" y="166" width="164" height="34" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="278" y="182" text-anchor="middle" font-size="9.5" fill="var(--fig-ink)">200-request burst, t+90s</text>
+<text x="278" y="195" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">nonce gate — all 200 × 409</text>
+<line x1="456" y1="120" x2="456" y2="166" stroke="var(--fig-earth-edge)" stroke-width="1.2" stroke-dasharray="3,2"/>
+<rect x="378" y="166" width="156" height="34" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="456" y="182" text-anchor="middle" font-size="9.5" fill="var(--fig-ink)">replay at t+6min</text>
+<text x="456" y="195" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">freshness gate — 401</text>
+<line x1="640" y1="120" x2="640" y2="166" stroke="var(--fig-earth-edge)" stroke-width="1.2" stroke-dasharray="3,2"/>
+<rect x="558" y="166" width="164" height="34" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="640" y="182" text-anchor="middle" font-size="9.5" fill="var(--fig-ink)">replay at t+11min</text>
+<text x="640" y="195" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">freshness gate — nonce long gone</text>
+<rect x="14" y="216" width="732" height="34" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="26" y="232" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Why the order matters: freshness is checked first, so the nonce store only ever holds keys for the window's width.</text>
+<text x="26" y="245" font-size="9" fill="var(--fig-ink-soft)">Set the nonce TTL to at least the window. Shorter, and a replay at t+4min finds an expired key and is accepted.</text>
+</svg>
+<figcaption><b>Figure 1.</b> The two gates divide the attack surface cleanly: freshness bounds how long a captured message stays dangerous, the nonce bounds how many times it works. Neither ordering is arbitrary — checking freshness first is what keeps the nonce store bounded.</figcaption>
+</figure>
+
+<figure class="fig">
+<svg viewBox="0 16 760 278" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two-gate replay defence: freshness window then single-use nonce claim in Redis">
   <title>Replay defence: freshness gate then nonce gate</title>
   <desc>An incoming signed webhook passes through a freshness window check on the signed timestamp, then a Redis SET NX nonce claim. A first delivery passes both gates and applies the geometry mutation. A replayed delivery passes the freshness gate but is rejected at the nonce gate because the key already exists.</desc>
+  <rect x="0" y="16" width="760" height="278" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor"/>
@@ -137,6 +192,8 @@ So you need two orthogonal defences working together. The signed timestamp bound
   <rect x="150" y="240" width="360" height="40" rx="6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="6,3" opacity="0.7"/>
   <text x="330" y="264" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.85">Rejected — no mutation applied</text>
 </svg>
+<figcaption><b>Figure 2.</b> Replay defence: freshness gate then nonce gate</figcaption>
+</figure>
 
 ## Complete runnable implementation
 
@@ -246,6 +303,50 @@ The key discipline: the timestamp and `delivery_id` live *inside* the signed byt
 ## Replay prevention versus idempotency dedup
 
 These two use nearly identical Redis mechanics — a key, a TTL, a "have I seen this before" check — which is exactly why they get conflated. They are not the same job, and merging them weakens both.
+
+<figure class="fig">
+<svg viewBox="0 0 760 268" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two independent key stores on a shared time axis: a short fail-closed replay nonce and a long fail-open idempotency key">
+<title>Two stores, two TTLs, two failure directions</title>
+<desc>A shared time axis from zero to twenty-four hours carries two bars. The adversarial replay nonce spans only the first five minutes, is keyed on the signed delivery id, and fails closed so a Redis outage rejects traffic. The benign idempotency key spans the full twenty-four hours, is keyed on a deterministic content hash, and fails open so an outage lets a rare duplicate through. A provider's legitimate retry at six hours falls outside the nonce window but inside the dedup window, so it is absorbed and the stored response replayed. Collapsing both into one key forces a choice between a twenty-four hour replay window, which is a security regression, and rejecting that six-hour retry, which is a reliability regression.</desc>
+<rect x="0" y="0" width="760" height="268" fill="var(--fig-bg)"/>
+<defs>
+<marker id="tl-arr" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto">
+<path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/>
+</marker>
+</defs>
+<text x="14" y="20" font-size="11" font-weight="600" fill="var(--fig-ink)">Layer 1 — adversarial: replay nonce</text>
+<rect x="196" y="30" width="26" height="30" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="232" y="43" font-size="9.5" font-weight="600" fill="var(--fig-rose-edge)">5 min · fail CLOSED</text>
+<text x="232" y="56" font-size="9" fill="var(--fig-ink-soft)">key = signed delivery id · store down ⇒ reject</text>
+<text x="14" y="92" font-size="11" font-weight="600" fill="var(--fig-ink)">Layer 2 — benign: idempotency key</text>
+<rect x="196" y="102" width="510" height="30" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="212" y="121" font-size="9.5" font-weight="600" fill="var(--fig-mint-edge)">24 h · fail OPEN — key = content hash · store down ⇒ allow, absorb a rare duplicate</text>
+<line x1="196" y1="156" x2="726" y2="156" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#tl-arr)"/>
+<line x1="196" y1="150" x2="196" y2="162" stroke="var(--fig-line)" stroke-width="1.2"/>
+<line x1="222" y1="150" x2="222" y2="162" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<line x1="328" y1="150" x2="328" y2="162" stroke="var(--fig-line)" stroke-width="1.2"/>
+<line x1="514" y1="150" x2="514" y2="162" stroke="var(--fig-line)" stroke-width="1.2"/>
+<line x1="706" y1="150" x2="706" y2="162" stroke="var(--fig-line)" stroke-width="1.2"/>
+<text x="196" y="176" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">0</text>
+<text x="222" y="176" text-anchor="middle" font-size="9" font-weight="700" fill="var(--fig-rose-edge)">5m</text>
+<text x="328" y="176" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">2 h</text>
+<text x="514" y="176" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">12 h</text>
+<text x="706" y="176" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">24 h</text>
+<line x1="420" y1="132" x2="420" y2="196" stroke="var(--fig-mint-edge)" stroke-width="1.3" stroke-dasharray="4,3"/>
+<rect x="330" y="196" width="182" height="34" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="421" y="212" text-anchor="middle" font-size="9.5" fill="var(--fig-ink)">provider retry at 6 h</text>
+<text x="421" y="225" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">absorbed — stored response replayed</text>
+<rect x="14" y="196" width="300" height="34" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="26" y="212" font-size="9.5" fill="var(--fig-ink)">One long key ⇒ 24 h replay window</text>
+<text x="26" y="225" font-size="8.5" fill="var(--fig-ink-soft)">a security regression</text>
+<rect x="528" y="196" width="218" height="34" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="540" y="212" font-size="9.5" fill="var(--fig-ink)">One short key ⇒ the 6 h retry is rejected</text>
+<text x="540" y="225" font-size="8.5" fill="var(--fig-ink-soft)">a reliability regression</text>
+<rect x="14" y="240" width="732" height="22" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="26" y="255" font-size="9.5" fill="var(--fig-ink)">Same Redis primitives, opposite failure directions — which is exactly why they cannot share a key.</text>
+</svg>
+<figcaption><b>Figure 3.</b> The two stores look identical in code and are opposite in intent. Note the failure directions: the security layer must fail closed and the reliability layer must fail open, so one shared key cannot serve both.</figcaption>
+</figure>
 
 <div style="overflow-x:auto;">
 

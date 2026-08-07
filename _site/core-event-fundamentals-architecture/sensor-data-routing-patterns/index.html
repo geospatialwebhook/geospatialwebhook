@@ -17,8 +17,21 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
   <link rel="manifest" href="/manifest.json"/>
 
-  <meta name="theme-color" content="#d56360"/>
-  <meta name="color-scheme" content="light"/>
+  <meta name="theme-color" content="#d56360" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
 
   
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -50,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=180687f5"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -143,6 +156,18 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
       </a>
     </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle"
+            aria-label="Switch to dark theme" title="Switch to dark theme">
+      <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.4v2.3M12 19.3v2.3M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.3M19.3 12h2.3M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+      </svg>
+    </button>
   </div>
 </header>
 
@@ -242,9 +267,11 @@
 <hr>
 <h2 id="architecture-blueprint" tabindex="-1"><a class="heading-anchor" href="#architecture-blueprint">Architecture Blueprint</a></h2>
 <p>The routing pipeline is a five-stage, stage-isolated sequence. Each stage enforces strict contracts so individual phases can be scaled or replaced independently.</p>
-<svg viewBox="0 0 780 310" role="img" aria-label="Five-stage sensor data routing pipeline diagram" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:780px;height:auto;font-family:inherit;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 6 780 294" role="img" aria-label="Five-stage sensor data routing pipeline diagram" xmlns="http://www.w3.org/2000/svg">
   <title>Sensor Data Routing Pipeline</title>
   <desc>Data flows left-to-right through five stages: Ingestion &amp; Validation, Spatial Classification, Route Resolution, Broker Dispatch, and Consumer Sync. Invalid events are sent to a Dead-Letter Queue below Stage 1. Suppression and deduplication occur at Stage 3.</desc>
+  <rect x="0" y="6" width="780" height="294" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
       <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.55"/>
@@ -302,6 +329,8 @@
   <!-- Footer label -->
   <text x="390" y="284" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.4">Sensor Data Routing Pipeline — geospatialwebhook.com</text>
 </svg>
+<figcaption><b>Figure 1.</b> Sensor Data Routing Pipeline</figcaption>
+</figure>
 <hr>
 <h2 id="step-by-step-implementation" tabindex="-1"><a class="heading-anchor" href="#step-by-step-implementation">Step-by-Step Implementation</a></h2>
 <h3 id="step-1-secure-ingestion-and-schema-validation" tabindex="-1"><a class="heading-anchor" href="#step-1-secure-ingestion-and-schema-validation">Step 1 — Secure Ingestion and Schema Validation</a></h3>
@@ -491,9 +520,11 @@ TRANSFORMER_CACHE<span class="token punctuation">:</span> <span class="token bui
 <p><strong>Purpose:</strong> Push resolved routes to a durable message broker without blocking the ingress worker.</p>
 <p>Partitioning strategy directly impacts consumer scaling and spatial locality. Hash-based partitioning on <code>device_id</code> ensures ordered delivery per sensor. Spatial partitioning by H3 cell (resolution 5–7) optimizes downstream <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a> and regional analytics. Configure explicit retention policies, consumer group offsets, and backpressure thresholds; unbounded broker topics exhaust memory during telemetry spikes. For high-frequency streams where JSON serialization overhead is measurable, consider the payload format tradeoffs in <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping</a>.</p>
 <p>The choice of partition key is a one-way door at production scale — it determines whether consumers can be scaled by sensor or by geography, and the two strategies move events to different partitions for the same input stream:</p>
-<svg viewBox="0 0 760 320" role="img" aria-label="Comparison of device-ID hash partitioning versus H3 spatial partitioning" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:760px;height:auto;font-family:inherit;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="46 0 668 320" role="img" aria-label="Comparison of device-ID hash partitioning versus H3 spatial partitioning" xmlns="http://www.w3.org/2000/svg">
   <title>Partition Key Strategy: device_id Hash vs H3 Cell</title>
   <desc>Two routing strategies for the same sensor stream. Hash partitioning on device_id sends every event from one sensor to the same partition, preserving per-sensor order. H3 cell partitioning sends events from the same geographic area to the same partition, preserving spatial locality regardless of which sensor produced them.</desc>
+  <rect x="46" y="0" width="668" height="320" fill="var(--fig-bg)"/>
   <defs>
     <marker id="parr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
       <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.55"/>
@@ -540,6 +571,8 @@ TRANSFORMER_CACHE<span class="token punctuation">:</span> <span class="token bui
   <line x1="638" y1="160" x2="600" y2="244" stroke="currentColor" stroke-width="1.1" marker-end="url(#parr)" opacity="0.4"/>
   <text x="380" y="304" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.4">Partition Key Strategy — geospatialwebhook.com</text>
 </svg>
+<figcaption><b>Figure 2.</b> Partition Key Strategy: device_id Hash vs H3 Cell</figcaption>
+</figure>
 <div class="code-block" data-lang="python">
   <div class="code-block__header">
     <span class="code-block__lang">python</span>
@@ -935,7 +968,7 @@ VALID_PAYLOAD <span class="token operator">=</span> <span class="token punctuati
 </footer>
 
   </div>
-  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script src="/assets/js/site.js?v=c31b7b80" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

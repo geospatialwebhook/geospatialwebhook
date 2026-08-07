@@ -94,9 +94,11 @@ Before wiring ordering guarantees into your consumer, confirm your stack and men
 
 The design separates three concerns that are often conflated: the *delivery guarantee* (how many times an event may arrive), the *ordering key* (which events must be sequenced relative to each other), and the *staleness guard* (how the consumer decides an arriving event is older than current state). Get these three right and the specific broker becomes an implementation detail.
 
-<svg viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two producers publish feature events into a partition keyed by feature ID; the partition preserves per-key order, and an out-of-order create arriving after an update is rejected by a version guard" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 26 722 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two producers publish feature events into a partition keyed by feature ID; the partition preserves per-key order, and an out-of-order create arriving after an update is rejected by a version guard">
   <title>Per-key ordering with a version guard reconciling an out-of-order arrival</title>
   <desc>Two producers emit events for feature F7. A partition keyed by feature ID preserves order for events that travel together, but a retried create v1 arrives after update v2. The consumer's version guard compares versions and rejects the stale create, keeping the stored geometry at v2.</desc>
+  <rect x="0" y="26" width="722" height="280" fill="var(--fig-bg)"/>
   <defs>
     <marker id="dg-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
       <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.6"/>
@@ -139,6 +141,8 @@ The design separates three concerns that are often conflated: the *delivery guar
   <text x="648" y="235" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">stale create dropped</text>
   <text x="380" y="290" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.55">Result: stored geometry stays at v2 despite the create arriving last — no phantom resurrection.</text>
 </svg>
+<figcaption><b>Figure 1.</b> Per-key ordering with a version guard reconciling an out-of-order arrival</figcaption>
+</figure>
 
 **Layer breakdown:**
 

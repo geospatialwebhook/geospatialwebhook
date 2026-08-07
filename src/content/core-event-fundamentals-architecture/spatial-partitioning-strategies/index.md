@@ -98,9 +98,11 @@ A discrete global grid system (DGGS) tiles the Earth into addressable cells at a
 
 The diagram below shows the same region under two schemes mapped onto the same three partitions: H3 hexagons on the left, an S2/Quadkey square grid on the right. The point is not that one is correct — it is that the cell-to-partition assignment is what you are actually designing.
 
-<svg viewBox="0 0 760 340" role="img" aria-label="A region tiled by H3 hexagons versus an S2 or Quadkey square grid, both mapped onto three broker partitions" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:760px;height:auto;font-family:system-ui,sans-serif;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="76 0 594 340" role="img" aria-label="A region tiled by H3 hexagons versus an S2 or Quadkey square grid, both mapped onto three broker partitions" xmlns="http://www.w3.org/2000/svg">
   <title>H3 Hex Tiling vs S2/Quadkey Grid Mapped to Partitions</title>
   <desc>The same geographic region is tiled two ways. On the left, H3 hexagons cover the region; each hex is labelled with the partition it hashes to. On the right, an S2 or Quadkey square grid covers the same region with its own cell-to-partition mapping. Both feed the same three broker partitions P0, P1, and P2 shown across the bottom.</desc>
+  <rect x="76" y="0" width="594" height="340" fill="var(--fig-bg)"/>
   <defs>
     <marker id="sp-arr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
       <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" opacity="0.55"/>
@@ -150,6 +152,8 @@ The diagram below shows the same region under two schemes mapped onto the same t
   <text x="485" y="283" text-anchor="middle" font-size="10" fill="currentColor">partition P2</text>
   <text x="380" y="324" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.45">cell → stable hash → partition — geospatialwebhook.com</text>
 </svg>
+<figcaption><b>Figure 1.</b> H3 Hex Tiling vs S2/Quadkey Grid Mapped to Partitions</figcaption>
+</figure>
 
 ---
 
@@ -302,7 +306,111 @@ class KeyableEvent(BaseModel):
 
 Resolution is the single most consequential knob. It trades three quantities against each other: **locality** (coarser cells keep more neighbors together), **partition-key cardinality** (finer cells create more distinct keys), and **skew** (coarser cells concentrate more events per key). Pick the coarsest resolution whose distinct-cell count comfortably exceeds your partition count *and* whose busiest cell stays under one consumer's throughput ceiling. For city-scale streams that band is often H3 resolution 5-7 or the equivalent S2 level 8-11, but the only honest way to set it is against measured per-cell rates.
 
+<figure class="fig">
+<svg viewBox="0 0 760 268" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Log chart of distinct H3 cell count and busiest-cell event rate against resolution, with the workable resolution band marked">
+<title>Choosing an H3 resolution: cardinality rises while per-cell load falls</title>
+<desc>A logarithmic chart over H3 resolutions 3 to 10 for a 5,000 square kilometre region carrying 20,000 events per second. Distinct cell count climbs from 1 at resolution 3 to 333,000 at resolution 10, crossing the 24-partition floor between resolutions 5 and 6. The busiest cell's event rate falls from 20,000 per second to 8 per second, crossing the 400 per second consumer ceiling between resolutions 6 and 7. Only resolutions 7 and 8 satisfy both constraints at once, and that overlap is shaded as the workable band.</desc>
+<rect x="0" y="0" width="760" height="268" fill="var(--fig-bg)"/>
+<rect x="315" y="40" width="140" height="180" fill="var(--fig-mint)" opacity="0.55"/>
+<text x="385" y="34" text-anchor="middle" font-size="10" font-weight="600" fill="var(--fig-mint-edge)">workable band</text>
+<line x1="70" y1="40" x2="70" y2="220" stroke="var(--fig-line)" stroke-width="1.2"/>
+<line x1="70" y1="220" x2="600" y2="220" stroke="var(--fig-line)" stroke-width="1.2"/>
+<line x1="70" y1="190" x2="600" y2="190" stroke="var(--fig-line-soft)" stroke-width="0.7" stroke-dasharray="3,3"/>
+<line x1="70" y1="130" x2="600" y2="130" stroke="var(--fig-line-soft)" stroke-width="0.7" stroke-dasharray="3,3"/>
+<line x1="70" y1="70" x2="600" y2="70" stroke="var(--fig-line-soft)" stroke-width="0.7" stroke-dasharray="3,3"/>
+<text x="64" y="223" text-anchor="end" font-size="9" fill="var(--fig-ink-soft)">1</text>
+<text x="64" y="193" text-anchor="end" font-size="9" fill="var(--fig-ink-soft)">10</text>
+<text x="64" y="163" text-anchor="end" font-size="9" fill="var(--fig-ink-soft)">100</text>
+<text x="64" y="133" text-anchor="end" font-size="9" fill="var(--fig-ink-soft)">1k</text>
+<text x="64" y="103" text-anchor="end" font-size="9" fill="var(--fig-ink-soft)">10k</text>
+<text x="64" y="73" text-anchor="end" font-size="9" fill="var(--fig-ink-soft)">100k</text>
+<text x="64" y="43" text-anchor="end" font-size="9" fill="var(--fig-ink-soft)">1M</text>
+<line x1="70" y1="178.6" x2="600" y2="178.6" stroke="var(--fig-earth-edge)" stroke-width="1.3" stroke-dasharray="6,3"/>
+<text x="604" y="182" font-size="9" fill="var(--fig-earth-edge)">24 partitions — key floor</text>
+<line x1="70" y1="141.9" x2="600" y2="141.9" stroke="var(--fig-rose-edge)" stroke-width="1.3" stroke-dasharray="6,3"/>
+<text x="604" y="145" font-size="9" fill="var(--fig-rose-edge)">400 ev/s — consumer ceiling</text>
+<polyline points="70,220 140,205.7 210,181 280,155.7 350,130.4 420,105 490,79.7 560,54.3" fill="none" stroke="var(--fig-mint-edge)" stroke-width="2.2"/>
+<polyline points="70,91 140,101.4 210,114.8 280,131.4 350,147.6 420,164.6 490,179.7 560,192.9" fill="none" stroke="var(--fig-peach-edge)" stroke-width="2.2"/>
+<circle cx="350" cy="130.4" r="3.4" fill="var(--fig-mint-edge)"/>
+<circle cx="420" cy="105" r="3.4" fill="var(--fig-mint-edge)"/>
+<circle cx="350" cy="147.6" r="3.4" fill="var(--fig-peach-edge)"/>
+<circle cx="420" cy="164.6" r="3.4" fill="var(--fig-peach-edge)"/>
+<text x="604" y="112" font-size="9.5" font-weight="600" fill="var(--fig-mint-edge)">distinct cells</text>
+<text x="604" y="125" font-size="9" fill="var(--fig-ink-soft)">must exceed partitions</text>
+<text x="604" y="196" font-size="9.5" font-weight="600" fill="var(--fig-peach-edge)">busiest cell, ev/s</text>
+<text x="604" y="209" font-size="9" fill="var(--fig-ink-soft)">must stay under ceiling</text>
+<text x="70" y="236" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">r3</text>
+<text x="140" y="236" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">r4</text>
+<text x="210" y="236" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">r5</text>
+<text x="280" y="236" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">r6</text>
+<text x="350" y="236" text-anchor="middle" font-size="9" font-weight="700" fill="var(--fig-ink)">r7</text>
+<text x="420" y="236" text-anchor="middle" font-size="9" font-weight="700" fill="var(--fig-ink)">r8</text>
+<text x="490" y="236" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">r9</text>
+<text x="560" y="236" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">r10</text>
+<text x="335" y="256" text-anchor="middle" font-size="9.5" fill="var(--fig-ink-soft)">H3 resolution — coarse to fine, for 5,000 km² carrying 20,000 ev/s</text>
+</svg>
+<figcaption><b>Figure 2.</b> The two constraints move in opposite directions, so the resolution you want is wherever they overlap — here r7–r8. Both curves shift with your region size and event rate, which is why the band has to be read off measured per-cell rates rather than assumed.</figcaption>
+</figure>
+
 Skew is inherent to spatial data — events cluster in cities, along roads, around sensors — so a uniform grid never yields uniform load. Two mitigations help. First, salt hot cells: append a bounded random suffix to the key for cells above a rate threshold, spreading one cell across several partitions at the cost of per-cell ordering for that cell only. Second, use a finer resolution in dense regions via a mixed-resolution scheme, keeping coarse cells where the stream is sparse. Detecting when a cell has gone hot is a monitoring problem covered in [Consumer Lag & Partition Skew Monitoring](https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/); the broker-side mechanics of assigning keys to partitions are in [Broker Selection & Partitioning for Spatial Streams](https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/).
+
+<figure class="fig">
+<svg viewBox="0 0 760 296" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Salting a hot H3 cell spreads it across three partitions and sacrifices ordering for that one cell only">
+<title>Salting a hot cell: what it buys and what it costs</title>
+<desc>Before salting, cell 8a2a1072b59ffff carries 1,400 events per second and hashes to partition 4 alone, so partition 4 is saturated while partitions 5 and 6 sit near idle, and the cell's events remain strictly ordered. After salting, the key gains a bounded suffix of 0, 1 or 2, so the same traffic spreads across partitions 4, 5 and 6 at roughly 470 events per second each. Every other cell keeps its ordering guarantee untouched; only the salted cell loses per-cell ordering, because its events now sit in three independently ordered partitions.</desc>
+<rect x="0" y="0" width="760" height="296" fill="var(--fig-bg)"/>
+<defs>
+<marker id="sa-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+<path d="M0,0 L8,3 L0,6 Z" fill="var(--fig-line)"/>
+</marker>
+</defs>
+<text x="14" y="20" font-size="11" font-weight="600" fill="var(--fig-rose-edge)">Before — one hot cell, one partition</text>
+<rect x="14" y="32" width="176" height="46" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="102" y="50" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">8a2a1072b59ffff</text>
+<text x="102" y="66" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">1,400 ev/s — city centre</text>
+<line x1="192" y1="55" x2="238" y2="55" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#sa-arr)"/>
+<text x="215" y="48" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">hash</text>
+<rect x="242" y="30" width="120" height="22" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="302" y="45" text-anchor="middle" font-size="9" fill="var(--fig-ink)">p4 — 1,400 ev/s</text>
+<rect x="242" y="56" width="120" height="22" rx="4" fill="var(--fig-earth)" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="302" y="71" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">p5 — 60 ev/s</text>
+<rect x="242" y="82" width="120" height="22" rx="4" fill="var(--fig-earth)" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="302" y="97" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">p6 — 45 ev/s</text>
+<rect x="378" y="30" width="16" height="22" rx="3" fill="var(--fig-rose-edge)"/>
+<rect x="378" y="56" width="16" height="22" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1"/>
+<rect x="378" y="82" width="16" height="22" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1"/>
+<text x="402" y="45" font-size="9" fill="var(--fig-rose-edge)" font-weight="600">saturated — consumer lag climbs</text>
+<text x="402" y="71" font-size="9" fill="var(--fig-ink-soft)">idle</text>
+<text x="402" y="97" font-size="9" fill="var(--fig-ink-soft)">idle</text>
+<text x="14" y="100" font-size="9" fill="var(--fig-mint-edge)" font-weight="600">ordering: intact for every cell</text>
+<line x1="14" y1="124" x2="746" y2="124" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="148" font-size="11" font-weight="600" fill="var(--fig-mint-edge)">After — bounded salt on that cell only</text>
+<rect x="14" y="160" width="176" height="30" rx="5" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.3"/>
+<text x="102" y="179" text-anchor="middle" font-size="9.5" fill="var(--fig-ink)">8a2a1072b59ffff#0</text>
+<rect x="14" y="194" width="176" height="30" rx="5" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.3"/>
+<text x="102" y="213" text-anchor="middle" font-size="9.5" fill="var(--fig-ink)">8a2a1072b59ffff#1</text>
+<rect x="14" y="228" width="176" height="30" rx="5" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.3"/>
+<text x="102" y="247" text-anchor="middle" font-size="9.5" fill="var(--fig-ink)">8a2a1072b59ffff#2</text>
+<line x1="192" y1="175" x2="238" y2="180" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#sa-arr)"/>
+<line x1="192" y1="209" x2="238" y2="206" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#sa-arr)"/>
+<line x1="192" y1="243" x2="238" y2="232" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#sa-arr)"/>
+<rect x="242" y="170" width="120" height="22" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="302" y="185" text-anchor="middle" font-size="9" fill="var(--fig-ink)">p4 — 470 ev/s</text>
+<rect x="242" y="196" width="120" height="22" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="302" y="211" text-anchor="middle" font-size="9" fill="var(--fig-ink)">p5 — 530 ev/s</text>
+<rect x="242" y="222" width="120" height="22" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="302" y="237" text-anchor="middle" font-size="9" fill="var(--fig-ink)">p6 — 505 ev/s</text>
+<rect x="378" y="170" width="16" height="22" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1"/>
+<rect x="378" y="196" width="16" height="22" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1"/>
+<rect x="378" y="222" width="16" height="22" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1"/>
+<text x="402" y="185" font-size="9" fill="var(--fig-mint-edge)" font-weight="600">all three inside the ceiling</text>
+<text x="402" y="211" font-size="9" fill="var(--fig-ink-soft)">salt count bounds the fan-out</text>
+<text x="402" y="237" font-size="9" fill="var(--fig-ink-soft)">at 3, not at cardinality</text>
+<rect x="14" y="266" width="732" height="24" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="26" y="282" font-size="9.5" fill="var(--fig-ink)">ordering: lost for 8a2a1072b59ffff alone — its events now sit in three independently ordered partitions. Every other cell is untouched.</text>
+</svg>
+<figcaption><b>Figure 3.</b> Salting is a targeted trade, not a global one: you give up per-cell ordering for the handful of cells above the rate threshold and keep it everywhere else. Bound the salt — an unbounded suffix is just the high-cardinality key that destroyed locality in the first place.</figcaption>
+</figure>
 
 Re-partitioning — changing resolution, grid family, or partition count — is a migration, not an edit. Never re-hash a live topic in place: a resolution-6 cell and a resolution-7 cell are different keys for the same point, so re-keying in flight shatters per-cell ordering and duplicates state. Instead, stamp every event with a `scheme` and `resolution` version (as Step 4 does), dual-write to old and new topics during the cutover, and move consumers to the new topic only once its offsets have caught up.
 

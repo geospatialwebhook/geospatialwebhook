@@ -17,8 +17,21 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
   <link rel="manifest" href="/manifest.json"/>
 
-  <meta name="theme-color" content="#d56360"/>
-  <meta name="color-scheme" content="light"/>
+  <meta name="theme-color" content="#d56360" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
 
   
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -50,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=180687f5"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -143,6 +156,18 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
       </a>
     </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle"
+            aria-label="Switch to dark theme" title="Switch to dark theme">
+      <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.4v2.3M12 19.3v2.3M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.3M19.3 12h2.3M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+      </svg>
+    </button>
   </div>
 </header>
 
@@ -243,9 +268,11 @@
 <hr>
 <h2 id="pipeline-architecture" tabindex="-1"><a class="heading-anchor" href="#pipeline-architecture">Pipeline Architecture</a></h2>
 <p>The diagram below shows the four-layer path from raw webhook delivery to committed spatial state. Each layer has a single responsibility so failures are isolated and the pipeline remains resumable.</p>
-<svg viewBox="0 0 760 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four-layer conflict resolution pipeline from webhook ingestion to spatial state commit, with duplicate short-circuit, dead-letter branch, and the three resolution policies" style="width:100%;max-width:760px;height:auto;font-family:inherit;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="6 10 747 450" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four-layer conflict resolution pipeline from webhook ingestion to spatial state commit, with duplicate short-circuit, dead-letter branch, and the three resolution policies">
   <title>Conflict Resolution Pipeline</title>
   <desc>Four numbered layers laid out left to right: Ingestion and Normalization, Idempotency Gate, Spatial Conflict Evaluation, and Atomic Commit, connected by arrows. The Idempotency Gate short-circuits exact duplicates with a 200 OK; the Conflict Evaluation layer branches irreconcilable updates to a dead-letter queue. A lower panel compares the three resolution policies: last-write-wins, semantic merge, and manual review.</desc>
+  <rect x="6" y="10" width="747" height="450" fill="var(--fig-bg)"/>
   <defs>
     <marker id="crs-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
@@ -322,6 +349,8 @@
   <text x="612" y="401" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">edit for replay</text>
   <text x="612" y="418" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.55">For regulatory data</text>
 </svg>
+<figcaption><b>Figure 1.</b> Conflict Resolution Pipeline</figcaption>
+</figure>
 <p>The pipeline has four numbered layers:</p>
 <ol>
 <li><strong>Ingestion and normalization</strong> — parse GeoJSON, enforce a single CRS (EPSG:4326), strip provider-specific metadata, and repair geometry topology.</li>
@@ -869,7 +898,7 @@ INCOMING_GEOM <span class="token operator">=</span> mapping<span class="token pu
 </footer>
 
   </div>
-  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script src="/assets/js/site.js?v=c31b7b80" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

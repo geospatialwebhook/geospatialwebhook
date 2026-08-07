@@ -17,8 +17,21 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
   <link rel="manifest" href="/manifest.json"/>
 
-  <meta name="theme-color" content="#d56360"/>
-  <meta name="color-scheme" content="light"/>
+  <meta name="theme-color" content="#d56360" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
 
   
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -50,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=180687f5"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -143,6 +156,18 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
       </a>
     </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle"
+            aria-label="Switch to dark theme" title="Switch to dark theme">
+      <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.4v2.3M12 19.3v2.3M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.3M19.3 12h2.3M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+      </svg>
+    </button>
   </div>
 </header>
 
@@ -242,9 +267,11 @@
 <h2 id="why-h3-sharding-skews-and-what-to-measure" tabindex="-1"><a class="heading-anchor" href="#why-h3-sharding-skews-and-what-to-measure">Why H3 sharding skews, and what to measure</a></h2>
 <p>Sharding by H3 cell gives you locality: every event for a given hexagon lands on the same partition, so an ordered, stateful consumer sees a coherent stream per area. That locality is exactly what creates skew. Human activity is spatially clustered, so the number of events per H3 cell follows a heavy-tailed distribution — a downtown cell at resolution 7 can carry orders of magnitude more webhooks than a suburban one. When the partition assignment maps that cell to a fixed partition, the imbalance is baked into the stream. The mechanics of that mapping are covered in <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/partitioning-kafka-topics-by-h3-cell/">partitioning Kafka topics by H3 cell</a>; this page assumes the mapping exists and focuses on measuring its fairness.</p>
 <p>The right thing to measure is the <em>shape</em> of the per-partition count vector, not any single partition’s absolute rate. Two summary statistics do this well. The coefficient of variation, <code>stdev / mean</code>, is zero when every partition holds the same count and grows without bound as mass concentrates; it reacts sharply to a single outlier, which makes it a good alerting trigger. The Gini coefficient measures inequality on a 0–1 scale — 0 is perfect equality, 1 is total concentration in one partition — and reads more intuitively on a dashboard. Both derive from the same count vector, so compute them together.</p>
-<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Partition skew detection pipeline from Kafka offsets to a Prometheus alert" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="0 81 749 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Partition skew detection pipeline from Kafka offsets to a Prometheus alert">
   <title>Partition skew detection pipeline</title>
   <desc>A four-stage flow: Kafka partition offsets are sampled at the start and end of a window to produce a per-partition count vector, which is reduced to a coefficient of variation and Gini scalar, published as a Prometheus gauge, and compared against a threshold that fires an alert only after a sustained breach.</desc>
+  <rect x="0" y="81" width="749" height="140" fill="var(--fig-bg)"/>
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
       <path d="M0,0 L0,7 L8,3.5 Z" fill="currentColor" opacity="0.55"/>
@@ -278,6 +305,8 @@
   <text x="646" y="155" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.65">k windows</text>
   <text x="646" y="205" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.45">SUSTAINED</text>
 </svg>
+<figcaption><b>Figure 1.</b> Partition skew detection pipeline</figcaption>
+</figure>
 <hr>
 <h2 id="complete-runnable-implementation" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-implementation">Complete runnable implementation</a></h2>
 <p>The collector below samples every partition’s log-end offset twice, one window apart, differences them to get per-partition message counts, computes both skew coefficients, and exposes them as Prometheus gauges. It uses <code>confluent-kafka</code> for the admin/consumer offset reads and <code>prometheus_client</code> for the gauge. The statistics use only the standard library so the calculation is dependency-light and unit-testable in isolation.</p>
@@ -662,7 +691,7 @@ two gauges. Point Prometheus at the /metrics port to scrape.
 </footer>
 
   </div>
-  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script src="/assets/js/site.js?v=c31b7b80" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

@@ -98,9 +98,11 @@ A retry loop written as "back off exponentially until it works" has no relations
 
 Give up too early and you drop a delivery the provider still considered in-flight — the sender sees a 5xx, exhausts *its* budget against your prematurely-closed consumer, and a valid tile update or sensor event is lost. Retry too long and the more insidious failure appears: your idempotency key expires mid-retry. Because the key was the only record that this event had been seen, the next attempt looks brand-new. A `Feature` in EPSG:4326 (WGS84) gets written twice, a boundary-change event replays, and downstream spatial indexes diverge. The budget's job is to make the three timelines nest correctly, as the diagram shows.
 
-<svg viewBox="0 0 760 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Retry budget nested inside provider retry window and idempotency-key TTL" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="46 0 714 238" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Retry budget nested inside provider retry window and idempotency-key TTL">
   <title>Nesting the retry budget inside the provider window and the idempotency TTL</title>
   <desc>Three stacked horizontal timelines sharing a start. The innermost bar is the consumer retry budget with tick marks for attempts, the middle bar is the provider retry window which is longer, and the outermost bar is the Redis idempotency-key TTL which extends furthest right; a dashed marker shows the dead-letter hand-off occurring before the TTL ends.</desc>
+  <rect x="46" y="0" width="714" height="238" fill="var(--fig-bg)"/>
   <defs>
     <marker id="ra" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
       <path d="M0,0 L0,7 L8,3.5 Z" fill="currentColor" opacity="0.55"/>
@@ -128,6 +130,8 @@ Give up too early and you drop a delivery the provider still considered in-fligh
   <line x1="690" y1="177" x2="720" y2="177" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.5" marker-end="url(#ra)"/>
   <text x="726" y="180" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.6">expiry</text>
 </svg>
+<figcaption><b>Figure 1.</b> Nesting the retry budget inside the provider window and the idempotency TTL</figcaption>
+</figure>
 
 The invariant is simple: **retry budget ≤ provider window ≤ idempotency TTL.** The budget hands off to the dead-letter queue before the key expires, so every event ends in exactly one terminal state.
 

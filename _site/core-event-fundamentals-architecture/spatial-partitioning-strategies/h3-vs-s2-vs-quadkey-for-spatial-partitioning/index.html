@@ -17,8 +17,21 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
   <link rel="manifest" href="/manifest.json"/>
 
-  <meta name="theme-color" content="#d56360"/>
-  <meta name="color-scheme" content="light"/>
+  <meta name="theme-color" content="#d56360" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
 
   
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -50,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
-  <link rel="stylesheet" href="/assets/css/site.css?v=8ff5c0b8"/>
+  <link rel="stylesheet" href="/assets/css/site.css?v=180687f5"/>
   <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
 
   
@@ -143,6 +156,18 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
       </a>
     </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle"
+            aria-label="Switch to dark theme" title="Switch to dark theme">
+      <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.4v2.3M12 19.3v2.3M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.3M19.3 12h2.3M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+      </svg>
+    </button>
   </div>
 </header>
 
@@ -241,9 +266,11 @@
 <hr>
 <h2 id="three-grids-three-geometries" tabindex="-1"><a class="heading-anchor" href="#three-grids-three-geometries">Three grids, three geometries</a></h2>
 <p>The core difference is the shape of the cell and the curve that orders cells. <strong>H3</strong> (Uber) tiles the globe with hexagons on an icosahedral projection; hexagons have uniform adjacency — every neighbour shares an edge and sits at roughly the same distance. <strong>S2</strong> (Google) projects the sphere onto the six faces of a cube and recursively subdivides each face into a quadtree, numbering cells along a Hilbert space-filling curve so that nearby cells have nearby 64-bit ids. <strong>Quadkey</strong> (Bing Maps / the slippy-map convention) subdivides the EPSG:3857 (Web Mercator) plane into a quadtree of square tiles, encoding the path from the root as a base-4 string.</p>
-<svg viewBox="0 0 760 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cell shape and hierarchy of H3, S2, and Quadkey grid systems" style="width:100%;max-width:760px;height:auto;display:block;margin:1.5rem auto;">
+<figure class="fig">
+<svg viewBox="31 1 695 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cell shape and hierarchy of H3, S2, and Quadkey grid systems">
   <title>Cell shape and hierarchy of H3, S2, and Quadkey</title>
   <desc>Three side-by-side panels. The first shows H3 hexagons with a highlighted centre cell and six edge neighbours, labelled hexagonal and approximate nesting. The second shows an S2 square subdivided into four nested children traversed by a Hilbert curve. The third shows a Quadkey square subdivided into four quadrants numbered 0 to 3, labelled Web Mercator quadtree.</desc>
+  <rect x="31" y="1" width="695" height="190" fill="var(--fig-bg)"/>
   <!-- H3 panel -->
   <text x="120" y="28" text-anchor="middle" font-size="12" fill="currentColor" font-family="system-ui,sans-serif" font-weight="600">H3 — hexagonal</text>
   <polygon points="120,60 145,74 145,102 120,116 95,102 95,74" fill="none" stroke="currentColor" stroke-opacity="0.7" stroke-width="1.5"/>
@@ -278,6 +305,8 @@
     </marker>
   </defs>
 </svg>
+<figcaption><b>Figure 1.</b> Cell shape and hierarchy of H3, S2, and Quadkey</figcaption>
+</figure>
 <p>Those shape choices ripple into every property that matters for partitioning. Hexagons give H3 uniform neighbour distance but forbid perfect nesting; quadtrees give S2 and Quadkey clean parent-child math but square cells whose neighbours come in two flavours (edge and corner). The Hilbert curve gives S2 excellent id locality; Quadkey’s Web Mercator base gives it map-tile compatibility at the cost of severe area distortion toward the poles.</p>
 <p>Library maturity also differs sharply and should weigh on the decision. The <code>h3</code> package is a maintained binding over Uber’s C library, ships wheels for every common platform, and moved to a cleaner v4 API (<code>latlng_to_cell</code>, <code>grid_disk</code>, <code>cell_to_parent</code>) that this page targets — it is the smoothest install of the three. S2 is more fragmented: <code>s2sphere</code> is a pure-Python port that is easy to <code>pip install</code> but trails Google’s C++ <code>s2geometry</code> in features and speed, while binding to the C++ library directly is powerful but heavier to build. Quadkey needs no dedicated grid library at all — <code>mercantile</code> (or <code>pygeotile</code>) provides tile math in a few small, stable functions, since the encoding is just quadtree path arithmetic on Web Mercator tiles. For a Python event pipeline that wants a well-supported, fast, batteries-included grid, H3 is the path of least resistance; reach for S2 or Quadkey when their specific properties earn the extra integration effort.</p>
 <h3 id="comparison-table" tabindex="-1"><a class="heading-anchor" href="#comparison-table">Comparison table</a></h3>
@@ -507,12 +536,94 @@ H3 ring  : 7 cells (centre + 6 neighbours)
 <li>
 <p><strong>H3 hexagons do not nest inside their parents.</strong> Because a hexagon cannot be subdivided into smaller hexagons without gaps, an H3 child only <em>approximately</em> covers its parent, and a child cell near the boundary can overlap a neighbouring parent. If you shard at resolution 9 and roll up to resolution 8 for aggregation, expect small edge leakage. S2 and Quadkey quadtrees nest exactly (4:1), so a parent’s four children tile it precisely.</p>
 </li>
+</ol>
+<figure class="fig">
+<svg viewBox="0 0 760 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Exact quadtree nesting in S2 and Quadkey contrasted with the approximate hexagon nesting in H3">
+<title>Quadtrees nest exactly; hexagons do not</title>
+<desc>On the left, an S2 or Quadkey parent square is subdivided into four children that tile it precisely, with no gap and no overlap, so rolling a child key up to its parent is exact. On the right, an H3 parent hexagon is overlaid with its seven approximate children: the centre child sits wholly inside, while the six ring children each straddle the parent boundary, so part of each belongs to a neighbouring parent. Rolling up therefore leaks a small amount of area across the edge, which shows up as a few tenths of a percent of events aggregating into the wrong parent cell.</desc>
+<rect x="0" y="0" width="760" height="236" fill="var(--fig-bg)"/>
+<text x="180" y="22" text-anchor="middle" font-size="11" font-weight="600" fill="var(--fig-mint-edge)">S2 / Quadkey — exact 4:1 nesting</text>
+<rect x="100" y="34" width="160" height="160" fill="none" stroke="var(--fig-mint-edge)" stroke-width="2.4"/>
+<rect x="100" y="34" width="80" height="80" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<rect x="180" y="34" width="80" height="80" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<rect x="100" y="114" width="80" height="80" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<rect x="180" y="114" width="80" height="80" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="140" y="79" text-anchor="middle" font-size="11" fill="var(--fig-ink)">0</text>
+<text x="220" y="79" text-anchor="middle" font-size="11" fill="var(--fig-ink)">1</text>
+<text x="140" y="159" text-anchor="middle" font-size="11" fill="var(--fig-ink)">2</text>
+<text x="220" y="159" text-anchor="middle" font-size="11" fill="var(--fig-ink)">3</text>
+<text x="180" y="214" text-anchor="middle" font-size="9.5" fill="var(--fig-ink-soft)">roll-up is exact — chop one character off the key</text>
+<line x1="380" y1="24" x2="380" y2="204" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="566" y="22" text-anchor="middle" font-size="11" font-weight="600" fill="var(--fig-peach-edge)">H3 — approximate nesting</text>
+<polygon points="566,34 634,74 634,154 566,194 498,154 498,74" fill="none" stroke="var(--fig-peach-edge)" stroke-width="2.4"/>
+<polygon points="566,90 592,105 592,135 566,150 540,135 540,105" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<polygon points="566,30 592,45 592,75 566,90 540,75 540,45" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2" opacity="0.85"/>
+<polygon points="566,150 592,165 592,195 566,210 540,195 540,165" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2" opacity="0.85"/>
+<polygon points="618,60 644,75 644,105 618,120 592,105 592,75" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2" opacity="0.85"/>
+<polygon points="618,120 644,135 644,165 618,180 592,165 592,135" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2" opacity="0.85"/>
+<polygon points="514,60 540,75 540,105 514,120 488,105 488,75" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2" opacity="0.85"/>
+<polygon points="514,120 540,135 540,165 514,180 488,165 488,135" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2" opacity="0.85"/>
+<text x="566" y="124" text-anchor="middle" font-size="9" fill="var(--fig-ink)">in</text>
+<text x="566" y="214" text-anchor="middle" font-size="9.5" fill="var(--fig-ink-soft)">six of seven children straddle the parent edge</text>
+<rect x="14" y="212" width="732" height="0" fill="none"/>
+</svg>
+<figcaption><b>Figure 2.</b> A hexagon cannot be tiled by smaller hexagons, so H3's hierarchy is a containment approximation rather than a partition. Shard at r9 and aggregate at r8 and a small fraction of events lands in a neighbouring parent — usually tolerable, never exactly zero.</figcaption>
+</figure>
+<ol start="3">
 <li>
 <p><strong>S2 token length is variable.</strong> <code>CellId.to_token()</code> strips trailing zero bits, so a coarse level yields a short token (<code>89c259</code> at level 10) and level 30 yields the full 16 hex chars. If you store tokens in a fixed-width column or use string-prefix range queries, account for the variable length — pad or use the raw 64-bit <code>id()</code> instead.</p>
 </li>
 <li>
 <p><strong>Quadkey distortion explodes toward the poles.</strong> Quadkey lives on the EPSG:3857 (Web Mercator) plane, which stretches area with latitude. A zoom-16 tile is ~460 m across near the equator but far smaller in ground distance at 70° N, and Web Mercator is undefined beyond about ±85.05°. For polar or high-latitude event streams, Quadkey produces badly unbalanced partitions; prefer H3 or S2, which are computed on the sphere.</p>
 </li>
+</ol>
+<figure class="fig">
+<svg viewBox="0 0 760 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ground width of a zoom-16 Quadkey tile against latitude compared with the constant area of an H3 cell">
+<title>Quadkey tile width collapses with latitude; H3 does not</title>
+<desc>Ground width of a zoom-16 Quadkey tile plotted against latitude from the equator to eighty-five degrees north. At the equator the tile spans about 611 metres. By forty degrees it is down to about 468 metres, by sixty about 306 metres, by seventy-five about 158 metres, and by eighty-five about 53 metres — roughly a twelfth of its equatorial width. An H3 resolution-8 cell holds a near-constant area of about 0.74 square kilometres at every latitude because it is computed on the sphere. Web Mercator is undefined beyond 85.05 degrees, marked as a hard edge. For a partitioner this means a fixed Quadkey zoom yields cells whose event capacity varies by more than an order of magnitude across a country spanning several degrees of latitude.</desc>
+<rect x="0" y="0" width="760" height="250" fill="var(--fig-bg)"/>
+<line x1="70" y1="30" x2="70" y2="180" stroke="var(--fig-line)" stroke-width="1.2"/>
+<line x1="70" y1="180" x2="560" y2="180" stroke="var(--fig-line)" stroke-width="1.2"/>
+<line x1="70" y1="150" x2="560" y2="150" stroke="var(--fig-line-soft)" stroke-width="0.7" stroke-dasharray="3,3"/>
+<line x1="70" y1="105" x2="560" y2="105" stroke="var(--fig-line-soft)" stroke-width="0.7" stroke-dasharray="3,3"/>
+<line x1="70" y1="60" x2="560" y2="60" stroke="var(--fig-line-soft)" stroke-width="0.7" stroke-dasharray="3,3"/>
+<text x="64" y="183" text-anchor="end" font-size="9" fill="var(--fig-ink-soft)">0</text>
+<text x="64" y="153" text-anchor="end" font-size="9" fill="var(--fig-ink-soft)">200</text>
+<text x="64" y="108" text-anchor="end" font-size="9" fill="var(--fig-ink-soft)">400</text>
+<text x="64" y="63" text-anchor="end" font-size="9" fill="var(--fig-ink-soft)">600</text>
+<text x="26" y="105" font-size="9.5" fill="var(--fig-ink-soft)" transform="rotate(-90 26 105)" text-anchor="middle">tile ground width (m)</text>
+<polyline points="70,58 128,66 186,80 244,110 302,134 360,156 418,167 476,173 534,176" fill="none" stroke="var(--fig-rose-edge)" stroke-width="2.4"/>
+<circle cx="70" cy="58" r="3" fill="var(--fig-rose-edge)"/>
+<circle cx="244" cy="110" r="3" fill="var(--fig-rose-edge)"/>
+<circle cx="360" cy="156" r="3" fill="var(--fig-rose-edge)"/>
+<circle cx="534" cy="176" r="3" fill="var(--fig-rose-edge)"/>
+<text x="82" y="52" font-size="8.5" fill="var(--fig-ink-soft)">611 m</text>
+<text x="252" y="104" font-size="8.5" fill="var(--fig-ink-soft)">468 m at 40°</text>
+<text x="368" y="150" font-size="8.5" fill="var(--fig-ink-soft)">306 m at 60°</text>
+<text x="470" y="192" font-size="8.5" fill="var(--fig-ink-soft)">53 m at 85°</text>
+<line x1="70" y1="46" x2="560" y2="46" stroke="var(--fig-mint-edge)" stroke-width="2.4" stroke-dasharray="7,4"/>
+<text x="82" y="42" font-size="8.5" fill="var(--fig-mint-edge)" font-weight="600">H3 r8 — 0.74 km² at every latitude</text>
+<line x1="548" y1="30" x2="548" y2="180" stroke="var(--fig-earth-edge)" stroke-width="1.4"/>
+<text x="70" y="200" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">0°</text>
+<text x="186" y="200" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">30°</text>
+<text x="302" y="200" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">50°</text>
+<text x="418" y="200" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">70°</text>
+<text x="534" y="200" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">85°</text>
+<text x="315" y="218" text-anchor="middle" font-size="9.5" fill="var(--fig-ink-soft)">latitude — Web Mercator undefined beyond 85.05°</text>
+<rect x="576" y="46" width="170" height="60" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="586" y="64" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Quadkey z16</text>
+<text x="586" y="79" font-size="9" fill="var(--fig-ink-soft)">width scales with cos(lat) —</text>
+<text x="586" y="91" font-size="9" fill="var(--fig-ink-soft)">a 12× span across one country</text>
+<rect x="576" y="116" width="170" height="60" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="586" y="134" font-size="9.5" font-weight="600" fill="var(--fig-ink)">H3 / S2</text>
+<text x="586" y="149" font-size="9" fill="var(--fig-ink-soft)">computed on the sphere, so</text>
+<text x="586" y="161" font-size="9" fill="var(--fig-ink-soft)">per-cell capacity stays flat</text>
+<rect x="70" y="228" width="676" height="20" rx="4" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="82" y="242" font-size="9.5" fill="var(--fig-ink)">Quadkey's distortion is invisible in a city-scale test and dominant in a national one — pick the grid against your latitude span.</text>
+</svg>
+<figcaption><b>Figure 3.</b> Quadkey inherits Web Mercator's area distortion, so a fixed zoom gives cells whose event capacity varies more than tenfold across a high-latitude country. H3 and S2 are computed on the sphere and hold capacity roughly flat.</figcaption>
+</figure>
+<ol start="5">
 <li>
 <p><strong>Every encoder assumes EPSG:4326 input.</strong> If your webhook payload carries EPSG:3857 (Web Mercator), a national grid, or any projected CRS, you must reproject to EPSG:4326 (WGS84) decimal degrees <em>before</em> encoding — the libraries silently treat whatever numbers you pass as degrees. Normalizing the CRS up front, as with the geometry conventions in RFC 7946 GeoJSON (<a href="https://datatracker.ietf.org/doc/html/rfc7946">datatracker.ietf.org/doc/html/rfc7946</a>), keeps the cell id correct.</p>
 </li>
@@ -711,7 +822,7 @@ LON<span class="token punctuation">,</span> LAT <span class="token operator">=</
 </footer>
 
   </div>
-  <script src="/assets/js/site.js?v=6c55de86" defer></script>
+  <script src="/assets/js/site.js?v=c31b7b80" defer></script>
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
