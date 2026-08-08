@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>Chunking a Multipolygon Across Message Size Limits · Geo Webhook</title>
+  <meta name="description" content="Split a multipolygon on part boundaries so every chunk is a valid geometry, declare the total up front, and give the reassembler a timeout — a group that waits forever for a lost part is the failure chunking introduces."/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/streaming-large-geometries/chunking-a-multipolygon-across-message-size-limits/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/streaming-large-geometries/chunking-a-multipolygon-across-message-size-limits/"/>
+  <meta property="og:title" content="Chunking a Multipolygon Across Message Size Limits"/>
+  <meta property="og:description" content="Split a multipolygon on part boundaries so every chunk is a valid geometry, declare the total up front, and give the reassembler a timeout — a group that waits forever for a lost part is the failure chunking introduces."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Chunking a Multipolygon Across Message Size Limits"/>
+  <meta name="twitter:description" content="Split a multipolygon on part boundaries so every chunk is a valid geometry, declare the total up front, and give the reassembler a timeout — a group that waits forever for a lost part is the failure chunking introduces."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=180687f5"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },{ "@type": "ListItem", "position": 2, "name": "Spatial Payload Routing Parsing", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" },{ "@type": "ListItem", "position": 3, "name": "Streaming Large Geometries", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/streaming-large-geometries/" },{ "@type": "ListItem", "position": 4, "name": "Chunking A Multipolygon Across Message Size Limits", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/streaming-large-geometries/chunking-a-multipolygon-across-message-size-limits/" }
+    ]
+  }
+  </script>
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/streaming-large-geometries/chunking-a-multipolygon-across-message-size-limits/#article",
+    "mainEntityOfPage": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/streaming-large-geometries/chunking-a-multipolygon-across-message-size-limits/",
+    "headline": "Chunking a Multipolygon Across Message Size Limits",
+    "description": "Split a multipolygon on part boundaries so every chunk is a valid geometry, declare the total up front, and give the reassembler a timeout — a group that waits forever for a lost part is the failure chunking introduces.",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
+    "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
+    "image": "https://www.geospatialwebhook.com/og-image.png",
+    "url": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/streaming-large-geometries/chunking-a-multipolygon-across-message-size-limits/",
+    "articleSection": "Spatial Payload Routing Parsing",
+    "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
+  }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="https://www.geospatialwebhook.com/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="https://www.geospatialwebhook.com/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Queues &amp; Retries</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
+      </a>
+    </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle"
+            aria-label="Switch to dark theme" title="Switch to dark theme">
+      <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.4v2.3M12 19.3v2.3M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.3M19.3 12h2.3M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="https://www.geospatialwebhook.com/">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing Parsing</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/streaming-large-geometries/">Streaming Large Geometries</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">Chunking A Multipolygon Across Message Size Limits</span>
+    </nav>
+
+    <h1 class="page__title">Chunking a Multipolygon Across Message Size Limits</h1>
+
+    <div class="page__layout">
+      <div class="markdown">
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Chunking a Multipolygon Across Message Size Limits",
+      "description": "Chunking a multipolygon is safe only on part boundaries, and only when the reassembler can detect a part that never arrives. This guide splits by part with a size-aware packer, declares the total in every chunk, and fails the group on timeout rather than waiting.",
+      "url": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/streaming-large-geometries/chunking-a-multipolygon-across-message-size-limits/",
+      "datePublished": "2026-08-08",
+      "dateModified": "2026-08-08",
+      "author": {"@type": "Organization", "name": "geospatialwebhook.com"},
+      "publisher": {"@type": "Organization", "name": "geospatialwebhook.com"}
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/"},
+        {"@type": "ListItem", "position": 2, "name": "Spatial Payload Routing & Parsing", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/"},
+        {"@type": "ListItem", "position": 3, "name": "Streaming & Chunking Large Geometry Payloads", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/streaming-large-geometries/"},
+        {"@type": "ListItem", "position": 4, "name": "Chunking a Multipolygon Across Message Size Limits", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/streaming-large-geometries/chunking-a-multipolygon-across-message-size-limits/"}
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Chunk a multipolygon across broker message size limits",
+      "step": [
+        {"@type": "HowToStep", "position": 1, "name": "Split only on part boundaries, so every chunk is a valid geometry"},
+        {"@type": "HowToStep", "position": 2, "name": "Pack parts into chunks by serialised size, not by count"},
+        {"@type": "HowToStep", "position": 3, "name": "Declare the group id and total part count in every chunk"},
+        {"@type": "HowToStep", "position": 4, "name": "Fail the group on timeout instead of waiting for a part that will not arrive"}
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Why must chunks be split on part boundaries?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Because a chunk that is not a complete geometry cannot be validated, routed or reasoned about on its own. Splitting a coordinate array mid-ring produces fragments that no parser accepts and no bounding box describes, so the reassembler must have every fragment before it can do anything at all. Splitting on part boundaries means each chunk is a polygon: it can be validated on arrival, it has a bounding box a consumer can filter on, and a missing chunk is a missing polygon rather than a corrupt shape."}
+        },
+        {
+          "@type": "Question",
+          "name": "Should chunks be sized by part count or by bytes?",
+          "acceptedAnswer": {"@type": "Answer", "text": "By bytes, because parts of a multipolygon vary enormously in size. A fixed count of ten parts per chunk is a few kilobytes for ten small islands and forty megabytes for ten mainland coastlines, so a count-based packer produces chunks that are simultaneously too small most of the time and over the limit exactly when it matters. Serialise each part, accumulate until the next one would exceed the budget, and start a new chunk."}
+        },
+        {
+          "@type": "Question",
+          "name": "What should the reassembler do when a part never arrives?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Fail the group and dead-letter what it has, rather than waiting. A reassembler with no timeout accumulates partial groups in memory forever, and because each holds real geometry the memory cost is substantial. Failing produces a visible artefact naming the group and the missing indices, which is something an operator can replay; waiting produces a slow leak and an event that silently never happened."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>Split only on part boundaries so every chunk is a valid polygon, pack by serialised byte size rather than part count, and give the reassembler a timeout that fails the group — a missing part with no timeout is an in-memory leak and an event that silently never happened.</strong></p>
+<p>This guide sits under <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/streaming-large-geometries/">Streaming &amp; Chunking Large Geometry Payloads</a>, within <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a>. That topic argues that chunking is the third-best option; this guide is for the case where it is nonetheless the right one, because the parts are independently useful.</p>
+<h2 id="when-to-use-this-pattern" tabindex="-1"><a class="heading-anchor" href="#when-to-use-this-pattern">When to use this pattern</a></h2>
+<ul>
+<li>The geometry is genuinely composite — separate administrative units, distinct islands, a feature collection — so each part means something on its own.</li>
+<li>Consumers can act on parts as they arrive rather than needing the whole assembled shape, which is where the pattern earns its cost.</li>
+<li>Object storage is unavailable or undesirable, which rules out the claim check.</li>
+</ul>
+<p>If none of those hold, use <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/streaming-large-geometries/the-claim-check-pattern-for-oversized-spatial-payloads/">The Claim-Check Pattern for Oversized Spatial Payloads</a> instead.</p>
+<h2 id="pack-by-bytes-because-parts-are-not-comparable" tabindex="-1"><a class="heading-anchor" href="#pack-by-bytes-because-parts-are-not-comparable">Pack by bytes, because parts are not comparable</a></h2>
+<figure class="fig">
+<svg viewBox="0 0 760 224" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A fixed part-count packer producing wildly uneven chunks against a byte-aware packer">
+<title>Ten parts is not a size</title>
+<desc>A national coastline multipolygon holds four hundred parts whose serialised sizes span five orders of magnitude: most are small offshore islands of a few hundred bytes, a handful are substantial islands of tens of kilobytes, and two are mainland coastlines of about twenty megabytes each. A packer that puts ten parts in each chunk produces chunks of about four kilobytes for most of the geometry, which wastes almost the entire message budget on overhead, and one chunk of over forty megabytes when it happens to reach the two mainland parts, which exceeds any broker limit and fails the publish. A byte-aware packer accumulates serialised parts until adding the next would exceed the budget, so chunks are uniformly close to the limit, the mainland parts each get a chunk to themselves, and no chunk is ever over. The count-based failure is particularly unpleasant because it depends on where the large parts fall in the input order, so it can pass in testing on a reordered sample and fail in production on the same data.</desc>
+<rect x="0" y="0" width="760" height="224" fill="var(--fig-bg)"/>
+<text x="14" y="18" font-size="10" font-weight="600" fill="var(--fig-ink)">400 parts · sizes spanning five orders of magnitude · 1 MB message budget</text>
+<text x="14" y="42" font-size="9" font-weight="600" fill="var(--fig-rose-edge)">ten parts per chunk</text>
+<rect x="180" y="32" width="24" height="14" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<rect x="208" y="32" width="22" height="14" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<rect x="234" y="32" width="26" height="14" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<rect x="264" y="32" width="20" height="14" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<rect x="288" y="32" width="24" height="14" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<rect x="316" y="24" width="424" height="30" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.8"/>
+<text x="326" y="43" font-size="8.5" font-weight="600" fill="var(--fig-ink)">40+ MB — the chunk that reached both mainland parts · publish fails</text>
+<text x="180" y="66" font-size="8.5" fill="var(--fig-rose-edge)">most chunks ≈ 4 KB — the message budget is almost entirely wasted</text>
+<text x="180" y="80" font-size="8.5" fill="var(--fig-rose-edge)">and which chunk overflows depends on input order, so a reordered sample passes in testing</text>
+<line x1="14" y1="98" x2="746" y2="98" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="120" font-size="9" font-weight="600" fill="var(--fig-mint-edge)">pack until the next part would exceed the budget</text>
+<rect x="180" y="132" width="102" height="22" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<rect x="286" y="132" width="102" height="22" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<rect x="392" y="132" width="102" height="22" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<rect x="498" y="132" width="102" height="22" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.4"/>
+<rect x="604" y="132" width="102" height="22" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.4"/>
+<text x="500" y="170" font-size="8" fill="var(--fig-gold-edge)">one mainland part each</text>
+<text x="180" y="170" font-size="8" fill="var(--fig-mint-edge)">many small parts packed together</text>
+<rect x="14" y="184" width="732" height="32" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="26" y="203" font-size="9" fill="var(--fig-ink-soft)">Serialise each part, accumulate, and start a new chunk before the budget is exceeded. Chunks land uniformly close to the limit and none is ever over.</text>
+</svg>
+<figcaption><b>Figure 1.</b> The count-based failure depends on where the large parts fall in the input order, which is why it survives testing and appears in production on the same data.</figcaption>
+</figure>
+<h2 id="complete-runnable-implementation" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-implementation">Complete runnable implementation</a></h2>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> json
+<span class="token keyword">import</span> uuid
+<span class="token keyword">from</span> dataclasses <span class="token keyword">import</span> dataclass
+
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> mapping<span class="token punctuation">,</span> shape
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>ops <span class="token keyword">import</span> unary_union
+
+<span class="token comment"># Leave room for the envelope, headers and the broker's own overhead.</span>
+CHUNK_BUDGET <span class="token operator">=</span> <span class="token number">700</span> <span class="token operator">*</span> <span class="token number">1024</span>
+
+
+<span class="token keyword">class</span> <span class="token class-name">OversizedPart</span><span class="token punctuation">(</span>Exception<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""One part alone exceeds the budget — chunking cannot help."""</span>
+
+
+<span class="token decorator annotation punctuation">@dataclass</span><span class="token punctuation">(</span>frozen<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span> slots<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span>
+<span class="token keyword">class</span> <span class="token class-name">Chunk</span><span class="token punctuation">:</span>
+    group_id<span class="token punctuation">:</span> <span class="token builtin">str</span>
+    index<span class="token punctuation">:</span> <span class="token builtin">int</span>
+    total<span class="token punctuation">:</span> <span class="token builtin">int</span>            <span class="token comment"># declared in EVERY chunk, so loss is detectable</span>
+    parts<span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">dict</span><span class="token punctuation">]</span>
+    bbox<span class="token punctuation">:</span> <span class="token builtin">tuple</span><span class="token punctuation">[</span><span class="token builtin">float</span><span class="token punctuation">,</span> <span class="token builtin">float</span><span class="token punctuation">,</span> <span class="token builtin">float</span><span class="token punctuation">,</span> <span class="token builtin">float</span><span class="token punctuation">]</span>
+
+
+<span class="token keyword">def</span> <span class="token function">chunk_multipolygon</span><span class="token punctuation">(</span>geometry<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">,</span> budget<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> CHUNK_BUDGET<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">list</span><span class="token punctuation">[</span>Chunk<span class="token punctuation">]</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Split on part boundaries, packing by serialised size.
+
+    Every chunk is a valid MultiPolygon on its own: it can be validated on
+    arrival, filtered by bounding box, and a missing chunk is a missing set
+    of polygons rather than a corrupt shape.
+    """</span>
+    geom <span class="token operator">=</span> shape<span class="token punctuation">(</span>geometry<span class="token punctuation">)</span>
+    parts <span class="token operator">=</span> <span class="token punctuation">[</span>mapping<span class="token punctuation">(</span>p<span class="token punctuation">)</span> <span class="token keyword">for</span> p <span class="token keyword">in</span> <span class="token builtin">getattr</span><span class="token punctuation">(</span>geom<span class="token punctuation">,</span> <span class="token string">"geoms"</span><span class="token punctuation">,</span> <span class="token punctuation">[</span>geom<span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+
+    groups<span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">dict</span><span class="token punctuation">]</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+    current<span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">dict</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+    current_size <span class="token operator">=</span> <span class="token number">0</span>
+
+    <span class="token keyword">for</span> part <span class="token keyword">in</span> parts<span class="token punctuation">:</span>
+        size <span class="token operator">=</span> <span class="token builtin">len</span><span class="token punctuation">(</span>json<span class="token punctuation">.</span>dumps<span class="token punctuation">(</span>part<span class="token punctuation">,</span> separators<span class="token operator">=</span><span class="token punctuation">(</span><span class="token string">","</span><span class="token punctuation">,</span> <span class="token string">":"</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+        <span class="token keyword">if</span> size <span class="token operator">></span> budget<span class="token punctuation">:</span>
+            <span class="token comment"># A single coastline larger than the budget cannot be chunked on</span>
+            <span class="token comment"># part boundaries. Simplify it, tile it, or use a claim check —</span>
+            <span class="token comment"># but do not split its coordinate array.</span>
+            <span class="token keyword">raise</span> OversizedPart<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"one part is </span><span class="token interpolation"><span class="token punctuation">{</span>size<span class="token punctuation">}</span></span><span class="token string"> bytes, budget </span><span class="token interpolation"><span class="token punctuation">{</span>budget<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+        <span class="token keyword">if</span> current <span class="token keyword">and</span> current_size <span class="token operator">+</span> size <span class="token operator">></span> budget<span class="token punctuation">:</span>
+            groups<span class="token punctuation">.</span>append<span class="token punctuation">(</span>current<span class="token punctuation">)</span>
+            current<span class="token punctuation">,</span> current_size <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token number">0</span>
+        current<span class="token punctuation">.</span>append<span class="token punctuation">(</span>part<span class="token punctuation">)</span>
+        current_size <span class="token operator">+=</span> size
+
+    <span class="token keyword">if</span> current<span class="token punctuation">:</span>
+        groups<span class="token punctuation">.</span>append<span class="token punctuation">(</span>current<span class="token punctuation">)</span>
+
+    group_id <span class="token operator">=</span> <span class="token builtin">str</span><span class="token punctuation">(</span>uuid<span class="token punctuation">.</span>uuid4<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    total <span class="token operator">=</span> <span class="token builtin">len</span><span class="token punctuation">(</span>groups<span class="token punctuation">)</span>
+    <span class="token keyword">return</span> <span class="token punctuation">[</span>
+        Chunk<span class="token punctuation">(</span>group_id<span class="token operator">=</span>group_id<span class="token punctuation">,</span> index<span class="token operator">=</span>i<span class="token punctuation">,</span> total<span class="token operator">=</span>total<span class="token punctuation">,</span> parts<span class="token operator">=</span>g<span class="token punctuation">,</span>
+              bbox<span class="token operator">=</span>unary_union<span class="token punctuation">(</span><span class="token punctuation">[</span>shape<span class="token punctuation">(</span>p<span class="token punctuation">)</span> <span class="token keyword">for</span> p <span class="token keyword">in</span> g<span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">.</span>bounds<span class="token punctuation">)</span>
+        <span class="token keyword">for</span> i<span class="token punctuation">,</span> g <span class="token keyword">in</span> <span class="token builtin">enumerate</span><span class="token punctuation">(</span>groups<span class="token punctuation">)</span>
+    <span class="token punctuation">]</span>
+</code></pre>
+</div>
+<p>The reassembler is where the correctness lives. It has to be idempotent per index, tolerate arrival in any order, and give up.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">import</span> time
+<span class="token keyword">from</span> dataclasses <span class="token keyword">import</span> dataclass<span class="token punctuation">,</span> field
+
+REASSEMBLY_TIMEOUT <span class="token operator">=</span> <span class="token number">120.0</span>
+
+
+<span class="token keyword">class</span> <span class="token class-name">IncompleteGroup</span><span class="token punctuation">(</span>Exception<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">def</span> <span class="token function">__init__</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> group_id<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> missing<span class="token punctuation">:</span> <span class="token builtin">set</span><span class="token punctuation">[</span><span class="token builtin">int</span><span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        <span class="token builtin">super</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span>__init__<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"</span><span class="token interpolation"><span class="token punctuation">{</span>group_id<span class="token punctuation">}</span></span><span class="token string">: missing chunk indices </span><span class="token interpolation"><span class="token punctuation">{</span><span class="token builtin">sorted</span><span class="token punctuation">(</span>missing<span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+        self<span class="token punctuation">.</span>group_id<span class="token punctuation">,</span> self<span class="token punctuation">.</span>missing <span class="token operator">=</span> group_id<span class="token punctuation">,</span> missing
+
+
+<span class="token decorator annotation punctuation">@dataclass</span><span class="token punctuation">(</span>slots<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span>
+<span class="token keyword">class</span> <span class="token class-name">Partial</span><span class="token punctuation">:</span>
+    total<span class="token punctuation">:</span> <span class="token builtin">int</span>
+    first_seen<span class="token punctuation">:</span> <span class="token builtin">float</span>
+    chunks<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">int</span><span class="token punctuation">,</span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">dict</span><span class="token punctuation">]</span><span class="token punctuation">]</span> <span class="token operator">=</span> field<span class="token punctuation">(</span>default_factory<span class="token operator">=</span><span class="token builtin">dict</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">class</span> <span class="token class-name">Reassembler</span><span class="token punctuation">:</span>
+    <span class="token keyword">def</span> <span class="token function">__init__</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> timeout<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> REASSEMBLY_TIMEOUT<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        self<span class="token punctuation">.</span>_timeout <span class="token operator">=</span> timeout
+        self<span class="token punctuation">.</span>_groups<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Partial<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token punctuation">}</span>
+
+    <span class="token keyword">def</span> <span class="token function">add</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> chunk<span class="token punctuation">:</span> Chunk<span class="token punctuation">,</span> now<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span> <span class="token operator">|</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        <span class="token triple-quoted-string string">"""Return the assembled geometry once complete, else None."""</span>
+        now <span class="token operator">=</span> now <span class="token keyword">or</span> time<span class="token punctuation">.</span>monotonic<span class="token punctuation">(</span><span class="token punctuation">)</span>
+        partial <span class="token operator">=</span> self<span class="token punctuation">.</span>_groups<span class="token punctuation">.</span>setdefault<span class="token punctuation">(</span>
+            chunk<span class="token punctuation">.</span>group_id<span class="token punctuation">,</span> Partial<span class="token punctuation">(</span>total<span class="token operator">=</span>chunk<span class="token punctuation">.</span>total<span class="token punctuation">,</span> first_seen<span class="token operator">=</span>now<span class="token punctuation">)</span>
+        <span class="token punctuation">)</span>
+        <span class="token comment"># Idempotent per index: a redelivered chunk overwrites itself.</span>
+        partial<span class="token punctuation">.</span>chunks<span class="token punctuation">[</span>chunk<span class="token punctuation">.</span>index<span class="token punctuation">]</span> <span class="token operator">=</span> chunk<span class="token punctuation">.</span>parts
+
+        <span class="token keyword">if</span> <span class="token builtin">len</span><span class="token punctuation">(</span>partial<span class="token punctuation">.</span>chunks<span class="token punctuation">)</span> <span class="token operator">&lt;</span> partial<span class="token punctuation">.</span>total<span class="token punctuation">:</span>
+            <span class="token keyword">return</span> <span class="token boolean">None</span>
+
+        <span class="token keyword">del</span> self<span class="token punctuation">.</span>_groups<span class="token punctuation">[</span>chunk<span class="token punctuation">.</span>group_id<span class="token punctuation">]</span>
+        parts <span class="token operator">=</span> <span class="token punctuation">[</span>p <span class="token keyword">for</span> i <span class="token keyword">in</span> <span class="token builtin">sorted</span><span class="token punctuation">(</span>partial<span class="token punctuation">.</span>chunks<span class="token punctuation">)</span> <span class="token keyword">for</span> p <span class="token keyword">in</span> partial<span class="token punctuation">.</span>chunks<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">]</span>
+        <span class="token keyword">return</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"MultiPolygon"</span><span class="token punctuation">,</span>
+                <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span>p<span class="token punctuation">[</span><span class="token string">"coordinates"</span><span class="token punctuation">]</span> <span class="token keyword">for</span> p <span class="token keyword">in</span> parts<span class="token punctuation">]</span><span class="token punctuation">}</span>
+
+    <span class="token keyword">def</span> <span class="token function">expire</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> now<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">list</span><span class="token punctuation">[</span>IncompleteGroup<span class="token punctuation">]</span><span class="token punctuation">:</span>
+        <span class="token triple-quoted-string string">"""Fail groups that have waited too long. MUST be called on a timer.
+
+        Without this the reassembler accumulates partial groups forever, and
+        because each holds real geometry the leak is measured in megabytes.
+        """</span>
+        now <span class="token operator">=</span> now <span class="token keyword">or</span> time<span class="token punctuation">.</span>monotonic<span class="token punctuation">(</span><span class="token punctuation">)</span>
+        failures <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+        <span class="token keyword">for</span> group_id<span class="token punctuation">,</span> partial <span class="token keyword">in</span> <span class="token builtin">list</span><span class="token punctuation">(</span>self<span class="token punctuation">.</span>_groups<span class="token punctuation">.</span>items<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+            <span class="token keyword">if</span> now <span class="token operator">-</span> partial<span class="token punctuation">.</span>first_seen <span class="token operator">></span> self<span class="token punctuation">.</span>_timeout<span class="token punctuation">:</span>
+                missing <span class="token operator">=</span> <span class="token builtin">set</span><span class="token punctuation">(</span><span class="token builtin">range</span><span class="token punctuation">(</span>partial<span class="token punctuation">.</span>total<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token operator">-</span> <span class="token builtin">set</span><span class="token punctuation">(</span>partial<span class="token punctuation">.</span>chunks<span class="token punctuation">)</span>
+                <span class="token keyword">del</span> self<span class="token punctuation">.</span>_groups<span class="token punctuation">[</span>group_id<span class="token punctuation">]</span>
+                failures<span class="token punctuation">.</span>append<span class="token punctuation">(</span>IncompleteGroup<span class="token punctuation">(</span>group_id<span class="token punctuation">,</span> missing<span class="token punctuation">)</span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> failures
+</code></pre>
+</div>
+<figure class="fig">
+<svg viewBox="0 0 760 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three reassembly outcomes: complete, redelivered, and a lost chunk expiring into a dead letter">
+<title>Three outcomes, and only one of them is a surprise</title>
+<desc>Three groups are traced through the reassembler. The first arrives complete but out of order — chunk two, then zero, then one — and because chunks are stored in a dictionary keyed by index and sorted at assembly time, the order of arrival is irrelevant and the group completes correctly. The second includes a redelivery: chunk one arrives twice, and because storing by index overwrites rather than appends, the duplicate changes nothing and the assembled geometry is identical. The third loses chunk two entirely, perhaps because the producer crashed mid-publish. The group sits at two of three parts held, and without an expiry sweep it sits there permanently, holding its geometry in memory while nothing downstream ever learns the event failed. With the sweep, after the timeout it becomes an IncompleteGroup naming the group and the missing index, which is dead-lettered and can be replayed. The distinction is not between working and broken but between a failure that is visible and one that is a slow leak plus an event that silently never happened.</desc>
+<rect x="0" y="0" width="760" height="220" fill="var(--fig-bg)"/>
+<text x="14" y="18" font-size="9.5" font-weight="600" fill="var(--fig-mint-edge)">out of order — irrelevant</text>
+<rect x="220" y="26" width="42" height="20" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="232" y="40" font-size="8" fill="var(--fig-ink)">#2</text>
+<rect x="270" y="26" width="42" height="20" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="282" y="40" font-size="8" fill="var(--fig-ink)">#0</text>
+<rect x="320" y="26" width="42" height="20" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="332" y="40" font-size="8" fill="var(--fig-ink)">#1</text>
+<text x="380" y="40" font-size="8.5" fill="var(--fig-mint-edge)">stored by index, sorted at assembly → complete and correct</text>
+<line x1="14" y1="58" x2="746" y2="58" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="80" font-size="9.5" font-weight="600" fill="var(--fig-mint-edge)">redelivery — absorbed</text>
+<rect x="220" y="88" width="42" height="20" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="232" y="102" font-size="8" fill="var(--fig-ink)">#0</text>
+<rect x="270" y="88" width="42" height="20" rx="3" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="282" y="102" font-size="8" fill="var(--fig-ink)">#1</text>
+<rect x="320" y="88" width="42" height="20" rx="3" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="332" y="102" font-size="8" fill="var(--fig-ink)">#1</text>
+<rect x="370" y="88" width="42" height="20" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="382" y="102" font-size="8" fill="var(--fig-ink)">#2</text>
+<text x="430" y="102" font-size="8.5" fill="var(--fig-mint-edge)">storing by index overwrites → identical result</text>
+<line x1="14" y1="120" x2="746" y2="120" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="142" font-size="9.5" font-weight="600" fill="var(--fig-rose-edge)">chunk lost — the case that needs the sweep</text>
+<rect x="220" y="150" width="42" height="20" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="232" y="164" font-size="8" fill="var(--fig-ink)">#0</text>
+<rect x="270" y="150" width="42" height="20" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="282" y="164" font-size="8" fill="var(--fig-ink)">#1</text>
+<rect x="320" y="150" width="42" height="20" rx="3" fill="var(--fig-bg)" stroke="var(--fig-rose-edge)" stroke-width="1.6" stroke-dasharray="3 3"/>
+<text x="332" y="164" font-size="8" fill="var(--fig-rose-edge)">#2</text>
+<text x="380" y="158" font-size="8.5" fill="var(--fig-rose-edge)">no sweep: held forever, in memory, and nothing learns the event failed</text>
+<text x="380" y="171" font-size="8.5" fill="var(--fig-mint-edge)">with sweep: IncompleteGroup(group, missing={2}) → dead letter, replayable</text>
+<rect x="14" y="184" width="732" height="28" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="26" y="202" font-size="9" fill="var(--fig-ink-soft)">The choice is not between working and broken — it is between a visible failure and a slow leak plus an event that silently never happened.</text>
+</svg>
+<figcaption><b>Figure 2.</b> Out-of-order and redelivered chunks are handled by the data structure. The lost chunk is the only case needing a decision, and the decision is to give up.</figcaption>
+</figure>
+<h2 id="parameter-reference" tabindex="-1"><a class="heading-anchor" href="#parameter-reference">Parameter reference</a></h2>
+<div class="table-scroll">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Spatial constraint</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CHUNK_BUDGET</code></td>
+<td><code>int</code></td>
+<td>Below the broker limit by enough for envelope and headers</td>
+<td><code>716800</code></td>
+</tr>
+<tr>
+<td><code>total</code></td>
+<td><code>int</code></td>
+<td>Declared in every chunk, so loss is detectable from any one</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>index</code></td>
+<td><code>int</code></td>
+<td>Storage key — makes redelivery idempotent</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>bbox</code></td>
+<td>tuple</td>
+<td>Per chunk, so a consumer can filter before assembling</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>REASSEMBLY_TIMEOUT</code></td>
+<td><code>float</code></td>
+<td>Above the broker’s worst redelivery delay, below patience</td>
+<td><code>120.0</code></td>
+</tr>
+<tr>
+<td><code>expire()</code></td>
+<td>call</td>
+<td>Must run on a timer, not only on arrival</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<h2 id="gotchas-and-spatial-edge-cases" tabindex="-1"><a class="heading-anchor" href="#gotchas-and-spatial-edge-cases">Gotchas and spatial edge cases</a></h2>
+<ol>
+<li>
+<p><strong>A single part larger than the budget cannot be chunked this way.</strong> One mainland coastline can exceed any reasonable message limit on its own, and <code>OversizedPart</code> is the honest response — the alternatives are simplifying the geometry for transport, tiling the feature, or falling back to a claim check.</p>
+</li>
+<li>
+<p><strong>Validity must be checked after assembly, never per chunk.</strong> Each chunk is a valid MultiPolygon in isolation while the assembled whole can have overlapping parts, which no individual chunk can see. Run the repair from <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a> on the assembled geometry only.</p>
+</li>
+<li>
+<p><strong>The reassembler is per-consumer state, so chunks must reach one consumer.</strong> With chunks spread across partitions, each consumer holds a fraction of every group and none completes. Key every chunk in a group on the group identifier, which also means the group is confined to one partition and inherits its ordering.</p>
+</li>
+<li>
+<p><strong>Holes belong to their part and must not be separated from it.</strong> A polygon’s interior rings are part of its coordinate array, so splitting on part boundaries keeps them together automatically — but a packer written against a flattened ring list will happily put an interior ring in a different chunk, producing a hole that becomes a solid polygon.</p>
+</li>
+<li>
+<p><strong>Expiry needs a timer, not an arrival hook.</strong> A group whose remaining chunks never arrive also never triggers <code>add</code>, so an expiry check that runs only on arrival never runs for exactly the groups it exists to clean up.</p>
+</li>
+<li>
+<p><strong>Assembly order must come from the index, not the arrival order.</strong> Multipolygon part order is not semantically meaningful, but making it depend on network timing means the same event produces different serialisations, which breaks any content hash computed downstream — see <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a>.</p>
+</li>
+</ol>
+<h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> pytest
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> MultiPolygon<span class="token punctuation">,</span> Polygon<span class="token punctuation">,</span> mapping<span class="token punctuation">,</span> shape
+
+
+<span class="token keyword">def</span> <span class="token function">islands</span><span class="token punctuation">(</span>n<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">:</span>
+    <span class="token keyword">return</span> mapping<span class="token punctuation">(</span>MultiPolygon<span class="token punctuation">(</span><span class="token punctuation">[</span>
+        Polygon<span class="token punctuation">(</span><span class="token punctuation">[</span><span class="token punctuation">(</span>i<span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span>i<span class="token punctuation">,</span> <span class="token number">0.5</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span>i <span class="token operator">+</span> <span class="token number">0.5</span><span class="token punctuation">,</span> <span class="token number">0.5</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span>i <span class="token operator">+</span> <span class="token number">0.5</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">)</span><span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token keyword">for</span> i <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span>n<span class="token punctuation">)</span>
+    <span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_every_chunk_is_a_valid_geometry</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""The property that distinguishes this from coordinate-range splitting."""</span>
+    <span class="token keyword">for</span> chunk <span class="token keyword">in</span> chunk_multipolygon<span class="token punctuation">(</span>islands<span class="token punctuation">(</span><span class="token number">300</span><span class="token punctuation">)</span><span class="token punctuation">,</span> budget<span class="token operator">=</span><span class="token number">2048</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        assembled <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"MultiPolygon"</span><span class="token punctuation">,</span>
+                     <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span>p<span class="token punctuation">[</span><span class="token string">"coordinates"</span><span class="token punctuation">]</span> <span class="token keyword">for</span> p <span class="token keyword">in</span> chunk<span class="token punctuation">.</span>parts<span class="token punctuation">]</span><span class="token punctuation">}</span>
+        <span class="token keyword">assert</span> shape<span class="token punctuation">(</span>assembled<span class="token punctuation">)</span><span class="token punctuation">.</span>is_valid
+
+
+<span class="token keyword">def</span> <span class="token function">test_round_trip_preserves_the_geometry</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    original <span class="token operator">=</span> islands<span class="token punctuation">(</span><span class="token number">300</span><span class="token punctuation">)</span>
+    chunks <span class="token operator">=</span> chunk_multipolygon<span class="token punctuation">(</span>original<span class="token punctuation">,</span> budget<span class="token operator">=</span><span class="token number">2048</span><span class="token punctuation">)</span>
+    r <span class="token operator">=</span> Reassembler<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    result <span class="token operator">=</span> <span class="token boolean">None</span>
+    <span class="token keyword">for</span> chunk <span class="token keyword">in</span> <span class="token builtin">reversed</span><span class="token punctuation">(</span>chunks<span class="token punctuation">)</span><span class="token punctuation">:</span>                 <span class="token comment"># deliberately out of order</span>
+        result <span class="token operator">=</span> r<span class="token punctuation">.</span>add<span class="token punctuation">(</span>chunk<span class="token punctuation">)</span> <span class="token keyword">or</span> result
+    <span class="token keyword">assert</span> shape<span class="token punctuation">(</span>result<span class="token punctuation">)</span><span class="token punctuation">.</span>equals<span class="token punctuation">(</span>shape<span class="token punctuation">(</span>original<span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_redelivered_chunk_changes_nothing</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    chunks <span class="token operator">=</span> chunk_multipolygon<span class="token punctuation">(</span>islands<span class="token punctuation">(</span><span class="token number">60</span><span class="token punctuation">)</span><span class="token punctuation">,</span> budget<span class="token operator">=</span><span class="token number">2048</span><span class="token punctuation">)</span>
+    r <span class="token operator">=</span> Reassembler<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">for</span> chunk <span class="token keyword">in</span> chunks<span class="token punctuation">[</span><span class="token punctuation">:</span><span class="token operator">-</span><span class="token number">1</span><span class="token punctuation">]</span><span class="token punctuation">:</span>
+        r<span class="token punctuation">.</span>add<span class="token punctuation">(</span>chunk<span class="token punctuation">)</span>
+        r<span class="token punctuation">.</span>add<span class="token punctuation">(</span>chunk<span class="token punctuation">)</span>                                <span class="token comment"># redelivery</span>
+    <span class="token keyword">assert</span> shape<span class="token punctuation">(</span>r<span class="token punctuation">.</span>add<span class="token punctuation">(</span>chunks<span class="token punctuation">[</span><span class="token operator">-</span><span class="token number">1</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span>is_valid
+
+
+<span class="token keyword">def</span> <span class="token function">test_lost_chunk_expires_into_a_named_failure</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""No timeout means a leak and an event that silently never happened."""</span>
+    chunks <span class="token operator">=</span> chunk_multipolygon<span class="token punctuation">(</span>islands<span class="token punctuation">(</span><span class="token number">60</span><span class="token punctuation">)</span><span class="token punctuation">,</span> budget<span class="token operator">=</span><span class="token number">2048</span><span class="token punctuation">)</span>
+    r <span class="token operator">=</span> Reassembler<span class="token punctuation">(</span>timeout<span class="token operator">=</span><span class="token number">1.0</span><span class="token punctuation">)</span>
+    <span class="token keyword">for</span> chunk <span class="token keyword">in</span> chunks<span class="token punctuation">[</span><span class="token punctuation">:</span><span class="token operator">-</span><span class="token number">1</span><span class="token punctuation">]</span><span class="token punctuation">:</span>
+        r<span class="token punctuation">.</span>add<span class="token punctuation">(</span>chunk<span class="token punctuation">,</span> now<span class="token operator">=</span><span class="token number">0.0</span><span class="token punctuation">)</span>
+
+    failures <span class="token operator">=</span> r<span class="token punctuation">.</span>expire<span class="token punctuation">(</span>now<span class="token operator">=</span><span class="token number">5.0</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> <span class="token builtin">len</span><span class="token punctuation">(</span>failures<span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token number">1</span>
+    <span class="token keyword">assert</span> failures<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">.</span>missing <span class="token operator">==</span> <span class="token punctuation">{</span><span class="token builtin">len</span><span class="token punctuation">(</span>chunks<span class="token punctuation">)</span> <span class="token operator">-</span> <span class="token number">1</span><span class="token punctuation">}</span>
+</code></pre>
+</div>
+<p>The second test reverses the chunk order deliberately. A reassembler that appends rather than storing by index passes every other test here and produces a multipolygon whose parts are in arrival order, which is valid, wrong, and hashes differently every time.</p>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
+<ul>
+<li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/streaming-large-geometries/">Streaming &amp; Chunking Large Geometry Payloads</a> — the topic this guide belongs to, and why chunking is the third choice</li>
+<li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/streaming-large-geometries/the-claim-check-pattern-for-oversized-spatial-payloads/">The Claim-Check Pattern for Oversized Spatial Payloads</a> — the alternative that keeps the event atomic</li>
+<li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Events</a> — where an incomplete group goes</li>
+<li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a> — what to run on the assembled geometry, and only on it</li>
+</ul>
+
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        <div class="aside-card">
+          <h3>Related in this section</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/streaming-large-geometries/the-claim-check-pattern-for-oversized-spatial-payloads/">The Claim-Check Pattern for Oversized Spatial Payloads</a></li>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/streaming-large-geometries/streaming-geojson-with-ijson-in-async-consumers/">Streaming GeoJSON with ijson in Async Consumers</a></li>
+          </ul>
+        </div>
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a></li>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a></li>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a></li>
+            <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring &amp; Observability for Spatial Pipelines</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</article>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="https://www.geospatialwebhook.com/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/">Home</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queues &amp; Retries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/schema-evolution-versioning/">Schema Evolution &amp; Versioning for Spatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/temporal-dedup-windows/">Time-Windowed Deduplication for Moving Assets</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/streaming-large-geometries/">Streaming &amp; Chunking Large Geometry Payloads</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Queues &amp; Retries</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/">Backpressure &amp; Flow Control for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Monitoring</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/slo-alerting-spatial-pipelines/">SLOs &amp; Alerting for Spatial Webhook Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging &amp; Tracing for Spatial Events</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <a class="site-footer__gh" href="https://github.com/geospatialwebhook" target="_blank" rel="noopener" aria-label="Geospatial Webhook on GitHub">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5Z"/></svg><span>GitHub</span>
+      </a>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js?v=c31b7b80" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

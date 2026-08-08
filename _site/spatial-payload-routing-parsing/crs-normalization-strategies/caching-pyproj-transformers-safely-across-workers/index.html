@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>Caching pyproj Transformers Safely Across Workers · Geo Webhook</title>
+  <meta name="description" content="Building a Transformer per event costs milliseconds and dominates a reprojection path. Cache them per process, never share one across a fork, and keep the cache key complete enough that two different transformations cannot collide."/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/caching-pyproj-transformers-safely-across-workers/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/caching-pyproj-transformers-safely-across-workers/"/>
+  <meta property="og:title" content="Caching pyproj Transformers Safely Across Workers"/>
+  <meta property="og:description" content="Building a Transformer per event costs milliseconds and dominates a reprojection path. Cache them per process, never share one across a fork, and keep the cache key complete enough that two different transformations cannot collide."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Caching pyproj Transformers Safely Across Workers"/>
+  <meta name="twitter:description" content="Building a Transformer per event costs milliseconds and dominates a reprojection path. Cache them per process, never share one across a fork, and keep the cache key complete enough that two different transformations cannot collide."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=180687f5"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },{ "@type": "ListItem", "position": 2, "name": "Spatial Payload Routing Parsing", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" },{ "@type": "ListItem", "position": 3, "name": "Crs Normalization Strategies", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/" },{ "@type": "ListItem", "position": 4, "name": "Caching Pyproj Transformers Safely Across Workers", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/caching-pyproj-transformers-safely-across-workers/" }
+    ]
+  }
+  </script>
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/caching-pyproj-transformers-safely-across-workers/#article",
+    "mainEntityOfPage": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/caching-pyproj-transformers-safely-across-workers/",
+    "headline": "Caching pyproj Transformers Safely Across Workers",
+    "description": "Building a Transformer per event costs milliseconds and dominates a reprojection path. Cache them per process, never share one across a fork, and keep the cache key complete enough that two different transformations cannot collide.",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
+    "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
+    "image": "https://www.geospatialwebhook.com/og-image.png",
+    "url": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/caching-pyproj-transformers-safely-across-workers/",
+    "articleSection": "Spatial Payload Routing Parsing",
+    "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
+  }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="https://www.geospatialwebhook.com/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="https://www.geospatialwebhook.com/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Queues &amp; Retries</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
+      </a>
+    </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle"
+            aria-label="Switch to dark theme" title="Switch to dark theme">
+      <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.4v2.3M12 19.3v2.3M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.3M19.3 12h2.3M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="https://www.geospatialwebhook.com/">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing Parsing</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">Crs Normalization Strategies</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">Caching Pyproj Transformers Safely Across Workers</span>
+    </nav>
+
+    <h1 class="page__title">Caching pyproj Transformers Safely Across Workers</h1>
+
+    <div class="page__layout">
+      <div class="markdown">
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Caching pyproj Transformers Safely Across Workers",
+      "description": "A pyproj Transformer is expensive to build and cheap to use, so a reprojection path that constructs one per event spends most of its time in setup. This guide caches them per process, explains why a cached transformer must never cross a fork, and shows what has to be in the cache key.",
+      "url": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/caching-pyproj-transformers-safely-across-workers/",
+      "datePublished": "2026-08-08",
+      "dateModified": "2026-08-08",
+      "author": {"@type": "Organization", "name": "geospatialwebhook.com"},
+      "publisher": {"@type": "Organization", "name": "geospatialwebhook.com"}
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/"},
+        {"@type": "ListItem", "position": 2, "name": "Spatial Payload Routing & Parsing", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/"},
+        {"@type": "ListItem", "position": 3, "name": "CRS Normalization Strategies", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/"},
+        {"@type": "ListItem", "position": 4, "name": "Caching pyproj Transformers Safely Across Workers", "item": "https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/caching-pyproj-transformers-safely-across-workers/"}
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Cache pyproj transformers across workers safely",
+      "step": [
+        {"@type": "HowToStep", "position": 1, "name": "Cache per process, keyed on everything that changes the transformation"},
+        {"@type": "HowToStep", "position": 2, "name": "Build the cache after the fork, never before it"},
+        {"@type": "HowToStep", "position": 3, "name": "Bound the cache so an attacker-supplied CRS cannot grow it without limit"},
+        {"@type": "HowToStep", "position": 4, "name": "Warm the transformers a worker will need before it takes traffic"}
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Why is building a Transformer expensive?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Because construction searches the PROJ database for a transformation pipeline between the two coordinate reference systems, ranks the candidates by accuracy and availability, and may consult grid files on disk. That is milliseconds of work involving I/O, against a transform call that is microseconds. On a stream reprojecting every event, construction is therefore not overhead around the work — it is the work, by an order of magnitude or more."}
+        },
+        {
+          "@type": "Question",
+          "name": "Can a cached Transformer be shared across processes?",
+          "acceptedAnswer": {"@type": "Answer", "text": "No. It wraps native PROJ state including file handles and internal contexts, and that state does not survive a fork: a child inheriting a transformer built in the parent may crash, may return wrong coordinates, or may work in testing and fail under concurrency. Build the cache lazily inside each worker after the fork, which happens naturally if the cache is populated on first use rather than at import time."}
+        },
+        {
+          "@type": "Question",
+          "name": "What has to be in the cache key?",
+          "acceptedAnswer": {"@type": "Answer", "text": "The source CRS, the target CRS, the always_xy flag, and any area of interest or accuracy constraint passed to the constructor. Omitting always_xy is the common mistake: two transformers between the same pair of systems with different axis-order handling produce coordinates that differ by a swap, so a cache keyed only on the CRS pair will hand back a transformer that silently flips latitude and longitude."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>Cache transformers per process on a key covering the CRS pair, <code>always_xy</code> and any area of interest, populate the cache lazily so it is built after the fork rather than inherited through it, and bound its size — a transformer wraps native PROJ state that does not survive a fork, and a key missing <code>always_xy</code> hands back one that swaps latitude and longitude.</strong></p>
+<p>This guide sits under <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a>, within <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a>. It is the performance and safety detail behind the normalisation that topic describes.</p>
+<h2 id="when-to-use-this-pattern" tabindex="-1"><a class="heading-anchor" href="#when-to-use-this-pattern">When to use this pattern</a></h2>
+<ul>
+<li>Every event is reprojected, so construction cost is paid per event rather than per deploy.</li>
+<li>The service runs multiple workers, which is where the fork hazard appears.</li>
+<li>Source CRS values come from payloads rather than from configuration, which is where the unbounded-growth hazard appears.</li>
+</ul>
+<h2 id="construction-dominates-and-the-ratio-is-not-close" tabindex="-1"><a class="heading-anchor" href="#construction-dominates-and-the-ratio-is-not-close">Construction dominates, and the ratio is not close</a></h2>
+<figure class="fig">
+<svg viewBox="0 0 760 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Time spent constructing transformers versus transforming coordinates, uncached and cached">
+<title>Almost all of the time is setup</title>
+<desc>Ten thousand events are reprojected from a local grid to EPSG:4326, each carrying a geometry of about forty vertices. Without caching, each event constructs a Transformer — a PROJ database search, a ranking of candidate pipelines by accuracy, and possibly a grid file read — costing on the order of two milliseconds, and then performs the transformation itself in tens of microseconds. Construction is therefore over ninety-five per cent of the elapsed time, and the profile is dominated by database lookups rather than by anything geometric. With a per-process cache, construction happens once per distinct CRS pair for the lifetime of the worker, so ten thousand events pay it once and the remaining time is the transformation itself. The improvement is not a tuning gain of a few per cent but an order of magnitude, and it changes what the reprojection stage is: from an I/O-bound lookup service into a CPU-bound numeric one.</desc>
+<rect x="0" y="0" width="760" height="210" fill="var(--fig-bg)"/>
+<text x="14" y="18" font-size="10" font-weight="600" fill="var(--fig-ink)">10 000 events · ~40 vertices each · local grid → EPSG:4326</text>
+<text x="14" y="44" font-size="9" font-weight="600" fill="var(--fig-rose-edge)">no cache</text>
+<rect x="130" y="32" width="580" height="24" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="142" y="48" font-size="8.5" fill="var(--fig-ink)">Transformer construction — PROJ database search, pipeline ranking, grid file reads</text>
+<rect x="710" y="32" width="24" height="24" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="130" y="72" font-size="8.5" fill="var(--fig-rose-edge)">≈ 2 ms per event constructing · tens of microseconds transforming · over 95% is setup</text>
+<text x="14" y="108" font-size="9" font-weight="600" fill="var(--fig-mint-edge)">per-process cache</text>
+<rect x="130" y="96" width="8" height="24" rx="2" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<rect x="140" y="96" width="24" height="24" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="176" y="112" font-size="8.5" fill="var(--fig-mint-edge)">one construction per distinct CRS pair, for the life of the worker</text>
+<rect x="14" y="140" width="732" height="60" rx="6" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.4"/>
+<text x="26" y="160" font-size="9.5" font-weight="600" fill="var(--fig-ink)">This is not a few per cent — it changes what the stage is</text>
+<text x="26" y="178" font-size="9" fill="var(--fig-ink-soft)">Uncached, reprojection is an I/O-bound lookup service whose latency depends on disk and on how many candidate pipelines</text>
+<text x="26" y="191" font-size="9" fill="var(--fig-ink-soft)">PROJ has to rank. Cached, it is a CPU-bound numeric one whose latency depends on vertex count, which is what you can plan against.</text>
+</svg>
+<figcaption><b>Figure 1.</b> Uncached, the reprojection stage's latency depends on the PROJ database rather than on the geometry — which is why it does not scale with anything you can measure at ingest.</figcaption>
+</figure>
+<h2 id="complete-runnable-implementation" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-implementation">Complete runnable implementation</a></h2>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> os
+<span class="token keyword">import</span> threading
+<span class="token keyword">from</span> dataclasses <span class="token keyword">import</span> dataclass
+
+<span class="token keyword">from</span> pyproj <span class="token keyword">import</span> CRS<span class="token punctuation">,</span> Transformer
+<span class="token keyword">from</span> pyproj<span class="token punctuation">.</span>enums <span class="token keyword">import</span> TransformDirection
+
+<span class="token comment"># Bound the cache. Source CRS values arriving in payloads are attacker- or</span>
+<span class="token comment"># accident-supplied, and an unbounded dict keyed on them is a memory leak</span>
+<span class="token comment"># with a network interface.</span>
+MAX_TRANSFORMERS <span class="token operator">=</span> <span class="token number">64</span>
+
+
+<span class="token decorator annotation punctuation">@dataclass</span><span class="token punctuation">(</span>frozen<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span> slots<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span>
+<span class="token keyword">class</span> <span class="token class-name">TransformKey</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Everything that changes the resulting transformation.
+
+    always_xy MUST be here. Two transformers between the same pair with
+    different axis handling produce coordinates that differ by a swap, so a
+    key without it hands back one that silently flips lat and lon.
+    """</span>
+    source<span class="token punctuation">:</span> <span class="token builtin">str</span>
+    target<span class="token punctuation">:</span> <span class="token builtin">str</span>
+    always_xy<span class="token punctuation">:</span> <span class="token builtin">bool</span>
+    area_of_interest<span class="token punctuation">:</span> <span class="token builtin">tuple</span><span class="token punctuation">[</span><span class="token builtin">float</span><span class="token punctuation">,</span> <span class="token builtin">float</span><span class="token punctuation">,</span> <span class="token builtin">float</span><span class="token punctuation">,</span> <span class="token builtin">float</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span>
+
+
+<span class="token keyword">class</span> <span class="token class-name">TransformerCache</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Per-process cache. Never shared across a fork.
+
+    A Transformer wraps native PROJ state including file handles and an
+    internal context. A child process inheriting one may crash, may return
+    wrong coordinates, or may pass every test and fail under concurrency.
+    """</span>
+
+    <span class="token keyword">def</span> <span class="token function">__init__</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> max_size<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> MAX_TRANSFORMERS<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        self<span class="token punctuation">.</span>_max_size <span class="token operator">=</span> max_size
+        self<span class="token punctuation">.</span>_lock <span class="token operator">=</span> threading<span class="token punctuation">.</span>Lock<span class="token punctuation">(</span><span class="token punctuation">)</span>
+        self<span class="token punctuation">.</span>_cache<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span>TransformKey<span class="token punctuation">,</span> Transformer<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token punctuation">}</span>
+        self<span class="token punctuation">.</span>_owner_pid <span class="token operator">=</span> os<span class="token punctuation">.</span>getpid<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+    <span class="token keyword">def</span> <span class="token function">get</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> key<span class="token punctuation">:</span> TransformKey<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> Transformer<span class="token punctuation">:</span>
+        <span class="token comment"># The guard that turns a silent corruption into an exception. It costs</span>
+        <span class="token comment"># one getpid() per call, which is nothing next to a transform.</span>
+        <span class="token keyword">if</span> os<span class="token punctuation">.</span>getpid<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">!=</span> self<span class="token punctuation">.</span>_owner_pid<span class="token punctuation">:</span>
+            <span class="token keyword">raise</span> RuntimeError<span class="token punctuation">(</span>
+                <span class="token string">"transformer cache inherited across a fork — build it lazily "</span>
+                <span class="token string">"inside the worker instead of at import time"</span>
+            <span class="token punctuation">)</span>
+
+        <span class="token keyword">with</span> self<span class="token punctuation">.</span>_lock<span class="token punctuation">:</span>
+            cached <span class="token operator">=</span> self<span class="token punctuation">.</span>_cache<span class="token punctuation">.</span>get<span class="token punctuation">(</span>key<span class="token punctuation">)</span>
+            <span class="token keyword">if</span> cached <span class="token keyword">is</span> <span class="token keyword">not</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+                <span class="token keyword">return</span> cached
+
+            <span class="token keyword">if</span> <span class="token builtin">len</span><span class="token punctuation">(</span>self<span class="token punctuation">.</span>_cache<span class="token punctuation">)</span> <span class="token operator">>=</span> self<span class="token punctuation">.</span>_max_size<span class="token punctuation">:</span>
+                <span class="token comment"># Simple bound rather than an eviction policy: a service that</span>
+                <span class="token comment"># legitimately needs more than 64 CRS pairs should say so in</span>
+                <span class="token comment"># configuration rather than discover it at runtime.</span>
+                <span class="token keyword">raise</span> RuntimeError<span class="token punctuation">(</span>
+                    <span class="token string-interpolation"><span class="token string">f"transformer cache full (</span><span class="token interpolation"><span class="token punctuation">{</span>self<span class="token punctuation">.</span>_max_size<span class="token punctuation">}</span></span><span class="token string">); "</span></span>
+                    <span class="token string-interpolation"><span class="token string">f"unexpected CRS pair </span><span class="token interpolation"><span class="token punctuation">{</span>key<span class="token punctuation">.</span>source<span class="token punctuation">}</span></span><span class="token string"> -> </span><span class="token interpolation"><span class="token punctuation">{</span>key<span class="token punctuation">.</span>target<span class="token punctuation">}</span></span><span class="token string">"</span></span>
+                <span class="token punctuation">)</span>
+
+            transformer <span class="token operator">=</span> Transformer<span class="token punctuation">.</span>from_crs<span class="token punctuation">(</span>
+                CRS<span class="token punctuation">.</span>from_user_input<span class="token punctuation">(</span>key<span class="token punctuation">.</span>source<span class="token punctuation">)</span><span class="token punctuation">,</span>
+                CRS<span class="token punctuation">.</span>from_user_input<span class="token punctuation">(</span>key<span class="token punctuation">.</span>target<span class="token punctuation">)</span><span class="token punctuation">,</span>
+                always_xy<span class="token operator">=</span>key<span class="token punctuation">.</span>always_xy<span class="token punctuation">,</span>
+                area_of_interest<span class="token operator">=</span>_aoi<span class="token punctuation">(</span>key<span class="token punctuation">.</span>area_of_interest<span class="token punctuation">)</span><span class="token punctuation">,</span>
+            <span class="token punctuation">)</span>
+            self<span class="token punctuation">.</span>_cache<span class="token punctuation">[</span>key<span class="token punctuation">]</span> <span class="token operator">=</span> transformer
+            <span class="token keyword">return</span> transformer
+
+    <span class="token keyword">def</span> <span class="token function">warm</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> keys<span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">[</span>TransformKey<span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        <span class="token triple-quoted-string string">"""Build the transformers this worker will need, before it takes traffic.
+
+        Otherwise the first event of each CRS pair pays construction cost, and
+        after a deploy every worker pays it at once — a latency spike that
+        looks like a cold cache somewhere else entirely.
+        """</span>
+        <span class="token keyword">for</span> key <span class="token keyword">in</span> keys<span class="token punctuation">:</span>
+            self<span class="token punctuation">.</span>get<span class="token punctuation">(</span>key<span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">_aoi</span><span class="token punctuation">(</span>bounds<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">if</span> bounds <span class="token keyword">is</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token boolean">None</span>
+    <span class="token keyword">from</span> pyproj<span class="token punctuation">.</span>aoi <span class="token keyword">import</span> AreaOfInterest
+    west<span class="token punctuation">,</span> south<span class="token punctuation">,</span> east<span class="token punctuation">,</span> north <span class="token operator">=</span> bounds
+    <span class="token keyword">return</span> AreaOfInterest<span class="token punctuation">(</span>west<span class="token punctuation">,</span> south<span class="token punctuation">,</span> east<span class="token punctuation">,</span> north<span class="token punctuation">)</span>
+
+
+<span class="token comment"># One cache per process, populated on first use — which is after any fork.</span>
+_CACHE<span class="token punctuation">:</span> TransformerCache <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span>
+
+
+<span class="token keyword">def</span> <span class="token function">transformer_for</span><span class="token punctuation">(</span>source<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> target<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">=</span> <span class="token string">"EPSG:4326"</span><span class="token punctuation">,</span>
+                    always_xy<span class="token punctuation">:</span> <span class="token builtin">bool</span> <span class="token operator">=</span> <span class="token boolean">True</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> Transformer<span class="token punctuation">:</span>
+    <span class="token keyword">global</span> _CACHE
+    <span class="token keyword">if</span> _CACHE <span class="token keyword">is</span> <span class="token boolean">None</span> <span class="token keyword">or</span> _CACHE<span class="token punctuation">.</span>_owner_pid <span class="token operator">!=</span> os<span class="token punctuation">.</span>getpid<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        _CACHE <span class="token operator">=</span> TransformerCache<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> _CACHE<span class="token punctuation">.</span>get<span class="token punctuation">(</span>TransformKey<span class="token punctuation">(</span>source<span class="token punctuation">,</span> target<span class="token punctuation">,</span> always_xy<span class="token punctuation">)</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<figure class="fig">
+<svg viewBox="0 0 760 228" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A cache built at import time being inherited by forked workers, versus one built lazily after the fork">
+<title>Where the cache is built decides whether it is safe</title>
+<desc>Two start-up sequences are compared for a service running four forked workers. In the first, the transformer cache is populated at import time in the parent process, before the fork. Each of the four children inherits the parent's transformers, which wrap native PROJ contexts and open file handles that were never designed to be duplicated. The consequences are not deterministic: a child may segfault immediately, may produce coordinates that are subtly wrong, or may behave perfectly until two workers use the same inherited context concurrently. The last of those is the dangerous one, because it survives testing. In the second sequence the parent imports the module but builds nothing, the fork happens, and each child populates its own cache on first use. Every worker owns native state it created, nothing is shared, and the cost is that each worker pays construction once per CRS pair — which is what the warm-up call exists to move out of the first request. The process-id guard turns the first pattern from a silent corruption into an exception on the first call.</desc>
+<rect x="0" y="0" width="760" height="228" fill="var(--fig-bg)"/>
+<defs><marker id="pj-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<text x="14" y="18" font-size="9.5" font-weight="600" fill="var(--fig-rose-edge)">built at import time, then forked</text>
+<rect x="30" y="28" width="130" height="34" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="40" y="44" font-size="8.5" font-weight="600" fill="var(--fig-ink)">parent builds cache</text>
+<text x="40" y="56" font-size="8" fill="var(--fig-ink-soft)">native PROJ contexts</text>
+<line x1="164" y1="45" x2="196" y2="45" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#pj-a)"/>
+<text x="166" y="38" font-size="8" fill="var(--fig-ink-soft)">fork</text>
+<rect x="200" y="24" width="82" height="18" rx="3" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="208" y="37" font-size="7.5" fill="var(--fig-ink)">worker 1</text>
+<rect x="200" y="46" width="82" height="18" rx="3" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="208" y="59" font-size="7.5" fill="var(--fig-ink)">worker 2</text>
+<rect x="290" y="24" width="82" height="18" rx="3" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="298" y="37" font-size="7.5" fill="var(--fig-ink)">worker 3</text>
+<rect x="290" y="46" width="82" height="18" rx="3" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="298" y="59" font-size="7.5" fill="var(--fig-ink)">worker 4</text>
+<text x="390" y="34" font-size="8.5" fill="var(--fig-rose-edge)">inherited file handles and contexts, duplicated four ways</text>
+<text x="390" y="48" font-size="8.5" fill="var(--fig-rose-edge)">may segfault · may return wrong coordinates ·</text>
+<text x="390" y="60" font-size="8.5" fill="var(--fig-rose-edge)">may work until two workers use one context at once</text>
+<text x="390" y="78" font-size="8.5" fill="var(--fig-ink-soft)">the third is the dangerous one: it survives testing</text>
+<line x1="14" y1="94" x2="746" y2="94" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="116" font-size="9.5" font-weight="600" fill="var(--fig-mint-edge)">built lazily, after the fork</text>
+<rect x="30" y="126" width="130" height="34" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="40" y="142" font-size="8.5" font-weight="600" fill="var(--fig-ink)">parent imports only</text>
+<text x="40" y="154" font-size="8" fill="var(--fig-ink-soft)">builds nothing</text>
+<line x1="164" y1="143" x2="196" y2="143" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#pj-a)"/>
+<rect x="200" y="122" width="82" height="18" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="208" y="135" font-size="7.5" fill="var(--fig-ink)">own cache</text>
+<rect x="200" y="144" width="82" height="18" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="208" y="157" font-size="7.5" fill="var(--fig-ink)">own cache</text>
+<rect x="290" y="122" width="82" height="18" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="298" y="135" font-size="7.5" fill="var(--fig-ink)">own cache</text>
+<rect x="290" y="144" width="82" height="18" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="298" y="157" font-size="7.5" fill="var(--fig-ink)">own cache</text>
+<text x="390" y="136" font-size="8.5" fill="var(--fig-mint-edge)">every worker owns state it created · nothing shared</text>
+<text x="390" y="152" font-size="8.5" fill="var(--fig-ink-soft)">cost: each pays construction once per CRS pair — which is what warm() moves out of the first request</text>
+<rect x="14" y="180" width="732" height="34" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.4"/>
+<text x="26" y="199" font-size="9" fill="var(--fig-ink-soft)">The process-id guard costs one getpid() per call and turns the top pattern from a silent corruption into an exception on the</text>
+<text x="26" y="210" font-size="9" fill="var(--fig-ink-soft)">first call — which is the difference between a bug found in a smoke test and one found in a coordinate audit.</text>
+</svg>
+<figcaption><b>Figure 2.</b> The failure that survives testing is the one to design against: an inherited context that works fine until two workers touch it at the same moment.</figcaption>
+</figure>
+<h2 id="parameter-reference" tabindex="-1"><a class="heading-anchor" href="#parameter-reference">Parameter reference</a></h2>
+<div class="table-scroll">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Spatial constraint</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>always_xy</code></td>
+<td><code>bool</code></td>
+<td>Must be in the key; omitting it returns a transformer that swaps axes</td>
+<td><code>True</code></td>
+</tr>
+<tr>
+<td><code>area_of_interest</code></td>
+<td>tuple</td>
+<td>Changes which pipeline PROJ selects, so it changes results — key on it</td>
+<td><code>None</code></td>
+</tr>
+<tr>
+<td><code>MAX_TRANSFORMERS</code></td>
+<td><code>int</code></td>
+<td>Bounds a dict keyed on payload-supplied CRS values</td>
+<td><code>64</code></td>
+</tr>
+<tr>
+<td><code>_owner_pid</code></td>
+<td><code>int</code></td>
+<td>Fork guard; compared on every <code>get</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>warm()</code></td>
+<td>call</td>
+<td>Before the worker takes traffic, not on the first request</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Cache scope</td>
+<td>—</td>
+<td>Per process. Never a module-level dict populated at import</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<h2 id="gotchas-and-spatial-edge-cases" tabindex="-1"><a class="heading-anchor" href="#gotchas-and-spatial-edge-cases">Gotchas and spatial edge cases</a></h2>
+<ol>
+<li>
+<p><strong><code>always_xy</code> missing from the key is a silent axis swap.</strong> EPSG:4326 declares latitude first; most GeoJSON tooling assumes longitude first. Two transformers differing only in that flag return coordinates in opposite orders, and a cache keyed on the CRS pair alone will hand out whichever was built first. The symptom is features in the wrong hemisphere, appearing only for the CRS pairs where both variants are used.</p>
+</li>
+<li>
+<p><strong>A payload-supplied source CRS is an unbounded key space.</strong> <code>CRS.from_user_input</code> accepts WKT, so a malformed or hostile payload can produce an unlimited number of distinct keys, each costing a database search and a cache slot. Validate the source against an allowlist before it reaches the cache, and treat the “cache full” error as a signal that something upstream changed.</p>
+</li>
+<li>
+<p><strong>The area of interest changes the answer, not just the speed.</strong> PROJ selects among candidate transformation pipelines partly by which covers the area, and different pipelines differ by metres in some regions. Two transformers between the same pair with different areas of interest are genuinely different transformations, which is why the key includes it.</p>
+</li>
+<li>
+<p><strong>Cached transformers keep grid files open.</strong> A worker holding many transformers holds many file descriptors, which interacts badly with a low descriptor limit in a container. Bounding the cache bounds this too, which is a second reason for the limit.</p>
+</li>
+<li>
+<p><strong>Warming must use the same key the request path builds.</strong> A warm-up that constructs with <code>always_xy=True</code> while the request path defaults to <code>False</code> populates the cache with entries nothing will hit, and the first request still pays construction — with the added confusion that the cache appears full.</p>
+</li>
+<li>
+<p><strong>Reprojection is not free of precision cost even when cached.</strong> Every transform introduces sub-millimetre differences, so a content hash computed after reprojection differs from one computed before. Round to a fixed precision after transforming, as <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a> requires.</p>
+</li>
+</ol>
+<h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> multiprocessing <span class="token keyword">as</span> mp
+<span class="token keyword">import</span> pytest
+
+
+<span class="token keyword">def</span> <span class="token function">test_axis_order_is_part_of_the_key</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""The silent-swap case."""</span>
+    a <span class="token operator">=</span> transformer_for<span class="token punctuation">(</span><span class="token string">"EPSG:4326"</span><span class="token punctuation">,</span> <span class="token string">"EPSG:25833"</span><span class="token punctuation">,</span> always_xy<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span>
+    b <span class="token operator">=</span> transformer_for<span class="token punctuation">(</span><span class="token string">"EPSG:4326"</span><span class="token punctuation">,</span> <span class="token string">"EPSG:25833"</span><span class="token punctuation">,</span> always_xy<span class="token operator">=</span><span class="token boolean">False</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> a <span class="token keyword">is</span> <span class="token keyword">not</span> b
+    x1<span class="token punctuation">,</span> y1 <span class="token operator">=</span> a<span class="token punctuation">.</span>transform<span class="token punctuation">(</span><span class="token number">13.4049</span><span class="token punctuation">,</span> <span class="token number">52.5200</span><span class="token punctuation">)</span>      <span class="token comment"># lon, lat</span>
+    x2<span class="token punctuation">,</span> y2 <span class="token operator">=</span> b<span class="token punctuation">.</span>transform<span class="token punctuation">(</span><span class="token number">52.5200</span><span class="token punctuation">,</span> <span class="token number">13.4049</span><span class="token punctuation">)</span>      <span class="token comment"># lat, lon</span>
+    <span class="token keyword">assert</span> <span class="token builtin">abs</span><span class="token punctuation">(</span>x1 <span class="token operator">-</span> x2<span class="token punctuation">)</span> <span class="token operator">&lt;</span> <span class="token number">1e-6</span> <span class="token keyword">and</span> <span class="token builtin">abs</span><span class="token punctuation">(</span>y1 <span class="token operator">-</span> y2<span class="token punctuation">)</span> <span class="token operator">&lt;</span> <span class="token number">1e-6</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_repeated_lookups_reuse_one_transformer</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    first <span class="token operator">=</span> transformer_for<span class="token punctuation">(</span><span class="token string">"EPSG:25833"</span><span class="token punctuation">)</span>
+    <span class="token keyword">for</span> _ <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span><span class="token number">1000</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">assert</span> transformer_for<span class="token punctuation">(</span><span class="token string">"EPSG:25833"</span><span class="token punctuation">)</span> <span class="token keyword">is</span> first
+
+
+<span class="token keyword">def</span> <span class="token function">test_cache_is_bounded</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    cache <span class="token operator">=</span> TransformerCache<span class="token punctuation">(</span>max_size<span class="token operator">=</span><span class="token number">2</span><span class="token punctuation">)</span>
+    cache<span class="token punctuation">.</span>get<span class="token punctuation">(</span>TransformKey<span class="token punctuation">(</span><span class="token string">"EPSG:25832"</span><span class="token punctuation">,</span> <span class="token string">"EPSG:4326"</span><span class="token punctuation">,</span> <span class="token boolean">True</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    cache<span class="token punctuation">.</span>get<span class="token punctuation">(</span>TransformKey<span class="token punctuation">(</span><span class="token string">"EPSG:25833"</span><span class="token punctuation">,</span> <span class="token string">"EPSG:4326"</span><span class="token punctuation">,</span> <span class="token boolean">True</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    <span class="token keyword">with</span> pytest<span class="token punctuation">.</span>raises<span class="token punctuation">(</span>RuntimeError<span class="token punctuation">,</span> <span class="token keyword">match</span><span class="token operator">=</span><span class="token string">"cache full"</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        cache<span class="token punctuation">.</span>get<span class="token punctuation">(</span>TransformKey<span class="token punctuation">(</span><span class="token string">"EPSG:25834"</span><span class="token punctuation">,</span> <span class="token string">"EPSG:4326"</span><span class="token punctuation">,</span> <span class="token boolean">True</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">_child</span><span class="token punctuation">(</span>cache<span class="token punctuation">,</span> queue<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">try</span><span class="token punctuation">:</span>
+        cache<span class="token punctuation">.</span>get<span class="token punctuation">(</span>TransformKey<span class="token punctuation">(</span><span class="token string">"EPSG:25833"</span><span class="token punctuation">,</span> <span class="token string">"EPSG:4326"</span><span class="token punctuation">,</span> <span class="token boolean">True</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+        queue<span class="token punctuation">.</span>put<span class="token punctuation">(</span><span class="token string">"no guard"</span><span class="token punctuation">)</span>
+    <span class="token keyword">except</span> RuntimeError <span class="token keyword">as</span> exc<span class="token punctuation">:</span>
+        queue<span class="token punctuation">.</span>put<span class="token punctuation">(</span><span class="token builtin">str</span><span class="token punctuation">(</span>exc<span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_inherited_cache_raises_rather_than_corrupting</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""An exception on the first call beats a coordinate audit six months later."""</span>
+    cache <span class="token operator">=</span> TransformerCache<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    cache<span class="token punctuation">.</span>get<span class="token punctuation">(</span>TransformKey<span class="token punctuation">(</span><span class="token string">"EPSG:25833"</span><span class="token punctuation">,</span> <span class="token string">"EPSG:4326"</span><span class="token punctuation">,</span> <span class="token boolean">True</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+    queue <span class="token operator">=</span> mp<span class="token punctuation">.</span>Queue<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    child <span class="token operator">=</span> mp<span class="token punctuation">.</span>get_context<span class="token punctuation">(</span><span class="token string">"fork"</span><span class="token punctuation">)</span><span class="token punctuation">.</span>Process<span class="token punctuation">(</span>target<span class="token operator">=</span>_child<span class="token punctuation">,</span> args<span class="token operator">=</span><span class="token punctuation">(</span>cache<span class="token punctuation">,</span> queue<span class="token punctuation">)</span><span class="token punctuation">)</span>
+    child<span class="token punctuation">.</span>start<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    child<span class="token punctuation">.</span>join<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> <span class="token string">"across a fork"</span> <span class="token keyword">in</span> queue<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>The first test is the one worth keeping in front of a reviewer: it demonstrates that the two cached transformers are genuinely different by showing that they need their arguments in opposite orders to produce the same point.</p>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
+<ul>
+<li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a> — the topic this guide belongs to</li>
+<li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/handling-mixed-crs-payloads-in-python-event-handlers/">Handling Mixed-CRS Payloads in Python Event Handlers</a> — where the source CRS comes from, and why it must be validated</li>
+<li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/optimizing-async-geometry-parsing-with-asyncio/">Optimizing Async Geometry Parsing with asyncio</a> — the process pool this cache lives inside</li>
+<li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a> — why rounding after reprojection is not optional</li>
+</ul>
+
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        <div class="aside-card">
+          <h3>Related in this section</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/handling-mixed-crs-payloads-in-python-event-handlers/">Handling Mixed CRS Payloads in Python Webhooks</a></li>
+          </ul>
+        </div>
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a></li>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a></li>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a></li>
+            <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring &amp; Observability for Spatial Pipelines</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</article>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="https://www.geospatialwebhook.com/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/">Home</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queues &amp; Retries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/schema-evolution-versioning/">Schema Evolution &amp; Versioning for Spatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/temporal-dedup-windows/">Time-Windowed Deduplication for Moving Assets</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/streaming-large-geometries/">Streaming &amp; Chunking Large Geometry Payloads</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Queues &amp; Retries</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/">Backpressure &amp; Flow Control for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Monitoring</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/slo-alerting-spatial-pipelines/">SLOs &amp; Alerting for Spatial Webhook Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging &amp; Tracing for Spatial Events</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <a class="site-footer__gh" href="https://github.com/geospatialwebhook" target="_blank" rel="noopener" aria-label="Geospatial Webhook on GitHub">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5Z"/></svg><span>GitHub</span>
+      </a>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js?v=c31b7b80" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

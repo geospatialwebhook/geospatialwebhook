@@ -438,4 +438,40 @@
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
+  <url>
+    <loc>https://www.geospatialwebhook.com/spatial-payload-routing-parsing/streaming-large-geometries/chunking-a-multipolygon-across-message-size-limits/</loc>
+    <lastmod>2026-08-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.geospatialwebhook.com/spatial-payload-routing-parsing/streaming-large-geometries/the-claim-check-pattern-for-oversized-spatial-payloads/</loc>
+    <lastmod>2026-08-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.geospatialwebhook.com/spatial-payload-routing-parsing/streaming-large-geometries/streaming-geojson-with-ijson-in-async-consumers/</loc>
+    <lastmod>2026-08-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/caching-pyproj-transformers-safely-across-workers/</loc>
+    <lastmod>2026-08-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/repairing-self-intersecting-polygons-without-losing-area/</loc>
+    <lastmod>2026-08-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/using-a-transactional-outbox-for-spatial-events/</loc>
+    <lastmod>2026-08-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
 </urlset>
