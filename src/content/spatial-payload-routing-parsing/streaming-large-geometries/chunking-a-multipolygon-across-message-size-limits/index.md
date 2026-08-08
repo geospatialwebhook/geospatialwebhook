@@ -306,6 +306,31 @@ class Reassembler:
 
 6. **Assembly order must come from the index, not the arrival order.** Multipolygon part order is not semantically meaningful, but making it depend on network timing means the same event produces different serialisations, which breaks any content hash computed downstream — see [Event Key Generation for Spatial Data](https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/).
 
+<figure class="fig">
+<svg viewBox="0 0 760 186" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Chunks of one group spread across partitions, each consumer holding an incomplete set">
+<title>A group split across partitions never completes anywhere</title>
+<desc>A group of six chunks is published without a group-scoped partition key, so the broker distributes them across three partitions by round-robin. Three consumers each receive two chunks of the same group, and each one holds two of six — none reaches the declared total, so none assembles anything. After the reassembly timeout all three independently fail the group and dead-letter their fragments, producing three separate incomplete-group errors for one event and no assembled geometry at all. Keying every chunk in a group on the group identifier sends all six to one partition and therefore to one consumer, which assembles them normally; it also confines the group to a single partition's ordering, so the chunks arrive in a defined order even though the reassembler does not rely on it. The cost is that a very large group is processed by one consumer rather than shared, which is the correct trade because the group cannot be processed by more than one anyway.</desc>
+<rect x="0" y="0" width="760" height="186" fill="var(--fig-bg)"/>
+<text x="14" y="18" font-size="9.5" font-weight="600" fill="var(--fig-rose-edge)">no group key — six chunks, three partitions</text>
+<rect x="30" y="28" width="86" height="20" rx="3" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="38" y="42" font-size="7.5" fill="var(--fig-ink)">#0 #3 → c1</text>
+<rect x="124" y="28" width="86" height="20" rx="3" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="132" y="42" font-size="7.5" fill="var(--fig-ink)">#1 #4 → c2</text>
+<rect x="218" y="28" width="86" height="20" rx="3" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="226" y="42" font-size="7.5" fill="var(--fig-ink)">#2 #5 → c3</text>
+<text x="320" y="42" font-size="8.5" fill="var(--fig-rose-edge)">each holds 2 of 6 · none reaches the declared total</text>
+<text x="30" y="64" font-size="8.5" fill="var(--fig-rose-edge)">after the timeout: three incomplete-group errors for one event, and no assembled geometry</text>
+<line x1="14" y1="82" x2="746" y2="82" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="104" font-size="9.5" font-weight="600" fill="var(--fig-mint-edge)">keyed on the group id</text>
+<rect x="30" y="114" width="272" height="20" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="38" y="128" font-size="7.5" fill="var(--fig-ink)">#0 #1 #2 #3 #4 #5 → one partition, one consumer</text>
+<text x="320" y="128" font-size="8.5" fill="var(--fig-mint-edge)">assembles normally, and inherits that partition's ordering</text>
+<text x="14" y="158" font-size="9" fill="var(--fig-ink-soft)">Cost: a very large group is processed by one consumer rather than shared — which is the correct trade, because the group</text>
+<text x="14" y="172" font-size="9" fill="var(--fig-ink-soft)">cannot be processed by more than one anyway.</text>
+</svg>
+<figcaption><b>Figure 3.</b> The reassembler is correct in every one of the three consumers. What is wrong is that the group was ever split across them.</figcaption>
+</figure>
+
 ## Verification
 
 ```python

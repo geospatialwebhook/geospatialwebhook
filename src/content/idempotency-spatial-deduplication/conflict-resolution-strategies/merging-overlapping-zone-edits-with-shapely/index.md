@@ -243,6 +243,29 @@ The order matters: additions are applied before removals, so an area that one ed
 
 6. **The merged geometry needs a new version vector that dominates both inputs.** Producing the shape without recording the merged lineage means the next edit rediscovers the same conflict — the failure the last test in the version-vector guide exists to catch.
 
+<figure class="fig">
+<svg viewBox="0 0 760 194" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Microdegree differences along a hand-traced shared edge producing sliver areas in the delta">
+<title>Two people tracing the same line never trace the same line</title>
+<desc>Two editors both adjust a zone that shares a long boundary with a neighbouring one, and both trace that shared boundary by hand. Their traces differ by microdegrees — a fraction of a millimetre on the ground — so the difference between each edit and the ancestor contains a thread of area running the whole length of the shared edge. Without a sliver threshold, that thread intersects the other edit's removal somewhere along its length, the contested area is non-empty, and the merge refuses. Since hand-traced boundaries are the normal case rather than an exotic one, a merge with no tolerance refuses almost every real conflict and the mechanism is abandoned. With a threshold below any area a person could intend, the threads are ignored and only a genuine disagreement — an area both editors made a deliberate, opposite decision about — triggers the refusal. The threshold is therefore not a fudge factor but the line between a coordinate artefact and an intent.</desc>
+<rect x="0" y="0" width="760" height="194" fill="var(--fig-bg)"/>
+<text x="14" y="18" font-size="10" font-weight="600" fill="var(--fig-ink)">two hand traces of one shared boundary</text>
+<path d="M40,60 C120,52 200,74 280,62 C340,54 380,70 420,64" fill="none" stroke="var(--fig-mint-edge)" stroke-width="1.8"/>
+<path d="M40,64 C120,57 200,78 280,67 C340,59 380,74 420,69" fill="none" stroke="var(--fig-peach-edge)" stroke-width="1.8"/>
+<text x="436" y="60" font-size="8.5" fill="var(--fig-mint-edge)">editor A's trace</text>
+<text x="436" y="74" font-size="8.5" fill="var(--fig-peach-edge)">editor B's trace</text>
+<text x="40" y="96" font-size="8.5" fill="var(--fig-ink-soft)">the gap between them is microdegrees — a fraction of a millimetre on the ground</text>
+<rect x="14" y="110" width="366" height="72" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="26" y="130" font-size="9" font-weight="600" fill="var(--fig-ink)">no sliver threshold</text>
+<text x="26" y="150" font-size="8.5" fill="var(--fig-rose-edge)">the thread is non-empty, so the merge refuses</text>
+<text x="26" y="166" font-size="8.5" fill="var(--fig-ink-soft)">refuses almost every real conflict · the mechanism is abandoned</text>
+<rect x="392" y="110" width="354" height="72" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.7"/>
+<text x="404" y="130" font-size="9" font-weight="600" fill="var(--fig-ink)">threshold below any area a person could intend</text>
+<text x="404" y="150" font-size="8.5" fill="var(--fig-mint-edge)">threads ignored · only a deliberate disagreement refuses</text>
+<text x="404" y="166" font-size="8.5" fill="var(--fig-ink-soft)">not a fudge factor — the line between an artefact and an intent</text>
+</svg>
+<figcaption><b>Figure 3.</b> Every boundary operation on hand-digitised data produces these threads, which is why the threshold belongs in the merge rather than in a cleanup pass afterwards.</figcaption>
+</figure>
+
 ## Verification
 
 ```python

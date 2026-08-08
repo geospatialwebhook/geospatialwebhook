@@ -473,6 +473,27 @@ NEW_RESOLUTION <span class="token operator">=</span> <span class="token number">
 <p><strong>Events already in the log keep their old keys forever.</strong> A replay after the migration reads resolution 7 keys, so the old reader path must survive as long as the retention window and any replayable archive — the same rule as <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/schema-evolution-versioning/migrating-a-spatial-stream-between-schema-versions/">Migrating a Spatial Stream Between Schema Versions</a>.</p>
 </li>
 </ol>
+<figure class="fig">
+<svg viewBox="0 0 760 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A vehicle crossing from a migrated region into an unmigrated one, producing keys at two resolutions">
+<title>An asset crossing the cutover boundary produces both key shapes</title>
+<desc>With a region-by-region rollout, some parent cells have been cut over to resolution 8 and others have not. A vehicle drives from a migrated metropolitan region into an unmigrated rural one, so its events are keyed at resolution 8 for the first part of the journey and at resolution 7 for the second — from the same producer, within the same minute, for the same asset. Every consumer must therefore be able to read both shapes for as long as the rollout lasts, which is what the resolution prefix on the key is for: a consumer parsing a key can tell which scheme produced it without consulting configuration that may have changed since. The prefix also cannot be dropped when the last region cuts over, because events already written to the log keep their old keys until retention expires them, and a replay after the migration reads resolution 7 keys from a topic that now produces only resolution 8.</desc>
+<rect x="0" y="0" width="760" height="190" fill="var(--fig-bg)"/>
+<defs><marker id="hr3-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<rect x="30" y="34" width="300" height="72" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<text x="42" y="54" font-size="9.5" font-weight="600" fill="var(--fig-ink)">migrated region — resolution 8</text>
+<text x="42" y="76" font-size="8" font-family="monospace" fill="var(--fig-ink-soft)">8:881f1d4d61fffff</text>
+<rect x="370" y="34" width="300" height="72" rx="6" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.5"/>
+<text x="382" y="54" font-size="9.5" font-weight="600" fill="var(--fig-ink)">not yet migrated — resolution 7</text>
+<text x="382" y="76" font-size="8" font-family="monospace" fill="var(--fig-ink-soft)">7:871f1d4ffffffff</text>
+<line x1="200" y1="120" x2="500" y2="120" stroke="var(--fig-line)" stroke-width="1.6" marker-end="url(#hr3-a)"/>
+<circle cx="200" cy="120" r="5" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.4"/>
+<text x="196" y="140" font-size="8.5" fill="var(--fig-ink-soft)">one vehicle, one journey, one minute — both key shapes</text>
+<rect x="14" y="150" width="732" height="32" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.4"/>
+<text x="26" y="169" font-size="9" fill="var(--fig-ink-soft)">The prefix cannot be dropped when the last region cuts over: events already in the log keep their old keys until retention expires them,</text>
+<text x="26" y="179" font-size="9" fill="var(--fig-ink-soft)">and a replay after the migration reads resolution 7 keys from a topic that now produces only resolution 8.</text>
+</svg>
+<figcaption><b>Figure 3.</b> The self-describing key is what makes a partial rollout survivable, and what makes the cleanup deploy a later, separate decision.</figcaption>
+</figure>
 <h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
 <div class="code-block" data-lang="python">
   <div class="code-block__header">

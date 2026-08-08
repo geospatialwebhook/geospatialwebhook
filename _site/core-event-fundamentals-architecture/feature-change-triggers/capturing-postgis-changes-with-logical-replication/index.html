@@ -291,7 +291,8 @@
 <text x="304" y="133" font-size="8.5" fill="var(--fig-ink)">decoder process: read WAL · serialise geometry · publish — on its own time</text>
 <rect x="14" y="172" width="732" height="42" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.4"/>
 <text x="26" y="190" font-size="9.5" font-weight="600" fill="var(--fig-ink)">What was bought, and what was sold</text>
-<text x="26" y="206" font-size="9" fill="var(--fig-ink-soft)">Not less work — work moved off the critical path. The decoder is now something that can fall behind, and while it is behind the database cannot recycle its log.</text>
+<text x="26" y="200" font-size="9" fill="var(--fig-ink-soft)">Not less work — work moved off the critical path. The decoder is now something that can fall behind,</text>
+<text x="26" y="212" font-size="9" fill="var(--fig-ink-soft)">and while it is behind the database cannot recycle its log.</text>
 </svg>
 <figcaption><b>Figure 1.</b> The trade is real in both directions. Commit latency stops depending on geometry size; a new process becomes load-bearing for the database's disk usage.</figcaption>
 </figure>
@@ -500,6 +501,34 @@ SLOT <span class="token operator">=</span> <span class="token string">"feature_c
 <p><strong>Slots do not survive a failover to a physical replica</strong> in older PostgreSQL versions. After promotion the slot does not exist and the decoder reconnects to nothing, silently capturing zero changes. Verify slot existence as part of the health check, not just connectivity.</p>
 </li>
 </ol>
+<figure class="fig">
+<svg viewBox="0 0 760 196" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A bulk shapefile import producing one WAL change record per row and the burst that reaches the decoder">
+<title>A bulk import is two hundred thousand events, all at once</title>
+<desc>A shapefile load of two hundred thousand parcels is applied to the features table in a single transaction. Logical replication is faithful and records one change per row, so the decoder receives two hundred thousand change records the moment the transaction commits, each carrying a full geometry and — under REPLICA IDENTITY FULL — the old row as well. The publish rate the decoder needs to sustain for the next several minutes is orders of magnitude above its steady state, the broker sees a spike it was not provisioned for, and every downstream consumer meets a backlog of large payloads at once. Nothing is wrong: this is what faithful change capture does with a bulk write. What it means is that the decoder cannot be sized for the steady state alone, and that the debouncing and backpressure stages downstream stop being optional the day someone loads a dataset.</desc>
+<rect x="0" y="0" width="760" height="196" fill="var(--fig-bg)"/>
+<defs><marker id="lrb-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<text x="14" y="18" font-size="10" font-weight="600" fill="var(--fig-ink)">one shapefile load · 200 000 parcels · one transaction</text>
+<rect x="14" y="30" width="150" height="42" rx="5" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.4"/>
+<text x="26" y="48" font-size="9" font-weight="600" fill="var(--fig-ink)">COMMIT</text>
+<text x="26" y="64" font-size="8.5" fill="var(--fig-ink-soft)">one write, from the app's view</text>
+<line x1="168" y1="51" x2="198" y2="51" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#lrb-a)"/>
+<rect x="202" y="30" width="216" height="42" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.5"/>
+<text x="214" y="48" font-size="9" font-weight="600" fill="var(--fig-ink)">200 000 WAL change records</text>
+<text x="214" y="64" font-size="8.5" fill="var(--fig-ink-soft)">each with a geometry, and its old row</text>
+<line x1="422" y1="51" x2="452" y2="51" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#lrb-a)"/>
+<rect x="456" y="30" width="290" height="42" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="468" y="48" font-size="9" font-weight="600" fill="var(--fig-ink)">decoder publish rate, for several minutes</text>
+<text x="468" y="64" font-size="8.5" fill="var(--fig-rose-edge)">orders of magnitude above steady state</text>
+<rect x="14" y="86" width="732" height="18" rx="3" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.1"/>
+<text x="24" y="99" font-size="8" fill="var(--fig-ink-soft)">steady state — a few edits a second</text>
+<rect x="14" y="108" width="732" height="34" rx="3" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="24" y="129" font-size="8.5" fill="var(--fig-ink)">the same channel, during the load</text>
+<text x="14" y="162" font-size="9" fill="var(--fig-ink-soft)">Nothing is wrong — this is what faithful change capture does with a bulk write. It means the decoder cannot be sized for</text>
+<text x="14" y="175" font-size="9" fill="var(--fig-ink-soft)">the steady state, and that debouncing and backpressure downstream stop being optional the day somebody loads a dataset.</text>
+<text x="14" y="190" font-size="9" fill="var(--fig-mint-edge)">The slot absorbs it safely; the consumers are what has to be provisioned for it.</text>
+</svg>
+<figcaption><b>Figure 3.</b> The transaction is one write to the application and two hundred thousand events to everything downstream. That asymmetry is the main operational consequence of capturing at the log rather than in the application.</figcaption>
+</figure>
 <h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
 <div class="code-block" data-lang="python">
   <div class="code-block__header">

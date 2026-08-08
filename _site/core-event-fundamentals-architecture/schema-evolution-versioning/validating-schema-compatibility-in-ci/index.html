@@ -497,6 +497,37 @@ REACHABLE <span class="token operator">=</span> <span class="token punctuation">
 <p><strong>Precision is part of the contract even though it is not in the type system.</strong> Reducing declared precision changes every content hash, so deduplication stops matching across the boundary exactly as described in <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a>. Declaring it as an extension keyword is what makes it reviewable.</p>
 </li>
 </ol>
+<figure class="fig">
+<svg viewBox="0 0 760 194" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A synthetic corpus of squares passing every check that a real corpus would fail">
+<title>A corpus of squares proves the gate runs, not that it works</title>
+<desc>Two corpora are run through the same differential replay. The synthetic corpus is a few hundred axis-aligned squares in the first quadrant: under a coordinate-order flip every square merely appears translated and the geometry comparison may fall inside tolerance, precision reduction produces no visible difference at these magnitudes, and no square has an interior ring, crosses the antimeridian, or is empty — so three whole classes of reader bug are never executed. Every check passes, and the gate reports success while covering almost nothing. The real corpus is captured from production and biased towards awkward shapes: a polygon crossing the antimeridian, a multipolygon with holes, a geometry still in a projected CRS, an empty geometry, a feature whose geometry is null, and the largest payload the stream has ever carried. Under the same flip it fails immediately and loudly. The difference between the two runs is not the code being tested but whether the test data can express the failure.</desc>
+<rect x="0" y="0" width="760" height="194" fill="var(--fig-bg)"/>
+<text x="14" y="18" font-size="10" font-weight="600" fill="var(--fig-ink)">the same differential replay, two corpora</text>
+<rect x="14" y="30" width="366" height="118" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="26" y="50" font-size="9.5" font-weight="600" fill="var(--fig-ink)">synthetic — squares in the first quadrant</text>
+<rect x="30" y="60" width="26" height="26" fill="none" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<rect x="62" y="60" width="26" height="26" fill="none" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<rect x="94" y="60" width="26" height="26" fill="none" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="132" y="70" font-size="8.5" fill="var(--fig-ink-soft)">a coordinate flip looks like a translation</text>
+<text x="132" y="84" font-size="8.5" fill="var(--fig-ink-soft)">precision loss is invisible at this magnitude</text>
+<text x="26" y="106" font-size="8.5" fill="var(--fig-rose-edge)">no holes · no antimeridian · no empty geometry</text>
+<text x="26" y="120" font-size="8.5" fill="var(--fig-rose-edge)">three classes of reader bug never execute</text>
+<text x="26" y="140" font-size="9" font-weight="600" fill="var(--fig-rose-edge)">every check passes · nothing is covered</text>
+<rect x="392" y="30" width="354" height="118" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.8"/>
+<text x="404" y="50" font-size="9.5" font-weight="600" fill="var(--fig-ink)">captured from production, biased to the awkward</text>
+<path d="M410,62 L436,58 L448,80 L420,86 Z" fill="none" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<path d="M424,68 L436,66 L438,76 L426,78 Z" fill="none" stroke="var(--fig-mint-edge)" stroke-width="1"/>
+<path d="M462,58 L486,64 L482,84 L458,80 Z" fill="none" stroke="var(--fig-mint-edge)" stroke-width="1.3" stroke-dasharray="3 2"/>
+<text x="500" y="68" font-size="8.5" fill="var(--fig-ink-soft)">antimeridian · holes · projected CRS</text>
+<text x="500" y="82" font-size="8.5" fill="var(--fig-ink-soft)">empty · null geometry · the largest payload</text>
+<text x="404" y="106" font-size="8.5" fill="var(--fig-mint-edge)">the flip fails immediately, and loudly</text>
+<text x="404" y="126" font-size="8.5" fill="var(--fig-ink-soft)">the code under test is identical in both runs —</text>
+<text x="404" y="140" font-size="8.5" fill="var(--fig-ink-soft)">only whether the data can express the failure differs</text>
+<text x="14" y="172" font-size="9" fill="var(--fig-ink-soft)">This is why the corpus needs a refresh schedule of its own: a corpus captured two years ago cannot contain the payload</text>
+<text x="14" y="186" font-size="9" fill="var(--fig-ink-soft)">shapes a producer added last quarter, so the gate is checking the schema against a stream that no longer exists.</text>
+</svg>
+<figcaption><b>Figure 3.</b> A gate is only as good as the inputs it is asked to reject. A corpus that cannot express the failure turns the whole check into a smoke test.</figcaption>
+</figure>
 <h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
 <p>The gate itself needs a test, because a compatibility checker that has never rejected anything is indistinguishable from one that always passes.</p>
 <div class="code-block" data-lang="python">

@@ -507,6 +507,41 @@ MAX_WAIT_SECONDS <span class="token operator">=</span> <span class="token number
 <p><strong>Union of the before and after geometry is not always the right invalidation area.</strong> For a feature that moved a long way, the union’s bounding box covers everything in between, which can be thousands of untouched tiles. Invalidate against the two geometries separately rather than their combined envelope, as <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/scoping-tile-invalidation-to-the-zoom-levels-that-changed/">Scoping Tile Invalidation to the Zoom Levels That Changed</a> describes.</p>
 </li>
 </ol>
+<figure class="fig">
+<svg viewBox="0 0 760 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Pending debounce timers lost on shutdown versus flushed by drain">
+<title>The edit the operator will look for is the one drain() saves</title>
+<desc>A deploy restarts the debouncing service while four features have pending timers. Without a drain step the process exits and those four timers are cancelled with the events still buffered, so the last edit made to each of those features never reaches any consumer. That is precisely the edit the operator will look for: it is the most recent one they made, they saw it save successfully in the editor, and the map does not show it. Nothing errors, because from the debouncer's point of view the process simply ended. With drain, every pending timer is fired immediately on shutdown, so the four merged events are emitted before the process exits — they arrive slightly earlier than the quiet period would have allowed, which is harmless, and no edit is lost. The cost is a few milliseconds on shutdown; the alternative is a class of missing edits that correlates perfectly with deploy times and is therefore attributed to whatever else shipped.</desc>
+<rect x="0" y="0" width="760" height="200" fill="var(--fig-bg)"/>
+<text x="14" y="18" font-size="9.5" font-weight="600" fill="var(--fig-rose-edge)">shutdown without drain()</text>
+<rect x="30" y="28" width="88" height="20" rx="3" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="38" y="42" font-size="7.5" fill="var(--fig-ink)">f-1 pending</text>
+<rect x="124" y="28" width="88" height="20" rx="3" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="132" y="42" font-size="7.5" fill="var(--fig-ink)">f-2 pending</text>
+<rect x="218" y="28" width="88" height="20" rx="3" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="226" y="42" font-size="7.5" fill="var(--fig-ink)">f-3 pending</text>
+<rect x="312" y="28" width="88" height="20" rx="3" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="320" y="42" font-size="7.5" fill="var(--fig-ink)">f-4 pending</text>
+<line x1="414" y1="24" x2="414" y2="52" stroke="var(--fig-rose-edge)" stroke-width="1.8"/>
+<text x="422" y="42" font-size="8.5" fill="var(--fig-rose-edge)">process exits · four timers cancelled, four edits gone</text>
+<text x="30" y="68" font-size="8.5" fill="var(--fig-rose-edge)">the lost edit is the most recent one the operator made — they watched it save, and the map does not show it</text>
+<text x="30" y="82" font-size="8.5" fill="var(--fig-ink-soft)">nothing errors; from the debouncer's view the process simply ended</text>
+<line x1="14" y1="98" x2="746" y2="98" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="120" font-size="9.5" font-weight="600" fill="var(--fig-mint-edge)">shutdown with drain()</text>
+<rect x="30" y="130" width="88" height="20" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="38" y="144" font-size="7.5" fill="var(--fig-ink)">f-1 emitted</text>
+<rect x="124" y="130" width="88" height="20" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="132" y="144" font-size="7.5" fill="var(--fig-ink)">f-2 emitted</text>
+<rect x="218" y="130" width="88" height="20" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="226" y="144" font-size="7.5" fill="var(--fig-ink)">f-3 emitted</text>
+<rect x="312" y="130" width="88" height="20" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="320" y="144" font-size="7.5" fill="var(--fig-ink)">f-4 emitted</text>
+<line x1="414" y1="126" x2="414" y2="154" stroke="var(--fig-mint-edge)" stroke-width="1.8"/>
+<text x="422" y="144" font-size="8.5" fill="var(--fig-mint-edge)">then the process exits</text>
+<text x="30" y="170" font-size="8.5" fill="var(--fig-ink-soft)">events arrive slightly earlier than the quiet period would allow, which is harmless</text>
+<text x="14" y="192" font-size="9" fill="var(--fig-ink-soft)">Cost: a few milliseconds on shutdown. Alternative: missing edits that correlate exactly with deploy times, and are blamed on whatever else shipped.</text>
+</svg>
+<figcaption><b>Figure 3.</b> A debouncer holds state that nothing else knows about, so shutdown is the one moment it can lose data — and the data it loses is the newest.</figcaption>
+</figure>
 <h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
 <div class="code-block" data-lang="python">
   <div class="code-block__header">

@@ -431,7 +431,7 @@ _CACHE<span class="token punctuation">:</span> TransformerCache <span class="tok
 <rect x="290" y="144" width="82" height="18" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
 <text x="298" y="157" font-size="7.5" fill="var(--fig-ink)">own cache</text>
 <text x="390" y="136" font-size="8.5" fill="var(--fig-mint-edge)">every worker owns state it created · nothing shared</text>
-<text x="390" y="152" font-size="8.5" fill="var(--fig-ink-soft)">cost: each pays construction once per CRS pair — which is what warm() moves out of the first request</text>
+<text x="390" y="152" font-size="8.5" fill="var(--fig-ink-soft)">cost: construction once per CRS pair — which warm() moves out of the first request</text>
 <rect x="14" y="180" width="732" height="34" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.4"/>
 <text x="26" y="199" font-size="9" fill="var(--fig-ink-soft)">The process-id guard costs one getpid() per call and turns the top pattern from a silent corruption into an exception on the</text>
 <text x="26" y="210" font-size="9" fill="var(--fig-ink-soft)">first call — which is the difference between a bug found in a smoke test and one found in a coordinate audit.</text>
@@ -510,6 +510,28 @@ _CACHE<span class="token punctuation">:</span> TransformerCache <span class="tok
 <p><strong>Reprojection is not free of precision cost even when cached.</strong> Every transform introduces sub-millimetre differences, so a content hash computed after reprojection differs from one computed before. Round to a fixed precision after transforming, as <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a> requires.</p>
 </li>
 </ol>
+<figure class="fig">
+<svg viewBox="0 0 760 186" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Payload-supplied CRS values filling a cache with one entry per distinct WKT string">
+<title>A cache keyed on payload input is a memory leak with a network interface</title>
+<desc>Source CRS values arrive in payloads, and pyproj accepts WKT as well as authority codes. A producer emitting semantically identical WKT with differing whitespace, or a malformed value, therefore produces a distinct cache key for every variation — each costing a PROJ database search on insertion and a permanent slot thereafter. An unbounded dictionary keyed on that input grows for as long as the variations keep arriving, and because each entry also holds native PROJ state and open grid-file handles, the process runs out of descriptors before it runs out of memory. Bounding the cache converts an unbounded leak into a loud error naming the unexpected CRS pair, which is diagnostic rather than fatal: the error says which value was unexpected, and the fix is an allowlist at the edge rather than a larger cache. The bound is therefore a detection mechanism as much as a limit.</desc>
+<rect x="0" y="0" width="760" height="186" fill="var(--fig-bg)"/>
+<text x="14" y="18" font-size="10" font-weight="600" fill="var(--fig-ink)">source CRS arriving in payloads · pyproj accepts WKT as well as codes</text>
+<rect x="14" y="30" width="366" height="112" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="26" y="50" font-size="9.5" font-weight="600" fill="var(--fig-ink)">unbounded cache</text>
+<text x="26" y="72" font-size="8" font-family="monospace" fill="var(--fig-ink-soft)">"PROJCS[...]"  "PROJCS[ ...]"  "PROJCS[...] "</text>
+<text x="26" y="90" font-size="8.5" fill="var(--fig-rose-edge)">whitespace variants are distinct keys</text>
+<text x="26" y="106" font-size="8.5" fill="var(--fig-ink-soft)">each costs a database search, then a permanent slot</text>
+<text x="26" y="128" font-size="8.5" fill="var(--fig-rose-edge)">descriptors run out before memory does — each entry holds grid files open</text>
+<rect x="392" y="30" width="354" height="112" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.8"/>
+<text x="404" y="50" font-size="9.5" font-weight="600" fill="var(--fig-ink)">bounded cache</text>
+<text x="404" y="72" font-size="8.5" fill="var(--fig-ink-soft)">the 65th distinct pair raises, naming the value</text>
+<text x="404" y="92" font-size="8.5" fill="var(--fig-mint-edge)">an unbounded leak becomes a loud, diagnostic error</text>
+<text x="404" y="112" font-size="8.5" fill="var(--fig-ink-soft)">the fix is an allowlist at the edge, not a larger cache</text>
+<text x="404" y="132" font-size="8.5" fill="var(--fig-ink)">the bound is a detection mechanism as much as a limit</text>
+<text x="14" y="170" font-size="9" fill="var(--fig-ink-soft)">Which is why the error message carries the CRS pair: the useful information is what arrived, not that the cache was full.</text>
+</svg>
+<figcaption><b>Figure 3.</b> Sizing the bound generously and treating the error as a signal beats raising it every time it fires — the error names an upstream change worth knowing about.</figcaption>
+</figure>
 <h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
 <div class="code-block" data-lang="python">
   <div class="code-block__header">

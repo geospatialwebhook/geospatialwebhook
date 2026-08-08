@@ -248,6 +248,32 @@ The exception message is the important part. When no resolution works, the answe
 <figcaption><b>Figure 2.</b> The concentration is physical. No grid separates a loading bay from itself, which is why the profiler raises rather than returning the finest resolution it has.</figcaption>
 </figure>
 
+<figure class="fig">
+<svg viewBox="0 0 760 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A resolution profile taken from a quiet sample against one taken from the busiest hour">
+<title>The sample decides the resolution, so it has to be the busy one</title>
+<desc>The same profiler is run over two samples of the same stream. The first is a quiet Sunday: the busiest cell at resolution 6 carries only nine hundred events per second, which already fits inside one consumer, so the profiler correctly returns resolution 6 as the coarsest resolution that works. Deployed against Monday morning, that same cell carries fourteen thousand events per second and the partition is nine times over a consumer's capacity — the recommendation was right about the data it saw and wrong about the stream. The second sample is taken across the busiest hour and returns resolution 8, which holds on Monday and is merely finer than necessary on Sunday. The asymmetry is the whole argument for sampling the peak: a resolution that is too fine costs cardinality, which is a bounded and visible cost, while one that is too coarse costs a permanently saturated partition, which is an outage that recurs every weekday morning.</desc>
+<rect x="0" y="0" width="760" height="200" fill="var(--fig-bg)"/>
+<text x="14" y="18" font-size="10" font-weight="600" fill="var(--fig-ink)">same profiler, same stream, two samples</text>
+<rect x="14" y="30" width="366" height="118" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="26" y="50" font-size="9.5" font-weight="600" fill="var(--fig-ink)">sampled on a quiet Sunday</text>
+<text x="26" y="72" font-size="8.5" fill="var(--fig-ink-soft)">busiest cell at res 6: 900 ev/s — already fits</text>
+<text x="26" y="88" font-size="8.5" fill="var(--fig-ink-soft)">recommendation: resolution 6</text>
+<text x="26" y="110" font-size="8.5" fill="var(--fig-rose-edge)">on Monday that cell carries 14 000 ev/s</text>
+<text x="26" y="124" font-size="8.5" fill="var(--fig-rose-edge)">nine times a consumer's capacity, every weekday</text>
+<text x="26" y="142" font-size="8.5" fill="var(--fig-ink-soft)">right about the data it saw, wrong about the stream</text>
+<rect x="392" y="30" width="354" height="118" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.8"/>
+<text x="404" y="50" font-size="9.5" font-weight="600" fill="var(--fig-ink)">sampled across the busiest hour</text>
+<text x="404" y="72" font-size="8.5" fill="var(--fig-ink-soft)">busiest cell at res 6: 14 000 ev/s — rejected</text>
+<text x="404" y="88" font-size="8.5" fill="var(--fig-ink-soft)">recommendation: resolution 8</text>
+<text x="404" y="110" font-size="8.5" fill="var(--fig-mint-edge)">holds on Monday</text>
+<text x="404" y="124" font-size="8.5" fill="var(--fig-ink-soft)">merely finer than necessary on Sunday</text>
+<rect x="14" y="158" width="732" height="34" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="26" y="177" font-size="9" fill="var(--fig-ink-soft)">The errors are not symmetric: too fine costs cardinality, which is bounded and visible. Too coarse costs a permanently</text>
+<text x="26" y="188" font-size="9" fill="var(--fig-ink-soft)">saturated partition, which is an outage that recurs every weekday morning.</text>
+</svg>
+<figcaption><b>Figure 3.</b> Because the two errors cost differently, a sample taken at a convenient moment biases towards the expensive one.</figcaption>
+</figure>
+
 ## Verification
 
 ```python

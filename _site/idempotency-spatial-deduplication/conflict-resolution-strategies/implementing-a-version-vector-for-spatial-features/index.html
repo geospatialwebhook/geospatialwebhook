@@ -510,6 +510,28 @@
 <p><strong>A conflict that reaches a merge should be counted.</strong> The rate of <code>CONCURRENT</code> outcomes per feature class is the signal that two teams are editing the same data without knowing it, which is an organisational problem the pipeline can detect before anyone reports it.</p>
 </li>
 </ol>
+<figure class="fig">
+<svg viewBox="0 0 760 196" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Vector growth under per-device writer identity compared with per-service identity">
+<title>Who counts as a writer decides how big the vector gets</title>
+<desc>The same feature is edited by field staff over a year, under two definitions of writer identity. With per-device identity every phone, tablet and laptop that ever touched the feature gains an entry, so a popular parcel accumulates hundreds of counters and the vector eventually exceeds the geometry it describes in size — and because devices are replaced, most of those entries belong to hardware that no longer exists and can never advance again. With per-service identity, the four regional services that accept edits are the writers, so the vector holds four entries however many people edit through them; the device that made each edit is recorded in the audit trail, where it belongs, and where its cardinality costs nothing. The comparison semantics are identical in both cases: what changes is only how many counters have to be compared, stored and carried on every event.</desc>
+<rect x="0" y="0" width="760" height="196" fill="var(--fig-bg)"/>
+<text x="14" y="18" font-size="10" font-weight="600" fill="var(--fig-ink)">one parcel, one year of field edits</text>
+<rect x="14" y="30" width="366" height="120" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="26" y="50" font-size="9.5" font-weight="600" fill="var(--fig-ink)">writer = the device</text>
+<text x="26" y="72" font-size="8" font-family="monospace" fill="var(--fig-ink-soft)">{phone-a1:3, tablet-7:1, phone-c9:2, …}</text>
+<text x="26" y="94" font-size="8.5" fill="var(--fig-rose-edge)">hundreds of counters on a popular feature</text>
+<text x="26" y="110" font-size="8.5" fill="var(--fig-rose-edge)">eventually larger than the geometry it describes</text>
+<text x="26" y="132" font-size="8.5" fill="var(--fig-ink-soft)">most entries name hardware that no longer exists</text>
+<rect x="392" y="30" width="354" height="120" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.8"/>
+<text x="404" y="50" font-size="9.5" font-weight="600" fill="var(--fig-ink)">writer = the service accepting the edit</text>
+<text x="404" y="72" font-size="8" font-family="monospace" fill="var(--fig-ink-soft)">{edit-svc-north:14, edit-svc-south:9, …}</text>
+<text x="404" y="94" font-size="8.5" fill="var(--fig-mint-edge)">four entries, however many people edit</text>
+<text x="404" y="110" font-size="8.5" fill="var(--fig-ink-soft)">the device goes in the audit trail, where it belongs</text>
+<text x="404" y="132" font-size="8.5" fill="var(--fig-ink-soft)">and where its cardinality costs nothing</text>
+<text x="14" y="176" font-size="9" fill="var(--fig-ink-soft)">The comparison semantics are identical. What changes is how many counters must be compared, stored, and carried on every event.</text>
+</svg>
+<figcaption><b>Figure 3.</b> Writer identity is the one design choice here that cannot be revisited cheaply, because changing it invalidates every vector already stored.</figcaption>
+</figure>
 <h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
 <div class="code-block" data-lang="python">
   <div class="code-block__header">

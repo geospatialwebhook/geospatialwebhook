@@ -478,6 +478,33 @@ ABSOLUTE_AREA_FLOOR <span class="token operator">=</span> <span class="token num
 <p><strong>Count repairs by producer and alert on the rate.</strong> A repair is a message about the source system, and the only way anybody acts on it is if the rate is visible per producer — see <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/geo-metrics-instrumentation/tracking-geometry-validation-failure-rate-with-prometheus/">Tracking Geometry Validation Failure Rate with Prometheus</a>.</p>
 </li>
 </ol>
+<figure class="fig">
+<svg viewBox="0 0 760 188" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="make_valid returning a GeometryCollection containing a polygon and a zero-area spike line">
+<title>The repair can return something that is not a polygon</title>
+<desc>A polygon with a degenerate spike — a vertex path that runs out and back along the same line — is repaired. make_valid resolves the ring correctly but the spike has no area, so it cannot be part of a polygon; the result is a GeometryCollection containing the repaired polygon and a LineString for the spike. The area is exactly right, so the tolerance check passes and the repair is accepted. Downstream, anything that assumes a Polygon or MultiPolygon now meets a collection: a spatial join may silently skip it, a tile renderer may draw the line, and a later union carries the line forward into the stored geometry where it will confuse the next area calculation. Because the stray part has zero area, no area-based check can ever detect it. Filtering the collection to its polygonal parts before returning is the only step that catches it, and it has to be explicit because both the repair and the tolerance check consider the result correct.</desc>
+<rect x="0" y="0" width="760" height="188" fill="var(--fig-bg)"/>
+<defs><marker id="gv3-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<text x="14" y="18" font-size="10" font-weight="600" fill="var(--fig-ink)">a polygon with a degenerate spike</text>
+<path d="M40,40 L40,110 L110,110 L110,60 L110,110 L170,110 L170,40 Z" fill="var(--fig-earth)" opacity="0.6" stroke="var(--fig-earth-edge)" stroke-width="1.6"/>
+<text x="116" y="56" font-size="7.5" fill="var(--fig-rose-edge)">spike</text>
+<line x1="186" y1="76" x2="216" y2="76" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#gv3-a)"/>
+<text x="188" y="68" font-size="8" fill="var(--fig-ink-soft)">make_valid</text>
+<rect x="240" y="34" width="200" height="86" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.5"/>
+<text x="252" y="54" font-size="9" font-weight="600" fill="var(--fig-ink)">GeometryCollection</text>
+<text x="252" y="74" font-size="8.5" fill="var(--fig-ink-soft)">Polygon — the repaired shape</text>
+<text x="252" y="90" font-size="8.5" fill="var(--fig-rose-edge)">LineString — the spike, zero area</text>
+<text x="252" y="110" font-size="8.5" fill="var(--fig-ink-soft)">area is exactly right, so the tolerance passes</text>
+<rect x="456" y="34" width="290" height="86" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="468" y="54" font-size="9" font-weight="600" fill="var(--fig-ink)">what it breaks downstream</text>
+<text x="468" y="74" font-size="8.5" fill="var(--fig-ink-soft)">a spatial join may silently skip a collection</text>
+<text x="468" y="90" font-size="8.5" fill="var(--fig-ink-soft)">a renderer may draw the line</text>
+<text x="468" y="110" font-size="8.5" fill="var(--fig-rose-edge)">a later union carries it into the stored geometry</text>
+<text x="14" y="146" font-size="9" fill="var(--fig-ink-soft)">The stray part has zero area, so no area-based check can detect it. Filtering to the polygonal parts is the only step that</text>
+<text x="14" y="160" font-size="9" fill="var(--fig-ink-soft)">catches it — and it has to be explicit, because both the repair and the tolerance check consider this result correct.</text>
+<text x="14" y="180" font-size="9" fill="var(--fig-mint-edge)">A repair that changes the geometry TYPE is a different kind of change from one that changes its extent, and needs its own guard.</text>
+</svg>
+<figcaption><b>Figure 3.</b> The tolerance check guards extent, not type. Both need guarding, and only one of them is obvious from the failure it prevents.</figcaption>
+</figure>
 <h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
 <div class="code-block" data-lang="python">
   <div class="code-block__header">

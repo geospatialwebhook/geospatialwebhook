@@ -280,7 +280,7 @@
 <text x="296" y="128" font-size="7.5" fill="var(--fig-ink)">all 66, reversed</text>
 <circle cx="420" cy="124" r="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
 <circle cx="460" cy="124" r="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
-<text x="290" y="148" font-size="8.5" fill="var(--fig-rose-edge)">a router trusting arrival order sees: teleport forward · walk backwards through the tunnel · jump forward again</text>
+<text x="200" y="148" font-size="8.5" fill="var(--fig-rose-edge)">a router trusting arrival order sees: teleport forward · walk backwards · jump forward again</text>
 <rect x="14" y="162" width="366" height="62" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
 <text x="26" y="181" font-size="9.5" font-weight="600" fill="var(--fig-ink)">what downstream emits</text>
 <text x="26" y="198" font-size="8.5" fill="var(--fig-ink-soft)">exit destination zone · re-enter origin zone · exit again</text>
@@ -483,6 +483,26 @@ MAX_FUTURE_SKEW <span class="token operator">=</span> timedelta<span class="toke
 <p><strong>Per-asset buffers make this stateful, so partition by asset.</strong> The same constraint as the geofence router: two instances each holding half an asset’s pings each produce half a track.</p>
 </li>
 </ol>
+<figure class="fig">
+<svg viewBox="0 0 760 198" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Distance accumulated in arrival order against distance accumulated in device-clock order">
+<title>The odometer doubles, and only for the vehicles that lose signal</title>
+<desc>A vehicle drives four kilometres through a tunnel while buffering, then flushes in reverse. A distance accumulator that sums consecutive positions in arrival order walks the route backwards and then forwards again, counting every leg twice, so the trip is reported as roughly eight kilometres. Accumulated in device-clock order the same pings give four. The error is not random noise that averages out across a fleet: it is a systematic overstatement proportional to the length of every connectivity gap, so it lands entirely on the vehicles that drive through tunnels, car parks and rural dead zones, and not at all on the ones that stay connected. Any figure derived from the odometer inherits that bias — fuel efficiency per vehicle, distance-based billing, maintenance intervals — and the affected vehicles are exactly the ones whose data is hardest to sanity-check, because their tracks legitimately have gaps in them.</desc>
+<rect x="0" y="0" width="760" height="198" fill="var(--fig-bg)"/>
+<text x="14" y="18" font-size="10" font-weight="600" fill="var(--fig-ink)">one 4 km tunnel transit, accumulated two ways</text>
+<text x="14" y="42" font-size="9" font-weight="600" fill="var(--fig-rose-edge)">arrival order</text>
+<path d="M120,60 L300,60" fill="none" stroke="var(--fig-rose-edge)" stroke-width="2.4"/>
+<path d="M300,72 L120,72" fill="none" stroke="var(--fig-rose-edge)" stroke-width="2.4" stroke-dasharray="4 3"/>
+<path d="M120,84 L300,84" fill="none" stroke="var(--fig-rose-edge)" stroke-width="2.4"/>
+<text x="316" y="76" font-size="9" font-weight="600" fill="var(--fig-rose-edge)">every leg counted twice → ≈ 8 km reported</text>
+<text x="14" y="112" font-size="9" font-weight="600" fill="var(--fig-mint-edge)">device-clock order</text>
+<path d="M120,130 L300,130" fill="none" stroke="var(--fig-mint-edge)" stroke-width="2.4"/>
+<text x="316" y="134" font-size="9" font-weight="600" fill="var(--fig-mint-edge)">4 km — the distance the vehicle drove</text>
+<rect x="14" y="150" width="732" height="42" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="26" y="168" font-size="9" fill="var(--fig-ink-soft)">Not noise that averages out: a systematic overstatement proportional to every connectivity gap, landing entirely on the</text>
+<text x="26" y="182" font-size="9" fill="var(--fig-ink-soft)">vehicles that drive through tunnels and dead zones — and their tracks legitimately have gaps, so it is hard to sanity-check.</text>
+</svg>
+<figcaption><b>Figure 3.</b> This is usually the first symptom anyone notices, and it points at the ordering rather than at the odometer — which is where the investigation normally starts.</figcaption>
+</figure>
 <h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
 <div class="code-block" data-lang="python">
   <div class="code-block__header">

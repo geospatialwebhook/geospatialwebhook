@@ -263,6 +263,30 @@ Minimising a weighted cost rather than maximising F1 is the decision that makes 
 
 6. **Record which threshold and which band produced each merge decision.** Without it, a later investigation into a missing observation cannot tell whether the merge was correct under the rules in force at the time, and the tuning becomes unauditable.
 
+<figure class="fig">
+<svg viewBox="0 0 760 192" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Footprint areas measured in square degrees placing identical shapes in different size bands by latitude">
+<title>A size band in square degrees is a different band at every latitude</title>
+<desc>Two identical sensor footprints are measured, one over the equator and one at sixty degrees north. On the ground they cover the same area. In square degrees they do not: a degree of longitude at sixty degrees north spans half the distance it does at the equator, so the northern footprint's area in square degrees is about half the southern one's. A size band expressed in square degrees therefore puts the two in different bands and applies different thresholds to identical sensors — and because most fleets operate over a range of latitudes, the effect is a systematic drift in deduplication behaviour from south to north that no amount of threshold tuning will fix, because the bands themselves are moving. Reprojecting to an equal-area coordinate reference system before measuring makes the two footprints the same size, which is what the bands assume.</desc>
+<rect x="0" y="0" width="760" height="192" fill="var(--fig-bg)"/>
+<text x="14" y="18" font-size="10" font-weight="600" fill="var(--fig-ink)">two identical footprints, measured in square degrees</text>
+<rect x="40" y="34" width="120" height="66" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="46" y="118" font-size="8.5" fill="var(--fig-ink-soft)">at the equator</text>
+<text x="46" y="132" font-size="8.5" fill="var(--fig-mint-edge)">band: medium</text>
+<rect x="240" y="34" width="62" height="66" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="230" y="118" font-size="8.5" fill="var(--fig-ink-soft)">at 60° north — same ground area</text>
+<text x="230" y="132" font-size="8.5" fill="var(--fig-rose-edge)">band: small, and a different threshold</text>
+<rect x="392" y="34" width="354" height="112" rx="6" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.4"/>
+<text x="404" y="54" font-size="9.5" font-weight="600" fill="var(--fig-ink)">why tuning cannot fix it</text>
+<text x="404" y="76" font-size="8.5" fill="var(--fig-ink-soft)">a degree of longitude at 60° N spans half its</text>
+<text x="404" y="88" font-size="8.5" fill="var(--fig-ink-soft)">equatorial distance, so the area halves</text>
+<text x="404" y="110" font-size="8.5" fill="var(--fig-rose-edge)">the bands themselves move with latitude</text>
+<text x="404" y="126" font-size="8.5" fill="var(--fig-mint-edge)">reproject to an equal-area CRS before measuring</text>
+<text x="14" y="168" font-size="9" fill="var(--fig-ink-soft)">Over a fleet spanning latitudes this is a systematic drift in deduplication behaviour from south to north, and it presents as</text>
+<text x="14" y="182" font-size="9" fill="var(--fig-ink-soft)">a threshold that "works in one region and not another" — which sends the investigation to the sensors rather than to the units.</text>
+</svg>
+<figcaption><b>Figure 3.</b> The bands assume equal ground area. Measuring in degrees breaks that assumption quietly, and the symptom looks like a sensor problem.</figcaption>
+</figure>
+
 ## Verification
 
 ```python

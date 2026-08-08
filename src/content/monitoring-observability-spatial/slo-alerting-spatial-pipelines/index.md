@@ -393,6 +393,33 @@ def test_worst_shard_dominates():
 
 ---
 
+<figure class="fig">
+<svg viewBox="0 0 760 198" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Completeness reconciled against the source count catching drops that freshness cannot see">
+<title>Completeness is the only indicator that can see a drop</title>
+<desc>Over one hour a shard's source database records forty-one thousand feature changes. The pipeline commits thirty-eight thousand two hundred of them; the remaining two thousand eight hundred were discarded, most at geometry validation and the rest rejected by a schema check after a producer began emitting a version the consumer does not know. Freshness is computed only over events that arrived, so it reports ninety-nine point four per cent inside the objective and is entirely correct — the events that did arrive were fast. Availability is likewise perfect, because no request failed. Reconciling the committed count against the source count gives a completeness of ninety-three point two per cent, which is the only number in the pipeline that reflects the loss. Labelling the drop counter by reason then splits that figure into an actionable pair: the validation share points at the producer's geometry, and the schema share points at a version rollout, and without the label both appear as one number quietly falling.</desc>
+<rect x="0" y="0" width="760" height="198" fill="var(--fig-bg)"/>
+<text x="14" y="18" font-size="10" font-weight="600" fill="var(--fig-ink)">one shard, one hour</text>
+<rect x="30" y="32" width="420" height="26" rx="4" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.4"/>
+<text x="40" y="49" font-size="8.5" fill="var(--fig-ink)">source: 41 000 feature changes recorded</text>
+<rect x="30" y="66" width="391" height="26" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="40" y="83" font-size="8.5" fill="var(--fig-ink)">committed: 38 200</text>
+<rect x="421" y="66" width="29" height="26" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="460" y="83" font-size="8.5" fill="var(--fig-rose-edge)">2 800 dropped — 2 100 invalid_geometry, 700 schema_rejected</text>
+<rect x="30" y="106" width="228" height="46" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="42" y="124" font-size="9" font-weight="600" fill="var(--fig-ink)">freshness: 99.4%</text>
+<text x="42" y="142" font-size="8.5" fill="var(--fig-rose-edge)">correct, and blind — it measures arrivals</text>
+<rect x="266" y="106" width="228" height="46" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="278" y="124" font-size="9" font-weight="600" fill="var(--fig-ink)">availability: 100%</text>
+<text x="278" y="142" font-size="8.5" fill="var(--fig-rose-edge)">no request failed, because none did</text>
+<rect x="502" y="106" width="244" height="46" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.7"/>
+<text x="514" y="124" font-size="9" font-weight="600" fill="var(--fig-ink)">completeness: 93.2%</text>
+<text x="514" y="142" font-size="8.5" fill="var(--fig-mint-edge)">the only number that reflects the loss</text>
+<text x="14" y="176" font-size="9" fill="var(--fig-ink-soft)">The reason label splits that figure into two actionable ones: the validation share points at the producer's geometry, the</text>
+<text x="14" y="190" font-size="9" fill="var(--fig-ink-soft)">schema share at a version rollout. Without it, both are one number quietly falling.</text>
+</svg>
+<figcaption><b>Figure 3.</b> Freshness and availability are both accurate here and both useless. Only a reconciliation against the source can distinguish "fast" from "complete".</figcaption>
+</figure>
+
 ## Troubleshooting
 
 <div class="table-scroll">

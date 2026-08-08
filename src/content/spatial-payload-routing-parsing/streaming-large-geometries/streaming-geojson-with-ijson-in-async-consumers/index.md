@@ -227,6 +227,34 @@ Verifying before parsing costs a second pass over the bytes and removes the enti
 
 6. **Per-feature commits make truncation unrecoverable.** If the consumer commits its offset as it goes, a truncated document leaves the pipeline believing it processed the whole thing. Commit once at the end of a document, or verify the digest before starting.
 
+<figure class="fig">
+<svg viewBox="0 0 760 186" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A blocked event loop missing consumer heartbeats and triggering a rebalance">
+<title>A blocking parse presents as a rebalance storm, not as slow parsing</title>
+<desc>A consumer parses a large collection synchronously on its event loop. The parse occupies the loop for four hundred milliseconds at a stretch, during which the heartbeat coroutine cannot run: it is scheduled, ready, and never given the loop. The broker sees missed heartbeats, presumes the member dead and rebalances the group, so the partitions move and the batch is redelivered to another member — which parses it the same way and meets the same fate. What appears in the incident channel is a rebalance storm, which sends the investigation to the broker configuration, to session timeouts, and to the network, none of which are the cause. Running the same parse in a thread leaves the loop free to service the heartbeat between awaits, so the member stays in the group and the only visible effect is that the parse takes as long as it takes. The symptom and the cause are in completely different subsystems, which is why the thread offload is worth a comment rather than being left as an idiom.</desc>
+<rect x="0" y="0" width="760" height="186" fill="var(--fig-bg)"/>
+<text x="14" y="18" font-size="9.5" font-weight="600" fill="var(--fig-rose-edge)">parse on the event loop</text>
+<rect x="30" y="28" width="380" height="22" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="40" y="44" font-size="8" fill="var(--fig-ink)">ijson parse — 400 ms, uninterrupted</text>
+<circle cx="90" cy="62" r="3.5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<circle cx="150" cy="62" r="3.5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<circle cx="210" cy="62" r="3.5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<circle cx="270" cy="62" r="3.5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="420" y="46" font-size="8.5" fill="var(--fig-rose-edge)">heartbeats scheduled, ready, never given the loop</text>
+<text x="30" y="84" font-size="8.5" fill="var(--fig-rose-edge)">broker presumes the member dead → rebalance → batch redelivered → the next member does the same</text>
+<text x="30" y="98" font-size="8.5" fill="var(--fig-ink-soft)">the incident channel shows a rebalance storm, and the investigation goes to session timeouts and the network</text>
+<line x1="14" y1="114" x2="746" y2="114" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="134" font-size="9.5" font-weight="600" fill="var(--fig-mint-edge)">parse in a thread</text>
+<rect x="30" y="142" width="380" height="22" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<text x="40" y="158" font-size="8" fill="var(--fig-ink)">same parse, off the loop</text>
+<circle cx="440" cy="153" r="3.5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<circle cx="470" cy="153" r="3.5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<circle cx="500" cy="153" r="3.5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="520" y="157" font-size="8.5" fill="var(--fig-mint-edge)">heartbeats run · the member stays in the group</text>
+<text x="14" y="180" font-size="9" fill="var(--fig-ink-soft)">Symptom and cause sit in different subsystems, which is why the thread offload deserves a comment rather than being left as an idiom.</text>
+</svg>
+<figcaption><b>Figure 3.</b> Nothing about the symptom points at the parser, so this is a failure that is diagnosed by knowing the mechanism rather than by reading the logs.</figcaption>
+</figure>
+
 ## Verification
 
 ```python

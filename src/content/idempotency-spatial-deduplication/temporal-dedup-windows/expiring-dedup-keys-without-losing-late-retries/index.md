@@ -214,7 +214,8 @@ Checking both filter slots is what makes the rotation safe. A single rotating fi
 <text x="404" y="148" font-size="8.5" fill="var(--fig-ink-soft)">approximate in the tail, and affordable</text>
 <rect x="14" y="172" width="732" height="46" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.5"/>
 <text x="26" y="191" font-size="9.5" font-weight="600" fill="var(--fig-ink)">What is given up, and for which streams it is acceptable</text>
-<text x="26" y="209" font-size="9" fill="var(--fig-ink-soft)">About one event in a thousand reaching tier 2 is wrongly suppressed. Fine for telemetry — another ping follows in seconds. Not fine for feature edits: nothing resends a cadastral boundary change.</text>
+<text x="26" y="203" font-size="9" fill="var(--fig-ink-soft)">About one event in a thousand reaching tier 2 is wrongly suppressed. Fine for telemetry — another ping</text>
+<text x="26" y="215" font-size="9" fill="var(--fig-ink-soft)">follows in seconds. Not fine for feature edits: nothing resends a cadastral boundary change.</text>
 </svg>
 <figcaption><b>Figure 2.</b> The two-tier store does not make the horizon cheaper to cover exactly; it makes it cheap to cover approximately, and the approximation errs towards suppression.</figcaption>
 </figure>
@@ -247,6 +248,33 @@ Checking both filter slots is what makes the rotation safe. A single rotating fi
 5. **A key claimed before processing and never released holds its slot for the full TTL.** That is the correct behaviour for suppression, and it means a crash between claim and processing loses the event for the whole horizon. Release on failure, and treat the TTL as the backstop rather than the mechanism.
 
 6. **Bloom filters cannot be resized in place.** If the event rate doubles, the existing filter's error rate rises and there is no way to fix it without rotating early and losing coverage. Size for the peak rate you expect over the filter's lifetime, and alert when the observed insert count approaches the configured capacity.
+
+<figure class="fig">
+<svg viewBox="0 0 760 196" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A single rotating filter losing every key at the rotation instant, against two overlapping slots">
+<title>One filter rotates into a hole; two do not</title>
+<desc>A rotating probabilistic filter is used to cover the long tail of the retry horizon. With a single slot, the filter is cleared at each rotation, so every key it held vanishes at that instant: a redelivery arriving a minute after a rotation finds nothing, wins its claim, and is written a second time. The bug therefore reproduces the original problem on a twelve-hour cycle, and because it only affects redeliveries that straddle a rotation boundary, it appears as a small periodic spike in duplicate writes that correlates with nothing an operator is looking at. With two slots and both consulted on every check, a key written just before a rotation is still found in the previous slot afterwards, so coverage is continuous and every key is guaranteed at least the full horizon regardless of where in the cycle it was written. The cost is one extra membership check per lookup and twice the filter memory, which is a small fraction of what exact keys over the same horizon would cost.</desc>
+<rect x="0" y="0" width="760" height="196" fill="var(--fig-bg)"/>
+<text x="14" y="18" font-size="9.5" font-weight="600" fill="var(--fig-rose-edge)">one rotating slot</text>
+<rect x="30" y="30" width="200" height="22" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="40" y="46" font-size="8" fill="var(--fig-ink)">slot A — keys held</text>
+<line x1="234" y1="26" x2="234" y2="58" stroke="var(--fig-rose-edge)" stroke-width="1.8"/>
+<text x="240" y="24" font-size="8" fill="var(--fig-rose-edge)">rotation</text>
+<rect x="238" y="30" width="200" height="22" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="248" y="46" font-size="8" fill="var(--fig-ink)">slot A cleared — every key gone at once</text>
+<text x="452" y="46" font-size="8.5" fill="var(--fig-rose-edge)">a redelivery a minute later wins its claim</text>
+<text x="30" y="70" font-size="8.5" fill="var(--fig-rose-edge)">the original bug, on a 12-hour cycle · a small periodic spike that correlates with nothing an operator watches</text>
+<line x1="14" y1="88" x2="746" y2="88" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="110" font-size="9.5" font-weight="600" fill="var(--fig-mint-edge)">two slots, both consulted</text>
+<rect x="30" y="122" width="240" height="20" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="40" y="136" font-size="8" fill="var(--fig-ink)">slot A</text>
+<rect x="180" y="146" width="240" height="20" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="190" y="160" font-size="8" fill="var(--fig-ink)">slot B — overlaps A</text>
+<text x="440" y="140" font-size="8.5" fill="var(--fig-mint-edge)">a key written just before a rotation is still found after it</text>
+<text x="440" y="158" font-size="8.5" fill="var(--fig-ink-soft)">every key gets at least the full horizon, wherever it lands</text>
+<text x="14" y="186" font-size="9" fill="var(--fig-ink-soft)">Cost: one extra membership check per lookup and twice the filter memory — a small fraction of exact keys over the same horizon.</text>
+</svg>
+<figcaption><b>Figure 3.</b> The rotation is the only moment a probabilistic tier can lose data, so it is the only part of the design that needs to be redundant.</figcaption>
+</figure>
 
 ## Verification
 

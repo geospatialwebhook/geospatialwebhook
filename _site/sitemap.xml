@@ -474,4 +474,46 @@
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
+  <url>
+    <loc>https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/applying-backpressure-when-a-spatial-consumer-falls-behind/</loc>
+    <lastmod>2026-08-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/sizing-a-prefetch-window-for-mixed-geometry-payloads/</loc>
+    <lastmod>2026-08-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/shedding-spatial-load-by-geographic-priority/</loc>
+    <lastmod>2026-08-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.geospatialwebhook.com/monitoring-observability-spatial/slo-alerting-spatial-pipelines/defining-a-freshness-slo-for-a-spatial-pipeline/</loc>
+    <lastmod>2026-08-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.geospatialwebhook.com/monitoring-observability-spatial/slo-alerting-spatial-pipelines/alert-rules-that-survive-a-bursty-spatial-stream/</loc>
+    <lastmod>2026-08-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.geospatialwebhook.com/monitoring-observability-spatial/slo-alerting-spatial-pipelines/an-error-budget-policy-for-tile-pipelines/</loc>
+    <lastmod>2026-08-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/correlating-logs-and-traces-across-a-spatial-fan-out/</loc>
+    <lastmod>2026-08-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
 </urlset>

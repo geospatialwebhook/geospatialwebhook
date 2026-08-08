@@ -258,6 +258,32 @@ Iterating over the two geometries separately rather than their union is delibera
 
 6. **Labels and halos extend beyond the geometry's bounds.** A renamed feature can change pixels in the neighbouring tile because its label overflows the tile edge. If the layer draws labels, buffer the invalidation area by the maximum label extent, which is a style property rather than a geometric one.
 
+<figure class="fig">
+<svg viewBox="0 0 760 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A feature moving far, with the union envelope covering a corridor of untouched tiles">
+<title>Union the geometries, not their envelope</title>
+<desc>A depot feature is relocated forty kilometres across a county. Its previous position sits in the north-west and its new one in the south-east. Taking the bounding box of the union of the two geometries produces a rectangle spanning the whole diagonal, and invalidating every tile inside that rectangle at every visible zoom touches thousands of tiles across a corridor where nothing changed at all — farmland, a river, three villages, none of which contain the feature before or after. Iterating over the two geometries separately and invalidating each one's own footprint touches only the tiles that actually held the feature and the ones that now do. The saving grows with the distance moved, which means it is largest exactly when the naive version is most expensive, and the difference is invisible in testing because a test fixture that moves a feature a few metres produces identical results either way.</desc>
+<rect x="0" y="0" width="760" height="200" fill="var(--fig-bg)"/>
+<g stroke="var(--fig-line-soft)" stroke-width="1" fill="none">
+<rect x="30" y="30" width="340" height="140"/>
+<line x1="98" y1="30" x2="98" y2="170"/><line x1="166" y1="30" x2="166" y2="170"/><line x1="234" y1="30" x2="234" y2="170"/><line x1="302" y1="30" x2="302" y2="170"/>
+<line x1="30" y1="65" x2="370" y2="65"/><line x1="30" y1="100" x2="370" y2="100"/><line x1="30" y1="135" x2="370" y2="135"/>
+</g>
+<rect x="30" y="30" width="340" height="140" fill="var(--fig-rose)" opacity="0.45"/>
+<rect x="34" y="34" width="60" height="28" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.4"/>
+<rect x="306" y="138" width="60" height="28" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="36" y="188" font-size="8.5" fill="var(--fig-rose-edge)">envelope of the union — thousands of untouched tiles invalidated</text>
+<rect x="404" y="30" width="342" height="140" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<text x="416" y="50" font-size="9.5" font-weight="600" fill="var(--fig-ink)">iterate the two geometries separately</text>
+<text x="416" y="72" font-size="8.5" fill="var(--fig-ink-soft)">invalidate the tiles the feature held, and those it now holds</text>
+<text x="416" y="88" font-size="8.5" fill="var(--fig-ink-soft)">nothing in the corridor between them is touched</text>
+<text x="416" y="112" font-size="8.5" fill="var(--fig-mint-edge)">the saving grows with the distance moved — largest exactly</text>
+<text x="416" y="126" font-size="8.5" fill="var(--fig-mint-edge)">where the naive version is most expensive</text>
+<text x="416" y="150" font-size="8.5" fill="var(--fig-ink-soft)">invisible in testing: a fixture that moves a feature a few metres</text>
+<text x="416" y="162" font-size="8.5" fill="var(--fig-ink-soft)">gives identical results either way</text>
+</svg>
+<figcaption><b>Figure 3.</b> Zoom scoping and area scoping are independent decisions, and getting the first right while leaving the second as an envelope keeps most of the waste.</figcaption>
+</figure>
+
 ## Verification
 
 ```python

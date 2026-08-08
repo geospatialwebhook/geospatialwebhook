@@ -532,6 +532,30 @@ BATCH_SIZE <span class="token operator">=</span> <span class="token number">200<
 <p><strong><code>ST_Centroid</code> of a multipolygon can fall outside the feature.</strong> For a routing key that is usually acceptable, but for a crescent-shaped or multi-part feature the centroid can land in a cell the feature does not touch. Use <code>ST_PointOnSurface</code> where the key must be inside the geometry.</p>
 </li>
 </ol>
+<figure class="fig">
+<svg viewBox="0 0 760 186" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A stalled relay leaving the application healthy while nothing reaches consumers">
+<title>A stalled relay looks like nothing at all from the application</title>
+<desc>The relay process stops — a crash, a bad deploy, a database permission change. From the application's point of view nothing has happened: writes still succeed, transactions still commit, outbox rows are still inserted, and every request returns normally. From the consumers' point of view the stream has stopped entirely, and because no error is raised anywhere in between, the only evidence is the outbox table growing and the age of its oldest unpublished row increasing. Neither of those is visible on an application dashboard, which watches request rates and error rates, both of which are healthy. The two metrics that catch it are the count of unpublished rows and the age of the oldest one, and the second is the more useful because it is unaffected by traffic volume: a backlog of ten thousand rows during a bulk import is normal, while an oldest row from four hours ago never is.</desc>
+<rect x="0" y="0" width="760" height="186" fill="var(--fig-bg)"/>
+<rect x="14" y="28" width="230" height="94" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="26" y="48" font-size="9.5" font-weight="600" fill="var(--fig-ink)">the application</text>
+<text x="26" y="70" font-size="8.5" fill="var(--fig-ink-soft)">writes succeed · transactions commit</text>
+<text x="26" y="86" font-size="8.5" fill="var(--fig-ink-soft)">outbox rows inserted · requests 200</text>
+<text x="26" y="108" font-size="8.5" fill="var(--fig-mint-edge)">every dashboard is green</text>
+<rect x="264" y="28" width="230" height="94" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.8"/>
+<text x="276" y="48" font-size="9.5" font-weight="600" fill="var(--fig-ink)">the relay — stopped</text>
+<text x="276" y="70" font-size="8.5" fill="var(--fig-ink-soft)">a crash, a bad deploy, a permission change</text>
+<text x="276" y="92" font-size="8.5" fill="var(--fig-rose-edge)">no error is raised anywhere in between</text>
+<rect x="514" y="28" width="232" height="94" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="526" y="48" font-size="9.5" font-weight="600" fill="var(--fig-ink)">the consumers</text>
+<text x="526" y="70" font-size="8.5" fill="var(--fig-rose-edge)">the stream has stopped entirely</text>
+<text x="526" y="92" font-size="8.5" fill="var(--fig-ink-soft)">tiles stale, indexes drifting, no signal</text>
+<rect x="14" y="134" width="732" height="42" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.5"/>
+<text x="26" y="152" font-size="9" fill="var(--fig-ink-soft)">Two metrics catch it: unpublished row count, and the age of the oldest unpublished row. Prefer the second — it is unaffected</text>
+<text x="26" y="167" font-size="9" fill="var(--fig-ink-soft)">by volume, so a ten-thousand-row backlog during a bulk import reads as normal while a four-hour-old row never does.</text>
+</svg>
+<figcaption><b>Figure 3.</b> The outbox converts a lost event into a delayed one, which is only an improvement if somebody is watching the delay.</figcaption>
+</figure>
 <h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
 <div class="code-block" data-lang="python">
   <div class="code-block__header">

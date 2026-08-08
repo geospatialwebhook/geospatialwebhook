@@ -97,7 +97,7 @@ This guide sits under [Time-Windowed Deduplication for Moving Assets](https://ww
 <circle cx="452" cy="160" r="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
 <circle cx="488" cy="160" r="4" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
 <path d="M452,172 Q470,186 488,172" fill="none" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
-<text x="500" y="180" font-size="8.5" fill="var(--fig-mint-edge)">4 s since the last accepted ping — suppressed, wherever the clock happens to be</text>
+<text x="330" y="180" font-size="8.5" fill="var(--fig-mint-edge)">4 s since the last accepted ping — suppressed, wherever the clock happens to be</text>
 <text x="14" y="204" font-size="9" fill="var(--fig-ink-soft)">Cost: one stored record per active asset, one read per event. Benefit: the failure mode disappears rather than shrinking.</text>
 </svg>
 <figcaption><b>Figure 1.</b> The tumbling failure rate is not a tuning problem — it is fixed by the ratio of report interval to bucket width, and it does not improve with any choice of bucket.</figcaption>
@@ -238,6 +238,35 @@ The `t <= prev_t` guard is the part that is easy to leave out and hard to notice
 5. **The record is a comparison baseline, not an audit log.** It holds only the last accepted ping, so it cannot answer "how many were suppressed" — that needs a counter, and the ratio of suppressed to accepted per asset is the signal that catches a device stuck reporting a cached fix.
 
 6. **This suppresses re-observation, not redelivery of an already-accepted ping.** A redelivery arriving with the same timestamp is caught by `t <= prev_t`, but one arriving after a genuinely newer ping is not — that needs the identity key from [Event Key Generation for Spatial Data](https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/) alongside this window.
+
+<figure class="fig">
+<svg viewBox="0 0 760 194" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two workers handed the same redelivery, racing on read-then-write versus resolving through one Lua script">
+<title>Read-then-write loses the race exactly when it matters</title>
+<desc>Two consumer workers are handed the same redelivered ping at the same moment. With separate GET and SET commands, both read the stored last-accepted record, both see the same baseline, both conclude the ping is novel, and both write — so the duplicate the mechanism exists to suppress is admitted, and one of the two writes silently overwrites the other's. The race is not rare: it happens precisely when the stream is busy and redeliveries are most likely, which is when duplicate suppression matters most and when a test running one worker at a time will never reproduce it. With the logic inside a Lua script, Redis executes the read, the comparison and the write as a single unit that no other client can interleave, so the second worker's call sees the first worker's write and returns a suppression. Nothing about the comparison changes; what changes is that it cannot be observed halfway through.</desc>
+<rect x="0" y="0" width="760" height="194" fill="var(--fig-bg)"/>
+<text x="14" y="18" font-size="9.5" font-weight="600" fill="var(--fig-rose-edge)">GET then SET — two round trips, two workers</text>
+<rect x="30" y="30" width="80" height="20" rx="3" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="38" y="44" font-size="7.5" fill="var(--fig-ink)">w1 GET</text>
+<rect x="118" y="30" width="80" height="20" rx="3" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="126" y="44" font-size="7.5" fill="var(--fig-ink)">w2 GET</text>
+<rect x="206" y="30" width="80" height="20" rx="3" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="214" y="44" font-size="7.5" fill="var(--fig-ink)">w1 SET</text>
+<rect x="294" y="30" width="80" height="20" rx="3" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="302" y="44" font-size="7.5" fill="var(--fig-ink)">w2 SET</text>
+<text x="392" y="44" font-size="8.5" fill="var(--fig-rose-edge)">both saw the same baseline · both admitted the ping</text>
+<text x="30" y="66" font-size="8.5" fill="var(--fig-rose-edge)">the race fires when the stream is busy and redeliveries are likeliest — and a single-worker test never reproduces it</text>
+<line x1="14" y1="84" x2="746" y2="84" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="106" font-size="9.5" font-weight="600" fill="var(--fig-mint-edge)">one Lua script — one unit, no interleaving</text>
+<rect x="30" y="118" width="180" height="24" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<text x="40" y="134" font-size="8" fill="var(--fig-ink)">w1: read · compare · write</text>
+<rect x="218" y="118" width="180" height="24" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<text x="228" y="134" font-size="8" fill="var(--fig-ink)">w2: read · compare · suppress</text>
+<text x="410" y="134" font-size="8.5" fill="var(--fig-mint-edge)">w2 sees w1's write, because it cannot run in between</text>
+<text x="14" y="168" font-size="9" fill="var(--fig-ink-soft)">The comparison is unchanged. What changes is that it can no longer be observed halfway through — which is the whole</text>
+<text x="14" y="182" font-size="9" fill="var(--fig-ink-soft)">reason the decision lives on the server rather than in the consumer.</text>
+</svg>
+<figcaption><b>Figure 3.</b> Every ingredient of this bug is invisible in a single-threaded test, which is why the atomicity has to be a property of the design rather than something added after a duplicate is noticed.</figcaption>
+</figure>
 
 ## Verification
 

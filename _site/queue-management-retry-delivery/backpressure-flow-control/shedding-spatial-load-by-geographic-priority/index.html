@@ -1,0 +1,703 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>Shedding Spatial Load by Geographic Priority · Geo Webhook</title>
+  <meta name="description" content="Shed only events a later one supersedes, and decide by stream class rather than by geography alone — a rural boundary edit is not less important than an urban vehicle ping, it is merely rarer."/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/shedding-spatial-load-by-geographic-priority/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/shedding-spatial-load-by-geographic-priority/"/>
+  <meta property="og:title" content="Shedding Spatial Load by Geographic Priority"/>
+  <meta property="og:description" content="Shed only events a later one supersedes, and decide by stream class rather than by geography alone — a rural boundary edit is not less important than an urban vehicle ping, it is merely rarer."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Shedding Spatial Load by Geographic Priority"/>
+  <meta name="twitter:description" content="Shed only events a later one supersedes, and decide by stream class rather than by geography alone — a rural boundary edit is not less important than an urban vehicle ping, it is merely rarer."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=180687f5"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },{ "@type": "ListItem", "position": 2, "name": "Queue Management Retry Delivery", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/" },{ "@type": "ListItem", "position": 3, "name": "Backpressure Flow Control", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/" },{ "@type": "ListItem", "position": 4, "name": "Shedding Spatial Load By Geographic Priority", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/shedding-spatial-load-by-geographic-priority/" }
+    ]
+  }
+  </script>
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/shedding-spatial-load-by-geographic-priority/#article",
+    "mainEntityOfPage": "https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/shedding-spatial-load-by-geographic-priority/",
+    "headline": "Shedding Spatial Load by Geographic Priority",
+    "description": "Shed only events a later one supersedes, and decide by stream class rather than by geography alone — a rural boundary edit is not less important than an urban vehicle ping, it is merely rarer.",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
+    "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
+    "image": "https://www.geospatialwebhook.com/og-image.png",
+    "url": "https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/shedding-spatial-load-by-geographic-priority/",
+    "articleSection": "Queue Management Retry Delivery",
+    "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
+  }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="https://www.geospatialwebhook.com/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="https://www.geospatialwebhook.com/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Queues &amp; Retries</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
+      </a>
+    </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle"
+            aria-label="Switch to dark theme" title="Switch to dark theme">
+      <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.4v2.3M12 19.3v2.3M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.3M19.3 12h2.3M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="https://www.geospatialwebhook.com/">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management Retry Delivery</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/">Backpressure Flow Control</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">Shedding Spatial Load By Geographic Priority</span>
+    </nav>
+
+    <h1 class="page__title">Shedding Spatial Load by Geographic Priority</h1>
+
+    <div class="page__layout">
+      <div class="markdown">
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Shedding Spatial Load by Geographic Priority",
+      "description": "Load shedding is acceptable only for streams whose events supersede one another, and geographic priority is a second filter rather than the first. This guide classifies streams by supersession, ranks within them by area, and makes every shed decision countable.",
+      "url": "https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/shedding-spatial-load-by-geographic-priority/",
+      "datePublished": "2026-08-08",
+      "dateModified": "2026-08-08",
+      "author": {"@type": "Organization", "name": "geospatialwebhook.com"},
+      "publisher": {"@type": "Organization", "name": "geospatialwebhook.com"}
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/"},
+        {"@type": "ListItem", "position": 2, "name": "Queue Management, Retries & Delivery Guarantees", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/"},
+        {"@type": "ListItem", "position": 3, "name": "Backpressure & Flow Control for Spatial Consumers", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/"},
+        {"@type": "ListItem", "position": 4, "name": "Shedding Spatial Load by Geographic Priority", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/shedding-spatial-load-by-geographic-priority/"}
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Shed spatial load by geographic priority",
+      "step": [
+        {"@type": "HowToStep", "position": 1, "name": "Classify every stream by whether a later event supersedes an earlier one"},
+        {"@type": "HowToStep", "position": 2, "name": "Never shed a stream whose events are not self-superseding"},
+        {"@type": "HowToStep", "position": 3, "name": "Within sheddable streams, rank by area priority and event age"},
+        {"@type": "HowToStep", "position": 4, "name": "Count every shed decision by stream and area, and alert on the rate"}
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Which spatial events are safe to shed?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Only those a later event replaces. A vehicle position ping is safe because another arrives within seconds and is strictly more useful; a sensor reading on a fixed cadence is usually safe for the same reason. A cadastral boundary edit is not, because nothing will resend it — shedding it is data loss with no recovery path. The test is not how important the event feels but whether the information it carries will arrive again on its own."}
+        },
+        {
+          "@type": "Question",
+          "name": "Is it fair to prioritise dense urban areas over rural ones?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Only within a stream whose events supersede one another, and even then it needs stating explicitly. Prioritising by traffic volume systematically degrades service to sparse regions, and because those regions generate few events the degradation is invisible in fleet-wide metrics. If area priority is used, it should come from a business decision recorded in configuration — a named list of priority areas — rather than from event density, which quietly encodes 'busy' as 'important'."}
+        },
+        {
+          "@type": "Question",
+          "name": "What has to be recorded when an event is shed?",
+          "acceptedAnswer": {"@type": "Answer", "text": "The stream, the area, the reason and the count — at minimum. Shedding is deliberate data loss, and the only thing separating it from a bug is that somebody can see it happening and knows why. A counter labelled by stream and area class lets an operator answer whether the pipeline shed anything during an incident, which is the first question asked afterwards and one that logs alone answer poorly."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>Classify streams by whether a later event supersedes an earlier one, shed only within that set, and rank by a configured area priority rather than by event density — prioritising by traffic volume encodes “busy” as “important” and degrades sparse regions invisibly, because they generate too few events to move a fleet-wide metric.</strong></p>
+<p>This guide sits under <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/">Backpressure &amp; Flow Control for Spatial Consumers</a>, within <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a>. It is the escalation after pausing, and it should be rare enough that its rate is itself an alert.</p>
+<h2 id="when-to-use-this-pattern" tabindex="-1"><a class="heading-anchor" href="#when-to-use-this-pattern">When to use this pattern</a></h2>
+<ul>
+<li>Pausing has been sustained long enough that the backlog will not clear on its own, which is the precondition — shedding before pausing is throwing away work you had capacity for.</li>
+<li>At least one stream in the mix is genuinely self-superseding, or there is nothing safe to shed.</li>
+<li>The alternative is worse: a backlog that grows until the consumer is evicted, taking every stream with it.</li>
+</ul>
+<h2 id="supersession-first-geography-second" tabindex="-1"><a class="heading-anchor" href="#supersession-first-geography-second">Supersession first, geography second</a></h2>
+<figure class="fig">
+<svg viewBox="0 0 760 234" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Streams classified by supersession, with geographic priority applied only within the sheddable set">
+<title>Two filters, and the order matters</title>
+<desc>Streams flowing into a saturated consumer are sorted by a first test: does a later event replace this one? Vehicle position pings pass — another arrives in seconds and is strictly more useful — as do fixed-cadence sensor readings and tile-render requests, which can be regenerated on demand. Cadastral boundary edits fail the test, as do geofence entry and exit transitions and dead-letter replays: nothing resends them, so shedding one is permanent loss with no recovery path. Only the streams that pass the first test reach the second, where a configured area priority decides which to drop first within them. Applying the filters in the other order — ranking everything by area and shedding the lowest-priority events regardless of stream — drops boundary edits from rural areas, which is data loss dressed up as a capacity decision. The area priority itself comes from configuration rather than from measured density, because ranking by event volume means the regions that generate the fewest events are always shed first, and their degradation never shows up in an aggregate.</desc>
+<rect x="0" y="0" width="760" height="234" fill="var(--fig-bg)"/>
+<defs><marker id="sh-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<text x="14" y="18" font-size="10" font-weight="600" fill="var(--fig-ink)">filter 1: does a later event replace this one?</text>
+<rect x="14" y="30" width="200" height="104" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<text x="26" y="50" font-size="9" font-weight="600" fill="var(--fig-ink)">yes — sheddable</text>
+<text x="26" y="70" font-size="8.5" fill="var(--fig-ink-soft)">vehicle position pings</text>
+<text x="26" y="86" font-size="8.5" fill="var(--fig-ink-soft)">fixed-cadence sensor readings</text>
+<text x="26" y="102" font-size="8.5" fill="var(--fig-ink-soft)">tile render requests</text>
+<text x="26" y="122" font-size="8" fill="var(--fig-mint-edge)">the information arrives again on its own</text>
+<rect x="228" y="30" width="200" height="104" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.8"/>
+<text x="240" y="50" font-size="9" font-weight="600" fill="var(--fig-ink)">no — never shed</text>
+<text x="240" y="70" font-size="8.5" fill="var(--fig-ink-soft)">cadastral boundary edits</text>
+<text x="240" y="86" font-size="8.5" fill="var(--fig-ink-soft)">geofence entry and exit</text>
+<text x="240" y="102" font-size="8.5" fill="var(--fig-ink-soft)">dead-letter replays</text>
+<text x="240" y="122" font-size="8" fill="var(--fig-rose-edge)">nothing resends these — loss is permanent</text>
+<line x1="114" y1="138" x2="114" y2="158" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#sh-a)"/>
+<text x="14" y="176" font-size="10" font-weight="600" fill="var(--fig-ink)">filter 2, applied only to the left column: configured area priority</text>
+<rect x="14" y="186" width="200" height="38" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.4"/>
+<text x="26" y="203" font-size="8.5" fill="var(--fig-ink)">priority areas from configuration</text>
+<text x="26" y="217" font-size="8.5" fill="var(--fig-ink-soft)">a business decision, written down</text>
+<rect x="452" y="30" width="294" height="194" rx="6" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.4"/>
+<text x="464" y="52" font-size="9.5" font-weight="600" fill="var(--fig-ink)">why the order matters</text>
+<text x="464" y="74" font-size="8.5" fill="var(--fig-ink-soft)">Rank everything by area first, and the lowest-</text>
+<text x="464" y="86" font-size="8.5" fill="var(--fig-ink-soft)">priority events shed include rural boundary edits</text>
+<text x="464" y="100" font-size="8.5" fill="var(--fig-rose-edge)">— data loss dressed as a capacity decision</text>
+<text x="464" y="126" font-size="9.5" font-weight="600" fill="var(--fig-ink)">why priority is configured, not measured</text>
+<text x="464" y="148" font-size="8.5" fill="var(--fig-ink-soft)">Ranking by event density means sparse regions</text>
+<text x="464" y="160" font-size="8.5" fill="var(--fig-ink-soft)">are always shed first, and because they generate</text>
+<text x="464" y="172" font-size="8.5" fill="var(--fig-ink-soft)">few events their degradation never moves an</text>
+<text x="464" y="184" font-size="8.5" fill="var(--fig-ink-soft)">aggregate metric.</text>
+<text x="464" y="206" font-size="8.5" fill="var(--fig-mint-edge)">"Busy" is not "important" — and encoding it that</text>
+<text x="464" y="218" font-size="8.5" fill="var(--fig-mint-edge)">way makes the bias invisible to the dashboards.</text>
+</svg>
+<figcaption><b>Figure 1.</b> Reversing the two filters produces a system that sheds rural boundary edits under load and reports it as successful capacity management.</figcaption>
+</figure>
+<h2 id="complete-runnable-implementation" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-implementation">Complete runnable implementation</a></h2>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> time
+<span class="token keyword">from</span> dataclasses <span class="token keyword">import</span> dataclass
+<span class="token keyword">from</span> enum <span class="token keyword">import</span> IntEnum
+
+<span class="token keyword">import</span> h3
+<span class="token keyword">from</span> prometheus_client <span class="token keyword">import</span> Counter
+
+SHED <span class="token operator">=</span> Counter<span class="token punctuation">(</span><span class="token string">"events_shed_total"</span><span class="token punctuation">,</span> <span class="token string">"Events deliberately dropped"</span><span class="token punctuation">,</span>
+               <span class="token punctuation">(</span><span class="token string">"stream"</span><span class="token punctuation">,</span> <span class="token string">"area_class"</span><span class="token punctuation">,</span> <span class="token string">"reason"</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">class</span> <span class="token class-name">Supersession</span><span class="token punctuation">(</span>IntEnum<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Whether a later event makes this one redundant."""</span>
+    SELF_SUPERSEDING <span class="token operator">=</span> <span class="token number">0</span>     <span class="token comment"># another arrives shortly and is strictly better</span>
+    NEVER <span class="token operator">=</span> <span class="token number">1</span>                <span class="token comment"># nothing will resend this</span>
+
+
+<span class="token comment"># Explicit per stream. A stream absent from this table is NEVER, because the</span>
+<span class="token comment"># safe default for "somebody added a topic and forgot" is to keep the data.</span>
+STREAM_POLICY<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Supersession<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">{</span>
+    <span class="token string">"vehicle.position"</span><span class="token punctuation">:</span> Supersession<span class="token punctuation">.</span>SELF_SUPERSEDING<span class="token punctuation">,</span>
+    <span class="token string">"sensor.reading"</span><span class="token punctuation">:</span> Supersession<span class="token punctuation">.</span>SELF_SUPERSEDING<span class="token punctuation">,</span>
+    <span class="token string">"tile.render"</span><span class="token punctuation">:</span> Supersession<span class="token punctuation">.</span>SELF_SUPERSEDING<span class="token punctuation">,</span>
+    <span class="token string">"feature.boundary_edit"</span><span class="token punctuation">:</span> Supersession<span class="token punctuation">.</span>NEVER<span class="token punctuation">,</span>
+    <span class="token string">"geofence.transition"</span><span class="token punctuation">:</span> Supersession<span class="token punctuation">.</span>NEVER<span class="token punctuation">,</span>
+    <span class="token string">"dlq.replay"</span><span class="token punctuation">:</span> Supersession<span class="token punctuation">.</span>NEVER<span class="token punctuation">,</span>
+<span class="token punctuation">}</span>
+
+<span class="token comment"># Area priority from configuration — a business decision, not event density.</span>
+<span class="token comment"># Lower rank sheds first.</span>
+AREA_PRIORITY<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> <span class="token builtin">int</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token punctuation">}</span>     <span class="token comment"># H3 res-4 cell -> rank</span>
+DEFAULT_AREA_RANK <span class="token operator">=</span> <span class="token number">50</span>
+
+<span class="token comment"># A ping already older than this is worthless: its successor has arrived.</span>
+STALE_AFTER_SECONDS <span class="token operator">=</span> <span class="token number">30.0</span>
+
+
+<span class="token decorator annotation punctuation">@dataclass</span><span class="token punctuation">(</span>frozen<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span> slots<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span>
+<span class="token keyword">class</span> <span class="token class-name">ShedDecision</span><span class="token punctuation">:</span>
+    shed<span class="token punctuation">:</span> <span class="token builtin">bool</span>
+    reason<span class="token punctuation">:</span> <span class="token builtin">str</span>
+
+
+<span class="token keyword">def</span> <span class="token function">area_class</span><span class="token punctuation">(</span>lat<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">,</span> lon<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">tuple</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> <span class="token builtin">int</span><span class="token punctuation">]</span><span class="token punctuation">:</span>
+    cell <span class="token operator">=</span> h3<span class="token punctuation">.</span>latlng_to_cell<span class="token punctuation">(</span>lat<span class="token punctuation">,</span> lon<span class="token punctuation">,</span> <span class="token number">4</span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> cell<span class="token punctuation">,</span> AREA_PRIORITY<span class="token punctuation">.</span>get<span class="token punctuation">(</span>cell<span class="token punctuation">,</span> DEFAULT_AREA_RANK<span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">decide</span><span class="token punctuation">(</span>stream<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> lat<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">,</span> lon<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">,</span> occurred_at<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">,</span>
+           pressure<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">,</span> now<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> ShedDecision<span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Shed or keep one event. `pressure` is 0.0-1.0 from the work budget."""</span>
+    now <span class="token operator">=</span> now <span class="token keyword">or</span> time<span class="token punctuation">.</span>time<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    policy <span class="token operator">=</span> STREAM_POLICY<span class="token punctuation">.</span>get<span class="token punctuation">(</span>stream<span class="token punctuation">,</span> Supersession<span class="token punctuation">.</span>NEVER<span class="token punctuation">)</span>
+
+    <span class="token comment"># Filter 1. A stream whose events do not supersede is never shed, at any</span>
+    <span class="token comment"># pressure — the alternative to keeping it is permanent loss.</span>
+    <span class="token keyword">if</span> policy <span class="token keyword">is</span> Supersession<span class="token punctuation">.</span>NEVER<span class="token punctuation">:</span>
+        <span class="token keyword">return</span> ShedDecision<span class="token punctuation">(</span><span class="token boolean">False</span><span class="token punctuation">,</span> <span class="token string">"not-superseding"</span><span class="token punctuation">)</span>
+
+    cell<span class="token punctuation">,</span> rank <span class="token operator">=</span> area_class<span class="token punctuation">(</span>lat<span class="token punctuation">,</span> lon<span class="token punctuation">)</span>
+
+    <span class="token comment"># A superseded event is free to drop regardless of pressure: its</span>
+    <span class="token comment"># replacement has already arrived, so processing it is pure waste.</span>
+    <span class="token keyword">if</span> now <span class="token operator">-</span> occurred_at <span class="token operator">></span> STALE_AFTER_SECONDS<span class="token punctuation">:</span>
+        SHED<span class="token punctuation">.</span>labels<span class="token punctuation">(</span>stream<span class="token operator">=</span>stream<span class="token punctuation">,</span> area_class<span class="token operator">=</span>cell<span class="token punctuation">,</span> reason<span class="token operator">=</span><span class="token string">"stale"</span><span class="token punctuation">)</span><span class="token punctuation">.</span>inc<span class="token punctuation">(</span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> ShedDecision<span class="token punctuation">(</span><span class="token boolean">True</span><span class="token punctuation">,</span> <span class="token string">"stale"</span><span class="token punctuation">)</span>
+
+    <span class="token comment"># Filter 2. Under pressure, shed from the lowest-priority areas first.</span>
+    <span class="token comment"># Pressure 0.8 sheds rank > 80; pressure 1.0 sheds everything sheddable.</span>
+    <span class="token keyword">if</span> pressure <span class="token operator">></span> <span class="token number">0.5</span> <span class="token keyword">and</span> rank <span class="token operator">></span> <span class="token punctuation">(</span><span class="token number">1.0</span> <span class="token operator">-</span> pressure<span class="token punctuation">)</span> <span class="token operator">*</span> <span class="token number">100</span><span class="token punctuation">:</span>
+        SHED<span class="token punctuation">.</span>labels<span class="token punctuation">(</span>stream<span class="token operator">=</span>stream<span class="token punctuation">,</span> area_class<span class="token operator">=</span>cell<span class="token punctuation">,</span> reason<span class="token operator">=</span><span class="token string">"pressure"</span><span class="token punctuation">)</span><span class="token punctuation">.</span>inc<span class="token punctuation">(</span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> ShedDecision<span class="token punctuation">(</span><span class="token boolean">True</span><span class="token punctuation">,</span> <span class="token string">"pressure"</span><span class="token punctuation">)</span>
+
+    <span class="token keyword">return</span> ShedDecision<span class="token punctuation">(</span><span class="token boolean">False</span><span class="token punctuation">,</span> <span class="token string">"kept"</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>The default of <code>NEVER</code> for an unknown stream is the decision that makes this safe to operate. A topic added by another team inherits the conservative policy rather than the convenient one, and the cost of that mistake is a slower consumer instead of missing cadastral edits.</p>
+<figure class="fig">
+<svg viewBox="0 0 760 218" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="How much of the stream is shed as pressure rises, by area rank band">
+<title>Shedding graduates rather than switching on</title>
+<desc>The proportion of sheddable events dropped is plotted against consumer pressure, split by area priority rank. Below a pressure of zero point five nothing is shed at all except events already stale — the consumer is under load but coping, and discarding work it has capacity for would be pure loss. As pressure rises past zero point five, the lowest-priority areas begin to shed: at pressure zero point seven, areas ranked above thirty are dropped, which in a typical configuration is the long tail of low-priority regions. At pressure zero point nine only areas ranked ten or better survive. At pressure one point zero every sheddable stream is dropped in every area, and only the never-shed streams are still processed — which is the intended floor, because those are the events that cannot be recovered. The graduation matters because a binary switch means the consumer is either wasting capacity or discarding a third of the fleet's telemetry, with nothing in between, and because a gradual curve makes the shed counter a usable pressure gauge rather than an alarm bell.</desc>
+<rect x="0" y="0" width="760" height="218" fill="var(--fig-bg)"/>
+<text x="14" y="18" font-size="10" font-weight="600" fill="var(--fig-ink)">proportion of sheddable events dropped, against consumer pressure</text>
+<line x1="70" y1="150" x2="700" y2="150" stroke="var(--fig-line)" stroke-width="1.2"/>
+<line x1="70" y1="34" x2="70" y2="150" stroke="var(--fig-line)" stroke-width="1.2"/>
+<text x="30" y="46" font-size="8" fill="var(--fig-ink-soft)">100%</text>
+<text x="46" y="156" font-size="8" fill="var(--fig-ink-soft)">0</text>
+<text x="60" y="172" font-size="8" fill="var(--fig-ink-soft)">pressure 0.0</text>
+<text x="330" y="172" font-size="8" fill="var(--fig-ink-soft)">0.5</text>
+<text x="650" y="172" font-size="8" fill="var(--fig-ink-soft)">1.0</text>
+<line x1="385" y1="34" x2="385" y2="150" stroke="var(--fig-line-soft)" stroke-width="1.2" stroke-dasharray="3 3"/>
+<path d="M70,148 L385,148 L450,120 L540,80 L620,52 L700,42" fill="none" stroke="var(--fig-gold-edge)" stroke-width="2"/>
+<text x="440" y="112" font-size="8.5" fill="var(--fig-gold-edge)">rank &gt; 30 — the long tail of low-priority areas</text>
+<path d="M70,148 L520,148 L600,110 L700,44" fill="none" stroke="var(--fig-peach-edge)" stroke-width="2"/>
+<text x="530" y="140" font-size="8.5" fill="var(--fig-peach-edge)">rank 10–30</text>
+<path d="M70,148 L640,148 L700,48" fill="none" stroke="var(--fig-mint-edge)" stroke-width="2"/>
+<text x="600" y="140" font-size="8.5" fill="var(--fig-mint-edge)">rank ≤ 10 — priority areas, shed last</text>
+<text x="120" y="120" font-size="8.5" fill="var(--fig-ink-soft)">nothing shed but stale events — the consumer is loaded and coping</text>
+<rect x="14" y="182" width="732" height="30" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="26" y="196" font-size="9" fill="var(--fig-ink-soft)">A binary switch leaves the consumer either wasting capacity or discarding a third of the fleet's telemetry.</text>
+<text x="26" y="208" font-size="9" fill="var(--fig-ink-soft)">The graduated curve also makes the shed counter a pressure gauge rather than an alarm bell.</text>
+</svg>
+<figcaption><b>Figure 2.</b> Never-superseding streams are absent from this chart entirely — they sit at zero across the whole range, which is the property the first filter guarantees.</figcaption>
+</figure>
+<h2 id="parameter-reference" tabindex="-1"><a class="heading-anchor" href="#parameter-reference">Parameter reference</a></h2>
+<div class="table-scroll">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Spatial constraint</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>STREAM_POLICY</code></td>
+<td>dict</td>
+<td>Explicit per stream; unknown streams default to <code>NEVER</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>AREA_PRIORITY</code></td>
+<td>dict</td>
+<td>H3 res-4 cell to rank, from configuration not density</td>
+<td><code>{}</code></td>
+</tr>
+<tr>
+<td><code>DEFAULT_AREA_RANK</code></td>
+<td><code>int</code></td>
+<td>Applied to unconfigured areas; mid-range, not lowest</td>
+<td><code>50</code></td>
+</tr>
+<tr>
+<td><code>STALE_AFTER_SECONDS</code></td>
+<td><code>float</code></td>
+<td>Above the stream’s report interval, so only superseded events qualify</td>
+<td><code>30.0</code></td>
+</tr>
+<tr>
+<td><code>pressure</code></td>
+<td><code>float</code></td>
+<td>From the work budget, 0.0–1.0</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Shed counter labels</td>
+<td>—</td>
+<td>Stream, area and reason — shedding must be countable</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<h2 id="gotchas-and-spatial-edge-cases" tabindex="-1"><a class="heading-anchor" href="#gotchas-and-spatial-edge-cases">Gotchas and spatial edge cases</a></h2>
+<ol>
+<li>
+<p><strong>An unknown stream must default to never-shed.</strong> The convenient default is the dangerous one: a topic added by another team would silently become sheddable, and the first anyone knows is a gap in a dataset nobody was watching. The cost of the safe default is a consumer that sheds less than it could.</p>
+</li>
+<li>
+<p><strong>Area rank at resolution 4 is coarse, deliberately.</strong> A configuration file listing millions of cells is not maintainable, and priority is a regional decision rather than a neighbourhood one. Cells at resolution 4 are roughly the size of a metropolitan area, which matches how the decision is actually made.</p>
+</li>
+<li>
+<p><strong>Staleness is not the same as pressure shedding, and both need separate counters.</strong> A stale event is free to drop at any pressure because its successor has already arrived; a pressure shed is a deliberate sacrifice. Merging them into one counter makes it impossible to tell a healthy pipeline discarding superseded pings from one in distress.</p>
+</li>
+<li>
+<p><strong>Shedding interacts with deduplication.</strong> An event shed at the consumer may already have claimed its deduplication key if the claim happens before dispatch, so the retry finds the key present and suppresses an event that was never processed. Shed before claiming, or release the key on shed — the same ordering problem described in <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/temporal-dedup-windows/">Time-Windowed Deduplication for Moving Assets</a>.</p>
+</li>
+<li>
+<p><strong>The shed rate belongs in the error budget, not beside it.</strong> Shedding is deliberate incompleteness, so it spends the completeness objective defined in <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/slo-alerting-spatial-pipelines/">SLOs &amp; Alerting for Spatial Webhook Pipelines</a>. A pipeline that sheds routinely without that showing up in an objective has hidden a capacity problem in a feature.</p>
+</li>
+<li>
+<p><strong>Sustained shedding is a capacity decision, not an operational one.</strong> If pressure sits above the shed threshold for hours every day, the correct response is more consumers or a finer partitioning, not a lower threshold. Alert on the duration of shedding rather than only on its occurrence.</p>
+</li>
+</ol>
+<figure class="fig">
+<svg viewBox="0 0 760 188" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="An event shed after claiming its deduplication key, suppressing the retry that would have processed it">
+<title>Shed before the claim, or the retry is suppressed too</title>
+<desc>An event arrives, claims its deduplication key, and is then shed under pressure. The claim is now held by an event that was never processed, and because the key's lifetime is the retry horizon, every redelivery of that event for the next several hours finds the key present and is suppressed as a duplicate. The shedding decision, which was meant to drop one instance of a self-superseding event, has instead dropped the event permanently — including the retry that the pipeline would otherwise have handled once pressure eased. Ordering the shed decision before the claim avoids it entirely: a shed event never touches the deduplication store, so a redelivery is treated as a first sighting and processed normally. If the ordering cannot be changed, releasing the key on shed achieves the same thing at the cost of one extra round trip and a failure mode when the release itself fails.</desc>
+<rect x="0" y="0" width="760" height="188" fill="var(--fig-bg)"/>
+<defs><marker id="sh3-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<text x="14" y="18" font-size="9.5" font-weight="600" fill="var(--fig-rose-edge)">claim, then shed</text>
+<rect x="30" y="28" width="110" height="24" rx="4" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="40" y="44" font-size="8" fill="var(--fig-ink)">claim dedup key</text>
+<line x1="144" y1="40" x2="172" y2="40" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#sh3-a)"/>
+<rect x="176" y="28" width="110" height="24" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="186" y="44" font-size="8" fill="var(--fig-ink)">shed under pressure</text>
+<line x1="290" y1="40" x2="318" y2="40" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#sh3-a)"/>
+<rect x="322" y="28" width="240" height="24" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="332" y="44" font-size="8" fill="var(--fig-ink)">every retry for hours finds the key and is suppressed</text>
+<text x="30" y="70" font-size="8.5" fill="var(--fig-rose-edge)">a decision meant to drop one instance has dropped the event permanently</text>
+<line x1="14" y1="86" x2="746" y2="86" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="108" font-size="9.5" font-weight="600" fill="var(--fig-mint-edge)">shed, then claim</text>
+<rect x="30" y="118" width="110" height="24" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="40" y="134" font-size="8" fill="var(--fig-ink)">shed decision</text>
+<line x1="144" y1="130" x2="172" y2="130" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#sh3-a)"/>
+<rect x="176" y="118" width="240" height="24" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="186" y="134" font-size="8" fill="var(--fig-ink)">a shed event never touches the dedup store</text>
+<text x="430" y="134" font-size="8.5" fill="var(--fig-mint-edge)">a redelivery is a first sighting, and is processed</text>
+<text x="14" y="168" font-size="9" fill="var(--fig-ink-soft)">If the ordering cannot be changed, release the key on shed — one extra round trip, and a new failure mode when the release itself fails.</text>
+</svg>
+<figcaption><b>Figure 3.</b> Shedding and deduplication are independently correct and wrong together, which is why their order is part of the shedding design rather than an implementation detail.</figcaption>
+</figure>
+<h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> time
+<span class="token keyword">import</span> pytest
+
+NOW <span class="token operator">=</span> <span class="token number">1_780_000_000.0</span>
+BERLIN <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token number">52.5200</span><span class="token punctuation">,</span> <span class="token number">13.4049</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_boundary_edits_are_never_shed_at_any_pressure</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""The property the first filter exists to guarantee."""</span>
+    <span class="token keyword">for</span> pressure <span class="token keyword">in</span> <span class="token punctuation">(</span><span class="token number">0.0</span><span class="token punctuation">,</span> <span class="token number">0.5</span><span class="token punctuation">,</span> <span class="token number">0.9</span><span class="token punctuation">,</span> <span class="token number">1.0</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        decision <span class="token operator">=</span> decide<span class="token punctuation">(</span><span class="token string">"feature.boundary_edit"</span><span class="token punctuation">,</span> <span class="token operator">*</span>BERLIN<span class="token punctuation">,</span>
+                          occurred_at<span class="token operator">=</span>NOW<span class="token punctuation">,</span> pressure<span class="token operator">=</span>pressure<span class="token punctuation">,</span> now<span class="token operator">=</span>NOW<span class="token punctuation">)</span>
+        <span class="token keyword">assert</span> decision<span class="token punctuation">.</span>shed <span class="token keyword">is</span> <span class="token boolean">False</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_unknown_stream_defaults_to_never_shed</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""A topic somebody forgot to classify must keep its data."""</span>
+    decision <span class="token operator">=</span> decide<span class="token punctuation">(</span><span class="token string">"some.new.topic"</span><span class="token punctuation">,</span> <span class="token operator">*</span>BERLIN<span class="token punctuation">,</span>
+                      occurred_at<span class="token operator">=</span>NOW<span class="token punctuation">,</span> pressure<span class="token operator">=</span><span class="token number">1.0</span><span class="token punctuation">,</span> now<span class="token operator">=</span>NOW<span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> decision<span class="token punctuation">.</span>shed <span class="token keyword">is</span> <span class="token boolean">False</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_stale_pings_are_shed_even_at_zero_pressure</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Its successor already arrived; processing it is pure waste."""</span>
+    decision <span class="token operator">=</span> decide<span class="token punctuation">(</span><span class="token string">"vehicle.position"</span><span class="token punctuation">,</span> <span class="token operator">*</span>BERLIN<span class="token punctuation">,</span>
+                      occurred_at<span class="token operator">=</span>NOW <span class="token operator">-</span> <span class="token number">120</span><span class="token punctuation">,</span> pressure<span class="token operator">=</span><span class="token number">0.0</span><span class="token punctuation">,</span> now<span class="token operator">=</span>NOW<span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> decision<span class="token punctuation">.</span>shed <span class="token keyword">and</span> decision<span class="token punctuation">.</span>reason <span class="token operator">==</span> <span class="token string">"stale"</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_priority_areas_survive_longer_than_default_ones</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    AREA_PRIORITY<span class="token punctuation">[</span>h3<span class="token punctuation">.</span>latlng_to_cell<span class="token punctuation">(</span><span class="token operator">*</span>BERLIN<span class="token punctuation">,</span> <span class="token number">4</span><span class="token punctuation">)</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token number">5</span>
+    priority <span class="token operator">=</span> decide<span class="token punctuation">(</span><span class="token string">"vehicle.position"</span><span class="token punctuation">,</span> <span class="token operator">*</span>BERLIN<span class="token punctuation">,</span>
+                      occurred_at<span class="token operator">=</span>NOW<span class="token punctuation">,</span> pressure<span class="token operator">=</span><span class="token number">0.75</span><span class="token punctuation">,</span> now<span class="token operator">=</span>NOW<span class="token punctuation">)</span>
+    default <span class="token operator">=</span> decide<span class="token punctuation">(</span><span class="token string">"vehicle.position"</span><span class="token punctuation">,</span> <span class="token number">48.1372</span><span class="token punctuation">,</span> <span class="token number">11.5756</span><span class="token punctuation">,</span>
+                     occurred_at<span class="token operator">=</span>NOW<span class="token punctuation">,</span> pressure<span class="token operator">=</span><span class="token number">0.75</span><span class="token punctuation">,</span> now<span class="token operator">=</span>NOW<span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> <span class="token keyword">not</span> priority<span class="token punctuation">.</span>shed <span class="token keyword">and</span> default<span class="token punctuation">.</span>shed
+
+
+<span class="token keyword">def</span> <span class="token function">test_nothing_is_shed_below_the_pressure_floor</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Shedding work you have capacity for is loss, not management."""</span>
+    decision <span class="token operator">=</span> decide<span class="token punctuation">(</span><span class="token string">"vehicle.position"</span><span class="token punctuation">,</span> <span class="token operator">*</span>BERLIN<span class="token punctuation">,</span>
+                      occurred_at<span class="token operator">=</span>NOW<span class="token punctuation">,</span> pressure<span class="token operator">=</span><span class="token number">0.4</span><span class="token punctuation">,</span> now<span class="token operator">=</span>NOW<span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> decision<span class="token punctuation">.</span>shed <span class="token keyword">is</span> <span class="token boolean">False</span>
+</code></pre>
+</div>
+<p>The second test is the one worth keeping visible in review. It asserts a default rather than a behaviour, and defaults are what get changed by someone tidying a configuration table who does not know that the conservative value was the point.</p>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
+<ul>
+<li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/">Backpressure &amp; Flow Control for Spatial Consumers</a> — the topic this guide belongs to</li>
+<li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/applying-backpressure-when-a-spatial-consumer-falls-behind/">Applying Backpressure When a Spatial Consumer Falls Behind</a> — the step that must be exhausted before shedding starts</li>
+<li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/slo-alerting-spatial-pipelines/">SLOs &amp; Alerting for Spatial Webhook Pipelines</a> — where the shed rate spends the completeness budget</li>
+<li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Events</a> — the alternative to shedding for events that cannot be lost</li>
+</ul>
+
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        <div class="aside-card">
+          <h3>Related in this section</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/applying-backpressure-when-a-spatial-consumer-falls-behind/">Applying Backpressure When a Spatial Consumer Falls Behind</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/sizing-a-prefetch-window-for-mixed-geometry-payloads/">Sizing a Prefetch Window for Mixed Geometry Payloads</a></li>
+          </ul>
+        </div>
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a></li>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a></li>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a></li>
+            <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring &amp; Observability for Spatial Pipelines</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</article>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="https://www.geospatialwebhook.com/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/">Home</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queues &amp; Retries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/schema-evolution-versioning/">Schema Evolution &amp; Versioning for Spatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/temporal-dedup-windows/">Time-Windowed Deduplication for Moving Assets</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/streaming-large-geometries/">Streaming &amp; Chunking Large Geometry Payloads</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Queues &amp; Retries</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/">Backpressure &amp; Flow Control for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Monitoring</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/slo-alerting-spatial-pipelines/">SLOs &amp; Alerting for Spatial Webhook Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging &amp; Tracing for Spatial Events</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <a class="site-footer__gh" href="https://github.com/geospatialwebhook" target="_blank" rel="noopener" aria-label="Geospatial Webhook on GitHub">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5Z"/></svg><span>GitHub</span>
+      </a>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js?v=c31b7b80" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

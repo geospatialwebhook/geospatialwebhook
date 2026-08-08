@@ -252,6 +252,29 @@ async def sweep_orphans(store, broker_retention_seconds: int, referenced) -> int
 
 6. **The digest cannot double as the idempotency key.** Two genuinely different events can carry an identical geometry — the same boundary re-published by two sources — and they hash the same. Event identity comes from [Event Key Generation for Spatial Data](https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/); the digest identifies bytes.
 
+<figure class="fig">
+<svg viewBox="0 0 760 184" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two producers publishing the same geometry under a content-addressed key versus an event-id key">
+<title>Content addressing makes a retry free and a duplicate harmless</title>
+<desc>The same boundary geometry is published twice: once by a producer that timed out and retried, and once by a second service that independently republished the same shape. Under a content-addressed key both writes target the same object, so the second write replaces identical bytes and costs nothing to reconcile — there is exactly one object for one set of bytes, however many events reference it, and the orphan sweep has one thing to consider. Under an event-id key the same bytes are written twice under two names, so storage holds two copies, the sweep must decide about each independently, and a later deduplication of the events leaves one object referenced and one not, with no way to tell from the object itself. The content address is also what makes the producer retry safe without coordination: no lock, no check-then-write, and no window in which a partially written object is visible under a name something already references.</desc>
+<rect x="0" y="0" width="760" height="184" fill="var(--fig-bg)"/>
+<text x="14" y="18" font-size="10" font-weight="600" fill="var(--fig-ink)">the same bytes published twice — a retry, and an independent republish</text>
+<rect x="14" y="30" width="366" height="110" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.8"/>
+<text x="26" y="50" font-size="9.5" font-weight="600" fill="var(--fig-ink)">key = sha256(body)</text>
+<text x="26" y="72" font-size="8" font-family="monospace" fill="var(--fig-ink-soft)">geom/4f/4f2c…json  ← both writes</text>
+<text x="26" y="92" font-size="8.5" fill="var(--fig-mint-edge)">one object per set of bytes, however many events reference it</text>
+<text x="26" y="112" font-size="8.5" fill="var(--fig-ink-soft)">the retry needs no lock, no check-then-write, no coordination</text>
+<text x="26" y="130" font-size="8.5" fill="var(--fig-ink-soft)">the orphan sweep has one thing to consider</text>
+<rect x="392" y="30" width="354" height="110" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="404" y="50" font-size="9.5" font-weight="600" fill="var(--fig-ink)">key = event id</text>
+<text x="404" y="72" font-size="8" font-family="monospace" fill="var(--fig-ink-soft)">geom/evt-8871.json   geom/evt-8872.json</text>
+<text x="404" y="92" font-size="8.5" fill="var(--fig-rose-edge)">two copies of identical bytes, two names</text>
+<text x="404" y="112" font-size="8.5" fill="var(--fig-ink-soft)">the sweep must decide about each independently</text>
+<text x="404" y="130" font-size="8.5" fill="var(--fig-rose-edge)">after event dedup, one is referenced and one is not</text>
+<text x="14" y="166" font-size="9" fill="var(--fig-ink-soft)">…and nothing in the object itself says which. The content address removes the question rather than answering it.</text>
+</svg>
+<figcaption><b>Figure 3.</b> The digest is doing two jobs: it verifies the body on read, and it makes the write idempotent on the way in. Only the first is obvious from the code.</figcaption>
+</figure>
+
 ## Verification
 
 ```python

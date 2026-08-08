@@ -492,6 +492,39 @@ _M_PER_DEGREE <span class="token operator">=</span> <span class="token number">1
 <p><strong>A restart replays the fleet’s entire membership as entries.</strong> With empty state, the first ping from every asset inside a fence looks like an arrival. Either persist membership, or mark the first transition after startup with a flag consumers can ignore, as <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/idempotent-consumers-for-out-of-order-spatial-events/">Idempotent Consumers for Out-of-Order Spatial Events</a> discusses.</p>
 </li>
 </ol>
+<figure class="fig">
+<svg viewBox="0 0 760 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A stateful geofence router split across two replicas, each seeing half an asset's pings">
+<title>Two replicas, two half-pictures, and both emit spurious crossings</title>
+<desc>The geofence router holds per-asset membership in memory, which makes it stateful. Deployed as two replicas behind a round-robin distribution, a single vehicle's pings alternate between them: replica one sees pings one, three and five, replica two sees pings two, four and six. Each replica therefore has a membership set built from half the vehicle's history. When the vehicle sits inside a fence, replica one records an entry on its first ping; replica two, having never seen that entry, records its own entry on the next ping — so the depot receives two arrivals for one vehicle. Worse, when the vehicle leaves, whichever replica happens not to see the departing ping keeps the vehicle marked as inside indefinitely. Partitioning by asset identifier instead sends every ping for one vehicle to the same replica, so each asset's membership is complete in exactly one place; the replicas then scale by asset count rather than by ping count, which is the property the stateful design requires.</desc>
+<rect x="0" y="0" width="760" height="200" fill="var(--fig-bg)"/>
+<defs><marker id="gf3-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<text x="14" y="18" font-size="9.5" font-weight="600" fill="var(--fig-rose-edge)">round-robin across replicas — one vehicle, two half-pictures</text>
+<text x="30" y="44" font-size="8.5" fill="var(--fig-ink-soft)">veh-1 pings:</text>
+<circle cx="112" cy="40" r="4" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.2"/>
+<circle cx="132" cy="40" r="4" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<circle cx="152" cy="40" r="4" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.2"/>
+<circle cx="172" cy="40" r="4" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<circle cx="192" cy="40" r="4" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.2"/>
+<circle cx="212" cy="40" r="4" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<line x1="228" y1="40" x2="256" y2="30" stroke="var(--fig-line)" stroke-width="1.1" marker-end="url(#gf3-a)"/>
+<line x1="228" y1="40" x2="256" y2="58" stroke="var(--fig-line)" stroke-width="1.1" marker-end="url(#gf3-a)"/>
+<rect x="260" y="18" width="230" height="26" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="270" y="35" font-size="8" fill="var(--fig-ink)">replica 1 · membership from pings 1, 3, 5</text>
+<rect x="260" y="48" width="230" height="26" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="270" y="65" font-size="8" fill="var(--fig-ink)">replica 2 · membership from pings 2, 4, 6</text>
+<text x="502" y="35" font-size="8.5" fill="var(--fig-rose-edge)">both record an entry → the depot sees two arrivals</text>
+<text x="502" y="65" font-size="8.5" fill="var(--fig-rose-edge)">on departure, whichever misses the ping keeps it inside</text>
+<line x1="14" y1="92" x2="746" y2="92" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="114" font-size="9.5" font-weight="600" fill="var(--fig-mint-edge)">partitioned by asset id — one complete picture per vehicle</text>
+<rect x="260" y="122" width="230" height="26" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="270" y="139" font-size="8" fill="var(--fig-ink)">replica 1 · every ping for veh-1</text>
+<rect x="260" y="152" width="230" height="26" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="270" y="169" font-size="8" fill="var(--fig-ink)">replica 2 · every ping for veh-2</text>
+<text x="502" y="139" font-size="8.5" fill="var(--fig-mint-edge)">membership is complete in exactly one place</text>
+<text x="502" y="169" font-size="8.5" fill="var(--fig-ink-soft)">replicas scale by asset count, not by ping count</text>
+</svg>
+<figcaption><b>Figure 3.</b> The router looks stateless from the outside — one ping in, transitions out — which is why it is usually the first service someone scales by adding replicas.</figcaption>
+</figure>
 <h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
 <div class="code-block" data-lang="python">
   <div class="code-block__header">

@@ -258,6 +258,30 @@ The `ValueError` on a small sample is not defensive padding. A window derived fr
 
 6. **The window is not the TTL.** They are independent numbers and conflating them is the failure described in [Expiring Deduplication Keys Without Losing Late Retries](https://www.geospatialwebhook.com/idempotency-spatial-deduplication/temporal-dedup-windows/expiring-dedup-keys-without-losing-late-retries/) — this measurement sizes only the first.
 
+<figure class="fig">
+<svg viewBox="0 0 760 192" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A firmware rollout adding a motion-trigger mode and shifting the tenth percentile of the gap distribution">
+<title>A firmware rollout moves the window under your feet</title>
+<desc>The tenth percentile of the inter-arrival distribution is tracked across a firmware rollout. Before the rollout the fleet reports on a fixed ten-second cadence, so the tenth percentile sits near nine seconds and a window sized just under it suppresses almost nothing — which is correct, because there is almost nothing to suppress. Over the rollout week, devices gain a motion trigger that fires during acceleration and cornering, adding a whole new mode of one-to-two-second gaps to the distribution. The tenth percentile falls to about two seconds while the configured window stays at nine, so the window now sits above the entire new mode and suppresses every motion-triggered report — which is roughly a third of the fleet's events, discarded silently, including the ones describing the sharpest manoeuvres. Nothing errors and no alert fires, because a deduplication window doing more work looks identical to one doing the right amount. Alerting on a shift in the measured percentile catches it in days rather than at the next audit.</desc>
+<rect x="0" y="0" width="760" height="192" fill="var(--fig-bg)"/>
+<text x="14" y="18" font-size="10" font-weight="600" fill="var(--fig-ink)">10th percentile of inter-arrival gaps, across a firmware rollout</text>
+<line x1="60" y1="130" x2="720" y2="130" stroke="var(--fig-line)" stroke-width="1.2"/>
+<line x1="60" y1="34" x2="60" y2="130" stroke="var(--fig-line)" stroke-width="1.2"/>
+<text x="26" y="46" font-size="8" fill="var(--fig-ink-soft)">10 s</text>
+<text x="34" y="126" font-size="8" fill="var(--fig-ink-soft)">0</text>
+<line x1="60" y1="52" x2="720" y2="52" stroke="var(--fig-gold-edge)" stroke-width="1.4" stroke-dasharray="4 3"/>
+<text x="600" y="48" font-size="8.5" fill="var(--fig-gold-edge)">configured window — unchanged</text>
+<path d="M60,56 L240,56 C300,58 340,90 380,108 L720,112" fill="none" stroke="var(--fig-mint-edge)" stroke-width="2.2"/>
+<text x="80" y="74" font-size="8.5" fill="var(--fig-mint-edge)">fixed 10 s cadence</text>
+<line x1="250" y1="34" x2="250" y2="130" stroke="var(--fig-line)" stroke-width="1.2" stroke-dasharray="3 3"/>
+<text x="256" y="32" font-size="8.5" fill="var(--fig-ink-soft)">firmware rollout adds a motion trigger</text>
+<text x="420" y="102" font-size="8.5" fill="var(--fig-rose-edge)">p10 falls to ~2 s · the window now sits above the whole new mode</text>
+<rect x="14" y="144" width="732" height="42" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="26" y="162" font-size="9" fill="var(--fig-ink-soft)">Roughly a third of the fleet's events are now suppressed — including the reports describing the sharpest manoeuvres.</text>
+<text x="26" y="177" font-size="9" fill="var(--fig-ink-soft)">Nothing errors: a window doing too much work looks exactly like one doing the right amount. Alert on the percentile, not the outcome.</text>
+</svg>
+<figcaption><b>Figure 3.</b> The window did not change and the fleet did. Watching the measured percentile rather than the configured value is what turns that into a days-long problem instead of an audit finding.</figcaption>
+</figure>
+
 ## Verification
 
 ```python
