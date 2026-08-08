@@ -78,33 +78,33 @@ This guide sits under [Conflict Resolution Strategies](https://www.geospatialweb
 ## Union loses the removals
 
 <figure class="fig">
-<svg viewBox="0 0 760 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A union of two concurrent zone edits restoring an area one editor deliberately removed">
+<svg viewBox="0 0 760 252" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A union of two concurrent zone edits restoring an area one editor deliberately removed">
 <title>The union puts back what somebody deliberately took out</title>
 <desc>A service zone is shown as the ancestor both editors loaded. Editor A extends it northwards to cover a new district. Editor B, working independently, trims the southern edge because the service no longer reaches an industrial estate down there. Taking the union of A's result and B's result produces a zone that has A's northern extension and also has the southern estate back, because a union can only ever add area. B's removal has not merely been lost — it has been reversed, and the resulting zone claims coverage the operator specifically decided not to offer. A three-way merge against the ancestor sees the additions and the removals separately: A added the north, B removed the south, the two regions do not touch, so the merged zone is the ancestor plus the north minus the south. That result is what both editors would have produced had they worked in sequence, and it is derivable only because the ancestor was kept.</desc>
-<rect x="0" y="0" width="760" height="236" fill="var(--fig-bg)"/>
+<rect x="0" y="0" width="760" height="252" fill="var(--fig-bg)"/>
 <text x="14" y="18" font-size="10" font-weight="600" fill="var(--fig-ink)">one service zone · two independent edits</text>
 <text x="30" y="42" font-size="9" font-weight="600" fill="var(--fig-ink-soft)">ancestor</text>
-<rect x="30" y="52" width="110" height="90" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.5"/>
 <text x="176" y="42" font-size="9" font-weight="600" fill="var(--fig-mint-edge)">A: extend north</text>
-<rect x="176" y="52" width="110" height="90" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
-<rect x="176" y="30" width="110" height="22" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
 <text x="322" y="42" font-size="9" font-weight="600" fill="var(--fig-peach-edge)">B: trim south</text>
-<rect x="322" y="52" width="110" height="66" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
-<rect x="322" y="118" width="110" height="24" fill="var(--fig-bg)" stroke="var(--fig-peach-edge)" stroke-width="1.5" stroke-dasharray="4 3"/>
-<text x="326" y="134" font-size="7.5" fill="var(--fig-peach-edge)">removed</text>
 <text x="468" y="42" font-size="9" font-weight="600" fill="var(--fig-rose-edge)">union(A, B) — wrong</text>
-<rect x="468" y="52" width="110" height="90" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
-<rect x="468" y="30" width="110" height="22" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
-<text x="472" y="134" font-size="7.5" fill="var(--fig-rose-edge)">estate is back</text>
 <text x="614" y="42" font-size="9" font-weight="600" fill="var(--fig-mint-edge)">three-way merge</text>
-<rect x="614" y="52" width="110" height="66" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
-<rect x="614" y="30" width="110" height="22" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
-<text x="618" y="134" font-size="7.5" fill="var(--fig-mint-edge)">north added, south gone</text>
-<rect x="14" y="158" width="732" height="66" rx="6" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.4"/>
-<text x="26" y="178" font-size="9.5" font-weight="600" fill="var(--fig-ink)">A union can only add area, so it cannot represent a decision to remove one</text>
-<text x="26" y="197" font-size="9" fill="var(--fig-ink-soft)">B's trim is not lost, it is reversed: the merged zone claims coverage the operator specifically decided not to offer, and it will</text>
-<text x="26" y="210" font-size="9" fill="var(--fig-ink-soft)">keep claiming it until someone notices. The three-way result is what the two editors would have produced working in sequence,</text>
-<text x="26" y="222" font-size="9" fill="var(--fig-mint-edge)">and it is derivable only because the ancestor was stored deliberately.</text>
+<rect x="30" y="72" width="110" height="90" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.5"/>
+<rect x="176" y="72" width="110" height="90" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<rect x="176" y="50" width="110" height="22" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<rect x="322" y="72" width="110" height="66" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<rect x="322" y="138" width="110" height="24" fill="var(--fig-bg)" stroke="var(--fig-peach-edge)" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text x="326" y="154" font-size="7.5" fill="var(--fig-peach-edge)">removed</text>
+<rect x="468" y="72" width="110" height="90" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<rect x="468" y="50" width="110" height="22" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="472" y="154" font-size="7.5" fill="var(--fig-rose-edge)">estate is back</text>
+<rect x="614" y="72" width="110" height="66" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<rect x="614" y="50" width="110" height="22" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<text x="618" y="154" font-size="7.5" fill="var(--fig-mint-edge)">north added, south gone</text>
+<rect x="14" y="174" width="732" height="66" rx="6" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.4"/>
+<text x="26" y="194" font-size="9.5" font-weight="600" fill="var(--fig-ink)">A union can only add area, so it cannot represent a decision to remove one</text>
+<text x="26" y="213" font-size="9" fill="var(--fig-ink-soft)">B's trim is not lost, it is reversed: the merged zone claims coverage the operator specifically decided not to offer, and it will</text>
+<text x="26" y="226" font-size="9" fill="var(--fig-ink-soft)">keep claiming it until someone notices. The three-way result is what the two editors would have produced working in sequence,</text>
+<text x="26" y="238" font-size="9" fill="var(--fig-mint-edge)">and it is derivable only because the ancestor was stored deliberately.</text>
 </svg>
 <figcaption><b>Figure 1.</b> Without the ancestor, A's addition and B's removal are both just "a difference between two shapes", and nothing can tell them apart.</figcaption>
 </figure>

@@ -229,7 +229,8 @@ The exception message is the important part. When no resolution works, the answe
 <circle cx="283" cy="76" r="12" fill="var(--fig-line-soft)" opacity="0.3"/>
 <circle cx="231" cy="100" r="12" fill="var(--fig-line-soft)" opacity="0.3"/>
 <circle cx="283" cy="100" r="12" fill="var(--fig-line-soft)" opacity="0.3"/>
-<text x="194" y="124" font-size="8.5" fill="var(--fig-rose-edge)">six are water and road; one is the bay</text>
+<text x="194" y="112" font-size="8.5" fill="var(--fig-rose-edge)">six are water and road;</text>
+<text x="194" y="124" font-size="8.5" fill="var(--fig-rose-edge)">one is the bay</text>
 <rect x="344" y="32" width="150" height="98" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
 <text x="356" y="50" font-size="9" font-weight="600" fill="var(--fig-ink)">res 11 — hundreds</text>
 <circle cx="419" cy="88" r="5" fill="var(--fig-rose-edge)" opacity="0.6"/>
