@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>Capturing PostGIS Changes with Logical Replication · Geo Webhook</title>
+  <meta name="description" content="Replace fragile PostGIS triggers with a logical replication slot: decode WAL into feature-change events, keep geometry decoding off the replication connection, and never let the slot fall behind unwatched."/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/capturing-postgis-changes-with-logical-replication/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/capturing-postgis-changes-with-logical-replication/"/>
+  <meta property="og:title" content="Capturing PostGIS Changes with Logical Replication"/>
+  <meta property="og:description" content="Replace fragile PostGIS triggers with a logical replication slot: decode WAL into feature-change events, keep geometry decoding off the replication connection, and never let the slot fall behind unwatched."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Capturing PostGIS Changes with Logical Replication"/>
+  <meta name="twitter:description" content="Replace fragile PostGIS triggers with a logical replication slot: decode WAL into feature-change events, keep geometry decoding off the replication connection, and never let the slot fall behind unwatched."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=180687f5"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },{ "@type": "ListItem", "position": 2, "name": "Core Event Fundamentals Architecture", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" },{ "@type": "ListItem", "position": 3, "name": "Feature Change Triggers", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/" },{ "@type": "ListItem", "position": 4, "name": "Capturing Postgis Changes With Logical Replication", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/capturing-postgis-changes-with-logical-replication/" }
+    ]
+  }
+  </script>
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/capturing-postgis-changes-with-logical-replication/#article",
+    "mainEntityOfPage": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/capturing-postgis-changes-with-logical-replication/",
+    "headline": "Capturing PostGIS Changes with Logical Replication",
+    "description": "Replace fragile PostGIS triggers with a logical replication slot: decode WAL into feature-change events, keep geometry decoding off the replication connection, and never let the slot fall behind unwatched.",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
+    "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
+    "image": "https://www.geospatialwebhook.com/og-image.png",
+    "url": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/capturing-postgis-changes-with-logical-replication/",
+    "articleSection": "Core Event Fundamentals Architecture",
+    "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
+  }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="https://www.geospatialwebhook.com/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="https://www.geospatialwebhook.com/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Queues &amp; Retries</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
+      </a>
+    </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle"
+            aria-label="Switch to dark theme" title="Switch to dark theme">
+      <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.4v2.3M12 19.3v2.3M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.3M19.3 12h2.3M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="https://www.geospatialwebhook.com/">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals Architecture</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">Capturing Postgis Changes With Logical Replication</span>
+    </nav>
+
+    <h1 class="page__title">Capturing PostGIS Changes with Logical Replication</h1>
+
+    <div class="page__layout">
+      <div class="markdown">
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Capturing PostGIS Changes with Logical Replication",
+      "description": "A trigger fires inside the writing transaction and makes every feature edit pay for the webhook. A logical replication slot moves that work out of the write path entirely, at the cost of one operational hazard that will fill the disk if nobody watches it.",
+      "url": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/capturing-postgis-changes-with-logical-replication/",
+      "datePublished": "2026-08-08",
+      "dateModified": "2026-08-08",
+      "author": {"@type": "Organization", "name": "geospatialwebhook.com"},
+      "publisher": {"@type": "Organization", "name": "geospatialwebhook.com"}
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/"},
+        {"@type": "ListItem", "position": 2, "name": "Core Event Fundamentals & Architecture", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/"},
+        {"@type": "ListItem", "position": 3, "name": "Feature Change Triggers", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/"},
+        {"@type": "ListItem", "position": 4, "name": "Capturing PostGIS Changes with Logical Replication", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/capturing-postgis-changes-with-logical-replication/"}
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Capture PostGIS feature changes with a logical replication slot",
+      "step": [
+        {"@type": "HowToStep", "position": 1, "name": "Set REPLICA IDENTITY so an update carries the old geometry as well as the new"},
+        {"@type": "HowToStep", "position": 2, "name": "Create a slot and a publication scoped to the feature tables"},
+        {"@type": "HowToStep", "position": 3, "name": "Decode changes off the replication connection, never on it"},
+        {"@type": "HowToStep", "position": 4, "name": "Advance the confirmed position only after the event is durable, and alert on slot lag"}
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Why use logical replication instead of a PostGIS trigger?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Because a trigger runs inside the writing transaction, so every feature edit pays for the change-capture work and any slowness in it becomes slowness in the application's write path. A trigger that serialises a large multipolygon to GeoJSON can add hundreds of milliseconds to a commit, and one that calls out to a queue can hold a transaction open across a network round trip. Logical replication reads the write-ahead log after the fact, so the writer commits at full speed and the capture cost lands in a separate process."}
+        },
+        {
+          "@type": "Question",
+          "name": "What is the danger of a replication slot?",
+          "acceptedAnswer": {"@type": "Answer", "text": "An unconsumed slot pins the write-ahead log. PostgreSQL cannot recycle WAL segments that a slot has not confirmed, so a consumer that crashes on a Friday can fill the data volume by Sunday and take the database down — including for writers that have nothing to do with the feature stream. It is the one failure mode that turns a change-capture outage into a database outage, and it is why slot lag needs an alert before the slot is created."}
+        },
+        {
+          "@type": "Question",
+          "name": "How do I get the previous geometry on an update?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Set REPLICA IDENTITY FULL on the table, or define an index-backed identity that includes the geometry column. By default an update record carries only the primary key of the old row, so a consumer wanting to know what changed spatially — whether the feature moved, grew or was merely re-attributed — has the new geometry and nothing to compare it against. FULL makes the old row available at the cost of larger WAL records."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>Set <code>REPLICA IDENTITY FULL</code> before creating the slot, decode the WAL in a process that does nothing else, and alert on slot lag on day one — an unconsumed replication slot pins the write-ahead log, so a crashed consumer fills the data volume and takes down every writer, not just the feature stream.</strong></p>
+<p>This guide sits under <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers</a>, within <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a>. It is the alternative to the in-transaction trigger that topic describes, and it trades a write-path cost for an operational one.</p>
+<h2 id="when-to-use-this-pattern" tabindex="-1"><a class="heading-anchor" href="#when-to-use-this-pattern">When to use this pattern</a></h2>
+<ul>
+<li>Feature edits are frequent enough that trigger cost shows up in commit latency, or geometries are large enough that serialising one inside the transaction is measurable.</li>
+<li>Something other than your application writes to the tables — a bulk import, a GIS desktop client, a migration — and a trigger is the only thing that would catch it. This is also the argument <em>for</em> triggers over application-level publishing, and logical replication keeps it.</li>
+<li>You can operate a slot, which means you can alert on its lag and have somewhere for the consumer to run.</li>
+</ul>
+<p>If feature edits are rare and small, a trigger is simpler and the operational hazard is not worth taking on.</p>
+<h2 id="where-the-cost-lands" tabindex="-1"><a class="heading-anchor" href="#where-the-cost-lands">Where the cost lands</a></h2>
+<figure class="fig">
+<svg viewBox="0 0 760 224" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A trigger inside the writing transaction compared with WAL decoding after commit">
+<title>Inside the transaction, or after it</title>
+<desc>Two change-capture designs are traced against one feature edit. With a trigger, the transaction begins, the row is updated, the trigger then serialises the geometry to GeoJSON and enqueues an event, and only then does the commit complete — so the serialisation time, which scales with vertex count, is added directly to the write latency the application sees, and a queue call inside the trigger holds the transaction open across a network round trip. With logical replication the transaction begins, the row is updated, and the commit completes immediately; the change is durable in the write-ahead log, and a separate decoder process reads it afterwards, serialises the geometry and publishes the event on its own time. The application's write latency is unchanged by the size of the geometry. What has been bought is not less work but work moved off the critical path, and what has been sold is a new failure mode: the decoder is now something that can fall behind, and while it is behind the database cannot recycle the log.</desc>
+<rect x="0" y="0" width="760" height="224" fill="var(--fig-bg)"/>
+<defs><marker id="lr-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<text x="14" y="18" font-size="9.5" font-weight="600" fill="var(--fig-rose-edge)">trigger — the writer pays for the geometry</text>
+<rect x="14" y="28" width="70" height="26" rx="4" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="24" y="45" font-size="8" fill="var(--fig-ink)">BEGIN</text>
+<rect x="88" y="28" width="86" height="26" rx="4" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="98" y="45" font-size="8" fill="var(--fig-ink)">UPDATE row</text>
+<rect x="178" y="28" width="188" height="26" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="188" y="45" font-size="8" fill="var(--fig-ink)">trigger: ST_AsGeoJSON + enqueue</text>
+<rect x="370" y="28" width="70" height="26" rx="4" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="380" y="45" font-size="8" fill="var(--fig-ink)">COMMIT</text>
+<line x1="14" y1="64" x2="440" y2="64" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="446" y="68" font-size="8.5" fill="var(--fig-rose-edge)">write latency the application sees — grows with vertex count</text>
+<line x1="14" y1="86" x2="746" y2="86" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="106" font-size="9.5" font-weight="600" fill="var(--fig-mint-edge)">logical replication — the writer commits and leaves</text>
+<rect x="14" y="116" width="70" height="26" rx="4" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="24" y="133" font-size="8" fill="var(--fig-ink)">BEGIN</text>
+<rect x="88" y="116" width="86" height="26" rx="4" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="98" y="133" font-size="8" fill="var(--fig-ink)">UPDATE row</text>
+<rect x="178" y="116" width="70" height="26" rx="4" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="188" y="133" font-size="8" fill="var(--fig-ink)">COMMIT</text>
+<line x1="14" y1="152" x2="248" y2="152" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<text x="254" y="156" font-size="8.5" fill="var(--fig-mint-edge)">write latency — independent of geometry size</text>
+<line x1="248" y1="129" x2="290" y2="129" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#lr-a)"/>
+<rect x="294" y="116" width="452" height="26" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="304" y="133" font-size="8.5" fill="var(--fig-ink)">decoder process: read WAL · serialise geometry · publish — on its own time</text>
+<rect x="14" y="172" width="732" height="42" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.4"/>
+<text x="26" y="190" font-size="9.5" font-weight="600" fill="var(--fig-ink)">What was bought, and what was sold</text>
+<text x="26" y="206" font-size="9" fill="var(--fig-ink-soft)">Not less work — work moved off the critical path. The decoder is now something that can fall behind, and while it is behind the database cannot recycle its log.</text>
+</svg>
+<figcaption><b>Figure 1.</b> The trade is real in both directions. Commit latency stops depending on geometry size; a new process becomes load-bearing for the database's disk usage.</figcaption>
+</figure>
+<h2 id="complete-runnable-implementation" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-implementation">Complete runnable implementation</a></h2>
+<p>Set up the database side first. <code>REPLICA IDENTITY FULL</code> is what makes an update carry the old row, which is the only way to tell a geometry change from an attribute change.</p>
+<div class="code-block" data-lang="sql">
+  <div class="code-block__header">
+    <span class="code-block__lang">sql</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-sql" tabindex="0"><code class="language-sql"><span class="token comment">-- Old geometry available on UPDATE. Without this, an update record carries</span>
+<span class="token comment">-- only the primary key of the old row and "did it move?" is unanswerable.</span>
+<span class="token keyword">ALTER</span> <span class="token keyword">TABLE</span> features REPLICA <span class="token keyword">IDENTITY</span> <span class="token keyword">FULL</span><span class="token punctuation">;</span>
+
+<span class="token keyword">CREATE</span> PUBLICATION feature_changes <span class="token keyword">FOR</span> <span class="token keyword">TABLE</span> features<span class="token punctuation">;</span>
+
+<span class="token comment">-- pgoutput is built in; wal2json is easier to read but must be installed.</span>
+<span class="token keyword">SELECT</span> pg_create_logical_replication_slot<span class="token punctuation">(</span><span class="token string">'feature_capture'</span><span class="token punctuation">,</span> <span class="token string">'wal2json'</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</code></pre>
+</div>
+<p>Then the decoder. It does one thing: read, publish, confirm.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">import</span> json
+<span class="token keyword">from</span> datetime <span class="token keyword">import</span> datetime<span class="token punctuation">,</span> UTC
+
+<span class="token keyword">import</span> psycopg
+<span class="token keyword">from</span> psycopg<span class="token punctuation">.</span>rows <span class="token keyword">import</span> dict_row
+<span class="token keyword">from</span> prometheus_client <span class="token keyword">import</span> Counter<span class="token punctuation">,</span> Gauge
+<span class="token keyword">from</span> shapely <span class="token keyword">import</span> wkb
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> mapping
+
+DECODED <span class="token operator">=</span> Counter<span class="token punctuation">(</span><span class="token string">"wal_changes_decoded_total"</span><span class="token punctuation">,</span> <span class="token string">"WAL changes decoded"</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token string">"action"</span><span class="token punctuation">,</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+SLOT_LAG <span class="token operator">=</span> Gauge<span class="token punctuation">(</span><span class="token string">"wal_slot_lag_bytes"</span><span class="token punctuation">,</span> <span class="token string">"Unconsumed WAL held by the slot"</span><span class="token punctuation">)</span>
+
+SLOT <span class="token operator">=</span> <span class="token string">"feature_capture"</span>
+
+
+<span class="token keyword">def</span> <span class="token function">_geometry</span><span class="token punctuation">(</span>hex_ewkb<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">|</span> <span class="token boolean">None</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span> <span class="token operator">|</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""PostGIS emits EWKB hex; shapely reads it and drops the SRID prefix."""</span>
+    <span class="token keyword">if</span> hex_ewkb <span class="token keyword">is</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token boolean">None</span>
+    <span class="token keyword">return</span> mapping<span class="token punctuation">(</span>wkb<span class="token punctuation">.</span>loads<span class="token punctuation">(</span><span class="token builtin">bytes</span><span class="token punctuation">.</span>fromhex<span class="token punctuation">(</span>hex_ewkb<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">to_event</span><span class="token punctuation">(</span>change<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""One WAL change -> one feature-change event.
+
+    Both geometries are carried. A consumer needs the old one to tell a
+    move from an attribute edit, and to invalidate the tiles the feature
+    used to cover as well as the ones it covers now.
+    """</span>
+    cols <span class="token operator">=</span> <span class="token builtin">dict</span><span class="token punctuation">(</span><span class="token builtin">zip</span><span class="token punctuation">(</span>change<span class="token punctuation">[</span><span class="token string">"columnnames"</span><span class="token punctuation">]</span><span class="token punctuation">,</span> change<span class="token punctuation">[</span><span class="token string">"columnvalues"</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    old <span class="token operator">=</span> <span class="token builtin">dict</span><span class="token punctuation">(</span><span class="token builtin">zip</span><span class="token punctuation">(</span>change<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"oldkeys"</span><span class="token punctuation">,</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"keynames"</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+                   change<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"oldkeys"</span><span class="token punctuation">,</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"keyvalues"</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+    <span class="token keyword">return</span> <span class="token punctuation">{</span>
+        <span class="token string">"schema_version"</span><span class="token punctuation">:</span> <span class="token number">2</span><span class="token punctuation">,</span>
+        <span class="token string">"action"</span><span class="token punctuation">:</span> change<span class="token punctuation">[</span><span class="token string">"kind"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>                     <span class="token comment"># insert | update | delete</span>
+        <span class="token string">"feature_id"</span><span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">(</span>cols<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"id"</span><span class="token punctuation">)</span> <span class="token keyword">or</span> old<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"id"</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+        <span class="token string">"occurred_at"</span><span class="token punctuation">:</span> datetime<span class="token punctuation">.</span>now<span class="token punctuation">(</span>UTC<span class="token punctuation">)</span><span class="token punctuation">.</span>isoformat<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+        <span class="token string">"crs"</span><span class="token punctuation">:</span> <span class="token string">"EPSG:4326"</span><span class="token punctuation">,</span>
+        <span class="token string">"geometry"</span><span class="token punctuation">:</span> _geometry<span class="token punctuation">(</span>cols<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"geom"</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+        <span class="token string">"previous_geometry"</span><span class="token punctuation">:</span> _geometry<span class="token punctuation">(</span>old<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"geom"</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+    <span class="token punctuation">}</span>
+
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">run</span><span class="token punctuation">(</span>dsn<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> publish<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Stream the slot, publish each change, confirm only when durable."""</span>
+    <span class="token keyword">async</span> <span class="token keyword">with</span> <span class="token keyword">await</span> psycopg<span class="token punctuation">.</span>AsyncConnection<span class="token punctuation">.</span>connect<span class="token punctuation">(</span>
+        dsn<span class="token punctuation">,</span> autocommit<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span> row_factory<span class="token operator">=</span>dict_row
+    <span class="token punctuation">)</span> <span class="token keyword">as</span> conn<span class="token punctuation">:</span>
+        cur <span class="token operator">=</span> conn<span class="token punctuation">.</span>cursor<span class="token punctuation">(</span><span class="token punctuation">)</span>
+        <span class="token keyword">await</span> cur<span class="token punctuation">.</span>execute<span class="token punctuation">(</span>
+            <span class="token string">"SELECT lsn, data FROM pg_logical_slot_get_changes(%s, NULL, NULL)"</span><span class="token punctuation">,</span>
+            <span class="token punctuation">(</span>SLOT<span class="token punctuation">,</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+        <span class="token punctuation">)</span>
+        <span class="token keyword">async</span> <span class="token keyword">for</span> row <span class="token keyword">in</span> cur<span class="token punctuation">:</span>
+            <span class="token keyword">for</span> change <span class="token keyword">in</span> json<span class="token punctuation">.</span>loads<span class="token punctuation">(</span>row<span class="token punctuation">[</span><span class="token string">"data"</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">[</span><span class="token string">"change"</span><span class="token punctuation">]</span><span class="token punctuation">:</span>
+                event <span class="token operator">=</span> to_event<span class="token punctuation">(</span>change<span class="token punctuation">)</span>
+                <span class="token comment"># Publish BEFORE confirming. Confirming first means a crash</span>
+                <span class="token comment"># here loses the change permanently — the WAL is already gone.</span>
+                <span class="token keyword">await</span> publish<span class="token punctuation">(</span>event<span class="token punctuation">)</span>
+                DECODED<span class="token punctuation">.</span>labels<span class="token punctuation">(</span>action<span class="token operator">=</span>event<span class="token punctuation">[</span><span class="token string">"action"</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">.</span>inc<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">watch_slot_lag</span><span class="token punctuation">(</span>dsn<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""The alert that has to exist before the slot does."""</span>
+    <span class="token keyword">async</span> <span class="token keyword">with</span> <span class="token keyword">await</span> psycopg<span class="token punctuation">.</span>AsyncConnection<span class="token punctuation">.</span>connect<span class="token punctuation">(</span>dsn<span class="token punctuation">)</span> <span class="token keyword">as</span> conn<span class="token punctuation">:</span>
+        <span class="token keyword">while</span> <span class="token boolean">True</span><span class="token punctuation">:</span>
+            row <span class="token operator">=</span> <span class="token keyword">await</span> <span class="token punctuation">(</span><span class="token keyword">await</span> conn<span class="token punctuation">.</span>execute<span class="token punctuation">(</span>
+                <span class="token triple-quoted-string string">"""
+                SELECT pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn)
+                FROM pg_replication_slots WHERE slot_name = %s
+                """</span><span class="token punctuation">,</span>
+                <span class="token punctuation">(</span>SLOT<span class="token punctuation">,</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+            <span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span>fetchone<span class="token punctuation">(</span><span class="token punctuation">)</span>
+            SLOT_LAG<span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">(</span>row<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span> <span class="token keyword">or</span> <span class="token number">0</span><span class="token punctuation">)</span>
+            <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span><span class="token number">15</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>Publishing before confirming gives at-least-once delivery: a crash between the two replays the change. The reverse order gives at-most-once and silent loss, because once the slot has confirmed a position the WAL behind it is recyclable and the change is unrecoverable.</p>
+<figure class="fig">
+<svg viewBox="0 0 760 216" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Write-ahead log growth over a weekend while a replication slot is not consumed">
+<title>The failure that takes the database with it</title>
+<desc>Write-ahead log usage is plotted across a weekend. Under normal operation the decoder confirms its position continuously and PostgreSQL recycles segments behind it, so usage stays flat at a few gigabytes regardless of write volume. The decoder crashes on Friday evening. From that moment the slot stops confirming, and because PostgreSQL may not recycle any segment a slot has not confirmed, usage climbs at the rate the database generates log — steadily, without any error being raised, because nothing is wrong from the database's point of view. By Sunday the data volume is full, and a full data volume stops every writer, including applications that have nothing to do with the feature stream. The alert that prevents this is a threshold on the byte distance between the current log position and the slot's confirmed position, and it needs to exist before the slot does, because the window between the crash and the outage is measured in hours and nobody is looking at a dashboard for a service that has already stopped emitting metrics.</desc>
+<rect x="0" y="0" width="760" height="216" fill="var(--fig-bg)"/>
+<text x="14" y="18" font-size="10" font-weight="600" fill="var(--fig-ink)">WAL volume on disk · decoder crashes Friday 18:00</text>
+<line x1="50" y1="150" x2="740" y2="150" stroke="var(--fig-line)" stroke-width="1.2"/>
+<line x1="50" y1="34" x2="50" y2="150" stroke="var(--fig-line)" stroke-width="1.2"/>
+<line x1="50" y1="46" x2="740" y2="46" stroke="var(--fig-rose-edge)" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="600" y="42" font-size="8.5" fill="var(--fig-rose-edge)">data volume full</text>
+<path d="M50,142 L200,142 L230,141 L260,142" fill="none" stroke="var(--fig-mint-edge)" stroke-width="2"/>
+<path d="M260,142 L740,48" fill="none" stroke="var(--fig-rose-edge)" stroke-width="2.2"/>
+<line x1="260" y1="34" x2="260" y2="150" stroke="var(--fig-line)" stroke-width="1.3" stroke-dasharray="3 3"/>
+<text x="266" y="32" font-size="8.5" fill="var(--fig-ink-soft)">decoder crashes · nothing raises</text>
+<text x="60" y="134" font-size="8.5" fill="var(--fig-mint-edge)">flat — segments recycled behind the confirmed position</text>
+<text x="400" y="118" font-size="8.5" fill="var(--fig-rose-edge)">climbing at the rate the database writes log</text>
+<text x="56" y="164" font-size="8" fill="var(--fig-ink-soft)">Fri</text>
+<text x="264" y="164" font-size="8" fill="var(--fig-ink-soft)">Fri 18:00</text>
+<text x="480" y="164" font-size="8" fill="var(--fig-ink-soft)">Sat</text>
+<text x="700" y="164" font-size="8" fill="var(--fig-ink-soft)">Sun</text>
+<rect x="14" y="176" width="732" height="34" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="26" y="196" font-size="9" fill="var(--fig-ink-soft)">A full data volume stops every writer, including applications with nothing to do with the feature stream. Alert on the byte</text>
+<text x="26" y="206" font-size="9" fill="var(--fig-ink-soft)">distance between the current log position and the slot's confirmed one — before the slot is created, not after the first incident.</text>
+</svg>
+<figcaption><b>Figure 2.</b> Nothing errors while this is happening. The database is behaving exactly as documented, which is why it needs an external alert rather than a log line.</figcaption>
+</figure>
+<h2 id="parameter-reference" tabindex="-1"><a class="heading-anchor" href="#parameter-reference">Parameter reference</a></h2>
+<div class="table-scroll">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Spatial constraint</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>REPLICA IDENTITY</code></td>
+<td>table setting</td>
+<td><code>FULL</code> to carry the old geometry; without it, moves are undetectable</td>
+<td><code>DEFAULT</code></td>
+</tr>
+<tr>
+<td>Output plugin</td>
+<td><code>str</code></td>
+<td><code>wal2json</code> for readability, <code>pgoutput</code> for lower overhead on large geometries</td>
+<td><code>wal2json</code></td>
+</tr>
+<tr>
+<td><code>max_slot_wal_keep_size</code></td>
+<td>size</td>
+<td>Caps the damage: the slot is invalidated rather than the disk filling</td>
+<td><code>-1</code> (unlimited)</td>
+</tr>
+<tr>
+<td><code>wal_level</code></td>
+<td><code>str</code></td>
+<td>Must be <code>logical</code>; changing it needs a restart</td>
+<td><code>replica</code></td>
+</tr>
+<tr>
+<td>Slot lag alert</td>
+<td>bytes</td>
+<td>Well below free disk; page, do not ticket</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Publication scope</td>
+<td>table list</td>
+<td>Feature tables only — a whole-database publication decodes everything</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<h2 id="gotchas-and-spatial-edge-cases" tabindex="-1"><a class="heading-anchor" href="#gotchas-and-spatial-edge-cases">Gotchas and spatial edge cases</a></h2>
+<ol>
+<li>
+<p><strong><code>REPLICA IDENTITY FULL</code> multiplies WAL volume for geometry tables.</strong> Every update now writes the entire old row into the log, and for a table of large multipolygons that can be tens of kilobytes per edit. Consider an index-backed replica identity covering only the primary key and geometry column, which gets the old geometry without the other columns.</p>
+</li>
+<li>
+<p><strong>Set <code>max_slot_wal_keep_size</code> even with an alert.</strong> It converts the worst case from “the database stops” to “the slot is invalidated and change capture needs a resync”. The second is a bad afternoon; the first is an outage for every application on that instance.</p>
+</li>
+<li>
+<p><strong>A bulk import produces one change record per row.</strong> A shapefile load of two hundred thousand features arrives as two hundred thousand events, all at once, all large. This is where the debouncing in <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/debouncing-rapid-feature-edits/">Debouncing Rapid Feature Edits</a> and the backpressure in <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/">Backpressure &amp; Flow Control for Spatial Consumers</a> stop being optional.</p>
+</li>
+<li>
+<p><strong>PostGIS emits EWKB with an embedded SRID, and <code>shapely</code> drops it.</strong> The <code>mapping()</code> output has no CRS at all, so the event must state one explicitly. If the table holds mixed SRIDs, read the SRID from the EWKB prefix and normalise as <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a> describes rather than assuming the column’s declared type.</p>
+</li>
+<li>
+<p><strong>A <code>TRUNCATE</code> is not a stream of deletes.</strong> It arrives as a single truncate message, so a consumer maintaining a derived spatial index will keep every feature unless it handles that message type explicitly. The same applies to <code>DROP</code> — the publication simply stops producing.</p>
+</li>
+<li>
+<p><strong>Slots do not survive a failover to a physical replica</strong> in older PostgreSQL versions. After promotion the slot does not exist and the decoder reconnects to nothing, silently capturing zero changes. Verify slot existence as part of the health check, not just connectivity.</p>
+</li>
+</ol>
+<h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> json
+<span class="token keyword">import</span> pytest
+
+
+UPDATE_CHANGE <span class="token operator">=</span> <span class="token punctuation">{</span>
+    <span class="token string">"kind"</span><span class="token punctuation">:</span> <span class="token string">"update"</span><span class="token punctuation">,</span>
+    <span class="token string">"columnnames"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token string">"id"</span><span class="token punctuation">,</span> <span class="token string">"name"</span><span class="token punctuation">,</span> <span class="token string">"geom"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+    <span class="token string">"columnvalues"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token number">4471</span><span class="token punctuation">,</span> <span class="token string">"Depot B"</span><span class="token punctuation">,</span>
+                     <span class="token string">"0101000020E610000068B3EA73B5CD2A400E4FAF9465464A40"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+    <span class="token string">"oldkeys"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"keynames"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token string">"id"</span><span class="token punctuation">,</span> <span class="token string">"geom"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+                <span class="token string">"keyvalues"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token number">4471</span><span class="token punctuation">,</span>
+                              <span class="token string">"0101000020E6100000E8D9ACFA5CCD2A40FA7E6ABC74464A40"</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+<span class="token punctuation">}</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_update_carries_both_geometries</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Without REPLICA IDENTITY FULL this test fails, which is the point."""</span>
+    event <span class="token operator">=</span> to_event<span class="token punctuation">(</span>UPDATE_CHANGE<span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> event<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span> <span class="token keyword">is</span> <span class="token keyword">not</span> <span class="token boolean">None</span>
+    <span class="token keyword">assert</span> event<span class="token punctuation">[</span><span class="token string">"previous_geometry"</span><span class="token punctuation">]</span> <span class="token keyword">is</span> <span class="token keyword">not</span> <span class="token boolean">None</span>
+    <span class="token keyword">assert</span> event<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span> <span class="token operator">!=</span> event<span class="token punctuation">[</span><span class="token string">"previous_geometry"</span><span class="token punctuation">]</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_delete_has_a_feature_id_from_oldkeys</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""On a delete, every value the consumer needs is in oldkeys."""</span>
+    change <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"kind"</span><span class="token punctuation">:</span> <span class="token string">"delete"</span><span class="token punctuation">,</span> <span class="token string">"columnnames"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token string">"columnvalues"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+              <span class="token string">"oldkeys"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"keynames"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token string">"id"</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token string">"keyvalues"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token number">4471</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">}</span>
+    <span class="token keyword">assert</span> to_event<span class="token punctuation">(</span>change<span class="token punctuation">)</span><span class="token punctuation">[</span><span class="token string">"feature_id"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token string">"4471"</span>
+    <span class="token keyword">assert</span> to_event<span class="token punctuation">(</span>change<span class="token punctuation">)</span><span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span> <span class="token keyword">is</span> <span class="token boolean">None</span>
+
+
+<span class="token decorator annotation punctuation">@pytest<span class="token punctuation">.</span>mark<span class="token punctuation">.</span>integration</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">test_slot_lag_returns_to_zero</span><span class="token punctuation">(</span>dsn<span class="token punctuation">,</span> publish<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""The property the alert is written against."""</span>
+    <span class="token keyword">await</span> write_one_feature<span class="token punctuation">(</span>dsn<span class="token punctuation">)</span>
+    <span class="token keyword">await</span> run<span class="token punctuation">(</span>dsn<span class="token punctuation">,</span> publish<span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> <span class="token keyword">await</span> slot_lag_bytes<span class="token punctuation">(</span>dsn<span class="token punctuation">)</span> <span class="token operator">&lt;</span> <span class="token number">1024</span>
+</code></pre>
+</div>
+<p>The first test is the one that fails loudly if someone resets <code>REPLICA IDENTITY</code> while tuning WAL volume — a change that looks like pure storage optimisation and silently removes the pipeline’s ability to detect that a feature moved.</p>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
+<ul>
+<li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers</a> — the topic this guide belongs to, and the trigger-based alternative</li>
+<li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/debouncing-rapid-feature-edits/">Debouncing Rapid Feature Edits</a> — what to do with the burst a bulk import produces</li>
+<li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/how-to-design-a-geospatial-webhook-architecture-in-python/">How to Design a Geospatial Webhook Architecture in Python</a> — where this capture stage sits in the whole pipeline</li>
+<li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a> — the main consumer of the previous-geometry field</li>
+</ul>
+
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        <div class="aside-card">
+          <h3>Related in this section</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/how-to-design-a-geospatial-webhook-architecture-in-python/">Design a Geospatial Webhook Architecture in Python</a></li>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/debouncing-rapid-feature-edits/">Debouncing Rapid Feature Edits</a></li>
+          </ul>
+        </div>
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a></li>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a></li>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a></li>
+            <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring &amp; Observability for Spatial Pipelines</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</article>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="https://www.geospatialwebhook.com/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/">Home</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queues &amp; Retries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/schema-evolution-versioning/">Schema Evolution &amp; Versioning for Spatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/temporal-dedup-windows/">Time-Windowed Deduplication for Moving Assets</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/streaming-large-geometries/">Streaming &amp; Chunking Large Geometry Payloads</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Queues &amp; Retries</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/">Backpressure &amp; Flow Control for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Monitoring</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/slo-alerting-spatial-pipelines/">SLOs &amp; Alerting for Spatial Webhook Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging &amp; Tracing for Spatial Events</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <a class="site-footer__gh" href="https://github.com/geospatialwebhook" target="_blank" rel="noopener" aria-label="Geospatial Webhook on GitHub">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5Z"/></svg><span>GitHub</span>
+      </a>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js?v=c31b7b80" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

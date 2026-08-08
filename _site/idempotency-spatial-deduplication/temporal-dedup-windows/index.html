@@ -1,0 +1,769 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>Time-Windowed Deduplication for Moving Assets · Geo Webhook</title>
+  <meta name="description" content="Content hashing cannot deduplicate a moving asset, because every ping is genuinely different. Window the stream by asset and time instead: pick the window shape, size it from the report interval, and expire keys without losing late retries."/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/temporal-dedup-windows/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/temporal-dedup-windows/"/>
+  <meta property="og:title" content="Time-Windowed Deduplication for Moving Assets"/>
+  <meta property="og:description" content="Content hashing cannot deduplicate a moving asset, because every ping is genuinely different. Window the stream by asset and time instead: pick the window shape, size it from the report interval, and expire keys without losing late retries."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Time-Windowed Deduplication for Moving Assets"/>
+  <meta name="twitter:description" content="Content hashing cannot deduplicate a moving asset, because every ping is genuinely different. Window the stream by asset and time instead: pick the window shape, size it from the report interval, and expire keys without losing late retries."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=180687f5"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },{ "@type": "ListItem", "position": 2, "name": "Idempotency Spatial Deduplication", "item": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" },{ "@type": "ListItem", "position": 3, "name": "Temporal Dedup Windows", "item": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/temporal-dedup-windows/" }
+    ]
+  }
+  </script>
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/temporal-dedup-windows/#article",
+    "mainEntityOfPage": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/temporal-dedup-windows/",
+    "headline": "Time-Windowed Deduplication for Moving Assets",
+    "description": "Content hashing cannot deduplicate a moving asset, because every ping is genuinely different. Window the stream by asset and time instead: pick the window shape, size it from the report interval, and expire keys without losing late retries.",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
+    "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
+    "image": "https://www.geospatialwebhook.com/og-image.png",
+    "url": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/temporal-dedup-windows/",
+    "articleSection": "Idempotency Spatial Deduplication",
+    "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
+  }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="https://www.geospatialwebhook.com/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="https://www.geospatialwebhook.com/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Queues &amp; Retries</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
+      </a>
+    </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle"
+            aria-label="Switch to dark theme" title="Switch to dark theme">
+      <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.4v2.3M12 19.3v2.3M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.3M19.3 12h2.3M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="https://www.geospatialwebhook.com/">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency Spatial Deduplication</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">Temporal Dedup Windows</span>
+    </nav>
+
+    <h1 class="page__title">Time-Windowed Deduplication for Moving Assets</h1>
+
+    <div class="page__layout">
+      <div class="markdown">
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Time-Windowed Deduplication for Moving Assets",
+      "description": "A moving asset emits a stream in which no two events are byte-identical, so content-hash deduplication suppresses nothing. This topic covers choosing a window shape, deriving its size from the measured report interval, and expiring keys in a way that survives a provider's full retry ladder.",
+      "url": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/temporal-dedup-windows/",
+      "datePublished": "2026-08-08",
+      "dateModified": "2026-08-08",
+      "author": {"@type": "Organization", "name": "geospatialwebhook.com"},
+      "publisher": {"@type": "Organization", "name": "geospatialwebhook.com"}
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/"},
+        {"@type": "ListItem", "position": 2, "name": "Idempotency & Spatial Deduplication", "item": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/"},
+        {"@type": "ListItem", "position": 3, "name": "Time-Windowed Deduplication for Moving Assets", "item": "https://www.geospatialwebhook.com/idempotency-spatial-deduplication/temporal-dedup-windows/"}
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Deduplicate a moving-asset stream with time windows",
+      "step": [
+        {"@type": "HowToStep", "position": 1, "name": "Separate redelivery from re-observation before choosing any key"},
+        {"@type": "HowToStep", "position": 2, "name": "Pick a window shape that matches how the asset reports"},
+        {"@type": "HowToStep", "position": 3, "name": "Derive the window size from the measured report interval"},
+        {"@type": "HowToStep", "position": 4, "name": "Set the key TTL from the retry horizon, not from the window"}
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Why does content hashing fail for vehicle telemetry?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Because a moving asset never sends the same content twice. Each ping carries a new timestamp and, usually, a slightly different position, so the digest of the payload changes on every message and the deduplication store never registers a hit. The duplicates that matter in a telemetry stream are not identical payloads but redeliveries of the same observation and re-reports of a stationary asset, and neither is visible to a hash over the whole payload."}
+        },
+        {
+          "@type": "Question",
+          "name": "Should the deduplication window be tumbling or sliding?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Tumbling for suppressing duplicate observations at a fixed cadence, sliding for suppressing bursts. A tumbling window is a quantised timestamp in the key, which is cheap and stateless but admits two events on either side of a boundary that are milliseconds apart. A sliding window compares against the last accepted event for that asset, which suppresses boundary pairs correctly but requires storing that last event. Most telemetry pipelines want tumbling for the common case and a sliding check only on the streams where boundary duplicates were actually observed."}
+        },
+        {
+          "@type": "Question",
+          "name": "How long should a deduplication key live?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Longer than the sending system's complete retry ladder, plus its outage tolerance. The TTL exists to catch a redelivery, and a redelivery can arrive at the end of a provider's backoff schedule hours after the original. Sizing the TTL from the deduplication window instead is the most common cause of admitted duplicates: a five-minute window with a five-minute TTL will expire a key well before a provider on a six-hour ladder has finished retrying it."}
+        },
+        {
+          "@type": "Question",
+          "name": "What happens to events that arrive out of order?",
+          "acceptedAnswer": {"@type": "Answer", "text": "A window keyed on the event's own occurred-at timestamp handles them correctly, because the event lands in the window it belongs to regardless of when it arrived. A window keyed on arrival time does not: a ping delayed by an hour is bucketed into the current window, where it can suppress a genuinely newer observation. Always quantise the timestamp the device recorded, never the one the receiver stamped."}
+        },
+        {
+          "@type": "Question",
+          "name": "Does a stationary asset need a different rule?",
+          "acceptedAnswer": {"@type": "Answer", "text": "It needs the position component of the key quantised, not removed. A parked vehicle reports GPS jitter of a few metres indefinitely, which is movement to a coordinate comparison and noise to a human. Snapping the position to a grid cell — an H3 cell at a resolution matching the jitter, or coordinates rounded to a fixed precision — collapses that jitter into one key so the repeated reports deduplicate, while a real departure crosses into a new cell and is admitted."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>Deduplicating a moving asset cannot be done by hashing its payloads, because a moving asset never sends the same payload twice — the key has to be the asset plus a quantised time bucket plus a quantised position, and the store’s TTL has to outlive the sender’s entire retry ladder rather than the window it was derived from.</strong></p>
+<p>This topic sits under <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a>, which covers how a spatial pipeline recognises an event it has already handled. The deterministic keying described in <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a> is the right tool for edits to a feature that has an identity of its own; this page is about the case it does not cover, where the “same” event is defined by a period of time rather than by its content, and where <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication</a> is too expensive to run per ping.</p>
+<hr>
+<h2 id="prerequisites" tabindex="-1"><a class="heading-anchor" href="#prerequisites">Prerequisites</a></h2>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Python 3.11+</strong> — <code>datetime.UTC</code> and the <code>timeout</code> context manager are used below</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Redis 6+ with <code>SET NX PX</code></strong> — an atomic set-if-absent with expiry is the whole primitive</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong><code>h3</code> 4.x</strong> — for the position quantisation described under window shape</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>A device-recorded timestamp in the payload</strong> — not just the receiver’s arrival time</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>A measured report interval</strong> — the distribution, not the vendor’s nominal figure</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>The sending system’s published retry schedule</strong> — the TTL floor comes from this</label></li>
+</ul>
+<hr>
+<h2 id="redelivery-re-observation-and-jitter-are-three-different-duplicates" tabindex="-1"><a class="heading-anchor" href="#redelivery-re-observation-and-jitter-are-three-different-duplicates">Redelivery, re-observation and jitter are three different duplicates</a></h2>
+<p>The word “duplicate” covers three distinct events in a telemetry stream, and a scheme that suppresses one will happily admit the other two.</p>
+<p>A <strong>redelivery</strong> is the same observation arriving twice, because a webhook receiver returned 500, or timed out after having committed, or because the broker rebalanced mid-batch. Byte-identical, and the only one a content hash catches.</p>
+<p>A <strong>re-observation</strong> is the device reporting again at its normal cadence. Genuinely new information, and suppressing it is data loss — unless the cadence is far higher than the consumer needs, in which case deliberately collapsing several reports into one per window is the point of the exercise.</p>
+<p><strong>Jitter</strong> is a stationary asset reporting positions that differ by a few metres because GPS is not exact. New content, no new information, and unbounded in volume: a parked fleet of five hundred vehicles reporting every ten seconds produces four million events a day that say nothing.</p>
+<figure class="fig">
+<svg viewBox="0 0 760 244" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three kinds of duplicate in a telemetry stream and which deduplication scheme catches each">
+<title>Three duplicates, three different keys</title>
+<desc>A vehicle telemetry stream contains three things that get called duplicates. A redelivery is the same observation arriving twice with identical bytes, and a content hash over the payload catches it. A re-observation is the device reporting again on schedule, with a new timestamp and a new position, which no content hash will ever match because the content genuinely differs; suppressing it requires a time-quantised key, and is only correct when the report cadence exceeds what the consumer needs. Jitter is a stationary asset reporting positions that differ by a few metres of GPS noise, which is again new content and no new information; suppressing it requires quantising position onto a grid so the noise collapses into one cell. A scheme built for any one of the three admits the other two, which is why a pipeline that added content hashing and still sees duplicates has usually diagnosed the wrong duplicate.</desc>
+<rect x="0" y="0" width="760" height="244" fill="var(--fig-bg)"/>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-ink)">What "duplicate" means in a moving-asset stream</text>
+<rect x="14" y="30" width="732" height="62" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="26" y="49" font-size="9.5" font-weight="600" fill="var(--fig-ink)">redelivery — the same observation, twice</text>
+<text x="26" y="66" font-size="9" fill="var(--fig-ink-soft)">identical bytes · a 500, a timeout after commit, a consumer rebalance mid-batch</text>
+<text x="26" y="82" font-size="9" fill="var(--fig-mint-edge)">caught by a content hash — the only one that is</text>
+<rect x="14" y="100" width="732" height="62" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.5"/>
+<text x="26" y="119" font-size="9.5" font-weight="600" fill="var(--fig-ink)">re-observation — the device reporting again on schedule</text>
+<text x="26" y="136" font-size="9" fill="var(--fig-ink-soft)">new timestamp, new position · genuinely new information</text>
+<text x="26" y="152" font-size="9" fill="var(--fig-gold-edge)">needs a time-quantised key, and only when the cadence exceeds what is needed</text>
+<rect x="14" y="170" width="732" height="62" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="26" y="189" font-size="9.5" font-weight="600" fill="var(--fig-ink)">jitter — a stationary asset, moving by a few metres of GPS noise</text>
+<text x="26" y="206" font-size="9" fill="var(--fig-ink-soft)">new content, no new information · unbounded volume from a parked fleet</text>
+<text x="26" y="222" font-size="9" fill="var(--fig-rose-edge)">needs position quantised onto a grid before it enters the key</text>
+</svg>
+<figcaption><b>Figure 1.</b> A pipeline that added content hashing and still sees duplicates has usually diagnosed the wrong one of these three. Each needs a different component in the key.</figcaption>
+</figure>
+<p>The practical consequence is that a moving-asset key has three parts rather than one: <strong>who</strong> (the asset identifier), <strong>when</strong> (the observation time, quantised), and <strong>where</strong> (the position, quantised). Redelivery is caught because all three parts are identical. Re-observation inside the same bucket is caught because the quantised time matches. Jitter is caught because the quantised position matches. A real departure produces a new cell and is admitted immediately, without waiting for the window to close.</p>
+<hr>
+<h2 id="architecture-four-layers-from-ping-to-accepted-observation" tabindex="-1"><a class="heading-anchor" href="#architecture-four-layers-from-ping-to-accepted-observation">Architecture: four layers from ping to accepted observation</a></h2>
+<p><strong>Layer 1 — normalise.</strong> Parse the device timestamp into an aware UTC datetime and reproject the position to EPSG:4326 if the device reports in a local grid, following <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a>. A key built over inconsistent CRS or naive timestamps deduplicates nothing.</p>
+<p><strong>Layer 2 — quantise.</strong> Snap the timestamp to a window boundary and the position to a grid cell. Both quantisations are part of the contract: changing either invalidates every key already in the store.</p>
+<p><strong>Layer 3 — claim.</strong> Attempt an atomic set-if-absent against Redis with a TTL. The return value is the decision: the claim succeeded and this is the first sighting, or it failed and the observation is a duplicate.</p>
+<p><strong>Layer 4 — record.</strong> Increment a counter labelled by the reason for suppression, so the ratio of jitter to redelivery is observable rather than inferred. This feeds the freshness signals in <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a>.</p>
+<figure class="fig">
+<svg viewBox="0 0 760 262" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tumbling, sliding and session windows applied to the same sequence of vehicle pings">
+<title>The same pings under three window shapes</title>
+<desc>Six pings from one vehicle are shown on a timeline, two of them falling a few seconds apart but on opposite sides of a five-minute boundary. Under a tumbling window the boundary is fixed on the clock, so those two pings land in different buckets and both are admitted even though they are seconds apart — the scheme is stateless and cheap, and this is the price. Under a sliding window each ping is compared against the last accepted ping for that asset, so the pair is correctly collapsed, at the cost of storing the last accepted timestamp per asset and reading it on every event. Under a session window a gap longer than a chosen idle period opens a new session, which suppresses a burst of any length while still admitting the first ping after the vehicle has been quiet — the right shape for assets that report irregularly, in bursts, when they have connectivity rather than on a clock.</desc>
+<rect x="0" y="0" width="760" height="262" fill="var(--fig-bg)"/>
+<text x="14" y="18" font-size="10" font-weight="600" fill="var(--fig-ink)">one vehicle, six pings — two of them 4 s apart across a 5-minute boundary</text>
+<text x="14" y="42" font-size="9.5" font-weight="600" fill="var(--fig-gold-edge)">tumbling · quantise the clock</text>
+<line x1="14" y1="62" x2="746" y2="62" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<line x1="380" y1="50" x2="380" y2="74" stroke="var(--fig-line)" stroke-width="1.4" stroke-dasharray="3 3"/>
+<circle cx="70" cy="62" r="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<circle cx="200" cy="62" r="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<circle cx="368" cy="62" r="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<circle cx="392" cy="62" r="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<circle cx="540" cy="62" r="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<circle cx="660" cy="62" r="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="400" y="82" font-size="8.5" fill="var(--fig-rose-edge)">new bucket, so admitted — 4 s after the previous one</text>
+<text x="14" y="112" font-size="9.5" font-weight="600" fill="var(--fig-mint-edge)">sliding · compare against the last accepted ping</text>
+<line x1="14" y1="132" x2="746" y2="132" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<circle cx="70" cy="132" r="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<circle cx="200" cy="132" r="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<circle cx="368" cy="132" r="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<circle cx="392" cy="132" r="4" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<circle cx="540" cy="132" r="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<circle cx="660" cy="132" r="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="400" y="152" font-size="8.5" fill="var(--fig-ink-soft)">correctly suppressed — costs one read and one write per asset</text>
+<text x="14" y="182" font-size="9.5" font-weight="600" fill="var(--fig-peach-edge)">session · a gap longer than the idle period opens a new session</text>
+<line x1="14" y1="202" x2="746" y2="202" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<rect x="60" y="192" width="150" height="20" rx="4" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.2"/>
+<rect x="358" y="192" width="44" height="20" rx="4" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.2"/>
+<rect x="530" y="192" width="140" height="20" rx="4" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.2"/>
+<text x="216" y="207" font-size="8" fill="var(--fig-ink-soft)">idle gap</text>
+<text x="408" y="207" font-size="8" fill="var(--fig-ink-soft)">idle gap</text>
+<text x="14" y="230" font-size="9" fill="var(--fig-ink-soft)">Sessions suppress a burst of any length and still admit the first ping after quiet — the right shape for devices that</text>
+<text x="14" y="243" font-size="9" fill="var(--fig-ink-soft)">report when they have connectivity rather than on a clock.</text>
+</svg>
+<figcaption><b>Figure 2.</b> The boundary pair is the whole argument for sliding windows, and the reason tumbling is nonetheless the default: it costs one write and no reads, and a duplicate admitted every five minutes per asset is often cheaper than a read on every event.</figcaption>
+</figure>
+<hr>
+<h2 id="step-by-step-implementation" tabindex="-1"><a class="heading-anchor" href="#step-by-step-implementation">Step-by-step implementation</a></h2>
+<h3 id="step-1-build-the-three-part-key" tabindex="-1"><a class="heading-anchor" href="#step-1-build-the-three-part-key">Step 1 — Build the three-part key</a></h3>
+<p>The key names an asset, a bucket and a cell. Nothing else belongs in it: adding speed or heading reintroduces exactly the sensitivity to noise the quantisation removed.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> hashlib
+<span class="token keyword">from</span> datetime <span class="token keyword">import</span> datetime<span class="token punctuation">,</span> UTC
+
+<span class="token keyword">import</span> h3
+
+WINDOW_SECONDS <span class="token operator">=</span> <span class="token number">300</span>      <span class="token comment"># tumbling bucket width; part of the contract</span>
+CELL_RESOLUTION <span class="token operator">=</span> <span class="token number">12</span>      <span class="token comment"># H3 res 12 ≈ 9 m edge — above typical GPS jitter</span>
+
+
+<span class="token keyword">def</span> <span class="token function">window_key</span><span class="token punctuation">(</span>asset_id<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> occurred_at<span class="token punctuation">:</span> datetime<span class="token punctuation">,</span> lat<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">,</span> lon<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Key one observation to (asset, time bucket, grid cell).
+
+    occurred_at MUST be the device's own timestamp. Using arrival time buckets
+    a delayed ping into the current window, where it can suppress a genuinely
+    newer observation that has not been seen yet.
+    """</span>
+    <span class="token keyword">if</span> occurred_at<span class="token punctuation">.</span>tzinfo <span class="token keyword">is</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        <span class="token keyword">raise</span> ValueError<span class="token punctuation">(</span><span class="token string">"occurred_at must be timezone-aware"</span><span class="token punctuation">)</span>
+
+    epoch <span class="token operator">=</span> <span class="token builtin">int</span><span class="token punctuation">(</span>occurred_at<span class="token punctuation">.</span>astimezone<span class="token punctuation">(</span>UTC<span class="token punctuation">)</span><span class="token punctuation">.</span>timestamp<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    bucket <span class="token operator">=</span> epoch <span class="token operator">-</span> <span class="token punctuation">(</span>epoch <span class="token operator">%</span> WINDOW_SECONDS<span class="token punctuation">)</span>
+    cell <span class="token operator">=</span> h3<span class="token punctuation">.</span>latlng_to_cell<span class="token punctuation">(</span>lat<span class="token punctuation">,</span> lon<span class="token punctuation">,</span> CELL_RESOLUTION<span class="token punctuation">)</span>
+
+    raw <span class="token operator">=</span> <span class="token string-interpolation"><span class="token string">f"</span><span class="token interpolation"><span class="token punctuation">{</span>asset_id<span class="token punctuation">}</span></span><span class="token string">|</span><span class="token interpolation"><span class="token punctuation">{</span>bucket<span class="token punctuation">}</span></span><span class="token string">|</span><span class="token interpolation"><span class="token punctuation">{</span>cell<span class="token punctuation">}</span></span><span class="token string">"</span></span>
+    <span class="token keyword">return</span> <span class="token string">"dedup:"</span> <span class="token operator">+</span> hashlib<span class="token punctuation">.</span>blake2b<span class="token punctuation">(</span>raw<span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> digest_size<span class="token operator">=</span><span class="token number">16</span><span class="token punctuation">)</span><span class="token punctuation">.</span>hexdigest<span class="token punctuation">(</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>The floor division is what makes the bucket stateless: two processes handling the same ping compute the same boundary without coordinating, which is the property that lets the deduplication run on every consumer rather than on a designated one.</p>
+<h3 id="step-2-claim-the-key-atomically" tabindex="-1"><a class="heading-anchor" href="#step-2-claim-the-key-atomically">Step 2 — Claim the key atomically</a></h3>
+<p>The claim and the check are one operation. Reading first and writing second is a race that admits duplicates precisely when the stream is busiest, which is when redeliveries are most likely.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> redis<span class="token punctuation">.</span>asyncio <span class="token keyword">as</span> redis
+
+TTL_SECONDS <span class="token operator">=</span> <span class="token number">6</span> <span class="token operator">*</span> <span class="token number">3600</span>    <span class="token comment"># from the retry horizon — see Step 3</span>
+
+
+<span class="token keyword">class</span> <span class="token class-name">WindowedDeduplicator</span><span class="token punctuation">:</span>
+    <span class="token keyword">def</span> <span class="token function">__init__</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> client<span class="token punctuation">:</span> redis<span class="token punctuation">.</span>Redis<span class="token punctuation">,</span> ttl<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> TTL_SECONDS<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        self<span class="token punctuation">.</span>_client <span class="token operator">=</span> client
+        self<span class="token punctuation">.</span>_ttl <span class="token operator">=</span> ttl
+
+    <span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">claim</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> key<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+        <span class="token triple-quoted-string string">"""True if this is the first sighting; False if it is a duplicate.
+
+        SET NX PX is a single round trip and is atomic across every consumer,
+        so two workers handed the same redelivery cannot both win the claim.
+        """</span>
+        won <span class="token operator">=</span> <span class="token keyword">await</span> self<span class="token punctuation">.</span>_client<span class="token punctuation">.</span><span class="token builtin">set</span><span class="token punctuation">(</span>key<span class="token punctuation">,</span> <span class="token string">b"1"</span><span class="token punctuation">,</span> nx<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span> px<span class="token operator">=</span>self<span class="token punctuation">.</span>_ttl <span class="token operator">*</span> <span class="token number">1000</span><span class="token punctuation">)</span>
+        <span class="token keyword">return</span> <span class="token builtin">bool</span><span class="token punctuation">(</span>won<span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p><code>SET NX PX</code> returns <code>True</code> only for the writer that created the key. Every other caller — another worker, a retry, the same ping arriving from a second broker partition — gets <code>False</code> and stops. The TTL is set in the same command, so there is no window in which a key exists without an expiry, which is how deduplication stores turn into unbounded memory.</p>
+<h3 id="step-3-size-the-ttl-from-the-retry-horizon" tabindex="-1"><a class="heading-anchor" href="#step-3-size-the-ttl-from-the-retry-horizon">Step 3 — Size the TTL from the retry horizon</a></h3>
+<p>The TTL and the window are unrelated numbers and conflating them is the most common failure in this design. The window says how much re-observation to collapse. The TTL says how long a redelivery can still arrive.</p>
+<figure class="fig">
+<svg viewBox="0 0 760 216" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A provider retry ladder plotted against two TTL choices, one derived from the window and one from the retry horizon">
+<title>The TTL has to outlive the ladder, not the window</title>
+<desc>A provider's retry ladder is plotted along a timeline: attempts at one minute, five minutes, thirty minutes, two hours and six hours after the original delivery. A TTL derived from the five-minute deduplication window expires the key after the second attempt, so the third, fourth and fifth attempts all find an empty store, win the claim, and are written as new observations — one logical event becoming four records, and the failure appears hours after the deploy that caused it, in a stream that looked correct all afternoon. A TTL derived from the retry horizon covers the full ladder with margin, so every attempt after the first loses the claim. The window and the TTL answer different questions and there is no reason for them to be the same number.</desc>
+<rect x="0" y="0" width="760" height="216" fill="var(--fig-bg)"/>
+<text x="14" y="20" font-size="10" font-weight="600" fill="var(--fig-ink)">provider retry ladder for one failed delivery</text>
+<line x1="30" y1="52" x2="730" y2="52" stroke="var(--fig-line)" stroke-width="1.2"/>
+<circle cx="30" cy="52" r="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="20" y="40" font-size="8" fill="var(--fig-ink-soft)">0</text>
+<circle cx="120" cy="52" r="4.5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="110" y="40" font-size="8" fill="var(--fig-ink-soft)">1 m</text>
+<circle cx="250" cy="52" r="4.5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="240" y="40" font-size="8" fill="var(--fig-ink-soft)">5 m</text>
+<circle cx="400" cy="52" r="4.5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="386" y="40" font-size="8" fill="var(--fig-ink-soft)">30 m</text>
+<circle cx="560" cy="52" r="4.5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="550" y="40" font-size="8" fill="var(--fig-ink-soft)">2 h</text>
+<circle cx="700" cy="52" r="4.5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="690" y="40" font-size="8" fill="var(--fig-ink-soft)">6 h</text>
+<rect x="30" y="72" width="240" height="42" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="42" y="89" font-size="9" font-weight="600" fill="var(--fig-ink)">TTL = window (5 min)</text>
+<text x="42" y="105" font-size="8.5" fill="var(--fig-rose-edge)">key gone before attempt 3</text>
+<text x="284" y="97" font-size="9" fill="var(--fig-rose-edge)">attempts 3, 4 and 5 all find an empty store and win the claim — one event, four records</text>
+<rect x="30" y="126" width="700" height="42" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<text x="42" y="143" font-size="9" font-weight="600" fill="var(--fig-ink)">TTL = retry horizon + margin (6 h 30 m)</text>
+<text x="42" y="159" font-size="8.5" fill="var(--fig-mint-edge)">every attempt after the first loses the claim, including the one six hours later</text>
+<text x="14" y="188" font-size="9" fill="var(--fig-ink-soft)">The window says how much re-observation to collapse. The TTL says how long a redelivery can still arrive. Deriving one</text>
+<text x="14" y="201" font-size="9" fill="var(--fig-ink-soft)">from the other produces a store that is correct all afternoon and wrong at the end of a provider's ladder.</text>
+</svg>
+<figcaption><b>Figure 3.</b> The duplicates this mistake admits are invisible in testing: they need a failed delivery plus a long ladder, so they first appear in production, hours after the deploy.</figcaption>
+</figure>
+<p>Take the sending system’s documented schedule, sum it, and add the longest outage you intend to survive without duplicates. If the provider does not publish one, measure it: the gap between the first and last delivery attempt of a deliberately failed event is the number you need. The retry ladders themselves are covered in <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a>.</p>
+<h3 id="step-4-wire-it-into-the-handler" tabindex="-1"><a class="heading-anchor" href="#step-4-wire-it-into-the-handler">Step 4 — Wire it into the handler</a></h3>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> fastapi <span class="token keyword">import</span> FastAPI<span class="token punctuation">,</span> Response
+<span class="token keyword">from</span> pydantic <span class="token keyword">import</span> BaseModel<span class="token punctuation">,</span> Field
+
+app <span class="token operator">=</span> FastAPI<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">class</span> <span class="token class-name">Ping</span><span class="token punctuation">(</span>BaseModel<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    asset_id<span class="token punctuation">:</span> <span class="token builtin">str</span>
+    occurred_at<span class="token punctuation">:</span> datetime
+    lat<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> Field<span class="token punctuation">(</span>ge<span class="token operator">=</span><span class="token operator">-</span><span class="token number">90</span><span class="token punctuation">,</span> le<span class="token operator">=</span><span class="token number">90</span><span class="token punctuation">)</span>
+    lon<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> Field<span class="token punctuation">(</span>ge<span class="token operator">=</span><span class="token operator">-</span><span class="token number">180</span><span class="token punctuation">,</span> le<span class="token operator">=</span><span class="token number">180</span><span class="token punctuation">)</span>
+
+
+<span class="token decorator annotation punctuation">@app<span class="token punctuation">.</span>post</span><span class="token punctuation">(</span><span class="token string">"/telemetry"</span><span class="token punctuation">)</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">receive</span><span class="token punctuation">(</span>ping<span class="token punctuation">:</span> Ping<span class="token punctuation">,</span> dedup<span class="token punctuation">:</span> WindowedDeduplicator<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> Response<span class="token punctuation">:</span>
+    key <span class="token operator">=</span> window_key<span class="token punctuation">(</span>ping<span class="token punctuation">.</span>asset_id<span class="token punctuation">,</span> ping<span class="token punctuation">.</span>occurred_at<span class="token punctuation">,</span> ping<span class="token punctuation">.</span>lat<span class="token punctuation">,</span> ping<span class="token punctuation">.</span>lon<span class="token punctuation">)</span>
+
+    <span class="token keyword">if</span> <span class="token keyword">not</span> <span class="token keyword">await</span> dedup<span class="token punctuation">.</span>claim<span class="token punctuation">(</span>key<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token comment"># 200, not 409: the sender did nothing wrong and must not retry.</span>
+        <span class="token keyword">return</span> Response<span class="token punctuation">(</span>status_code<span class="token operator">=</span><span class="token number">200</span><span class="token punctuation">,</span> headers<span class="token operator">=</span><span class="token punctuation">{</span><span class="token string">"X-Dedup"</span><span class="token punctuation">:</span> <span class="token string">"suppressed"</span><span class="token punctuation">}</span><span class="token punctuation">)</span>
+
+    <span class="token keyword">await</span> process<span class="token punctuation">(</span>ping<span class="token punctuation">)</span>
+    <span class="token keyword">return</span> Response<span class="token punctuation">(</span>status_code<span class="token operator">=</span><span class="token number">200</span><span class="token punctuation">,</span> headers<span class="token operator">=</span><span class="token punctuation">{</span><span class="token string">"X-Dedup"</span><span class="token punctuation">:</span> <span class="token string">"accepted"</span><span class="token punctuation">}</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>Returning 200 for a suppressed duplicate matters. A 409 tells the sender its delivery failed, and a sender that believes a delivery failed retries it — turning every suppression into a fresh round of the ladder, which is the opposite of what deduplication is for.</p>
+<hr>
+<h2 id="spatial-validation-and-error-handling" tabindex="-1"><a class="heading-anchor" href="#spatial-validation-and-error-handling">Spatial validation and error handling</a></h2>
+<p><strong>Reject naive timestamps rather than assuming UTC.</strong> A device reporting local time without an offset produces buckets shifted by the timezone, which deduplicates against the wrong hour. The <code>ValueError</code> in <code>window_key</code> is deliberate: an event that cannot be bucketed correctly belongs in the dead-letter path described in <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Events</a>, not in the stream.</p>
+<p><strong>Validate the coordinate before quantising it.</strong> <code>h3.latlng_to_cell</code> accepts a latitude of 91 in some bindings and produces a cell that no real position maps to, so a corrupt reading gets its own key and passes deduplication forever. The Pydantic bounds above catch it at the edge.</p>
+<p><strong>Treat a null island reading as invalid.</strong> A position of exactly (0, 0) is almost always a GPS module reporting before it has a fix. It quantises to one cell shared by every unfixed device in the fleet, so if the asset identifier were ever dropped from the key those readings would deduplicate against each other. Filter them before keying.</p>
+<p><strong>Decide what a Redis outage means.</strong> Failing open admits duplicates; failing closed drops observations. For telemetry, failing open is almost always correct — a duplicate position is recoverable downstream and a lost one is not — but it must be a decision with a metric behind it, not a bare <code>except</code>.</p>
+<hr>
+<h2 id="retry-backoff-and-delivery-guarantees" tabindex="-1"><a class="heading-anchor" href="#retry-backoff-and-delivery-guarantees">Retry, backoff and delivery guarantees</a></h2>
+<p>Time-windowed deduplication gives at-most-once semantics inside the window and at-least-once across it, which is the correct trade for telemetry and the wrong one for financial or cadastral events. The asymmetry is deliberate: losing one position from a stream that produces another in ten seconds costs nothing, while double-counting a boundary crossing produces a phantom trip.</p>
+<p>The interaction with retries is subtle. A consumer that claims the key, then fails while processing, has consumed its own idempotency: the retry finds the key present and suppresses an observation that was never handled. Two ways out, and the choice depends on how expensive the work is:</p>
+<ul>
+<li><strong>Claim after processing.</strong> Simple, and admits duplicates when two workers process concurrently.</li>
+<li><strong>Claim before, release on failure.</strong> Delete the key in an exception handler so the retry can re-claim it. Correct, and requires the delete to be reliable — a worker killed between claim and failure leaves the key behind, so the TTL remains the backstop.</li>
+</ul>
+<p>The second is what most pipelines want, and it composes with the idempotent-consumer pattern in <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/idempotent-consumers-for-out-of-order-spatial-events/">Idempotent Consumers for Out-of-Order Spatial Events</a>.</p>
+<hr>
+<h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
+<p>The property to test is not “duplicates are suppressed” but “the right duplicates are suppressed”. Three cases, and a scheme that passes the first two while failing the third is the usual outcome of tuning by hand.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> datetime <span class="token keyword">import</span> datetime<span class="token punctuation">,</span> timedelta<span class="token punctuation">,</span> UTC
+
+BASE <span class="token operator">=</span> datetime<span class="token punctuation">(</span><span class="token number">2026</span><span class="token punctuation">,</span> <span class="token number">8</span><span class="token punctuation">,</span> <span class="token number">8</span><span class="token punctuation">,</span> <span class="token number">12</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">,</span> tzinfo<span class="token operator">=</span>UTC<span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_redelivery_collapses</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Identical observation, twice — must produce one key."""</span>
+    a <span class="token operator">=</span> window_key<span class="token punctuation">(</span><span class="token string">"veh-88"</span><span class="token punctuation">,</span> BASE<span class="token punctuation">,</span> <span class="token number">52.5200087</span><span class="token punctuation">,</span> <span class="token number">13.4049547</span><span class="token punctuation">)</span>
+    b <span class="token operator">=</span> window_key<span class="token punctuation">(</span><span class="token string">"veh-88"</span><span class="token punctuation">,</span> BASE<span class="token punctuation">,</span> <span class="token number">52.5200087</span><span class="token punctuation">,</span> <span class="token number">13.4049547</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> a <span class="token operator">==</span> b
+
+
+<span class="token keyword">def</span> <span class="token function">test_jitter_while_parked_collapses</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Five metres of GPS noise is inside one res-12 cell."""</span>
+    a <span class="token operator">=</span> window_key<span class="token punctuation">(</span><span class="token string">"veh-88"</span><span class="token punctuation">,</span> BASE<span class="token punctuation">,</span> <span class="token number">52.5200087</span><span class="token punctuation">,</span> <span class="token number">13.4049547</span><span class="token punctuation">)</span>
+    b <span class="token operator">=</span> window_key<span class="token punctuation">(</span><span class="token string">"veh-88"</span><span class="token punctuation">,</span> BASE <span class="token operator">+</span> timedelta<span class="token punctuation">(</span>seconds<span class="token operator">=</span><span class="token number">20</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token number">52.5200410</span><span class="token punctuation">,</span> <span class="token number">13.4049920</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> a <span class="token operator">==</span> b
+
+
+<span class="token keyword">def</span> <span class="token function">test_real_movement_is_admitted</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""A vehicle that has actually left must not be suppressed."""</span>
+    a <span class="token operator">=</span> window_key<span class="token punctuation">(</span><span class="token string">"veh-88"</span><span class="token punctuation">,</span> BASE<span class="token punctuation">,</span> <span class="token number">52.5200087</span><span class="token punctuation">,</span> <span class="token number">13.4049547</span><span class="token punctuation">)</span>
+    b <span class="token operator">=</span> window_key<span class="token punctuation">(</span><span class="token string">"veh-88"</span><span class="token punctuation">,</span> BASE <span class="token operator">+</span> timedelta<span class="token punctuation">(</span>seconds<span class="token operator">=</span><span class="token number">20</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token number">52.5241000</span><span class="token punctuation">,</span> <span class="token number">13.4102000</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> a <span class="token operator">!=</span> b
+
+
+<span class="token keyword">def</span> <span class="token function">test_two_assets_never_share_a_key</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""The asset id must dominate — two vehicles in one cell are two events."""</span>
+    a <span class="token operator">=</span> window_key<span class="token punctuation">(</span><span class="token string">"veh-88"</span><span class="token punctuation">,</span> BASE<span class="token punctuation">,</span> <span class="token number">52.5200087</span><span class="token punctuation">,</span> <span class="token number">13.4049547</span><span class="token punctuation">)</span>
+    b <span class="token operator">=</span> window_key<span class="token punctuation">(</span><span class="token string">"veh-91"</span><span class="token punctuation">,</span> BASE<span class="token punctuation">,</span> <span class="token number">52.5200087</span><span class="token punctuation">,</span> <span class="token number">13.4049547</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> a <span class="token operator">!=</span> b
+</code></pre>
+</div>
+<p>The third test is the one that fails when the cell resolution is set too coarse. Resolution 12 has an edge of roughly nine metres; at resolution 8, with an edge near half a kilometre, a vehicle can cross a city block without leaving its cell and the pipeline reports it as parked. Sizing that resolution against measured jitter — rather than picking a round number — is covered in <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/choosing-an-h3-resolution-from-measured-traffic/">Choosing an H3 Resolution from Measured Traffic</a>.</p>
+<hr>
+<h2 id="troubleshooting" tabindex="-1"><a class="heading-anchor" href="#troubleshooting">Troubleshooting</a></h2>
+<div class="table-scroll">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely spatial cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Duplicates appear hours after deploy, never in testing</td>
+<td>TTL derived from the window, expiring before the provider’s last retry</td>
+<td>Set the TTL from the summed retry ladder plus outage margin</td>
+</tr>
+<tr>
+<td>A parked vehicle produces thousands of events a day</td>
+<td>Position not quantised, so GPS jitter reads as movement</td>
+<td>Snap to an H3 cell at a resolution above the measured jitter</td>
+</tr>
+<tr>
+<td>A moving vehicle is reported as stationary</td>
+<td>Cell resolution too coarse — real movement stays inside one cell</td>
+<td>Raise the resolution until a typical inter-ping displacement crosses cells</td>
+</tr>
+<tr>
+<td>Two pings seconds apart both admitted</td>
+<td>Tumbling boundary fell between them</td>
+<td>Add a sliding check against the last accepted ping on that stream</td>
+</tr>
+<tr>
+<td>A delayed ping suppresses a newer one</td>
+<td>Bucketing on arrival time rather than the device timestamp</td>
+<td>Quantise <code>occurred_at</code>; never <code>now()</code></td>
+</tr>
+<tr>
+<td>Suppression rate jumps to 100% for one asset</td>
+<td>Device stuck reporting a cached fix, or a null-island reading</td>
+<td>Alert on per-asset suppression ratio, not just the fleet aggregate</td>
+</tr>
+<tr>
+<td>Redis memory grows without bound</td>
+<td>A code path writing keys without a TTL</td>
+<td>Set the expiry in the same command as the write — <code>SET NX PX</code>, never <code>SET</code> then <code>EXPIRE</code></td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<hr>
+<h2 id="faq" tabindex="-1"><a class="heading-anchor" href="#faq">FAQ</a></h2>
+<details class="faq">
+<summary><strong>Why does content hashing fail for vehicle telemetry?</strong></summary>
+<p>Because a moving asset never sends the same content twice. Each ping carries a new timestamp and, usually, a slightly different position, so the digest of the payload changes on every message and the store never registers a hit. The duplicates that matter here are redeliveries of the same observation and re-reports of a stationary asset, and neither is visible to a hash over the whole payload.</p>
+</details>
+<details class="faq">
+<summary><strong>Should the deduplication window be tumbling or sliding?</strong></summary>
+<p>Tumbling for suppressing re-observation at a fixed cadence, sliding for suppressing bursts. A tumbling window is a quantised timestamp in the key, which is stateless and costs one write; the price is that two events milliseconds apart across a boundary are both admitted. A sliding window compares against the last accepted event for that asset, which handles the boundary correctly at the cost of a read on every event. Start tumbling, and add the sliding check only on streams where boundary duplicates were actually measured.</p>
+</details>
+<details class="faq">
+<summary><strong>How long should a deduplication key live?</strong></summary>
+<p>Longer than the sending system’s complete retry ladder, plus whatever outage you intend to survive without admitting duplicates. Sizing the TTL from the window is the most common cause of admitted duplicates, because a five-minute window with a five-minute TTL expires the key long before a provider on a six-hour ladder has finished retrying.</p>
+</details>
+<details class="faq">
+<summary><strong>What happens to events that arrive out of order?</strong></summary>
+<p>A window keyed on the device’s own timestamp handles them correctly — the event lands in the bucket it belongs to regardless of when it arrived. A window keyed on arrival time does not: a ping delayed by an hour is bucketed into the current window, where it can suppress a genuinely newer observation.</p>
+</details>
+<details class="faq">
+<summary><strong>Does a stationary asset need a different rule?</strong></summary>
+<p>It needs the position component quantised, not removed. Snapping to a grid cell sized above the jitter collapses the noise into one key so repeated reports deduplicate, while a real departure crosses into a new cell and is admitted at once, without waiting for the window to close.</p>
+</details>
+<hr>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
+<ul>
+<li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a> — the section this topic belongs to</li>
+<li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a> — deterministic keys for events that have an identity of their own</li>
+<li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks</a> — the Redis-side mechanics of the claim, and what to do when the cache is unavailable</li>
+<li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication</a> — geometric near-duplicate detection, for when quantisation is too blunt</li>
+<li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a> — where the retry horizon that sets the TTL comes from</li>
+</ul>
+
+        <h2 id="explore-this-section">Explore this section</h2>
+        <div class="children-grid">
+          <a class="card " href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/temporal-dedup-windows/deduplicating-vehicle-pings-in-a-sliding-window/">
+            <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19c0-8 6-14 14-14 0 8-6 14-14 14z"/><path d="M5 19l6-6"/></svg></span>
+            <h3 class="card__title">Deduplicating Vehicle Pings in a Sliding Window</h3>
+            <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+          </a>
+          <a class="card card--mint" href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/temporal-dedup-windows/expiring-dedup-keys-without-losing-late-retries/">
+            <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19c0-8 6-14 14-14 0 8-6 14-14 14z"/><path d="M5 19l6-6"/></svg></span>
+            <h3 class="card__title">Expiring Deduplication Keys Without Losing Late Retries</h3>
+            <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+          </a>
+          <a class="card card--earth" href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/temporal-dedup-windows/sizing-a-dedup-window-from-report-intervals/">
+            <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19c0-8 6-14 14-14 0 8-6 14-14 14z"/><path d="M5 19l6-6"/></svg></span>
+            <h3 class="card__title">Sizing a Deduplication Window from Report Intervals</h3>
+            <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+          </a>
+        </div>
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        <div class="aside-card">
+          <h3>Related in this section</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          </ul>
+        </div>
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a></li>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a></li>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a></li>
+            <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring &amp; Observability for Spatial Pipelines</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</article>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="https://www.geospatialwebhook.com/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/">Home</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queues &amp; Retries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/schema-evolution-versioning/">Schema Evolution &amp; Versioning for Spatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/temporal-dedup-windows/">Time-Windowed Deduplication for Moving Assets</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/streaming-large-geometries/">Streaming &amp; Chunking Large Geometry Payloads</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Queues &amp; Retries</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/">Backpressure &amp; Flow Control for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Monitoring</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/slo-alerting-spatial-pipelines/">SLOs &amp; Alerting for Spatial Webhook Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging &amp; Tracing for Spatial Events</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <a class="site-footer__gh" href="https://github.com/geospatialwebhook" target="_blank" rel="noopener" aria-label="Geospatial Webhook on GitHub">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5Z"/></svg><span>GitHub</span>
+      </a>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js?v=c31b7b80" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

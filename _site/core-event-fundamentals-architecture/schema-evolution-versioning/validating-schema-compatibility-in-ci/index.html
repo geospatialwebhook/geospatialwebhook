@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>Validating Schema Compatibility in CI · Geo Webhook</title>
+  <meta name="description" content="Make a breaking spatial schema change fail the build instead of the pipeline: check the new schema against every version still in the log, and add the spatial assertions a generic compatibility checker cannot make."/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/schema-evolution-versioning/validating-schema-compatibility-in-ci/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/schema-evolution-versioning/validating-schema-compatibility-in-ci/"/>
+  <meta property="og:title" content="Validating Schema Compatibility in CI"/>
+  <meta property="og:description" content="Make a breaking spatial schema change fail the build instead of the pipeline: check the new schema against every version still in the log, and add the spatial assertions a generic compatibility checker cannot make."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Validating Schema Compatibility in CI"/>
+  <meta name="twitter:description" content="Make a breaking spatial schema change fail the build instead of the pipeline: check the new schema against every version still in the log, and add the spatial assertions a generic compatibility checker cannot make."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=180687f5"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },{ "@type": "ListItem", "position": 2, "name": "Core Event Fundamentals Architecture", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" },{ "@type": "ListItem", "position": 3, "name": "Schema Evolution Versioning", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/schema-evolution-versioning/" },{ "@type": "ListItem", "position": 4, "name": "Validating Schema Compatibility In Ci", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/schema-evolution-versioning/validating-schema-compatibility-in-ci/" }
+    ]
+  }
+  </script>
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/schema-evolution-versioning/validating-schema-compatibility-in-ci/#article",
+    "mainEntityOfPage": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/schema-evolution-versioning/validating-schema-compatibility-in-ci/",
+    "headline": "Validating Schema Compatibility in CI",
+    "description": "Make a breaking spatial schema change fail the build instead of the pipeline: check the new schema against every version still in the log, and add the spatial assertions a generic compatibility checker cannot make.",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
+    "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
+    "image": "https://www.geospatialwebhook.com/og-image.png",
+    "url": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/schema-evolution-versioning/validating-schema-compatibility-in-ci/",
+    "articleSection": "Core Event Fundamentals Architecture",
+    "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
+  }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="https://www.geospatialwebhook.com/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="https://www.geospatialwebhook.com/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Queues &amp; Retries</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
+      </a>
+    </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle"
+            aria-label="Switch to dark theme" title="Switch to dark theme">
+      <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.4v2.3M12 19.3v2.3M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.3M19.3 12h2.3M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="https://www.geospatialwebhook.com/">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals Architecture</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/schema-evolution-versioning/">Schema Evolution Versioning</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">Validating Schema Compatibility In Ci</span>
+    </nav>
+
+    <h1 class="page__title">Validating Schema Compatibility in CI</h1>
+
+    <div class="page__layout">
+      <div class="markdown">
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Validating Schema Compatibility in CI",
+      "description": "A generic compatibility checker passes changes that are catastrophic for spatial data — a CRS default removed, a coordinate order flipped, a precision reduced. This guide wires a compatibility gate into CI and adds the spatial assertions the generic checker structurally cannot make.",
+      "url": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/schema-evolution-versioning/validating-schema-compatibility-in-ci/",
+      "datePublished": "2026-08-08",
+      "dateModified": "2026-08-08",
+      "author": {"@type": "Organization", "name": "geospatialwebhook.com"},
+      "publisher": {"@type": "Organization", "name": "geospatialwebhook.com"}
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/"},
+        {"@type": "ListItem", "position": 2, "name": "Core Event Fundamentals & Architecture", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/"},
+        {"@type": "ListItem", "position": 3, "name": "Schema Evolution & Versioning for Spatial Events", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/schema-evolution-versioning/"},
+        {"@type": "ListItem", "position": 4, "name": "Validating Schema Compatibility in CI", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/schema-evolution-versioning/validating-schema-compatibility-in-ci/"}
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Gate spatial schema changes in CI",
+      "step": [
+        {"@type": "HowToStep", "position": 1, "name": "Check the candidate schema against every version still reachable, not just the previous one"},
+        {"@type": "HowToStep", "position": 2, "name": "Add spatial assertions the structural checker cannot make"},
+        {"@type": "HowToStep", "position": 3, "name": "Replay a corpus of real payloads through both readers and compare geometries"},
+        {"@type": "HowToStep", "position": 4, "name": "Fail the build, and require an explicit version bump to override"}
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Why is a generic compatibility checker not enough for spatial schemas?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Because it reasons about types and field presence, and every dangerous spatial change is type-preserving. Flipping coordinate order keeps an array of two numbers an array of two numbers. Removing a CRS default keeps a string a string. Reducing coordinate precision does not change the schema at all. A structural checker passes all three, and each one silently relocates or reshapes every geometry in the stream."}
+        },
+        {
+          "@type": "Question",
+          "name": "Should CI check against the previous version or all of them?",
+          "acceptedAnswer": {"@type": "Answer", "text": "All versions still reachable — which means everything in the topic's retention window plus everything in any dead-letter archive that can still be replayed. Transitive compatibility does not follow from pairwise compatibility: v3 can be compatible with v2 and v2 with v1 while v3 is unreadable against a v1 payload, because the two changes compose. Checking only the immediate predecessor is how that gap gets shipped."}
+        },
+        {
+          "@type": "Question",
+          "name": "What belongs in the golden corpus?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Real payloads captured from production, biased towards the awkward ones: a polygon crossing the antimeridian, a multipolygon with holes, a geometry in a projected CRS, an empty geometry, a feature with a null geometry, and the largest payload the stream has ever carried. Synthetic squares in the first quadrant pass every check and exercise none of the code that actually breaks."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>Run the candidate schema against every version still reachable in the log, then add the assertions a structural checker cannot make — coordinate order, CRS explicitness and precision are all type-preserving, so a generic compatibility gate passes the three changes most likely to relocate every geometry in the stream.</strong></p>
+<p>This guide sits under <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/schema-evolution-versioning/">Schema Evolution &amp; Versioning for Spatial Events</a>, within <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a>. It is the gate that makes <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/schema-evolution-versioning/migrating-a-spatial-stream-between-schema-versions/">Migrating a Spatial Stream Between Schema Versions</a> a deliberate act rather than an accident discovered in production.</p>
+<h2 id="when-to-use-this-pattern" tabindex="-1"><a class="heading-anchor" href="#when-to-use-this-pattern">When to use this pattern</a></h2>
+<ul>
+<li>More than one service produces to the stream, so no single review catches every schema edit.</li>
+<li>The schema lives in a repository and changes through pull requests, which is where a gate can sit.</li>
+<li>Consumers exist that you do not deploy, so a breaking change cannot be walked back quickly.</li>
+</ul>
+<h2 id="what-a-structural-checker-sees-and-what-it-misses" tabindex="-1"><a class="heading-anchor" href="#what-a-structural-checker-sees-and-what-it-misses">What a structural checker sees, and what it misses</a></h2>
+<p>Compatibility checkers reason about types and field presence. That catches a removed required field and a narrowed type, and those are worth catching. The changes that hurt a spatial stream are not those.</p>
+<figure class="fig">
+<svg viewBox="0 0 760 226" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Five schema changes scored by whether a structural compatibility checker catches them and what each does to the data">
+<title>The dangerous spatial changes are all type-preserving</title>
+<desc>Five schema changes are listed with what a structural compatibility checker reports and what actually happens to the data. Removing a required field is correctly rejected, and widening an integer to a float is correctly accepted; those are the cases generic tooling exists for. The remaining three all pass structurally and all corrupt the stream. Flipping coordinate order from latitude-longitude to longitude-latitude leaves an array of two numbers exactly as it was, and moves every feature to a different hemisphere. Removing an implicit CRS default leaves a string field a string field, and turns every payload that omitted it from well-defined into ambiguous. Reducing stated coordinate precision from six decimal places to four is not a schema change at all — no field, type or constraint moves — and it changes every content hash in the pipeline, so deduplication stops matching across the boundary. A checker that reasons about structure cannot see any of the three, because none of them is structural.</desc>
+<rect x="0" y="0" width="760" height="226" fill="var(--fig-bg)"/>
+<text x="14" y="18" font-size="10" font-weight="600" fill="var(--fig-ink)">what the structural checker reports vs what happens to the data</text>
+<rect x="14" y="28" width="732" height="34" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="26" y="42" font-size="9" font-weight="600" fill="var(--fig-ink)">required field removed</text>
+<text x="26" y="56" font-size="8.5" fill="var(--fig-mint-edge)">correctly REJECTED — this is what generic tooling is for</text>
+<rect x="14" y="66" width="732" height="34" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="26" y="80" font-size="9" font-weight="600" fill="var(--fig-ink)">int widened to float</text>
+<text x="26" y="94" font-size="8.5" fill="var(--fig-mint-edge)">correctly ACCEPTED — genuinely compatible</text>
+<rect x="14" y="104" width="732" height="34" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="26" y="118" font-size="9" font-weight="600" fill="var(--fig-ink)">coordinate order flipped — [lat, lon] to [lon, lat]</text>
+<text x="26" y="132" font-size="8.5" fill="var(--fig-rose-edge)">PASSES — an array of two numbers is still an array of two numbers · every feature moves hemisphere</text>
+<rect x="14" y="142" width="732" height="34" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="26" y="156" font-size="9" font-weight="600" fill="var(--fig-ink)">implicit CRS default removed</text>
+<text x="26" y="170" font-size="8.5" fill="var(--fig-rose-edge)">PASSES — a string is still a string · every payload that omitted it becomes ambiguous</text>
+<rect x="14" y="180" width="732" height="34" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="26" y="194" font-size="9" font-weight="600" fill="var(--fig-ink)">coordinate precision reduced from 6 dp to 4 dp</text>
+<text x="26" y="208" font-size="8.5" fill="var(--fig-rose-edge)">PASSES — not a schema change at all · every content hash moves, so deduplication stops matching</text>
+</svg>
+<figcaption><b>Figure 1.</b> Three of the five are invisible to structural checking because none of them is structural. The spatial assertions below exist to cover exactly this row group.</figcaption>
+</figure>
+<h2 id="complete-runnable-implementation" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-implementation">Complete runnable implementation</a></h2>
+<p>The gate has two halves: a structural check against every reachable version, and a differential replay of real payloads through the old and new readers.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token triple-quoted-string string">"""ci/check_schema.py — run in CI; exits non-zero on an unsafe change."""</span>
+<span class="token keyword">import</span> json
+<span class="token keyword">import</span> sys
+<span class="token keyword">from</span> pathlib <span class="token keyword">import</span> Path
+
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> shape
+
+SCHEMA_DIR <span class="token operator">=</span> Path<span class="token punctuation">(</span><span class="token string">"schemas"</span><span class="token punctuation">)</span>
+CORPUS <span class="token operator">=</span> Path<span class="token punctuation">(</span><span class="token string">"tests/corpus/payloads.jsonl"</span><span class="token punctuation">)</span>
+
+<span class="token comment"># Every version still reachable: topic retention plus any replayable archive.</span>
+<span class="token comment"># NOT just the previous one — pairwise compatibility is not transitive.</span>
+REACHABLE <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">,</span> <span class="token number">2</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">class</span> <span class="token class-name">Incompatible</span><span class="token punctuation">(</span>Exception<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token keyword">pass</span>
+
+
+<span class="token keyword">def</span> <span class="token function">structural_check</span><span class="token punctuation">(</span>old<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">,</span> new<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">,</span> path<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">=</span> <span class="token string">""</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">]</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Required fields may not vanish, and types may not narrow."""</span>
+    problems <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+    <span class="token keyword">for</span> name <span class="token keyword">in</span> old<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"required"</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">if</span> name <span class="token keyword">not</span> <span class="token keyword">in</span> new<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"required"</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token keyword">and</span> name <span class="token keyword">not</span> <span class="token keyword">in</span> new<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"properties"</span><span class="token punctuation">,</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+            problems<span class="token punctuation">.</span>append<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"</span><span class="token interpolation"><span class="token punctuation">{</span>path<span class="token punctuation">}</span></span><span class="token interpolation"><span class="token punctuation">{</span>name<span class="token punctuation">}</span></span><span class="token string">: required field removed"</span></span><span class="token punctuation">)</span>
+
+    <span class="token keyword">for</span> name<span class="token punctuation">,</span> spec <span class="token keyword">in</span> old<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"properties"</span><span class="token punctuation">,</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">.</span>items<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        target <span class="token operator">=</span> new<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"properties"</span><span class="token punctuation">,</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">.</span>get<span class="token punctuation">(</span>name<span class="token punctuation">)</span>
+        <span class="token keyword">if</span> target <span class="token keyword">is</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+            <span class="token keyword">continue</span>
+        <span class="token keyword">if</span> spec<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"type"</span><span class="token punctuation">)</span> <span class="token operator">!=</span> target<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"type"</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+            problems<span class="token punctuation">.</span>append<span class="token punctuation">(</span>
+                <span class="token string-interpolation"><span class="token string">f"</span><span class="token interpolation"><span class="token punctuation">{</span>path<span class="token punctuation">}</span></span><span class="token interpolation"><span class="token punctuation">{</span>name<span class="token punctuation">}</span></span><span class="token string">: type </span><span class="token interpolation"><span class="token punctuation">{</span>spec<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">'type'</span><span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string"> -> </span><span class="token interpolation"><span class="token punctuation">{</span>target<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">'type'</span><span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">"</span></span>
+            <span class="token punctuation">)</span>
+        <span class="token keyword">if</span> spec<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"type"</span><span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token string">"object"</span><span class="token punctuation">:</span>
+            problems <span class="token operator">+=</span> structural_check<span class="token punctuation">(</span>spec<span class="token punctuation">,</span> target<span class="token punctuation">,</span> <span class="token string-interpolation"><span class="token string">f"</span><span class="token interpolation"><span class="token punctuation">{</span>path<span class="token punctuation">}</span></span><span class="token interpolation"><span class="token punctuation">{</span>name<span class="token punctuation">}</span></span><span class="token string">."</span></span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> problems
+
+
+<span class="token keyword">def</span> <span class="token function">spatial_check</span><span class="token punctuation">(</span>new<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">]</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""The assertions a structural checker cannot make.
+
+    Each of these is type-preserving, so nothing generic will ever flag it.
+    """</span>
+    problems <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+    props <span class="token operator">=</span> new<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"properties"</span><span class="token punctuation">,</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">)</span>
+
+    <span class="token comment"># 1. CRS must be explicit and required. An implicit default is a decision</span>
+    <span class="token comment">#    made by whichever service happened to write the payload.</span>
+    <span class="token keyword">if</span> <span class="token string">"crs"</span> <span class="token keyword">not</span> <span class="token keyword">in</span> new<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"required"</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        problems<span class="token punctuation">.</span>append<span class="token punctuation">(</span><span class="token string">"crs: must be required — an implicit CRS is not a contract"</span><span class="token punctuation">)</span>
+
+    <span class="token comment"># 2. Coordinate order must be stated, and must be lon/lat per RFC 7946.</span>
+    order <span class="token operator">=</span> props<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"geometry"</span><span class="token punctuation">,</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"x-coordinate-order"</span><span class="token punctuation">)</span>
+    <span class="token keyword">if</span> order <span class="token operator">!=</span> <span class="token string">"lon,lat"</span><span class="token punctuation">:</span>
+        problems<span class="token punctuation">.</span>append<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"geometry: coordinate order must be 'lon,lat', got </span><span class="token interpolation"><span class="token punctuation">{</span>order<span class="token conversion-option punctuation">!r</span><span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+
+    <span class="token comment"># 3. Precision is part of the contract because content hashes depend on it.</span>
+    <span class="token keyword">if</span> <span class="token string">"x-coordinate-precision"</span> <span class="token keyword">not</span> <span class="token keyword">in</span> props<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"geometry"</span><span class="token punctuation">,</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        problems<span class="token punctuation">.</span>append<span class="token punctuation">(</span><span class="token string">"geometry: x-coordinate-precision must be declared"</span><span class="token punctuation">)</span>
+
+    <span class="token keyword">return</span> problems
+
+
+<span class="token keyword">def</span> <span class="token function">differential_replay</span><span class="token punctuation">(</span>read_old<span class="token punctuation">,</span> read_new<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">]</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Feed real payloads to both readers and compare the GEOMETRY.
+
+    A change can be structurally fine and still move every feature; only
+    comparing the parsed geometry catches that.
+    """</span>
+    problems <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+    <span class="token keyword">for</span> line <span class="token keyword">in</span> CORPUS<span class="token punctuation">.</span>read_text<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span>splitlines<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        payload <span class="token operator">=</span> json<span class="token punctuation">.</span>loads<span class="token punctuation">(</span>line<span class="token punctuation">)</span>
+        <span class="token keyword">try</span><span class="token punctuation">:</span>
+            a<span class="token punctuation">,</span> b <span class="token operator">=</span> read_old<span class="token punctuation">(</span>payload<span class="token punctuation">)</span><span class="token punctuation">,</span> read_new<span class="token punctuation">(</span>payload<span class="token punctuation">)</span>
+        <span class="token keyword">except</span> Exception <span class="token keyword">as</span> exc<span class="token punctuation">:</span>                     <span class="token comment"># noqa: BLE001 - reported, not raised</span>
+            problems<span class="token punctuation">.</span>append<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"</span><span class="token interpolation"><span class="token punctuation">{</span>payload<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">'feature_id'</span><span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">: reader raised </span><span class="token interpolation"><span class="token punctuation">{</span>exc<span class="token conversion-option punctuation">!r</span><span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+            <span class="token keyword">continue</span>
+
+        moved <span class="token operator">=</span> shape<span class="token punctuation">(</span>a<span class="token punctuation">.</span>geometry<span class="token punctuation">)</span><span class="token punctuation">.</span>distance<span class="token punctuation">(</span>shape<span class="token punctuation">(</span>b<span class="token punctuation">.</span>geometry<span class="token punctuation">)</span><span class="token punctuation">)</span>
+        <span class="token keyword">if</span> moved <span class="token operator">></span> <span class="token number">1e-9</span><span class="token punctuation">:</span>
+            problems<span class="token punctuation">.</span>append<span class="token punctuation">(</span>
+                <span class="token string-interpolation"><span class="token string">f"</span><span class="token interpolation"><span class="token punctuation">{</span>payload<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">'feature_id'</span><span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">: geometry moved </span><span class="token interpolation"><span class="token punctuation">{</span>moved<span class="token punctuation">:</span><span class="token format-spec">.6f</span><span class="token punctuation">}</span></span><span class="token string"> degrees"</span></span>
+            <span class="token punctuation">)</span>
+    <span class="token keyword">return</span> problems
+
+
+<span class="token keyword">def</span> <span class="token function">main</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">int</span><span class="token punctuation">:</span>
+    new <span class="token operator">=</span> json<span class="token punctuation">.</span>loads<span class="token punctuation">(</span><span class="token punctuation">(</span>SCHEMA_DIR <span class="token operator">/</span> <span class="token string">"event.v3.json"</span><span class="token punctuation">)</span><span class="token punctuation">.</span>read_text<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    problems <span class="token operator">=</span> spatial_check<span class="token punctuation">(</span>new<span class="token punctuation">)</span>
+
+    <span class="token keyword">for</span> version <span class="token keyword">in</span> REACHABLE<span class="token punctuation">:</span>
+        old <span class="token operator">=</span> json<span class="token punctuation">.</span>loads<span class="token punctuation">(</span><span class="token punctuation">(</span>SCHEMA_DIR <span class="token operator">/</span> <span class="token string-interpolation"><span class="token string">f"event.v</span><span class="token interpolation"><span class="token punctuation">{</span>version<span class="token punctuation">}</span></span><span class="token string">.json"</span></span><span class="token punctuation">)</span><span class="token punctuation">.</span>read_text<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+        problems <span class="token operator">+=</span> <span class="token punctuation">[</span><span class="token string-interpolation"><span class="token string">f"v</span><span class="token interpolation"><span class="token punctuation">{</span>version<span class="token punctuation">}</span></span><span class="token string">: </span><span class="token interpolation"><span class="token punctuation">{</span>p<span class="token punctuation">}</span></span><span class="token string">"</span></span> <span class="token keyword">for</span> p <span class="token keyword">in</span> structural_check<span class="token punctuation">(</span>old<span class="token punctuation">,</span> new<span class="token punctuation">)</span><span class="token punctuation">]</span>
+
+    problems <span class="token operator">+=</span> differential_replay<span class="token punctuation">(</span>read_v2<span class="token punctuation">,</span> read_v3<span class="token punctuation">)</span>
+
+    <span class="token keyword">for</span> problem <span class="token keyword">in</span> problems<span class="token punctuation">:</span>
+        <span class="token keyword">print</span><span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"INCOMPATIBLE: </span><span class="token interpolation"><span class="token punctuation">{</span>problem<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">,</span> <span class="token builtin">file</span><span class="token operator">=</span>sys<span class="token punctuation">.</span>stderr<span class="token punctuation">)</span>
+    <span class="token keyword">return</span> <span class="token number">1</span> <span class="token keyword">if</span> problems <span class="token keyword">else</span> <span class="token number">0</span>
+
+
+<span class="token keyword">if</span> __name__ <span class="token operator">==</span> <span class="token string">"__main__"</span><span class="token punctuation">:</span>
+    <span class="token keyword">raise</span> SystemExit<span class="token punctuation">(</span>main<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<figure class="fig">
+<svg viewBox="0 0 760 208" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Pairwise compatibility between adjacent versions failing to imply compatibility with the oldest reachable version">
+<title>Pairwise compatible, transitively broken</title>
+<desc>Three schema versions are checked pairwise. Version two renamed a field and provided a fallback that reads the old name, so it is compatible with version one. Version three removed that fallback, on the reasonable grounds that version two events all carry the new name, so it is compatible with version two. Each pull request passed its check and each check was correct. But a version one payload read by the version three reader finds neither the new name nor the fallback, so it fails — and version one payloads are still in the log for as long as retention lasts, and in the dead-letter archive for longer. The gap is invisible to a checker that compares each candidate only against its immediate predecessor, which is the default configuration of most compatibility tooling. Checking against every reachable version costs one loop and catches the composition.</desc>
+<rect x="0" y="0" width="760" height="208" fill="var(--fig-bg)"/>
+<defs><marker id="ci-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<rect x="30" y="34" width="180" height="52" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="42" y="52" font-size="9.5" font-weight="600" fill="var(--fig-ink)">v1</text>
+<text x="42" y="68" font-size="8.5" fill="var(--fig-ink-soft)">field named "geom"</text>
+<text x="42" y="80" font-size="8.5" fill="var(--fig-ink-soft)">still in the log and the archive</text>
+<line x1="214" y1="60" x2="266" y2="60" stroke="var(--fig-mint-edge)" stroke-width="1.4" marker-end="url(#ci-a)"/>
+<text x="216" y="52" font-size="8" fill="var(--fig-mint-edge)">compatible</text>
+<rect x="270" y="34" width="180" height="52" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="282" y="52" font-size="9.5" font-weight="600" fill="var(--fig-ink)">v2</text>
+<text x="282" y="68" font-size="8.5" fill="var(--fig-ink-soft)">renamed to "geometry",</text>
+<text x="282" y="80" font-size="8.5" fill="var(--fig-ink-soft)">reads "geom" as a fallback</text>
+<line x1="454" y1="60" x2="506" y2="60" stroke="var(--fig-mint-edge)" stroke-width="1.4" marker-end="url(#ci-a)"/>
+<text x="456" y="52" font-size="8" fill="var(--fig-mint-edge)">compatible</text>
+<rect x="510" y="34" width="180" height="52" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="522" y="52" font-size="9.5" font-weight="600" fill="var(--fig-ink)">v3</text>
+<text x="522" y="68" font-size="8.5" fill="var(--fig-ink-soft)">fallback removed — v2 events</text>
+<text x="522" y="80" font-size="8.5" fill="var(--fig-ink-soft)">all carry the new name</text>
+<path d="M120,92 C120,140 560,140 590,92" fill="none" stroke="var(--fig-rose-edge)" stroke-width="1.8" stroke-dasharray="5 3" marker-end="url(#ci-a)"/>
+<text x="270" y="140" font-size="9" font-weight="600" fill="var(--fig-rose-edge)">v1 payload read by v3 — neither name present, and it fails</text>
+<rect x="14" y="152" width="732" height="46" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="26" y="170" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Every pull request passed, and every check was correct</text>
+<text x="26" y="187" font-size="9" fill="var(--fig-ink-soft)">Pairwise compatibility does not compose. Checking each candidate against every reachable version costs one loop.</text>
+</svg>
+<figcaption><b>Figure 2.</b> Both individual checks were right. The gap only exists between them, which is why the loop over <code>REACHABLE</code> is not a nicety.</figcaption>
+</figure>
+<h2 id="parameter-reference" tabindex="-1"><a class="heading-anchor" href="#parameter-reference">Parameter reference</a></h2>
+<div class="table-scroll">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Spatial constraint</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>REACHABLE</code></td>
+<td><code>tuple[int, ...]</code></td>
+<td>Every version in retention <strong>plus</strong> any replayable archive</td>
+<td><code>(1, 2)</code></td>
+</tr>
+<tr>
+<td><code>x-coordinate-order</code></td>
+<td><code>str</code></td>
+<td>Must be <code>&quot;lon,lat&quot;</code> per RFC 7946; the flip is type-preserving</td>
+<td><code>&quot;lon,lat&quot;</code></td>
+</tr>
+<tr>
+<td><code>x-coordinate-precision</code></td>
+<td><code>int</code></td>
+<td>Declared, because content hashes depend on it</td>
+<td><code>6</code></td>
+</tr>
+<tr>
+<td>Move tolerance</td>
+<td><code>float</code></td>
+<td>Degrees; <code>1e-9</code> is far below any real change and above float noise</td>
+<td><code>1e-9</code></td>
+</tr>
+<tr>
+<td><code>CORPUS</code></td>
+<td>path</td>
+<td>Real captured payloads, biased to awkward geometries</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Exit code</td>
+<td><code>int</code></td>
+<td>Non-zero fails the build; overriding requires an explicit version bump</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<h2 id="gotchas-and-spatial-edge-cases" tabindex="-1"><a class="heading-anchor" href="#gotchas-and-spatial-edge-cases">Gotchas and spatial edge cases</a></h2>
+<ol>
+<li>
+<p><strong>A synthetic corpus proves nothing.</strong> A square in the first quadrant survives a coordinate flip looking merely translated, survives a precision change with no visible difference, and never exercises hole handling or antimeridian logic. Capture the corpus from production and include the antimeridian polygon, the multipolygon with holes, the empty geometry, the null geometry and the largest payload the stream has carried.</p>
+</li>
+<li>
+<p><strong><code>distance()</code> on geographic coordinates is in degrees, not metres.</strong> The <code>1e-9</code> tolerance above is roughly a tenth of a millimetre at the equator and about half that at 60° north. That asymmetry is fine for a “did it move at all” check and useless as a distance measurement — do not reuse the number as a spatial tolerance elsewhere.</p>
+</li>
+<li>
+<p><strong>Compare geometries, not serialised payloads.</strong> Two readers can produce byte-different JSON for the same shape — key order, float formatting, an explicit <code>bbox</code> member — and a string comparison fails on all of it while missing the case where the bytes match and the interpretation differs.</p>
+</li>
+<li>
+<p><strong>The corpus has to be regenerated.</strong> A corpus captured two years ago does not contain the payload shapes a producer added last quarter, so the gate is checking the schema against a stream that no longer exists. Refresh it on a schedule and fail the build if it is stale.</p>
+</li>
+<li>
+<p><strong>Precision is part of the contract even though it is not in the type system.</strong> Reducing declared precision changes every content hash, so deduplication stops matching across the boundary exactly as described in <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a>. Declaring it as an extension keyword is what makes it reviewable.</p>
+</li>
+</ol>
+<h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
+<p>The gate itself needs a test, because a compatibility checker that has never rejected anything is indistinguishable from one that always passes.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> pytest
+
+
+BASE <span class="token operator">=</span> <span class="token punctuation">{</span>
+    <span class="token string">"required"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token string">"feature_id"</span><span class="token punctuation">,</span> <span class="token string">"crs"</span><span class="token punctuation">,</span> <span class="token string">"geometry"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+    <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span>
+        <span class="token string">"feature_id"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"string"</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+        <span class="token string">"crs"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"string"</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+        <span class="token string">"geometry"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"object"</span><span class="token punctuation">,</span> <span class="token string">"x-coordinate-order"</span><span class="token punctuation">:</span> <span class="token string">"lon,lat"</span><span class="token punctuation">,</span>
+                     <span class="token string">"x-coordinate-precision"</span><span class="token punctuation">:</span> <span class="token number">6</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token punctuation">}</span><span class="token punctuation">,</span>
+<span class="token punctuation">}</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_gate_accepts_a_safe_addition</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""A new optional field must not trip the gate."""</span>
+    new <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token operator">**</span>BASE<span class="token punctuation">,</span> <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token operator">**</span>BASE<span class="token punctuation">[</span><span class="token string">"properties"</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token string">"confidence"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"number"</span><span class="token punctuation">}</span><span class="token punctuation">}</span><span class="token punctuation">}</span>
+    <span class="token keyword">assert</span> structural_check<span class="token punctuation">(</span>BASE<span class="token punctuation">,</span> new<span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+    <span class="token keyword">assert</span> spatial_check<span class="token punctuation">(</span>new<span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_gate_rejects_a_coordinate_flip</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""The change no generic checker sees."""</span>
+    geom <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token operator">**</span>BASE<span class="token punctuation">[</span><span class="token string">"properties"</span><span class="token punctuation">]</span><span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token string">"x-coordinate-order"</span><span class="token punctuation">:</span> <span class="token string">"lat,lon"</span><span class="token punctuation">}</span>
+    new <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token operator">**</span>BASE<span class="token punctuation">,</span> <span class="token string">"properties"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token operator">**</span>BASE<span class="token punctuation">[</span><span class="token string">"properties"</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token string">"geometry"</span><span class="token punctuation">:</span> geom<span class="token punctuation">}</span><span class="token punctuation">}</span>
+    <span class="token keyword">assert</span> structural_check<span class="token punctuation">(</span>BASE<span class="token punctuation">,</span> new<span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>          <span class="token comment"># structurally identical</span>
+    <span class="token keyword">assert</span> <span class="token builtin">any</span><span class="token punctuation">(</span><span class="token string">"coordinate order"</span> <span class="token keyword">in</span> p <span class="token keyword">for</span> p <span class="token keyword">in</span> spatial_check<span class="token punctuation">(</span>new<span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_gate_rejects_an_implicit_crs</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Removing crs from required is how an implicit default gets in."""</span>
+    new <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token operator">**</span>BASE<span class="token punctuation">,</span> <span class="token string">"required"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token string">"feature_id"</span><span class="token punctuation">,</span> <span class="token string">"geometry"</span><span class="token punctuation">]</span><span class="token punctuation">}</span>
+    <span class="token keyword">assert</span> <span class="token builtin">any</span><span class="token punctuation">(</span><span class="token string">"crs"</span> <span class="token keyword">in</span> p <span class="token keyword">for</span> p <span class="token keyword">in</span> spatial_check<span class="token punctuation">(</span>new<span class="token punctuation">)</span><span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>The middle test is the one to keep in front of a reviewer: <code>structural_check</code> returns an empty list on a change that relocates every feature in the stream, and that is not a bug in the structural checker — it is the reason the spatial one exists.</p>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
+<ul>
+<li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/schema-evolution-versioning/">Schema Evolution &amp; Versioning for Spatial Events</a> — the topic this guide belongs to</li>
+<li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/schema-evolution-versioning/migrating-a-spatial-stream-between-schema-versions/">Migrating a Spatial Stream Between Schema Versions</a> — what to do when the gate correctly says the change is breaking</li>
+<li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/best-practices-for-spatial-event-payload-schemas/">Best Practices for Spatial Event Payload Schemas</a> — the schema conventions these assertions enforce</li>
+<li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a> — the runtime counterpart to a build-time gate</li>
+</ul>
+
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        <div class="aside-card">
+          <h3>Related in this section</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/schema-evolution-versioning/adding-a-field-to-a-live-spatial-event-schema/">Adding a Field to a Live Spatial Event Schema</a></li>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/schema-evolution-versioning/migrating-a-spatial-stream-between-schema-versions/">Migrating a Spatial Stream Between Schema Versions</a></li>
+          </ul>
+        </div>
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a></li>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a></li>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a></li>
+            <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring &amp; Observability for Spatial Pipelines</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</article>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="https://www.geospatialwebhook.com/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/">Home</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queues &amp; Retries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/schema-evolution-versioning/">Schema Evolution &amp; Versioning for Spatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/temporal-dedup-windows/">Time-Windowed Deduplication for Moving Assets</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/streaming-large-geometries/">Streaming &amp; Chunking Large Geometry Payloads</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Queues &amp; Retries</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/">Backpressure &amp; Flow Control for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Monitoring</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/slo-alerting-spatial-pipelines/">SLOs &amp; Alerting for Spatial Webhook Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging &amp; Tracing for Spatial Events</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <a class="site-footer__gh" href="https://github.com/geospatialwebhook" target="_blank" rel="noopener" aria-label="Geospatial Webhook on GitHub">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5Z"/></svg><span>GitHub</span>
+      </a>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js?v=c31b7b80" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

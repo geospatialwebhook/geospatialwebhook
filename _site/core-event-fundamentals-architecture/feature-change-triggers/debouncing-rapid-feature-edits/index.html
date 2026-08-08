@@ -1,0 +1,699 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>Debouncing Rapid Feature Edits · Geo Webhook</title>
+  <meta name="description" content="An editor dragging a vertex emits an event per mouse-up. Collapse the burst with a per-feature timer that has a maximum wait, and merge the payloads so the first geometry and the last are both preserved."/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/debouncing-rapid-feature-edits/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/debouncing-rapid-feature-edits/"/>
+  <meta property="og:title" content="Debouncing Rapid Feature Edits"/>
+  <meta property="og:description" content="An editor dragging a vertex emits an event per mouse-up. Collapse the burst with a per-feature timer that has a maximum wait, and merge the payloads so the first geometry and the last are both preserved."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Debouncing Rapid Feature Edits"/>
+  <meta name="twitter:description" content="An editor dragging a vertex emits an event per mouse-up. Collapse the burst with a per-feature timer that has a maximum wait, and merge the payloads so the first geometry and the last are both preserved."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=180687f5"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },{ "@type": "ListItem", "position": 2, "name": "Core Event Fundamentals Architecture", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" },{ "@type": "ListItem", "position": 3, "name": "Feature Change Triggers", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/" },{ "@type": "ListItem", "position": 4, "name": "Debouncing Rapid Feature Edits", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/debouncing-rapid-feature-edits/" }
+    ]
+  }
+  </script>
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/debouncing-rapid-feature-edits/#article",
+    "mainEntityOfPage": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/debouncing-rapid-feature-edits/",
+    "headline": "Debouncing Rapid Feature Edits",
+    "description": "An editor dragging a vertex emits an event per mouse-up. Collapse the burst with a per-feature timer that has a maximum wait, and merge the payloads so the first geometry and the last are both preserved.",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
+    "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
+    "image": "https://www.geospatialwebhook.com/og-image.png",
+    "url": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/debouncing-rapid-feature-edits/",
+    "articleSection": "Core Event Fundamentals Architecture",
+    "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
+  }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="https://www.geospatialwebhook.com/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="https://www.geospatialwebhook.com/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Queues &amp; Retries</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
+      </a>
+    </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle"
+            aria-label="Switch to dark theme" title="Switch to dark theme">
+      <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.4v2.3M12 19.3v2.3M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.3M19.3 12h2.3M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="https://www.geospatialwebhook.com/">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals Architecture</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">Debouncing Rapid Feature Edits</span>
+    </nav>
+
+    <h1 class="page__title">Debouncing Rapid Feature Edits</h1>
+
+    <div class="page__layout">
+      <div class="markdown">
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Debouncing Rapid Feature Edits",
+      "description": "A GIS editor reshaping a polygon emits one change event per vertex drag, and downstream every one of them triggers a tile rebuild. This guide implements a per-feature debounce with a maximum wait, and shows why the merged payload must keep the first geometry as well as the last.",
+      "url": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/debouncing-rapid-feature-edits/",
+      "datePublished": "2026-08-08",
+      "dateModified": "2026-08-08",
+      "author": {"@type": "Organization", "name": "geospatialwebhook.com"},
+      "publisher": {"@type": "Organization", "name": "geospatialwebhook.com"}
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/"},
+        {"@type": "ListItem", "position": 2, "name": "Core Event Fundamentals & Architecture", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/"},
+        {"@type": "ListItem", "position": 3, "name": "Feature Change Triggers", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/"},
+        {"@type": "ListItem", "position": 4, "name": "Debouncing Rapid Feature Edits", "item": "https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/debouncing-rapid-feature-edits/"}
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Debounce a burst of feature edits into one event",
+      "step": [
+        {"@type": "HowToStep", "position": 1, "name": "Key the debounce on the feature, never on the stream"},
+        {"@type": "HowToStep", "position": 2, "name": "Add a maximum wait so a continuously edited feature still emits"},
+        {"@type": "HowToStep", "position": 3, "name": "Merge payloads keeping the first previous-geometry and the last geometry"},
+        {"@type": "HowToStep", "position": 4, "name": "Flush pending timers on shutdown, or the last edit of every burst is lost"}
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Why does debouncing need a maximum wait?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Because a plain debounce timer resets on every edit, so a feature that is edited continuously never emits at all. An operator dragging vertices for four minutes produces no downstream event for four minutes, and a tile pipeline that looked fine in testing goes silent under exactly the workload it exists for. A maximum wait caps that: the event fires once the quiet period elapses, or once the maximum has passed since the first edit in the burst, whichever comes first."}
+        },
+        {
+          "@type": "Question",
+          "name": "Why keep the first previous-geometry rather than the last?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Because the merged event has to describe the whole burst, and the area affected is the union of where the feature was when the burst started and where it ended. Keeping the last intermediate previous-geometry describes only the final drag, so any tile the feature occupied at the start of the edit and left during it is never invalidated — it keeps serving the old shape until something else happens to touch it."}
+        },
+        {
+          "@type": "Question",
+          "name": "Should debouncing happen before or after the broker?",
+          "acceptedAnswer": {"@type": "Answer", "text": "After capture and before the expensive consumer, which usually means a small stateful stage in front of the tile or index pipeline rather than in the capture process itself. Debouncing at capture loses the audit trail — the individual edits never reach the log — while debouncing inside the expensive consumer means it has already paid to receive every event. A separate stage keeps the full history in the topic and collapses only what is about to become work."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>Key the debounce on the feature identifier, give it a maximum wait so a continuously edited feature still emits, and merge the burst so the event carries the geometry from before the first edit and after the last — keeping the most recent intermediate geometry leaves every tile the feature has left behind serving a stale shape.</strong></p>
+<p>This guide sits under <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers</a>, within <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a>. It handles the burst that <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/capturing-postgis-changes-with-logical-replication/">Capturing PostGIS Changes with Logical Replication</a> faithfully produces, one event per vertex drag.</p>
+<h2 id="when-to-use-this-pattern" tabindex="-1"><a class="heading-anchor" href="#when-to-use-this-pattern">When to use this pattern</a></h2>
+<ul>
+<li>A human editor or a bulk process produces many edits to the same feature within seconds, and each one currently triggers downstream work.</li>
+<li>The downstream work is expensive relative to the edit — a tile rebuild, a spatial index update, a notification — so collapsing ten events into one is a real saving.</li>
+<li>Losing the intermediate states is acceptable to the consumer. If an audit trail needs every edit, debounce in front of the expensive consumer only, and leave the topic intact.</li>
+</ul>
+<h2 id="what-a-burst-actually-looks-like" tabindex="-1"><a class="heading-anchor" href="#what-a-burst-actually-looks-like">What a burst actually looks like</a></h2>
+<figure class="fig">
+<svg viewBox="0 0 760 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A vertex-drag burst producing eleven change events and eleven tile rebuilds, collapsed to one">
+<title>Eleven events, one meaningful change</title>
+<desc>An operator reshapes a polygon over about twelve seconds, releasing the mouse eleven times. Each release commits a transaction, so the capture stage emits eleven change events, and a tile pipeline downstream rebuilds every affected tile eleven times — of which ten rebuilds are immediately superseded by the next. The work is not merely wasted: each rebuild also invalidates a cache entry that clients then re-fetch, so a twelve-second edit produces eleven cache-invalidation waves across every viewer of that area. With a debounce keyed on the feature, the eleven events become one, emitted three hundred milliseconds after the operator stops. The saving is proportional to burst length, and burst length is set by how carefully somebody is working — which means the busiest editing sessions produce the largest bursts and the biggest saving, and also that a naive timer without a maximum wait fails hardest on exactly those sessions.</desc>
+<rect x="0" y="0" width="760" height="220" fill="var(--fig-bg)"/>
+<text x="14" y="18" font-size="10" font-weight="600" fill="var(--fig-ink)">one operator reshaping one polygon · 12 seconds</text>
+<text x="14" y="42" font-size="9" font-weight="600" fill="var(--fig-rose-edge)">without debounce</text>
+<line x1="120" y1="60" x2="740" y2="60" stroke="var(--fig-line)" stroke-width="1.2"/>
+<circle cx="140" cy="60" r="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<circle cx="188" cy="60" r="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<circle cx="230" cy="60" r="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<circle cx="286" cy="60" r="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<circle cx="330" cy="60" r="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<circle cx="392" cy="60" r="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<circle cx="440" cy="60" r="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<circle cx="498" cy="60" r="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<circle cx="556" cy="60" r="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<circle cx="618" cy="60" r="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<circle cx="676" cy="60" r="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="140" y="82" font-size="8.5" fill="var(--fig-rose-edge)">11 change events → 11 tile rebuilds → 11 cache-invalidation waves across every viewer</text>
+<text x="14" y="118" font-size="9" font-weight="600" fill="var(--fig-mint-edge)">with a 300 ms per-feature debounce</text>
+<line x1="120" y1="136" x2="740" y2="136" stroke="var(--fig-line)" stroke-width="1.2"/>
+<rect x="136" y="128" width="546" height="16" rx="4" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="146" y="140" font-size="8" fill="var(--fig-ink-soft)">timer resets on each edit</text>
+<circle cx="706" cy="136" r="5.5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<text x="380" y="158" font-size="8.5" fill="var(--fig-mint-edge)">one event, 300 ms after the operator stops</text>
+<rect x="14" y="172" width="732" height="40" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="26" y="190" font-size="9" fill="var(--fig-ink-soft)">Burst length is set by how carefully somebody is working, so the busiest sessions produce the biggest saving — and also</text>
+<text x="26" y="204" font-size="9" fill="var(--fig-ink-soft)">the longest chains of resets, which is exactly where a timer without a maximum wait goes silent.</text>
+</svg>
+<figcaption><b>Figure 1.</b> Ten of the eleven rebuilds are superseded before anyone sees them, and each one still costs a cache invalidation for every viewer of that area.</figcaption>
+</figure>
+<h2 id="complete-runnable-implementation" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-implementation">Complete runnable implementation</a></h2>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">import</span> time
+<span class="token keyword">from</span> dataclasses <span class="token keyword">import</span> dataclass<span class="token punctuation">,</span> field
+
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>geometry <span class="token keyword">import</span> mapping<span class="token punctuation">,</span> shape
+<span class="token keyword">from</span> shapely<span class="token punctuation">.</span>ops <span class="token keyword">import</span> unary_union
+
+QUIET_SECONDS <span class="token operator">=</span> <span class="token number">0.3</span>      <span class="token comment"># emit this long after the last edit</span>
+MAX_WAIT_SECONDS <span class="token operator">=</span> <span class="token number">5.0</span>   <span class="token comment"># …but never hold an edit longer than this</span>
+
+
+<span class="token decorator annotation punctuation">@dataclass</span><span class="token punctuation">(</span>slots<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span>
+<span class="token keyword">class</span> <span class="token class-name">Pending</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""State for one feature's in-flight burst."""</span>
+    first_seen<span class="token punctuation">:</span> <span class="token builtin">float</span>
+    event<span class="token punctuation">:</span> <span class="token builtin">dict</span>
+    handle<span class="token punctuation">:</span> asyncio<span class="token punctuation">.</span>TimerHandle <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span>
+    merged<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">1</span>
+
+
+<span class="token keyword">class</span> <span class="token class-name">FeatureDebouncer</span><span class="token punctuation">:</span>
+    <span class="token keyword">def</span> <span class="token function">__init__</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> emit<span class="token punctuation">,</span> quiet<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> QUIET_SECONDS<span class="token punctuation">,</span>
+                 max_wait<span class="token punctuation">:</span> <span class="token builtin">float</span> <span class="token operator">=</span> MAX_WAIT_SECONDS<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        self<span class="token punctuation">.</span>_emit <span class="token operator">=</span> emit
+        self<span class="token punctuation">.</span>_quiet <span class="token operator">=</span> quiet
+        self<span class="token punctuation">.</span>_max_wait <span class="token operator">=</span> max_wait
+        self<span class="token punctuation">.</span>_pending<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Pending<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token punctuation">}</span>
+
+    <span class="token keyword">def</span> <span class="token function">submit</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> event<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        <span class="token triple-quoted-string string">"""Accept one change event; emit later, merged."""</span>
+        loop <span class="token operator">=</span> asyncio<span class="token punctuation">.</span>get_running_loop<span class="token punctuation">(</span><span class="token punctuation">)</span>
+        key <span class="token operator">=</span> event<span class="token punctuation">[</span><span class="token string">"feature_id"</span><span class="token punctuation">]</span>
+        now <span class="token operator">=</span> loop<span class="token punctuation">.</span>time<span class="token punctuation">(</span><span class="token punctuation">)</span>
+        current <span class="token operator">=</span> self<span class="token punctuation">.</span>_pending<span class="token punctuation">.</span>get<span class="token punctuation">(</span>key<span class="token punctuation">)</span>
+
+        <span class="token keyword">if</span> current <span class="token keyword">is</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+            self<span class="token punctuation">.</span>_pending<span class="token punctuation">[</span>key<span class="token punctuation">]</span> <span class="token operator">=</span> current <span class="token operator">=</span> Pending<span class="token punctuation">(</span>first_seen<span class="token operator">=</span>now<span class="token punctuation">,</span> event<span class="token operator">=</span>event<span class="token punctuation">)</span>
+        <span class="token keyword">else</span><span class="token punctuation">:</span>
+            current<span class="token punctuation">.</span>event <span class="token operator">=</span> _merge<span class="token punctuation">(</span>current<span class="token punctuation">.</span>event<span class="token punctuation">,</span> event<span class="token punctuation">)</span>
+            current<span class="token punctuation">.</span>merged <span class="token operator">+=</span> <span class="token number">1</span>
+            <span class="token keyword">if</span> current<span class="token punctuation">.</span>handle <span class="token keyword">is</span> <span class="token keyword">not</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+                current<span class="token punctuation">.</span>handle<span class="token punctuation">.</span>cancel<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+        <span class="token comment"># The maximum wait is measured from the FIRST edit of the burst, so a</span>
+        <span class="token comment"># feature under continuous editing still emits. Without this line a</span>
+        <span class="token comment"># four-minute reshaping session produces nothing for four minutes.</span>
+        deadline <span class="token operator">=</span> <span class="token builtin">min</span><span class="token punctuation">(</span>now <span class="token operator">+</span> self<span class="token punctuation">.</span>_quiet<span class="token punctuation">,</span> current<span class="token punctuation">.</span>first_seen <span class="token operator">+</span> self<span class="token punctuation">.</span>_max_wait<span class="token punctuation">)</span>
+        current<span class="token punctuation">.</span>handle <span class="token operator">=</span> loop<span class="token punctuation">.</span>call_at<span class="token punctuation">(</span>deadline<span class="token punctuation">,</span> self<span class="token punctuation">.</span>_fire<span class="token punctuation">,</span> key<span class="token punctuation">)</span>
+
+    <span class="token keyword">def</span> <span class="token function">_fire</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> key<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        pending <span class="token operator">=</span> self<span class="token punctuation">.</span>_pending<span class="token punctuation">.</span>pop<span class="token punctuation">(</span>key<span class="token punctuation">,</span> <span class="token boolean">None</span><span class="token punctuation">)</span>
+        <span class="token keyword">if</span> pending <span class="token keyword">is</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+            <span class="token keyword">return</span>
+        pending<span class="token punctuation">.</span>event<span class="token punctuation">[</span><span class="token string">"merged_edits"</span><span class="token punctuation">]</span> <span class="token operator">=</span> pending<span class="token punctuation">.</span>merged
+        pending<span class="token punctuation">.</span>event<span class="token punctuation">[</span><span class="token string">"burst_seconds"</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token builtin">round</span><span class="token punctuation">(</span>
+            asyncio<span class="token punctuation">.</span>get_running_loop<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span>time<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span> pending<span class="token punctuation">.</span>first_seen<span class="token punctuation">,</span> <span class="token number">3</span>
+        <span class="token punctuation">)</span>
+        asyncio<span class="token punctuation">.</span>create_task<span class="token punctuation">(</span>self<span class="token punctuation">.</span>_emit<span class="token punctuation">(</span>pending<span class="token punctuation">.</span>event<span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+    <span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">drain</span><span class="token punctuation">(</span>self<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        <span class="token triple-quoted-string string">"""Flush every pending timer. MUST run on shutdown.
+
+        Without it, the last edit of every in-flight burst is dropped — the
+        one edit the operator most recently made, and the only one they will
+        look for.
+        """</span>
+        <span class="token keyword">for</span> key <span class="token keyword">in</span> <span class="token builtin">list</span><span class="token punctuation">(</span>self<span class="token punctuation">.</span>_pending<span class="token punctuation">)</span><span class="token punctuation">:</span>
+            handle <span class="token operator">=</span> self<span class="token punctuation">.</span>_pending<span class="token punctuation">[</span>key<span class="token punctuation">]</span><span class="token punctuation">.</span>handle
+            <span class="token keyword">if</span> handle <span class="token keyword">is</span> <span class="token keyword">not</span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+                handle<span class="token punctuation">.</span>cancel<span class="token punctuation">(</span><span class="token punctuation">)</span>
+            self<span class="token punctuation">.</span>_fire<span class="token punctuation">(</span>key<span class="token punctuation">)</span>
+        <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">def</span> <span class="token function">_merge</span><span class="token punctuation">(</span>old<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">,</span> new<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">dict</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Combine two change events for the same feature.
+
+    The geometry is the newest one; the previous_geometry is the OLDEST,
+    because the merged event has to describe the whole burst. Taking the
+    newest previous_geometry describes only the final drag, leaving every
+    tile the feature occupied at the start of the burst uninvalidated.
+    """</span>
+    merged <span class="token operator">=</span> <span class="token builtin">dict</span><span class="token punctuation">(</span>new<span class="token punctuation">)</span>
+    merged<span class="token punctuation">[</span><span class="token string">"previous_geometry"</span><span class="token punctuation">]</span> <span class="token operator">=</span> old<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"previous_geometry"</span><span class="token punctuation">)</span>
+    merged<span class="token punctuation">[</span><span class="token string">"occurred_at"</span><span class="token punctuation">]</span> <span class="token operator">=</span> new<span class="token punctuation">[</span><span class="token string">"occurred_at"</span><span class="token punctuation">]</span>
+
+    <span class="token comment"># An insert followed by updates is still an insert to anyone downstream.</span>
+    <span class="token keyword">if</span> old<span class="token punctuation">[</span><span class="token string">"action"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token string">"insert"</span><span class="token punctuation">:</span>
+        merged<span class="token punctuation">[</span><span class="token string">"action"</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token string">"insert"</span>
+    <span class="token comment"># …and anything followed by a delete is a delete.</span>
+    <span class="token keyword">if</span> new<span class="token punctuation">[</span><span class="token string">"action"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token string">"delete"</span><span class="token punctuation">:</span>
+        merged<span class="token punctuation">[</span><span class="token string">"action"</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token string">"delete"</span>
+        merged<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token boolean">None</span>
+    <span class="token keyword">return</span> merged
+
+
+<span class="token keyword">def</span> <span class="token function">affected_area</span><span class="token punctuation">(</span>event<span class="token punctuation">:</span> <span class="token builtin">dict</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Union of where the feature was and where it is — what to invalidate."""</span>
+    parts <span class="token operator">=</span> <span class="token punctuation">[</span>shape<span class="token punctuation">(</span>g<span class="token punctuation">)</span> <span class="token keyword">for</span> g <span class="token keyword">in</span> <span class="token punctuation">(</span>event<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"previous_geometry"</span><span class="token punctuation">)</span><span class="token punctuation">,</span> event<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"geometry"</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token keyword">if</span> g<span class="token punctuation">]</span>
+    <span class="token keyword">return</span> mapping<span class="token punctuation">(</span>unary_union<span class="token punctuation">(</span>parts<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token keyword">if</span> parts <span class="token keyword">else</span> <span class="token boolean">None</span>
+</code></pre>
+</div>
+<figure class="fig">
+<svg viewBox="0 0 760 218" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A polygon moved across a burst, showing which tiles are invalidated when the merge keeps the first previous-geometry versus the last">
+<title>Keep the first previous-geometry, or leave tiles behind</title>
+<desc>A polygon is dragged across a tile grid during one editing burst, from the upper-left tiles to the lower-right ones through two intermediate positions. If the merged event keeps the oldest previous-geometry, the affected area is the union of the starting shape and the final shape, so every tile the feature occupied at the start and every tile it occupies now are invalidated, and the map is consistent. If the merge instead keeps the most recent intermediate previous-geometry — which is what a naive last-write-wins merge produces — the affected area covers only the final drag, so the tiles the feature left at the beginning of the burst are never invalidated. Those tiles keep serving the polygon in its original position, and nothing will correct them until some unrelated edit happens to touch the same tile, which for a quiet rural area can be months. The symptom is a feature that appears twice on the map at two different zoom levels, and it is impossible to reproduce from a single edit because it needs a burst.</desc>
+<rect x="0" y="0" width="760" height="218" fill="var(--fig-bg)"/>
+<text x="14" y="18" font-size="10" font-weight="600" fill="var(--fig-ink)">one polygon dragged across a tile grid during a single burst</text>
+<g stroke="var(--fig-line-soft)" stroke-width="1" fill="none">
+<rect x="30" y="30" width="60" height="44"/><rect x="90" y="30" width="60" height="44"/><rect x="150" y="30" width="60" height="44"/><rect x="210" y="30" width="60" height="44"/>
+<rect x="30" y="74" width="60" height="44"/><rect x="90" y="74" width="60" height="44"/><rect x="150" y="74" width="60" height="44"/><rect x="210" y="74" width="60" height="44"/>
+<rect x="30" y="118" width="60" height="44"/><rect x="90" y="118" width="60" height="44"/><rect x="150" y="118" width="60" height="44"/><rect x="210" y="118" width="60" height="44"/>
+</g>
+<rect x="40" y="40" width="52" height="34" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.4"/>
+<text x="44" y="60" font-size="7.5" fill="var(--fig-ink)">start</text>
+<rect x="100" y="76" width="52" height="34" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.1" stroke-dasharray="3 2"/>
+<rect x="160" y="106" width="52" height="34" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.1" stroke-dasharray="3 2"/>
+<rect x="212" y="122" width="52" height="34" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="216" y="142" font-size="7.5" fill="var(--fig-ink)">end</text>
+<rect x="300" y="30" width="216" height="132" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<text x="312" y="50" font-size="9.5" font-weight="600" fill="var(--fig-ink)">keep the OLDEST previous_geometry</text>
+<text x="312" y="70" font-size="8.5" fill="var(--fig-ink-soft)">affected area = union(start, end)</text>
+<text x="312" y="86" font-size="8.5" fill="var(--fig-mint-edge)">every tile it left and every tile it now</text>
+<text x="312" y="98" font-size="8.5" fill="var(--fig-mint-edge)">occupies is invalidated</text>
+<text x="312" y="120" font-size="8.5" fill="var(--fig-ink-soft)">the map is consistent after one event</text>
+<text x="312" y="142" font-size="8.5" fill="var(--fig-ink-soft)">costs one extra geometry in the payload</text>
+<rect x="528" y="30" width="218" height="132" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="540" y="50" font-size="9.5" font-weight="600" fill="var(--fig-ink)">keep the NEWEST — last-write-wins</text>
+<text x="540" y="70" font-size="8.5" fill="var(--fig-ink-soft)">affected area = union(3rd position, end)</text>
+<text x="540" y="86" font-size="8.5" fill="var(--fig-rose-edge)">the two tiles it left at the start of the</text>
+<text x="540" y="98" font-size="8.5" fill="var(--fig-rose-edge)">burst are never invalidated</text>
+<text x="540" y="120" font-size="8.5" fill="var(--fig-ink-soft)">they keep serving the original shape until</text>
+<text x="540" y="132" font-size="8.5" fill="var(--fig-ink-soft)">an unrelated edit touches the same tile</text>
+<text x="540" y="152" font-size="8.5" fill="var(--fig-rose-edge)">in a quiet area, that can be months</text>
+<rect x="14" y="172" width="732" height="34" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="26" y="191" font-size="9" fill="var(--fig-ink-soft)">The symptom is a feature that appears in two places on the map. It cannot be reproduced from a single edit, because it</text>
+<text x="26" y="202" font-size="9" fill="var(--fig-ink-soft)">requires a burst — which is why the merge rule is worth a comment in the code rather than a line in a runbook.</text>
+</svg>
+<figcaption><b>Figure 2.</b> The naive merge is not merely less accurate; it produces map state that will not self-correct, because nothing downstream knows those tiles are wrong.</figcaption>
+</figure>
+<h2 id="parameter-reference" tabindex="-1"><a class="heading-anchor" href="#parameter-reference">Parameter reference</a></h2>
+<div class="table-scroll">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Spatial constraint</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>QUIET_SECONDS</code></td>
+<td><code>float</code></td>
+<td>Above the interval between vertex drags (~150–250 ms for a human)</td>
+<td><code>0.3</code></td>
+</tr>
+<tr>
+<td><code>MAX_WAIT_SECONDS</code></td>
+<td><code>float</code></td>
+<td>Below the freshness objective for the affected tiles</td>
+<td><code>5.0</code></td>
+</tr>
+<tr>
+<td>Debounce key</td>
+<td><code>str</code></td>
+<td>The feature id — never the stream or the tile, or unrelated edits collapse</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>previous_geometry</code></td>
+<td>GeoJSON</td>
+<td>Must be the burst’s <strong>first</strong>, so the invalidation area is complete</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>merged_edits</code></td>
+<td><code>int</code></td>
+<td>Emitted for observability; a value of 1 means the debounce did nothing</td>
+<td><code>1</code></td>
+</tr>
+<tr>
+<td><code>drain()</code></td>
+<td>coroutine</td>
+<td>Must run on shutdown, or the last edit of every burst is lost</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<h2 id="gotchas-and-spatial-edge-cases" tabindex="-1"><a class="heading-anchor" href="#gotchas-and-spatial-edge-cases">Gotchas and spatial edge cases</a></h2>
+<ol>
+<li>
+<p><strong>Debouncing on the stream instead of the feature collapses unrelated edits.</strong> With one timer for the whole stream, an operator editing a parcel in Hamburg suppresses an unrelated edit in Munich, and the second feature’s event carries the first feature’s geometry. The key must be the feature identifier, and the memory cost of one timer per in-flight feature is the price of correctness.</p>
+</li>
+<li>
+<p><strong>A delete inside a burst wins, and it must null the geometry.</strong> An insert-then-delete pair inside the quiet window collapses to a delete of something no consumer ever saw. That is correct, and it means consumers must tolerate a delete for an unknown feature rather than treating it as an error.</p>
+</li>
+<li>
+<p><strong><code>MAX_WAIT_SECONDS</code> has to sit below the freshness objective.</strong> Debouncing deliberately delays events, which spends the freshness budget defined in <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/slo-alerting-spatial-pipelines/">SLOs &amp; Alerting for Spatial Webhook Pipelines</a>. A five-second maximum against a sixty-second objective is comfortable; a sixty-second maximum against the same objective consumes the entire budget before the pipeline has done any work.</p>
+</li>
+<li>
+<p><strong>The debouncer is in-memory state, so it changes the delivery guarantee.</strong> A process killed with pending timers loses those bursts unless <code>drain()</code> runs. If that is unacceptable, keep the pending state in Redis with a TTL and accept the round trip — but do not pretend an in-memory dictionary survives a deploy.</p>
+</li>
+<li>
+<p><strong>Union of the before and after geometry is not always the right invalidation area.</strong> For a feature that moved a long way, the union’s bounding box covers everything in between, which can be thousands of untouched tiles. Invalidate against the two geometries separately rather than their combined envelope, as <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/scoping-tile-invalidation-to-the-zoom-levels-that-changed/">Scoping Tile Invalidation to the Zoom Levels That Changed</a> describes.</p>
+</li>
+</ol>
+<h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">import</span> pytest
+
+SQUARE <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Polygon"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token punctuation">[</span><span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">1</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">1</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">}</span>
+MOVED <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"type"</span><span class="token punctuation">:</span> <span class="token string">"Polygon"</span><span class="token punctuation">,</span> <span class="token string">"coordinates"</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token punctuation">[</span><span class="token punctuation">[</span><span class="token number">5</span><span class="token punctuation">,</span> <span class="token number">5</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">5</span><span class="token punctuation">,</span> <span class="token number">6</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">6</span><span class="token punctuation">,</span> <span class="token number">6</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">6</span><span class="token punctuation">,</span> <span class="token number">5</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token number">5</span><span class="token punctuation">,</span> <span class="token number">5</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">}</span>
+
+
+<span class="token decorator annotation punctuation">@pytest<span class="token punctuation">.</span>mark<span class="token punctuation">.</span>asyncio</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">test_burst_collapses_to_one_event</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    out <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+    d <span class="token operator">=</span> FeatureDebouncer<span class="token punctuation">(</span>emit<span class="token operator">=</span><span class="token keyword">lambda</span> e<span class="token punctuation">:</span> out<span class="token punctuation">.</span>append<span class="token punctuation">(</span>e<span class="token punctuation">)</span> <span class="token keyword">or</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">)</span><span class="token punctuation">,</span> quiet<span class="token operator">=</span><span class="token number">0.05</span><span class="token punctuation">)</span>
+    <span class="token keyword">for</span> i <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span><span class="token number">11</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        d<span class="token punctuation">.</span>submit<span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token string">"feature_id"</span><span class="token punctuation">:</span> <span class="token string">"f-1"</span><span class="token punctuation">,</span> <span class="token string">"action"</span><span class="token punctuation">:</span> <span class="token string">"update"</span><span class="token punctuation">,</span> <span class="token string">"occurred_at"</span><span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">(</span>i<span class="token punctuation">)</span><span class="token punctuation">,</span>
+                  <span class="token string">"geometry"</span><span class="token punctuation">:</span> SQUARE<span class="token punctuation">,</span> <span class="token string">"previous_geometry"</span><span class="token punctuation">:</span> SQUARE<span class="token punctuation">}</span><span class="token punctuation">)</span>
+        <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span><span class="token number">0.01</span><span class="token punctuation">)</span>
+    <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span><span class="token number">0.1</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> <span class="token builtin">len</span><span class="token punctuation">(</span>out<span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token number">1</span> <span class="token keyword">and</span> out<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">[</span><span class="token string">"merged_edits"</span><span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token number">11</span>
+
+
+<span class="token decorator annotation punctuation">@pytest<span class="token punctuation">.</span>mark<span class="token punctuation">.</span>asyncio</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">test_max_wait_fires_during_continuous_editing</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""The failure a plain debounce has: never emitting at all."""</span>
+    out <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+    d <span class="token operator">=</span> FeatureDebouncer<span class="token punctuation">(</span>emit<span class="token operator">=</span><span class="token keyword">lambda</span> e<span class="token punctuation">:</span> out<span class="token punctuation">.</span>append<span class="token punctuation">(</span>e<span class="token punctuation">)</span> <span class="token keyword">or</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+                         quiet<span class="token operator">=</span><span class="token number">0.05</span><span class="token punctuation">,</span> max_wait<span class="token operator">=</span><span class="token number">0.2</span><span class="token punctuation">)</span>
+    <span class="token keyword">for</span> _ <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span><span class="token number">40</span><span class="token punctuation">)</span><span class="token punctuation">:</span>                       <span class="token comment"># 0.4 s of unbroken editing</span>
+        d<span class="token punctuation">.</span>submit<span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token string">"feature_id"</span><span class="token punctuation">:</span> <span class="token string">"f-1"</span><span class="token punctuation">,</span> <span class="token string">"action"</span><span class="token punctuation">:</span> <span class="token string">"update"</span><span class="token punctuation">,</span> <span class="token string">"occurred_at"</span><span class="token punctuation">:</span> <span class="token string">"t"</span><span class="token punctuation">,</span>
+                  <span class="token string">"geometry"</span><span class="token punctuation">:</span> SQUARE<span class="token punctuation">,</span> <span class="token string">"previous_geometry"</span><span class="token punctuation">:</span> SQUARE<span class="token punctuation">}</span><span class="token punctuation">)</span>
+        <span class="token keyword">await</span> asyncio<span class="token punctuation">.</span>sleep<span class="token punctuation">(</span><span class="token number">0.01</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> out<span class="token punctuation">,</span> <span class="token string">"a continuously edited feature must still emit"</span>
+
+
+<span class="token keyword">def</span> <span class="token function">test_merge_keeps_the_first_previous_geometry</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""The rule that keeps tiles from being left behind."""</span>
+    first <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"feature_id"</span><span class="token punctuation">:</span> <span class="token string">"f-1"</span><span class="token punctuation">,</span> <span class="token string">"action"</span><span class="token punctuation">:</span> <span class="token string">"update"</span><span class="token punctuation">,</span> <span class="token string">"occurred_at"</span><span class="token punctuation">:</span> <span class="token string">"t1"</span><span class="token punctuation">,</span>
+             <span class="token string">"geometry"</span><span class="token punctuation">:</span> SQUARE<span class="token punctuation">,</span> <span class="token string">"previous_geometry"</span><span class="token punctuation">:</span> SQUARE<span class="token punctuation">}</span>
+    last <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"feature_id"</span><span class="token punctuation">:</span> <span class="token string">"f-1"</span><span class="token punctuation">,</span> <span class="token string">"action"</span><span class="token punctuation">:</span> <span class="token string">"update"</span><span class="token punctuation">,</span> <span class="token string">"occurred_at"</span><span class="token punctuation">:</span> <span class="token string">"t9"</span><span class="token punctuation">,</span>
+            <span class="token string">"geometry"</span><span class="token punctuation">:</span> MOVED<span class="token punctuation">,</span> <span class="token string">"previous_geometry"</span><span class="token punctuation">:</span> MOVED<span class="token punctuation">}</span>
+    merged <span class="token operator">=</span> _merge<span class="token punctuation">(</span>first<span class="token punctuation">,</span> last<span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> merged<span class="token punctuation">[</span><span class="token string">"previous_geometry"</span><span class="token punctuation">]</span> <span class="token operator">==</span> SQUARE
+    <span class="token keyword">assert</span> merged<span class="token punctuation">[</span><span class="token string">"geometry"</span><span class="token punctuation">]</span> <span class="token operator">==</span> MOVED
+</code></pre>
+</div>
+<p>The second test is worth running with a real clock rather than a mocked one. A mocked loop makes the maximum-wait bug invisible, because the reset chain that causes it only appears when the edits genuinely arrive faster than the quiet period.</p>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
+<ul>
+<li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers</a> — the topic this guide belongs to</li>
+<li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/capturing-postgis-changes-with-logical-replication/">Capturing PostGIS Changes with Logical Replication</a> — the capture stage that produces the burst</li>
+<li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a> — the expensive consumer the debounce protects</li>
+<li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/slo-alerting-spatial-pipelines/">SLOs &amp; Alerting for Spatial Webhook Pipelines</a> — the freshness budget the maximum wait spends</li>
+</ul>
+
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        <div class="aside-card">
+          <h3>Related in this section</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/how-to-design-a-geospatial-webhook-architecture-in-python/">Design a Geospatial Webhook Architecture in Python</a></li>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/capturing-postgis-changes-with-logical-replication/">Capturing PostGIS Changes with Logical Replication</a></li>
+          </ul>
+        </div>
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a></li>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a></li>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a></li>
+            <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring &amp; Observability for Spatial Pipelines</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</article>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="https://www.geospatialwebhook.com/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/">Home</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queues &amp; Retries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/schema-evolution-versioning/">Schema Evolution &amp; Versioning for Spatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/temporal-dedup-windows/">Time-Windowed Deduplication for Moving Assets</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/streaming-large-geometries/">Streaming &amp; Chunking Large Geometry Payloads</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Queues &amp; Retries</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/">Backpressure &amp; Flow Control for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Monitoring</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/slo-alerting-spatial-pipelines/">SLOs &amp; Alerting for Spatial Webhook Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging &amp; Tracing for Spatial Events</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <a class="site-footer__gh" href="https://github.com/geospatialwebhook" target="_blank" rel="noopener" aria-label="Geospatial Webhook on GitHub">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5Z"/></svg><span>GitHub</span>
+      </a>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js?v=c31b7b80" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
