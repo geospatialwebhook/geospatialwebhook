@@ -1,0 +1,731 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <title>Backpressure &amp; Flow Control for Spatial Streams · Geo Webhook</title>
+  <meta name="description" content="Apply backpressure when a geometry consumer falls behind: bounded prefetch sized for variable geometry cost, pause/resume on lag, and geographic load shedding under saturation."/>
+  <link rel="canonical" href="https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+
+  
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+
+  <meta name="theme-color" content="#d56360" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)"/>
+  <meta name="color-scheme" content="light dark"/>
+
+  
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("gsw-theme");
+        if (stored === "dark" || stored === "light") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (e) { /* private mode — fall through to the OS preference */ }
+    })();
+  </script>
+
+  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Geo Webhook"/>
+  <meta name="application-name" content="Geo Webhook"/>
+
+  
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="Geo Webhook"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:url" content="https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/"/>
+  <meta property="og:title" content="Backpressure &amp; Flow Control for Spatial Streams"/>
+  <meta property="og:description" content="Apply backpressure when a geometry consumer falls behind: bounded prefetch sized for variable geometry cost, pause/resume on lag, and geographic load shedding under saturation."/>
+  <meta property="og:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Backpressure &amp; Flow Control for Spatial Streams"/>
+  <meta name="twitter:description" content="Apply backpressure when a geometry consumer falls behind: bounded prefetch sized for variable geometry cost, pause/resume on lag, and geographic load shedding under saturation."/>
+  <meta name="twitter:image" content="https://www.geospatialwebhook.com/og-image.png"/>
+  <meta name="twitter:image:alt" content="Python Geospatial Webhook — event-driven spatial systems"/>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=optional">
+  <link rel="stylesheet" href="/assets/css/site.css?v=180687f5"/>
+  <link rel="alternate" type="application/xml" href="/sitemap.xml" title="Sitemap"/>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.geospatialwebhook.com/#website",
+        "url": "https://www.geospatialwebhook.com/",
+        "name": "Python Geospatial Webhook &amp; Event-Driven Architecture",
+        "description": "Design, build, and scale event-driven spatial systems in Python: feature change triggers, tile updates, sensor routing, idempotency, queues, retries, monitoring.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://www.geospatialwebhook.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.geospatialwebhook.com/#org",
+        "name": "Geo Webhook",
+        "url": "https://www.geospatialwebhook.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatialwebhook.com/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/" },{ "@type": "ListItem", "position": 2, "name": "Queue Management Retry Delivery", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/" },{ "@type": "ListItem", "position": 3, "name": "Backpressure Flow Control", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/" }
+    ]
+  }
+  </script>
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/#article",
+    "mainEntityOfPage": "https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/",
+    "headline": "Backpressure &amp; Flow Control for Spatial Streams",
+    "description": "Apply backpressure when a geometry consumer falls behind: bounded prefetch sized for variable geometry cost, pause/resume on lag, and geographic load shedding under saturation.",
+    "inLanguage": "en",
+    "isPartOf": { "@id": "https://www.geospatialwebhook.com/#website" },
+    "publisher": { "@id": "https://www.geospatialwebhook.com/#org" },
+    "image": "https://www.geospatialwebhook.com/og-image.png",
+    "url": "https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/",
+    "articleSection": "Queue Management Retry Delivery",
+    "keywords": "Python geospatial webhooks, event-driven architecture, feature change triggers, tile update events, sensor data routing, spatial idempotency, queue management, retry backoff, monitoring"
+  }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    
+
+<header class="site-header" role="banner">
+  <div class="container container--wide site-header__inner">
+    <a href="https://www.geospatialwebhook.com/" class="brand" aria-label="Geospatial Webhook — home">
+      <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+      <span class="brand__name">
+        Geospatial Webhook
+        <small>Event-driven · Python</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="https://www.geospatialwebhook.com/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Home</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Architecture</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Idempotency</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V13a4 4 0 0 0 4 4h5.5"/><path d="M18 15.5V11a4 4 0 0 0-4-4H8.5"/></svg><span>Routing &amp; Parsing</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/" class="is-active" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Queues &amp; Retries</span>
+      </a>
+      <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/" class="" >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Monitoring</span>
+      </a>
+    </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle"
+            aria-label="Switch to dark theme" title="Switch to dark theme">
+      <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.4v2.3M12 19.3v2.3M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.3M19.3 12h2.3M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+    <main class="layout__main" id="main">
+      
+
+
+
+
+<article class="page">
+  <div class="container container--wide">
+    <nav class="page__breadcrumbs" aria-label="Breadcrumb">
+      <a href="https://www.geospatialwebhook.com/">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management Retry Delivery</a>
+        <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">Backpressure Flow Control</span>
+    </nav>
+
+    <h1 class="page__title">Backpressure &amp; Flow Control for Spatial Streams</h1>
+
+    <div class="page__layout">
+      <div class="markdown">
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Backpressure & Flow Control for Spatial Streams",
+      "description": "How to keep a geospatial consumer from collapsing under load it cannot process: why unbounded prefetch is dangerous when payload cost varies by three orders of magnitude, how to size a prefetch window in work rather than in messages, when to pause a partition instead of scaling out, and how to shed load by geographic priority when saturation is unavoidable.",
+      "url": "https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/",
+      "datePublished": "2026-08-08",
+      "dateModified": "2026-08-08",
+      "author": {"@type": "Organization", "name": "geospatialwebhook.com"},
+      "publisher": {"@type": "Organization", "name": "geospatialwebhook.com"}
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatialwebhook.com/"},
+        {"@type": "ListItem", "position": 2, "name": "Queue Management, Retries & Delivery Guarantees", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/"},
+        {"@type": "ListItem", "position": 3, "name": "Backpressure & Flow Control for Spatial Streams", "item": "https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/"}
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Apply backpressure to a spatial event consumer",
+      "step": [
+        {"@type": "HowToStep", "position": 1, "name": "Measure prefetch in estimated work, not in message count"},
+        {"@type": "HowToStep", "position": 2, "name": "Bound in-flight work with a semaphore sized from vertex budget"},
+        {"@type": "HowToStep", "position": 3, "name": "Pause the partition when the in-flight budget is exhausted"},
+        {"@type": "HowToStep", "position": 4, "name": "Shed by geographic priority once the pause window is exceeded"},
+        {"@type": "HowToStep", "position": 5, "name": "Verify that a burst of heavy geometries does not trip the broker's session timeout"}
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Why is a message-count prefetch wrong for spatial payloads?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Because message count says nothing about work. A prefetch of 100 might be 100 point pings costing 200 milliseconds in total, or 100 land-cover multipolygons costing 90 seconds. The same setting is simultaneously far too small for one and catastrophically too large for the other, and which one you get is decided by geography rather than by anything you control. Size the window in estimated work — vertex count is a good proxy and is available from the envelope without deserialising the geometry."
+        },
+        {
+          "@type": "Question",
+          "name": "Should I pause the partition or just process more slowly?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Pause it. Processing slowly while continuing to fetch means the broker keeps handing you messages you have not started, which grows unbounded memory and, worse, does not stop the broker's session timer. Kafka expects a poll within max.poll.interval.ms; a consumer that is busy rather than polling gets evicted from the group and its partitions rebalanced, which produces duplicate delivery on top of the backlog you already had. Pausing keeps you polling — returning no records — so the session stays alive."
+        },
+        {
+          "@type": "Question",
+          "name": "Is load shedding ever acceptable for spatial events?",
+          "acceptedAnswer": {"@type": "Answer", "text": "It is acceptable when the alternative is losing everything, and only for streams where a later event supersedes an earlier one. Shedding a vehicle position ping is defensible because another arrives in seconds and the newer one is strictly more useful. Shedding a cadastral boundary edit is data loss, because nothing will resend it. Split those streams by topic so the shedding policy can differ, and never shed a stream whose events are not self-superseding."
+        },
+        {
+          "@type": "Question",
+          "name": "How does backpressure interact with the retry budget?",
+          "acceptedAnswer": {"@type": "Answer", "text": "They control opposite ends of the same pipe and can fight each other. Backpressure slows intake when the consumer is saturated; a retry ladder increases intake when deliveries fail. A saturated consumer that starts timing out generates retries, which arrive as additional load on the consumer that was already saturated. Gate retries on the same saturation signal that drives backpressure, so a consumer under pressure sheds retries first and fresh events last."
+        }
+      ]
+    }
+  ]
+}
+</script>
+<p><strong>Backpressure for a spatial stream has to be measured in work rather than in messages, because a single partition can carry point pings costing two milliseconds and multipolygons costing nine hundred — so a prefetch window that is safe for one is three orders of magnitude wrong for the other, and which you receive is decided by geography.</strong></p>
+<p>This topic sits under <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a>, which covers how spatial events move from producer to consumer without loss or duplication. Backpressure is the mechanism that keeps a consumer inside its own capacity; when it fails, the symptoms show up as the consumer lag described in <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a>, and the retries it triggers are governed by <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a>.</p>
+<hr>
+<h2 id="prerequisites" tabindex="-1"><a class="heading-anchor" href="#prerequisites">Prerequisites</a></h2>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Python 3.11+</strong> — <code>asyncio.TaskGroup</code> and <code>timeout</code> simplify the bounded-concurrency code below</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>A broker with pause/resume</strong> — <code>aiokafka</code>’s <code>pause()</code>/<code>resume()</code>, or Redis Streams consumer groups where you control the read loop</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Vertex count in the envelope</strong> — precomputed at ingest, so the consumer can estimate cost without parsing the geometry</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>A process pool for heavy geometry</strong> — as described in <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Geometry-Heavy Payloads</a></label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>Per-partition lag metrics</strong> — the saturation signal that drives pausing</label></li>
+<li class="task-list-item enabled"><label><input class="task-list-item-checkbox"type="checkbox"> <strong>A documented shedding policy</strong> — which topics may be shed, and which may never be</label></li>
+</ul>
+<hr>
+<h2 id="why-message-count-prefetch-fails-here" tabindex="-1"><a class="heading-anchor" href="#why-message-count-prefetch-fails-here">Why message-count prefetch fails here</a></h2>
+<p>Every broker’s flow control is expressed in messages: <code>max.poll.records</code>, <code>prefetch_count</code>, <code>COUNT</code> on <code>XREADGROUP</code>. That unit assumes messages are roughly interchangeable in cost, which is true of order events and false of spatial ones.</p>
+<figure class="fig">
+<svg viewBox="0 0 760 244" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The same prefetch of 100 messages representing wildly different amounts of work depending on payload mix">
+<title>One prefetch setting, three very different workloads</title>
+<desc>A prefetch window of one hundred messages fetched against three payload mixes from the same topic. A hundred point pings at about two milliseconds each is roughly 0.2 seconds of work and a few hundred kilobytes held in memory, so the window is far too small to keep the consumer busy. A realistic mixed batch of ninety points and ten mid-size polygons is about 2.5 seconds and comfortable. A hundred land-cover multipolygons at about nine hundred milliseconds each is roughly ninety seconds of work and close to three hundred megabytes resident — the same setting, now catastrophic, because the consumer has committed to processing all of it before it can poll again and will be evicted from the group long before it finishes. Which of the three arrives is decided by which region the partition covers and what is happening there, not by anything the operator configured.</desc>
+<rect x="0" y="0" width="760" height="244" fill="var(--fig-bg)"/>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-ink)">prefetch = 100 messages, on three payload mixes from one topic</text>
+<rect x="14" y="30" width="732" height="56" rx="7" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.4"/>
+<text x="26" y="49" font-size="9.5" font-weight="600" fill="var(--fig-ink)">100 point pings — 2 ms each</text>
+<text x="26" y="66" font-size="9" fill="var(--fig-ink-soft)">≈ 0.2 s of work · a few hundred KB resident</text>
+<text x="26" y="79" font-size="9" fill="var(--fig-gold-edge)">window far too small — the consumer idles between polls</text>
+<rect x="14" y="94" width="732" height="56" rx="7" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="26" y="113" font-size="9.5" font-weight="600" fill="var(--fig-ink)">90 points + 10 mid-size polygons</text>
+<text x="26" y="130" font-size="9" fill="var(--fig-ink-soft)">≈ 2.5 s of work · comfortably inside the poll interval</text>
+<text x="26" y="143" font-size="9" fill="var(--fig-mint-edge)">the mix the setting was tuned against</text>
+<rect x="14" y="158" width="732" height="72" rx="7" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.8"/>
+<text x="26" y="177" font-size="9.5" font-weight="600" fill="var(--fig-ink)">100 land-cover multipolygons — 900 ms each</text>
+<text x="26" y="194" font-size="9" fill="var(--fig-ink-soft)">≈ 90 s of work · ~300 MB resident</text>
+<text x="26" y="208" font-size="9" fill="var(--fig-rose-edge)">the consumer cannot poll again until it finishes, so the broker evicts it from the group</text>
+<text x="26" y="221" font-size="9" fill="var(--fig-rose-edge)">— and the rebalance redelivers the whole batch to someone else</text>
+</svg>
+<figcaption><b>Figure 1.</b> The third row is not a tuning mistake; it is the same setting meeting different geography. A count-based window cannot distinguish these because it never looks at what it is fetching.</figcaption>
+</figure>
+<p>The eviction in that third row is the part that turns a slow consumer into an outage. Kafka expects a <code>poll()</code> within <code>max.poll.interval.ms</code>; a consumer that is busy rather than polling is presumed dead, its partitions are reassigned, and the batch it was halfway through is redelivered to another member — which is holding the same prefetch setting and meets the same fate.</p>
+<hr>
+<h2 id="architecture-bound-the-work-not-the-count" tabindex="-1"><a class="heading-anchor" href="#architecture-bound-the-work-not-the-count">Architecture: bound the work, not the count</a></h2>
+<p>The fix is to keep the broker’s own window small and enforce a second, work-aware bound inside the consumer. Vertex count, precomputed at ingest and carried in the envelope, is a good cost proxy: it is cheap to read, correlates well with <code>shapely</code> runtime, and does not require deserialising the geometry to obtain.</p>
+<figure class="fig">
+<svg viewBox="0 0 760 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A work-budget semaphore between the broker poll loop and the worker pool, with pause and shed thresholds">
+<title>A vertex budget between the poll loop and the workers</title>
+<desc>Messages are polled in small batches and each is charged against a shared vertex budget before dispatch. A point ping costs about forty vertices and passes straight through; a multipolygon costing forty-one thousand consumes most of the budget alone. While the budget has room, work is dispatched to the process pool and the loop keeps polling. When the budget is exhausted the loop pauses the partition — it continues to call poll, which returns nothing, so the broker's session timer is satisfied and the consumer is not evicted, but no new work is accepted. Completed work returns its vertices to the budget and the partition resumes. If the pause persists beyond a bounded window, the consumer escalates to shedding: it drops self-superseding events by geographic priority rather than continuing to accumulate a backlog it will never clear. The budget is the whole mechanism — it converts an unbounded queue of unknown-cost work into a bounded amount of known-cost work.</desc>
+<rect x="0" y="0" width="760" height="250" fill="var(--fig-bg)"/>
+<defs><marker id="bp-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<rect x="14" y="80" width="118" height="52" rx="6" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="73" y="100" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">poll loop</text>
+<text x="73" y="116" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">small batches</text>
+<line x1="134" y1="106" x2="166" y2="106" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#bp-a)"/>
+<rect x="170" y="72" width="170" height="68" rx="7" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.8"/>
+<text x="255" y="92" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">vertex budget</text>
+<text x="255" y="108" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">charge before dispatch</text>
+<text x="255" y="122" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">point ≈ 40 · polygon ≈ 41,000</text>
+<text x="255" y="134" text-anchor="middle" font-size="8" fill="var(--fig-mint-edge)">one polygon can fill it alone</text>
+<line x1="342" y1="94" x2="374" y2="72" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#bp-a)"/>
+<text x="348" y="66" font-size="8" fill="var(--fig-mint-edge)">room</text>
+<rect x="378" y="46" width="170" height="50" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="463" y="66" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">dispatch to process pool</text>
+<text x="463" y="82" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">completion returns the vertices</text>
+<line x1="342" y1="120" x2="374" y2="146" stroke="var(--fig-line)" stroke-width="1.2" stroke-dasharray="3,2" marker-end="url(#bp-a)"/>
+<text x="348" y="160" font-size="8" fill="var(--fig-gold-edge)">full</text>
+<rect x="378" y="118" width="170" height="58" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.5"/>
+<text x="463" y="138" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">pause the partition</text>
+<text x="463" y="153" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">keep calling poll — it returns</text>
+<text x="463" y="165" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">nothing, so the session survives</text>
+<line x1="550" y1="147" x2="582" y2="177" stroke="var(--fig-line)" stroke-width="1.2" stroke-dasharray="3,2" marker-end="url(#bp-a)"/>
+<text x="556" y="196" font-size="8" fill="var(--fig-rose-edge)">still full after N s</text>
+<rect x="586" y="164" width="160" height="58" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="666" y="184" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">shed by priority</text>
+<text x="666" y="199" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">self-superseding topics only</text>
+<text x="666" y="211" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">never boundary edits</text>
+<line x1="463" y1="98" x2="463" y2="114" stroke="var(--fig-mint-edge)" stroke-width="1.2" marker-end="url(#bp-a)"/>
+<text x="14" y="238" font-size="9" fill="var(--fig-ink-soft)">The budget converts an unbounded queue of unknown-cost work into a bounded amount of known-cost work — which is the whole mechanism.</text>
+</svg>
+<figcaption><b>Figure 2.</b> Pausing rather than merely slowing down is what keeps the broker session alive: the loop still polls, it just returns nothing. Shedding is a separate escalation, reached only when the pause has not cleared.</figcaption>
+</figure>
+<p><strong>Layer breakdown:</strong></p>
+<ol>
+<li><strong>Small broker window</strong> — set <code>max.poll.records</code> low (10–25) so the broker never hands you an unbounded amount of unknown work in one call.</li>
+<li><strong>Vertex budget</strong> — a semaphore denominated in vertices rather than tasks. Each message is charged its envelope’s vertex count before dispatch and refunded on completion.</li>
+<li><strong>Pause on exhaustion</strong> — when the budget cannot admit the next message, pause the partition and keep polling. This is the critical detail: a paused consumer still polls, so the session timer is satisfied.</li>
+<li><strong>Shed on sustained pressure</strong> — if the pause has not cleared within a bounded window, drop self-superseding events by geographic priority rather than accumulating a backlog that will never drain.</li>
+</ol>
+<hr>
+<h2 id="step-by-step-implementation" tabindex="-1"><a class="heading-anchor" href="#step-by-step-implementation">Step-by-step implementation</a></h2>
+<h3 id="step-1-charge-work-against-a-budget-not-tasks-against-a-counter" tabindex="-1"><a class="heading-anchor" href="#step-1-charge-work-against-a-budget-not-tasks-against-a-counter">Step 1 — Charge work against a budget, not tasks against a counter</a></h3>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">from</span> dataclasses <span class="token keyword">import</span> dataclass
+
+
+<span class="token keyword">class</span> <span class="token class-name">VertexBudget</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""A semaphore denominated in vertices rather than in tasks.
+
+    A plain asyncio.Semaphore(N) bounds the *number* of in-flight messages,
+    which is exactly the unit that tells us nothing here. This bounds the work.
+    """</span>
+
+    <span class="token keyword">def</span> <span class="token function">__init__</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> capacity<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        self<span class="token punctuation">.</span>_capacity <span class="token operator">=</span> capacity
+        self<span class="token punctuation">.</span>_available <span class="token operator">=</span> capacity
+        self<span class="token punctuation">.</span>_cond <span class="token operator">=</span> asyncio<span class="token punctuation">.</span>Condition<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+    <span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">acquire</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> cost<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        <span class="token comment"># A single geometry larger than the whole budget would deadlock, so it</span>
+        <span class="token comment"># is clamped: it runs alone, which is the correct behaviour for a</span>
+        <span class="token comment"># payload that genuinely exceeds our capacity estimate.</span>
+        cost <span class="token operator">=</span> <span class="token builtin">min</span><span class="token punctuation">(</span>cost<span class="token punctuation">,</span> self<span class="token punctuation">.</span>_capacity<span class="token punctuation">)</span>
+        <span class="token keyword">async</span> <span class="token keyword">with</span> self<span class="token punctuation">.</span>_cond<span class="token punctuation">:</span>
+            <span class="token keyword">while</span> self<span class="token punctuation">.</span>_available <span class="token operator">&lt;</span> cost<span class="token punctuation">:</span>
+                <span class="token keyword">await</span> self<span class="token punctuation">.</span>_cond<span class="token punctuation">.</span>wait<span class="token punctuation">(</span><span class="token punctuation">)</span>
+            self<span class="token punctuation">.</span>_available <span class="token operator">-=</span> cost
+
+    <span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">release</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> cost<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+        cost <span class="token operator">=</span> <span class="token builtin">min</span><span class="token punctuation">(</span>cost<span class="token punctuation">,</span> self<span class="token punctuation">.</span>_capacity<span class="token punctuation">)</span>
+        <span class="token keyword">async</span> <span class="token keyword">with</span> self<span class="token punctuation">.</span>_cond<span class="token punctuation">:</span>
+            self<span class="token punctuation">.</span>_available <span class="token operator">+=</span> cost
+            self<span class="token punctuation">.</span>_cond<span class="token punctuation">.</span>notify_all<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+    <span class="token decorator annotation punctuation">@property</span>
+    <span class="token keyword">def</span> <span class="token function">saturated</span><span class="token punctuation">(</span>self<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> self<span class="token punctuation">.</span>_available <span class="token operator">&lt;=</span> <span class="token number">0</span>
+</code></pre>
+</div>
+<p>The clamp in <code>acquire</code> matters. Without it, a single 41,000-vertex multipolygon arriving at a budget of 40,000 waits forever for capacity that can never exist, and the consumer stops with no error.</p>
+<h3 id="step-2-pause-the-partition-instead-of-blocking-the-poll-loop" tabindex="-1"><a class="heading-anchor" href="#step-2-pause-the-partition-instead-of-blocking-the-poll-loop">Step 2 — Pause the partition instead of blocking the poll loop</a></h3>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">from</span> aiokafka <span class="token keyword">import</span> AIOKafkaConsumer
+<span class="token keyword">from</span> aiokafka<span class="token punctuation">.</span>structs <span class="token keyword">import</span> TopicPartition
+
+BUDGET <span class="token operator">=</span> VertexBudget<span class="token punctuation">(</span>capacity<span class="token operator">=</span><span class="token number">60_000</span><span class="token punctuation">)</span>
+
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">consume</span><span class="token punctuation">(</span>consumer<span class="token punctuation">:</span> AIOKafkaConsumer<span class="token punctuation">,</span> pool<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    paused<span class="token punctuation">:</span> <span class="token builtin">set</span><span class="token punctuation">[</span>TopicPartition<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token builtin">set</span><span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+    <span class="token keyword">while</span> <span class="token boolean">True</span><span class="token punctuation">:</span>
+        batches <span class="token operator">=</span> <span class="token keyword">await</span> consumer<span class="token punctuation">.</span>getmany<span class="token punctuation">(</span>timeout_ms<span class="token operator">=</span><span class="token number">500</span><span class="token punctuation">,</span> max_records<span class="token operator">=</span><span class="token number">25</span><span class="token punctuation">)</span>
+
+        <span class="token keyword">for</span> tp<span class="token punctuation">,</span> messages <span class="token keyword">in</span> batches<span class="token punctuation">.</span>items<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+            <span class="token keyword">for</span> msg <span class="token keyword">in</span> messages<span class="token punctuation">:</span>
+                cost <span class="token operator">=</span> msg<span class="token punctuation">.</span>headers_dict<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"vertex_count"</span><span class="token punctuation">,</span> <span class="token number">40</span><span class="token punctuation">)</span>
+
+                <span class="token keyword">if</span> BUDGET<span class="token punctuation">.</span>saturated <span class="token keyword">and</span> tp <span class="token keyword">not</span> <span class="token keyword">in</span> paused<span class="token punctuation">:</span>
+                    <span class="token comment"># Pause, but keep polling. getmany() continues to be called</span>
+                    <span class="token comment"># and simply returns nothing for this partition, so the</span>
+                    <span class="token comment"># broker's session timer stays satisfied and we are not</span>
+                    <span class="token comment"># evicted from the group mid-batch.</span>
+                    consumer<span class="token punctuation">.</span>pause<span class="token punctuation">(</span>tp<span class="token punctuation">)</span>
+                    paused<span class="token punctuation">.</span>add<span class="token punctuation">(</span>tp<span class="token punctuation">)</span>
+
+                <span class="token keyword">await</span> BUDGET<span class="token punctuation">.</span>acquire<span class="token punctuation">(</span>cost<span class="token punctuation">)</span>
+                asyncio<span class="token punctuation">.</span>create_task<span class="token punctuation">(</span>_process<span class="token punctuation">(</span>pool<span class="token punctuation">,</span> msg<span class="token punctuation">,</span> cost<span class="token punctuation">,</span> consumer<span class="token punctuation">,</span> tp<span class="token punctuation">,</span> paused<span class="token punctuation">)</span><span class="token punctuation">)</span>
+
+        <span class="token keyword">for</span> tp <span class="token keyword">in</span> <span class="token builtin">list</span><span class="token punctuation">(</span>paused<span class="token punctuation">)</span><span class="token punctuation">:</span>
+            <span class="token keyword">if</span> <span class="token keyword">not</span> BUDGET<span class="token punctuation">.</span>saturated<span class="token punctuation">:</span>
+                consumer<span class="token punctuation">.</span>resume<span class="token punctuation">(</span>tp<span class="token punctuation">)</span>
+                paused<span class="token punctuation">.</span>discard<span class="token punctuation">(</span>tp<span class="token punctuation">)</span>
+</code></pre>
+</div>
+<h3 id="step-3-refund-on-completion-including-on-failure" tabindex="-1"><a class="heading-anchor" href="#step-3-refund-on-completion-including-on-failure">Step 3 — Refund on completion, including on failure</a></h3>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">_process</span><span class="token punctuation">(</span>pool<span class="token punctuation">,</span> msg<span class="token punctuation">,</span> cost<span class="token punctuation">,</span> consumer<span class="token punctuation">,</span> tp<span class="token punctuation">,</span> paused<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token boolean">None</span><span class="token punctuation">:</span>
+    <span class="token keyword">try</span><span class="token punctuation">:</span>
+        loop <span class="token operator">=</span> asyncio<span class="token punctuation">.</span>get_running_loop<span class="token punctuation">(</span><span class="token punctuation">)</span>
+        <span class="token keyword">await</span> loop<span class="token punctuation">.</span>run_in_executor<span class="token punctuation">(</span>pool<span class="token punctuation">,</span> _repair_geometry<span class="token punctuation">,</span> msg<span class="token punctuation">.</span>value<span class="token punctuation">)</span>
+    <span class="token keyword">except</span> Exception<span class="token punctuation">:</span>
+        <span class="token comment"># A failed message still returns its budget. Forgetting this is a slow</span>
+        <span class="token comment"># leak: every failure permanently shrinks capacity until the consumer</span>
+        <span class="token comment"># stalls at a budget of zero with no message in flight.</span>
+        <span class="token keyword">raise</span>
+    <span class="token keyword">finally</span><span class="token punctuation">:</span>
+        <span class="token keyword">await</span> BUDGET<span class="token punctuation">.</span>release<span class="token punctuation">(</span>cost<span class="token punctuation">)</span>
+</code></pre>
+</div>
+<p>The <code>finally</code> is the whole reliability story of this component. A refund that happens only on success leaks capacity on every failure, and the consumer degrades over hours into a stall that looks nothing like the geometry error that caused it.</p>
+<h3 id="step-4-shed-by-geographic-priority-and-only-where-it-is-safe" tabindex="-1"><a class="heading-anchor" href="#step-4-shed-by-geographic-priority-and-only-where-it-is-safe">Step 4 — Shed by geographic priority, and only where it is safe</a></h3>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python">SHEDDABLE_TOPICS <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">"vehicle-positions"</span><span class="token punctuation">,</span> <span class="token string">"sensor-telemetry"</span><span class="token punctuation">}</span>
+
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">should_shed</span><span class="token punctuation">(</span>msg<span class="token punctuation">,</span> pause_seconds<span class="token punctuation">:</span> <span class="token builtin">float</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">></span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""Shed only self-superseding events, and only under sustained pressure."""</span>
+    <span class="token keyword">if</span> pause_seconds <span class="token operator">&lt;</span> <span class="token number">30</span><span class="token punctuation">:</span>
+        <span class="token keyword">return</span> <span class="token boolean">False</span>
+    <span class="token keyword">if</span> msg<span class="token punctuation">.</span>topic <span class="token keyword">not</span> <span class="token keyword">in</span> SHEDDABLE_TOPICS<span class="token punctuation">:</span>
+        <span class="token comment"># Cadastral edits, boundary changes, tile invalidations: nothing will</span>
+        <span class="token comment"># resend these, so dropping one is data loss rather than degradation.</span>
+        <span class="token keyword">return</span> <span class="token boolean">False</span>
+    <span class="token comment"># Within a sheddable topic, drop the lowest-priority regions first.</span>
+    <span class="token keyword">return</span> msg<span class="token punctuation">.</span>headers_dict<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"region_priority"</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">)</span> <span class="token operator">&lt;</span> <span class="token number">2</span>
+</code></pre>
+</div>
+<hr>
+<h2 id="spatial-validation-and-error-handling" tabindex="-1"><a class="heading-anchor" href="#spatial-validation-and-error-handling">Spatial validation and error handling</a></h2>
+<p><strong>Vertex count is a proxy, and proxies drift.</strong> A 2,000-vertex polygon with many interior rings can cost more to repair than a 5,000-vertex simple one, because topology repair is not linear in vertex count. Treat the budget as approximate and set it against measured p99 rather than against a computed ideal; the point is to bound the error, not to eliminate it.</p>
+<p><strong>A missing vertex count must default high, not low.</strong> If an envelope arrives without the field — an old schema version, a producer that has not been updated — defaulting to a small cost lets an unbounded payload through the one control designed to stop it. Default to the budget’s clamp value so an unmeasured payload is treated as expensive until proven otherwise.</p>
+<p><strong>Shedding must never apply to a stream with ordering guarantees.</strong> Dropping one event from a version-guarded stream is survivable, because a later version supersedes it. Dropping one from a stream whose consumer applies deltas is corruption, because the state never converges. Enumerate sheddable topics explicitly, as above, rather than deriving the decision from a priority field alone.</p>
+<hr>
+<h2 id="retry-backoff-and-delivery-guarantees" tabindex="-1"><a class="heading-anchor" href="#retry-backoff-and-delivery-guarantees">Retry, backoff and delivery guarantees</a></h2>
+<p>Backpressure and retries push in opposite directions on the same pipe, and under saturation they can amplify each other. A saturated consumer begins timing out; those timeouts generate retries; the retries arrive as additional load on the consumer that was already saturated. This is the mechanism by which a slow consumer becomes an unavailable one.</p>
+<p>Gate retries on the same saturation signal that drives pausing. When the budget is exhausted, the retry admission check should fail first, so a consumer under pressure sheds redelivered work before it sheds fresh work — a retry is by definition something the system has already attempted, while a fresh event is something it has not yet seen at all. The token-bucket budget in <a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/tuning-retry-budgets-for-webhook-provider-slas/">Tuning Retry Budgets for Webhook Provider SLAs</a> is the right place to apply that gate.</p>
+<hr>
+<h2 id="verification" tabindex="-1"><a class="heading-anchor" href="#verification">Verification</a></h2>
+<p>The test that matters is a burst of heavy geometry against a running consumer, asserting that the broker session survives.</p>
+<div class="code-block" data-lang="python">
+  <div class="code-block__header">
+    <span class="code-block__lang">python</span>
+    <button type="button" class="code-block__copy" aria-label="Copy code">
+      <span class="code-block__copy-label">Copy</span>
+    </button>
+  </div>
+  <pre class="language-python" tabindex="0"><code class="language-python"><span class="token keyword">import</span> asyncio
+<span class="token keyword">import</span> pytest
+
+
+<span class="token decorator annotation punctuation">@pytest<span class="token punctuation">.</span>mark<span class="token punctuation">.</span>asyncio</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">test_heavy_burst_does_not_exceed_poll_interval</span><span class="token punctuation">(</span>consumer<span class="token punctuation">,</span> pool<span class="token punctuation">,</span> clock<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""A burst of large geometries must not stall the poll loop.
+
+    The failure this guards against is subtle: the consumer keeps working and
+    still gets evicted, because it stopped polling while it worked.
+    """</span>
+    heavy <span class="token operator">=</span> <span class="token punctuation">[</span>_message<span class="token punctuation">(</span>vertex_count<span class="token operator">=</span><span class="token number">41_000</span><span class="token punctuation">)</span> <span class="token keyword">for</span> _ <span class="token keyword">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span><span class="token number">50</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+    <span class="token keyword">await</span> _produce<span class="token punctuation">(</span>heavy<span class="token punctuation">)</span>
+
+    gaps <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+    <span class="token keyword">async</span> <span class="token keyword">for</span> gap <span class="token keyword">in</span> _poll_gaps<span class="token punctuation">(</span>consumer<span class="token punctuation">,</span> pool<span class="token punctuation">,</span> duration<span class="token operator">=</span><span class="token number">60</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        gaps<span class="token punctuation">.</span>append<span class="token punctuation">(</span>gap<span class="token punctuation">)</span>
+
+    <span class="token keyword">assert</span> <span class="token builtin">max</span><span class="token punctuation">(</span>gaps<span class="token punctuation">)</span> <span class="token operator">&lt;</span> <span class="token number">300</span><span class="token punctuation">,</span> <span class="token string-interpolation"><span class="token string">f"poll gap </span><span class="token interpolation"><span class="token punctuation">{</span><span class="token builtin">max</span><span class="token punctuation">(</span>gaps<span class="token punctuation">)</span><span class="token punctuation">:</span><span class="token format-spec">.1f</span><span class="token punctuation">}</span></span><span class="token string">s exceeds max.poll.interval.ms"</span></span>
+
+
+<span class="token decorator annotation punctuation">@pytest<span class="token punctuation">.</span>mark<span class="token punctuation">.</span>asyncio</span>
+<span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">test_budget_is_refunded_on_failure</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""The gate's negative case: a failing message must return its budget.
+
+    Without this assertion the leak is invisible — capacity shrinks slowly and
+    the consumer stalls hours later, long after the failing payload is gone.
+    """</span>
+    budget <span class="token operator">=</span> VertexBudget<span class="token punctuation">(</span>capacity<span class="token operator">=</span><span class="token number">1000</span><span class="token punctuation">)</span>
+    <span class="token keyword">await</span> budget<span class="token punctuation">.</span>acquire<span class="token punctuation">(</span><span class="token number">600</span><span class="token punctuation">)</span>
+    <span class="token keyword">with</span> pytest<span class="token punctuation">.</span>raises<span class="token punctuation">(</span>RuntimeError<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">try</span><span class="token punctuation">:</span>
+            <span class="token keyword">raise</span> RuntimeError<span class="token punctuation">(</span><span class="token string">"topology repair failed"</span><span class="token punctuation">)</span>
+        <span class="token keyword">finally</span><span class="token punctuation">:</span>
+            <span class="token keyword">await</span> budget<span class="token punctuation">.</span>release<span class="token punctuation">(</span><span class="token number">600</span><span class="token punctuation">)</span>
+    <span class="token keyword">assert</span> <span class="token keyword">not</span> budget<span class="token punctuation">.</span>saturated
+</code></pre>
+</div>
+<hr>
+<h2 id="troubleshooting" tabindex="-1"><a class="heading-anchor" href="#troubleshooting">Troubleshooting</a></h2>
+<div class="table-scroll">
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely spatial cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Consumers repeatedly evicted and rebalanced under load</td>
+<td>A batch of heavy geometries exceeded <code>max.poll.interval.ms</code></td>
+<td>Lower <code>max.poll.records</code> and pause on budget exhaustion rather than blocking</td>
+</tr>
+<tr>
+<td>Consumer stalls with no messages in flight</td>
+<td>Budget leaked on failed messages</td>
+<td>Refund in a <code>finally</code>, not on the success path</td>
+</tr>
+<tr>
+<td>One partition never resumes after a burst</td>
+<td>A single geometry larger than the whole budget waits for impossible capacity</td>
+<td>Clamp per-message cost to the budget so oversized payloads run alone</td>
+</tr>
+<tr>
+<td>Memory climbs steadily during a regional burst</td>
+<td>Prefetch measured in messages, not work</td>
+<td>Charge a vertex budget before dispatch</td>
+</tr>
+<tr>
+<td>Retries pile up exactly when the consumer is busiest</td>
+<td>Retry admission not gated on the saturation signal</td>
+<td>Shed retries before fresh events under pressure</td>
+</tr>
+<tr>
+<td>Positions go missing during a shed, tracks look wrong</td>
+<td>A stream with delta semantics was marked sheddable</td>
+<td>Restrict shedding to self-superseding topics only</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<hr>
+<h2 id="faq" tabindex="-1"><a class="heading-anchor" href="#faq">FAQ</a></h2>
+<details class="faq">
+<summary><strong>Why is a message-count prefetch wrong for spatial payloads?</strong></summary>
+<p>Because message count says nothing about work. A prefetch of 100 might be 100 point pings costing 200 milliseconds in total, or 100 land-cover multipolygons costing 90 seconds. The same setting is simultaneously far too small for one and catastrophically too large for the other, and which one you get is decided by geography rather than by anything you control. Size the window in estimated work — vertex count is a good proxy and is available from the envelope without deserialising the geometry.</p>
+</details>
+<details class="faq">
+<summary><strong>Should I pause the partition or just process more slowly?</strong></summary>
+<p>Pause it. Processing slowly while continuing to fetch means the broker keeps handing you messages you have not started, which grows unbounded memory and, worse, does not stop the broker’s session timer. Kafka expects a poll within <code>max.poll.interval.ms</code>; a consumer that is busy rather than polling gets evicted from the group and its partitions rebalanced, which produces duplicate delivery on top of the backlog you already had. Pausing keeps you polling — returning no records — so the session stays alive.</p>
+</details>
+<details class="faq">
+<summary><strong>Is load shedding ever acceptable for spatial events?</strong></summary>
+<p>It is acceptable when the alternative is losing everything, and only for streams where a later event supersedes an earlier one. Shedding a vehicle position ping is defensible because another arrives in seconds and the newer one is strictly more useful. Shedding a cadastral boundary edit is data loss, because nothing will resend it. Split those streams by topic so the shedding policy can differ, and never shed a stream whose events are not self-superseding.</p>
+</details>
+<details class="faq">
+<summary><strong>How does backpressure interact with the retry budget?</strong></summary>
+<p>They control opposite ends of the same pipe and can fight each other. Backpressure slows intake when the consumer is saturated; a retry ladder increases intake when deliveries fail. A saturated consumer that starts timing out generates retries, which arrive as additional load on the consumer that was already saturated. Gate retries on the same saturation signal that drives backpressure, so a consumer under pressure sheds retries first and fresh events last.</p>
+</details>
+<hr>
+<h2 id="related" tabindex="-1"><a class="heading-anchor" href="#related">Related</a></h2>
+<ul>
+<li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a> — the section this topic belongs to</li>
+<li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a> — the saturation signal that drives pausing, and how to tell skew from genuine overload</li>
+<li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Geometry-Heavy Payloads</a> — the process pool the budget dispatches into</li>
+<li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/tuning-retry-budgets-for-webhook-provider-slas/">Tuning Retry Budgets for Webhook Provider SLAs</a> — where to gate retries on the saturation signal</li>
+<li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies</a> — why one partition ends up carrying the heavy geometry in the first place</li>
+</ul>
+
+      </div>
+
+      <aside class="page-aside" aria-label="Related content">
+        <div class="aside-card">
+          <h3>Related in this section</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
+          </ul>
+        </div>
+        <div class="aside-card">
+          <h3>Sections</h3>
+          <ul>
+            <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Core Event Fundamentals &amp; Architecture</a></li>
+            <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a></li>
+            <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Spatial Payload Routing &amp; Parsing</a></li>
+            <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queue Management, Retries &amp; Delivery Guarantees</a></li>
+            <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring &amp; Observability for Spatial Pipelines</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</article>
+
+    </main>
+    
+<footer class="site-footer" role="contentinfo">
+  <div class="container container--wide">
+    <div class="footer-grid">
+      <div>
+        <a href="https://www.geospatialwebhook.com/" class="brand">
+          <img src="/assets/img/logo.svg" alt="" class="brand__logo" width="36" height="36"/>
+          <span class="brand__name">
+            Geospatial Webhook
+            <small>Event-driven · Python</small>
+          </span>
+        </a>
+        <p style="margin:.8rem 0 0; color: var(--ink-soft); font-size: .94rem; max-width: 36ch;">
+          Practical patterns for engineers building real-time spatial systems in Python.
+        </p>
+      </div>
+      <div>
+        <h4>Site</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/">Home</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Architecture</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Routing &amp; Parsing</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Queues &amp; Retries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Monitoring</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Architecture</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/feature-change-triggers/">Feature Change Triggers for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/schema-evolution-versioning/">Schema Evolution &amp; Versioning for Spatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a></li>
+          <li><a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/">Webhook Security Boundaries for Spatial Event Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idempotency</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/cache-backed-idempotency-checks/">Cache-Backed Idempotency Checks for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/conflict-resolution-strategies/">Conflict Resolution Strategies for Geospatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a></li>
+          <li><a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/spatial-overlap-deduplication/">Spatial Overlap Deduplication for Geospatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Routing &amp; Parsing</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies for Geospatial Events</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/">GeoJSON to Protobuf Mapping for Spatial Webhooks</a></li>
+          <li><a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Queues &amp; Retries</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/backpressure-flow-control/">Backpressure &amp; Flow Control for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/broker-selection-partitioning/">Broker Selection &amp; Partitioning for Spatial Streams</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/delivery-guarantees-ordering/">Delivery Guarantees &amp; Event Ordering</a></li>
+          <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/exponential-backoff-jitter/">Exponential Backoff &amp; Jitter for Spatial Webhooks</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Monitoring</h4>
+        <ul>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/">Overview</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/geo-metrics-instrumentation/">Geo-Specific Metrics &amp; Instrumentation</a></li>
+          <li><a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/structured-logging-tracing/">Structured Logging &amp; Tracing for Spatial Events</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="site-footer__base">
+      <span>© 2026 Geospatial Webhook · Geo Webhook</span>
+      <a class="site-footer__gh" href="https://github.com/geospatialwebhook" target="_blank" rel="noopener" aria-label="Geospatial Webhook on GitHub">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5Z"/></svg><span>GitHub</span>
+      </a>
+      <span>Built with 11ty · Whimsical Garden palette</span>
+    </div>
+  </div>
+</footer>
+
+  </div>
+  <script src="/assets/js/site.js?v=c31b7b80" defer></script>
+  <script type="module">
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
