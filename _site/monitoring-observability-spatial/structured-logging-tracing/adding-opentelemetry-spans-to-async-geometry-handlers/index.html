@@ -496,12 +496,70 @@ tracer <span class="token operator">=</span> trace<span class="token punctuation
 <hr>
 <h2 id="gotchas-and-spatial-edge-cases" tabindex="-1"><a class="heading-anchor" href="#gotchas-and-spatial-edge-cases">Gotchas and spatial edge cases</a></h2>
 <ol>
-<li>
-<p><strong>Context lost across <code>create_task</code>.</strong> This is the most common failure. <code>asyncio.create_task</code> does not reliably carry the OpenTelemetry context, so a span opened in the task becomes a new root. Always <code>context.get_current()</code> in the scheduling coroutine and <code>context.attach()</code> it as the first line of the task, detaching in a <code>finally</code>.</p>
-</li>
-<li>
-<p><strong>Raw coordinates as attributes.</strong> A large <code>Polygon</code> or <code>MultiPolygon</code> coordinate array is kilobytes per span. Attaching it multiplies export volume, can breach exporter size limits, and leaks precise location data. Record <code>geo.vertex_count</code>, <code>geo.h3_cell</code>, and a bounding-box area instead.</p>
-</li>
+<li><strong>Context lost across <code>create_task</code>.</strong> This is the most common failure. <code>asyncio.create_task</code> does not reliably carry the OpenTelemetry context, so a span opened in the task becomes a new root. Always <code>context.get_current()</code> in the scheduling coroutine and <code>context.attach()</code> it as the first line of the task, detaching in a <code>finally</code>.</li>
+</ol>
+<figure class="fig">
+<svg viewBox="0 0 760 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A span opened inside create_task becoming an orphan root, and the same span correctly parented by attaching the captured context">
+<title>The orphan span that create_task produces</title>
+<desc>An ingress span opens and schedules geometry validation with asyncio.create_task. Because create_task does not carry the OpenTelemetry context into the new task, the span opened inside it has no parent and is exported as a second root, so the trace splits: the ingress trace shows a suspiciously fast request that appears to finish before its own work, and the validation work appears as an unrelated trace with no request attached. Nothing errors, and both traces look individually plausible, which is why this survives review. Capturing context.get_current in the scheduling coroutine and attaching it as the first statement of the task — with a matching detach in a finally block — restores the parent link, and validation appears as a child span nested under ingress where its duration is counted against the request.</desc>
+<rect x="0" y="0" width="760" height="236" fill="var(--fig-bg)"/>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-rose-edge)">create_task without attaching context — two roots</text>
+<rect x="90" y="30" width="150" height="22" rx="4" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="100" y="45" font-size="8.5" fill="var(--fig-ink)">ingress · 12 ms</text>
+<text x="248" y="45" font-size="8.5" fill="var(--fig-rose-edge)">"request finished in 12 ms" — before its own work ran</text>
+<rect x="90" y="58" width="30" height="18" rx="3" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<text x="126" y="71" font-size="8" fill="var(--fig-ink-soft)">parse</text>
+<rect x="90" y="92" width="300" height="22" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="100" y="107" font-size="8.5" fill="var(--fig-ink)">validate_geometry · 840 ms — ROOT of its own trace</text>
+<text x="398" y="107" font-size="8.5" fill="var(--fig-rose-edge)">no request, no bbox, no correlation id</text>
+<text x="14" y="132" font-size="9" fill="var(--fig-ink-soft)">Both traces are individually plausible and nothing errors — which is why the break survives code review.</text>
+<line x1="14" y1="144" x2="746" y2="144" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="164" font-size="10.5" font-weight="600" fill="var(--fig-mint-edge)">ctx = context.get_current() → context.attach(ctx) in the task</text>
+<rect x="90" y="174" width="420" height="22" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="100" y="189" font-size="8.5" fill="var(--fig-ink)">ingress · 872 ms</text>
+<rect x="106" y="200" width="30" height="18" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1"/>
+<text x="142" y="213" font-size="8" fill="var(--fig-ink-soft)">parse</text>
+<rect x="184" y="200" width="300" height="18" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="194" y="213" font-size="8" fill="var(--fig-ink)">validate_geometry · 840 ms — child</text>
+<text x="500" y="213" font-size="8.5" fill="var(--fig-mint-edge)">its duration now counts against the request</text>
+<text x="14" y="232" font-size="9" fill="var(--fig-ink-soft)">Detach in a finally block — an attached context that outlives its task leaks into whatever coroutine the event loop runs next.</text>
+</svg>
+<figcaption><b>Figure 2.</b> The orphan is not a missing span but a mis-parented one, so nothing looks broken: latency simply disappears from the request it belonged to. Suspiciously fast ingress spans are the symptom worth watching for.</figcaption>
+</figure>
+<ol start="2">
+<li><strong>Raw coordinates as attributes.</strong> A large <code>Polygon</code> or <code>MultiPolygon</code> coordinate array is kilobytes per span. Attaching it multiplies export volume, can breach exporter size limits, and leaks precise location data. Record <code>geo.vertex_count</code>, <code>geo.h3_cell</code>, and a bounding-box area instead.</li>
+</ol>
+<figure class="fig">
+<svg viewBox="0 0 760 234" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Attaching raw coordinates to a span versus a compact spatial fingerprint, compared by export volume and what each lets you query">
+<title>A spatial fingerprint carries the same answers at a thousandth the size</title>
+<desc>A span for one multipolygon of forty-one thousand vertices. Attaching the raw coordinate array adds about 1.6 megabytes to the span, which multiplied across ten thousand spans an hour is roughly 16 gigabytes of export traffic, breaches most exporters' per-span size limits so the span is dropped entirely, and writes precise location data into a telemetry backend that is rarely access-controlled for it. A fingerprint of vertex count, H3 cell at resolution seven, source EPSG code and bounding-box area adds about 180 bytes, roughly nine thousand times smaller, and still answers the questions anyone actually asks of a trace: which region is slow, is this payload unusually large, which CRS did it arrive in. What it cannot answer is the exact shape — and a trace was never the right place to look that up, because the feature id in the same span leads to the source of record.</desc>
+<rect x="0" y="0" width="760" height="234" fill="var(--fig-bg)"/>
+<rect x="14" y="30" width="352" height="120" rx="7" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="26" y="50" font-size="10" font-weight="600" fill="var(--fig-ink)">geo.coordinates = [[13.40, 52.52], …]</text>
+<text x="26" y="70" font-size="9" fill="var(--fig-ink-soft)">41,000 vertices ≈ 1.6 MB on one span</text>
+<text x="26" y="86" font-size="9" fill="var(--fig-ink-soft)">× 10,000 spans/h ≈ 16 GB/h of export</text>
+<text x="26" y="106" font-size="9" fill="var(--fig-rose-edge)">breaches per-span size limits ⇒ span dropped</text>
+<text x="26" y="122" font-size="9" fill="var(--fig-rose-edge)">writes precise location into an unguarded backend</text>
+<text x="26" y="140" font-size="8.5" fill="var(--fig-ink-soft)">The instrumentation you added to debug it removes the span you needed.</text>
+<rect x="386" y="30" width="360" height="120" rx="7" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<text x="398" y="50" font-size="10" font-weight="600" fill="var(--fig-ink)">the fingerprint — about 180 bytes</text>
+<text x="398" y="70" font-size="9" font-family="monospace" fill="var(--fig-ink-soft)">geo.vertex_count  41337</text>
+<text x="398" y="86" font-size="9" font-family="monospace" fill="var(--fig-ink-soft)">geo.h3_cell       871f1d4ffffffff</text>
+<text x="398" y="102" font-size="9" font-family="monospace" fill="var(--fig-ink-soft)">geo.source_epsg   27700</text>
+<text x="398" y="118" font-size="9" font-family="monospace" fill="var(--fig-ink-soft)">geo.bbox_area_km2 14.2</text>
+<text x="398" y="140" font-size="8.5" fill="var(--fig-mint-edge)">~9,000× smaller, and the span survives export</text>
+<rect x="14" y="164" width="366" height="62" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="26" y="182" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Questions it still answers</text>
+<text x="26" y="199" font-size="9" fill="var(--fig-ink-soft)">Which region is slow · is this payload unusually large ·</text>
+<text x="26" y="212" font-size="9" fill="var(--fig-ink-soft)">which CRS did it arrive in · group latency by cell</text>
+<rect x="394" y="164" width="352" height="62" rx="6" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="406" y="182" font-size="9.5" font-weight="600" fill="var(--fig-ink)">What it gives up</text>
+<text x="406" y="199" font-size="9" fill="var(--fig-ink-soft)">The exact shape — which a trace was never the place to hold.</text>
+<text x="406" y="212" font-size="9" fill="var(--fig-ink-soft)">The feature id on the same span leads to the source of record.</text>
+</svg>
+<figcaption><b>Figure 3.</b> Record derived facts, not the payload. A span carrying its geometry is large enough to be dropped by the exporter, so the instrumentation removes exactly the evidence it was added to capture.</figcaption>
+</figure>
+<ol start="3">
 <li>
 <p><strong>Attribute cardinality creep.</strong> Span attributes tolerate high cardinality far better than metric labels, but backends still index them. Avoid per-request unique strings like a full delivery UUID <em>as a searchable dimension</em> unless you need it; prefer the h3 cell at a coarse resolution for spatial grouping.</p>
 </li>

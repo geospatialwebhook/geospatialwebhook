@@ -535,9 +535,65 @@ metrics_app <span class="token operator">=</span> make_asgi_app<span class="toke
 <li>
 <p><strong>Counter resets on restart are handled by <code>rate()</code>, not by you.</strong> A process restart zeroes every Counter. If you subtract raw counter values across a restart you get a negative, nonsensical result. <code>rate()</code> and <code>increase()</code> detect the reset and correct for it — always alert on <code>rate()</code>, never on <code>metric - metric offset</code>.</p>
 </li>
-<li>
-<p><strong>Pick a <code>rate()</code> window at least four times your scrape interval.</strong> With a 15-second scrape, a 5-minute window gives each sample ~20 data points, smoothing single-payload noise while still catching a bad deploy within minutes. Too narrow a window makes the alert flap; too wide makes it slow to fire.</p>
-</li>
+</ol>
+<figure class="fig">
+<svg viewBox="0 0 760 226" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A counter reset at process restart, and how rate compensates where raw subtraction does not">
+<title>What a process restart does to a counter</title>
+<desc>A validation-failure counter climbs steadily to 41,900 and a deploy restarts the process at 10:12, zeroing it. The raw series drops vertically to zero and begins climbing again. Subtracting the value thirty minutes ago from the current value across that restart gives roughly minus forty thousand — a negative failure count, which any threshold comparison silently passes because it is far below the limit, so the alert goes quiet precisely during a deploy, which is when failures are most likely. The rate function detects that a sample is lower than its predecessor, treats it as a reset rather than a decrease, and counts only the increase since the reset, so it reports about twelve failures per second continuously across the restart. This is why alerting expressions use rate or increase rather than arithmetic on raw counter values.</desc>
+<rect x="0" y="0" width="760" height="226" fill="var(--fig-bg)"/>
+<line x1="330" y1="26" x2="330" y2="150" stroke="var(--fig-rose-edge)" stroke-width="1.5" stroke-dasharray="5,3"/>
+<text x="336" y="36" font-size="9" font-weight="600" fill="var(--fig-rose-edge)">10:12 — deploy restarts the process</text>
+<text x="14" y="58" font-size="9.5" font-weight="600" fill="var(--fig-ink)">raw counter</text>
+<polyline points="100,132 160,116 220,98 280,80 330,66" fill="none" stroke="var(--fig-earth-edge)" stroke-width="2.2"/>
+<line x1="330" y1="66" x2="330" y2="134" stroke="var(--fig-earth-edge)" stroke-width="1.4" stroke-dasharray="3,2"/>
+<polyline points="330,134 400,120 470,104 540,90 610,74 680,60" fill="none" stroke="var(--fig-earth-edge)" stroke-width="2.2"/>
+<text x="286" y="60" font-size="8.5" fill="var(--fig-ink-soft)">41,900</text>
+<text x="336" y="146" font-size="8.5" fill="var(--fig-ink-soft)">0</text>
+<rect x="14" y="160" width="366" height="58" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="26" y="178" font-size="9.5" font-weight="600" fill="var(--fig-ink)">metric − metric offset 30m</text>
+<text x="26" y="195" font-size="9" fill="var(--fig-ink-soft)">≈ −40,000 across the restart. Any "&gt; threshold" test passes,</text>
+<text x="26" y="208" font-size="9" fill="var(--fig-rose-edge)">so the alert goes silent exactly during a deploy.</text>
+<rect x="394" y="160" width="352" height="58" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="406" y="178" font-size="9.5" font-weight="600" fill="var(--fig-ink)">rate(metric[5m])</text>
+<text x="406" y="195" font-size="9" fill="var(--fig-ink-soft)">Reads a lower sample as a reset, not a decrease, and counts</text>
+<text x="406" y="208" font-size="9" fill="var(--fig-mint-edge)">only the rise since — ≈12/s, continuous across the restart.</text>
+</svg>
+<figcaption><b>Figure 2.</b> The dangerous part is not the negative number but where it lands: a deploy is when failure rates spike, and raw subtraction mutes the alert for exactly that window.</figcaption>
+</figure>
+<ol start="3">
+<li><strong>Pick a <code>rate()</code> window at least four times your scrape interval.</strong> With a 15-second scrape, a 5-minute window gives each sample ~20 data points, smoothing single-payload noise while still catching a bad deploy within minutes. Too narrow a window makes the alert flap; too wide makes it slow to fire.</li>
+</ol>
+<figure class="fig">
+<svg viewBox="0 0 760 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The same failure spike read through three rate window widths, showing flapping, correct detection, and delayed detection">
+<title>Picking a rate() window against your scrape interval</title>
+<desc>A validation-failure spike begins at 09:30 with a 15-second scrape interval. A 30-second window holds only two samples, so a single missed scrape drops it to one or zero and the series returns empty: the alert flaps on and off five times in four minutes and is quickly muted by whoever is on call. A five-minute window holds twenty samples, rides through a missed scrape, and crosses the threshold cleanly about ninety seconds after the spike begins. A thirty-minute window holds a hundred and twenty samples and is perfectly smooth, but the spike is diluted across so much history that the threshold is not crossed until roughly eleven minutes in, by which point several thousand invalid geometries have been written. Four times the scrape interval is the practical floor and five minutes is the usual choice for anything feeding an alert.</desc>
+<rect x="0" y="0" width="760" height="240" fill="var(--fig-bg)"/>
+<line x1="150" y1="26" x2="150" y2="196" stroke="var(--fig-rose-edge)" stroke-width="1.5" stroke-dasharray="5,3"/>
+<text x="156" y="36" font-size="9" font-weight="600" fill="var(--fig-rose-edge)">spike starts 09:30</text>
+<line x1="90" y1="70" x2="700" y2="70" stroke="var(--fig-earth-edge)" stroke-width="1" stroke-dasharray="4,3"/>
+<text x="704" y="73" font-size="8" fill="var(--fig-earth-edge)">threshold</text>
+<text x="14" y="60" font-size="9.5" font-weight="600" fill="var(--fig-ink)">rate(...[30s])</text>
+<text x="14" y="72" font-size="8" fill="var(--fig-rose-edge)">2 samples</text>
+<polyline points="90,92 150,92 170,52 186,92 202,50 218,90 236,54 252,92 270,56 340,58 420,56 500,58 580,56 660,58" fill="none" stroke="var(--fig-rose-edge)" stroke-width="1.8"/>
+<text x="666" y="62" font-size="8.5" fill="var(--fig-rose-edge)" font-weight="600">flaps 5× in 4 min</text>
+<line x1="90" y1="130" x2="700" y2="130" stroke="var(--fig-earth-edge)" stroke-width="1" stroke-dasharray="4,3"/>
+<text x="14" y="120" font-size="9.5" font-weight="600" fill="var(--fig-ink)">rate(...[5m])</text>
+<text x="14" y="132" font-size="8" fill="var(--fig-mint-edge)">20 samples</text>
+<polyline points="90,152 150,152 190,140 230,122 280,112 340,110 420,110 500,110 580,110 660,110" fill="none" stroke="var(--fig-mint-edge)" stroke-width="2.2"/>
+<circle cx="212" cy="130" r="4" fill="var(--fig-mint-edge)"/>
+<text x="220" y="126" font-size="8.5" fill="var(--fig-mint-edge)" font-weight="600">fires at +90 s</text>
+<line x1="90" y1="188" x2="700" y2="188" stroke="var(--fig-earth-edge)" stroke-width="1" stroke-dasharray="4,3"/>
+<text x="14" y="178" font-size="9.5" font-weight="600" fill="var(--fig-ink)">rate(...[30m])</text>
+<text x="14" y="190" font-size="8" fill="var(--fig-gold-edge)">120 samples</text>
+<polyline points="90,206 150,206 220,202 300,196 380,188 460,180 540,176 620,174 700,173" fill="none" stroke="var(--fig-gold-edge)" stroke-width="2.2"/>
+<circle cx="380" cy="188" r="4" fill="var(--fig-gold-edge)"/>
+<text x="388" y="184" font-size="8.5" fill="var(--fig-gold-edge)" font-weight="600">fires at +11 min — thousands already written</text>
+<rect x="14" y="214" width="732" height="22" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="26" y="229" font-size="9.5" fill="var(--fig-ink)">Floor is 4× the scrape interval so one missed scrape cannot empty the window; 5 min is the usual choice for anything feeding an alert.</text>
+</svg>
+<figcaption><b>Figure 3.</b> The window trades false alarms against detection delay, and both failures end the same way — a muted alert, or one that arrives after the damage. Size it from the scrape interval first, then from how fast you need to know.</figcaption>
+</figure>
+<ol start="4">
 <li>
 <p><strong>Validate before <em>and</em> after reprojection.</strong> A geometry that is valid in EPSG:3857 (Web Mercator) can acquire NaN coordinates when transformed to EPSG:4326 (WGS84) near the projection’s polar limits, and reprojection can collapse a thin sliver polygon into a degenerate ring. Validating only on ingest misses these; add a <code>stage</code> label or a second Counter to separate pre-transform from post-transform failures.</p>
 </li>

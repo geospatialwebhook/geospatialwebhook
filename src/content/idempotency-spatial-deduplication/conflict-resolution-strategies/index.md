@@ -184,6 +184,44 @@ The pipeline has four numbered layers:
 3. **Spatial conflict evaluation** — fetch current state, compute overlap, and apply a resolution policy.
 4. **Atomic commit** — acquire a feature-level lock, write the resolved geometry, release the lock, and emit an audit event.
 
+<figure class="fig">
+<svg viewBox="0 0 760 244" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Feature-level locking compared with locking the whole layer, and the read-modify-write race that appears without a lock">
+<title>The lock has to span the read, not just the write</title>
+<desc>Two workers process concurrent edits to parcel 4471. Without a lock both read the current geometry at version seven, both compute a merge against that same base, and both write version eight; the second write overwrites the first, so one edit is lost even though each individual write was atomic — atomicity of the write never protected the read that preceded it. Holding a lock keyed on the feature id makes the second worker wait, so it reads version eight rather than seven, merges against the edit that actually happened, and writes version nine. Keying the lock on the feature rather than the layer matters for throughput: edits to different parcels never contend, so a lock on the layer would serialise the entire ingest stream to obtain a guarantee that only ever mattered per feature.</desc>
+<rect x="0" y="0" width="760" height="244" fill="var(--fig-bg)"/>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-rose-edge)">No lock — read-modify-write race</text>
+<line x1="120" y1="34" x2="120" y2="104" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<line x1="600" y1="34" x2="600" y2="104" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<rect x="130" y="36" width="120" height="26" rx="4" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.1"/>
+<text x="190" y="53" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">W1 reads v7</text>
+<rect x="130" y="66" width="120" height="26" rx="4" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.1"/>
+<text x="190" y="83" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">W2 reads v7</text>
+<rect x="300" y="36" width="130" height="26" rx="4" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.1"/>
+<text x="365" y="53" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">W1 merges onto v7</text>
+<rect x="300" y="66" width="130" height="26" rx="4" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.1"/>
+<text x="365" y="83" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">W2 merges onto v7</text>
+<rect x="462" y="36" width="130" height="26" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="527" y="53" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">W1 writes v8</text>
+<rect x="462" y="66" width="130" height="26" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="527" y="83" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">W2 writes v8 — overwrites</text>
+<text x="610" y="68" font-size="9" fill="var(--fig-rose-edge)" font-weight="600">W1's edit is gone</text>
+<text x="14" y="118" font-size="9" fill="var(--fig-ink-soft)">Both writes were atomic. Atomicity of the write never protected the read that the merge was computed against.</text>
+<line x1="14" y1="132" x2="746" y2="132" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="154" font-size="10.5" font-weight="600" fill="var(--fig-mint-edge)">Lock keyed on feature:4471 — spans read through write</text>
+<rect x="130" y="164" width="286" height="26" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="273" y="181" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">W1 · lock → read v7 → merge → write v8 → unlock</text>
+<rect x="130" y="194" width="120" height="26" rx="4" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="190" y="211" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">W2 waits</text>
+<rect x="256" y="194" width="286" height="26" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="399" y="211" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">W2 · lock → read v8 → merge → write v9 → unlock</text>
+<text x="556" y="211" font-size="9" fill="var(--fig-mint-edge)" font-weight="600">both edits survive</text>
+<rect x="14" y="230" width="732" height="0" fill="none"/>
+<text x="14" y="234" font-size="9" fill="var(--fig-ink-soft)">Key the lock on the feature, not the layer: edits to different parcels never contend.</text>
+<text x="14" y="244" font-size="9" fill="var(--fig-ink-soft)">A layer lock would serialise the whole ingest stream for a guarantee that only ever mattered per feature.</text>
+</svg>
+<figcaption><b>Figure 2.</b> The window that loses the edit is between the read and the write, so that is the span the lock must cover. Locking only the write — which the database already does — leaves the race entirely intact.</figcaption>
+</figure>
+
 ---
 
 ## Step-by-Step Implementation
@@ -268,6 +306,46 @@ If the geometries are disjoint, apply the incoming update directly — there is 
 Two policies cover the majority of real-world cases. Choose based on data semantics, not on convenience.
 
 **Last-write-wins (LWW)** is appropriate for sensor telemetry, vehicle tracking, or any domain where a more-recent observation supersedes older ones. Compare `updated_at` timestamps or monotonic `version` integers. LWW is fast but can silently discard a concurrent edit if two writes land within the same clock tick — acceptable for ephemeral spatial telemetry, unacceptable for authoritative cadastral records.
+
+<figure class="fig">
+<svg viewBox="0 0 760 268" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two concurrent boundary edits resolved by last-write-wins versus semantic merge">
+<title>Last-write-wins and semantic merge on the same pair of edits</title>
+<desc>Two planners edit one service-zone boundary within the same second. Editor A extends the zone north; editor B extends it east. Under last-write-wins the two updated_at timestamps fall in the same clock tick, the comparison is effectively arbitrary, and whichever write lands second becomes the stored geometry — so one planner's extension is discarded silently and neither of them is told. Under semantic merge a version vector detects that neither edit descends from the other, the two additive changes are combined with a spatial union, and the stored geometry carries both extensions. The merge costs a version vector, a union and a validity repair, and it is the only one of the two that cannot lose an edit. Last-write-wins remains correct for sensor telemetry, where a newer observation genuinely supersedes an older one and there is nothing to merge.</desc>
+<rect x="0" y="0" width="760" height="268" fill="var(--fig-bg)"/>
+<defs><marker id="cf-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-ink)">Base zone, then two concurrent edits at 14:02:07.4</text>
+<rect x="30" y="46" width="70" height="56" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.5"/>
+<text x="65" y="118" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">base</text>
+<rect x="140" y="30" width="70" height="72" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="175" y="118" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">A — extends north</text>
+<rect x="270" y="46" width="94" height="56" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.5"/>
+<text x="317" y="118" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">B — extends east</text>
+<line x1="380" y1="72" x2="412" y2="72" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#cf-a)"/>
+<rect x="416" y="30" width="150" height="86" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="491" y="48" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">last-write-wins</text>
+<rect x="446" y="56" width="90" height="42" fill="var(--fig-bg)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="491" y="110" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">B stored · A discarded</text>
+<rect x="582" y="30" width="164" height="86" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="664" y="48" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">semantic merge</text>
+<path d="M614 98 L614 56 L646 56 L646 66 L714 66 L714 98 Z" fill="var(--fig-bg)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="664" y="110" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">union — both extensions kept</text>
+<rect x="14" y="132" width="366" height="70" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="26" y="150" font-size="10" font-weight="600" fill="var(--fig-ink)">Why LWW loses this edit silently</text>
+<text x="26" y="167" font-size="9" fill="var(--fig-ink-soft)">Both writes carry updated_at 14:02:07.4 — the same tick. The</text>
+<text x="26" y="180" font-size="9" fill="var(--fig-ink-soft)">comparison has no real ordering to find, so arrival order decides.</text>
+<text x="26" y="195" font-size="9" fill="var(--fig-rose-edge)">Neither planner is told. The zone is simply wrong on the map.</text>
+<rect x="394" y="132" width="352" height="70" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="406" y="150" font-size="10" font-weight="600" fill="var(--fig-ink)">What the merge costs</text>
+<text x="406" y="167" font-size="9" fill="var(--fig-ink-soft)">A version vector to prove the edits are concurrent rather than</text>
+<text x="406" y="180" font-size="9" fill="var(--fig-ink-soft)">sequential, a spatial union, and a make_valid on the result.</text>
+<text x="406" y="195" font-size="9" fill="var(--fig-mint-edge)">In exchange it cannot lose an edit.</text>
+<rect x="14" y="214" width="732" height="52" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="232" font-size="10" font-weight="600" fill="var(--fig-ink)">Choose by whether a later value genuinely supersedes an earlier one</text>
+<text x="26" y="247" font-size="9" fill="var(--fig-ink-soft)">Vehicle position or a sensor reading: the new value replaces the old and there is nothing to merge — LWW is correct and cheap.</text>
+<text x="26" y="259" font-size="9" fill="var(--fig-ink-soft)">Cadastral boundaries or service zones, where two people can each hold a valid partial edit: LWW is data loss with a timestamp on it.</text>
+</svg>
+<figcaption><b>Figure 3.</b> The failure is not that last-write-wins picks wrongly — it is that within one clock tick there is no "later" to pick, so the result is arrival order, and the discarded edit produces no error anywhere.</figcaption>
+</figure>
 
 **Semantic merge** preserves both edits by computing a spatial union (for additive changes such as expanding a zone boundary) or a difference/clip (for subtractive changes such as shrinking a service area). It requires a version vector to detect concurrency and is more expensive, but it guarantees no data loss.
 

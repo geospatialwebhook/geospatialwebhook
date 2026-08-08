@@ -158,6 +158,35 @@ The pipeline enforces a strict order: normalise first, hash second, look up thir
 4. **Cache check** — Redis `SET NX EX` atomically claims the key; a hit short-circuits the response; a miss proceeds to step five.
 5. **Spatial processing** — the real work: spatial joins, tile invalidation via [Tile Update Event Pipelines](https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/), database mutations, and downstream dispatch.
 
+<figure class="fig">
+<svg viewBox="0 0 760 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Where the cache fast path sits relative to geometry loading, and the cost of each stage per ten thousand redeliveries">
+<title>The fast path exists to avoid loading geometry at all</title>
+<desc>Ten thousand redeliveries enter the pipeline. Schema validation costs about 40 microseconds each and rejects 200 malformed payloads. Normalisation and key derivation cost about 180 microseconds and run on the remaining 9,800. The Redis SET NX then costs about 250 microseconds per call and resolves 7,400 of them as cache hits, which return 200 immediately. Only 2,400 reach the expensive stages: loading candidate geometries from PostGIS at about 4.1 milliseconds each and evaluating shapely overlap predicates at about 9 milliseconds each. Because the cache absorbs three quarters of the traffic before any geometry is loaded, the pipeline spends about 31 seconds on predicate evaluation per ten thousand events rather than the 131 seconds it would spend if every event reached that stage. The ordering is the whole design: the cache is upstream of the geometry load precisely because the geometry load is what costs.</desc>
+<rect x="0" y="0" width="760" height="240" fill="var(--fig-bg)"/>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-ink)">10,000 redeliveries · width is remaining traffic, label is per-event cost</text>
+<rect x="14" y="30" width="700" height="28" rx="4" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="26" y="48" font-size="9.5" fill="var(--fig-ink)">1 · Pydantic schema validation — 40 µs</text>
+<text x="560" y="48" font-size="9" fill="var(--fig-ink-soft)">−200 malformed</text>
+<rect x="14" y="64" width="686" height="28" rx="4" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="26" y="82" font-size="9.5" fill="var(--fig-ink)">2 · normalise + derive key — 180 µs</text>
+<text x="546" y="82" font-size="9" fill="var(--fig-ink-soft)">9,800 continue</text>
+<rect x="14" y="98" width="686" height="28" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<text x="26" y="116" font-size="9.5" font-weight="600" fill="var(--fig-ink)">3 · Redis SET NX — 250 µs</text>
+<text x="380" y="116" font-size="9" font-weight="600" fill="var(--fig-mint-edge)">7,400 hits return 200 here — no geometry ever loaded</text>
+<rect x="14" y="132" width="168" height="28" rx="4" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="150" font-size="9.5" fill="var(--fig-ink)">4 · load from PostGIS — 4.1 ms</text>
+<text x="192" y="150" font-size="9" fill="var(--fig-ink-soft)">2,400 misses only</text>
+<rect x="14" y="166" width="168" height="28" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="26" y="184" font-size="9.5" fill="var(--fig-ink)">5 · shapely predicates — 9.0 ms</text>
+<text x="192" y="184" font-size="9" fill="var(--fig-ink-soft)">the stage that dominates the bill</text>
+<rect x="14" y="204" width="366" height="30" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="26" y="223" font-size="9.5" fill="var(--fig-ink)">with the cache: ~31 s of predicate work per 10k</text>
+<rect x="394" y="204" width="352" height="30" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="406" y="223" font-size="9.5" fill="var(--fig-ink)">without it: ~131 s — a 4.2× bill for the same answers</text>
+</svg>
+<figcaption><b>Figure 2.</b> Stage 3 is placed above stages 4 and 5 for one reason: it is the last point at which a duplicate can be recognised without deserialising a geometry. A cache behind the geometry load would return the same answers and save almost nothing.</figcaption>
+</figure>
+
 ---
 
 ## Step-by-Step Implementation
@@ -475,7 +504,7 @@ A Redis connection failure must not silently drop valid events. Implement a two-
   <text x="633" y="142" text-anchor="middle" font-size="11" fill="currentColor" font-family="inherit" font-weight="600">Spatial</text>
   <text x="633" y="157" text-anchor="middle" font-size="10" fill="currentColor" font-family="inherit" opacity="0.8">processing</text>
 </svg>
-<figcaption><b>Figure 2.</b> Two-tier idempotency fallback decision flow</figcaption>
+<figcaption><b>Figure 3.</b> Two-tier idempotency fallback decision flow</figcaption>
 </figure>
 
 ```python

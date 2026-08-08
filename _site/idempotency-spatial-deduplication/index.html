@@ -265,6 +265,44 @@
 <h2 id="why-standard-idempotency-breaks-on-spatial-data" tabindex="-1"><a class="heading-anchor" href="#why-standard-idempotency-breaks-on-spatial-data">Why Standard Idempotency Breaks on Spatial Data</a></h2>
 <p>Standard idempotency patterns assume byte-for-byte payload equivalence. Geospatial data routinely violates this assumption across three axes:</p>
 <p><strong>Coordinate noise.</strong> A GPS tracker might report <code>[-122.4194, 37.7749]</code> in one webhook and <code>[-122.4194001, 37.7749002]</code> in the next due to floating-point drift or hardware jitter. Two hashes, one real-world location.</p>
+<figure class="fig">
+<svg viewBox="0 0 760 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three payloads describing the same parcel that produce three different SHA-256 hashes, and the normalisation that collapses them to one">
+<title>Three descriptions of one parcel, three different hashes</title>
+<desc>The same land parcel arrives three times. The first is a Polygon in EPSG:4326 with coordinates at seven decimal places. The second is the identical footprint from a GPS tracker whose last digit has drifted by one ten-millionth of a degree, about eleven millimetres on the ground. The third is the same footprint again, sent by a municipal system as a single-ring MultiPolygon tagged with the OGC CRS84 urn rather than EPSG:4326, with its JSON keys in a different order. Hashing the raw bytes gives three unrelated digests, so a naive idempotency gate treats one parcel as three events and writes it three times. Running each through the normaliser first — reproject to EPSG:4326, round to the documented precision, collapse single-ring MultiPolygon to Polygon, repair topology, then serialise with sorted keys and fixed separators — yields byte-identical output and therefore one digest, so the second and third deliveries are recognised as duplicates.</desc>
+<rect x="0" y="0" width="760" height="232" fill="var(--fig-bg)"/>
+<defs><marker id="in-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<rect x="14" y="26" width="228" height="42" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="24" y="42" font-size="9" font-weight="600" fill="var(--fig-ink)">Polygon · EPSG:4326 · 7 d.p.</text>
+<text x="24" y="55" font-size="8.5" fill="var(--fig-ink-soft)">[-122.4194000, 37.7749000]</text>
+<text x="24" y="65" font-size="8.5" fill="var(--fig-rose-edge)">sha256 → 9f2c1a…</text>
+<rect x="14" y="74" width="228" height="42" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="24" y="90" font-size="9" font-weight="600" fill="var(--fig-ink)">same parcel · GPS jitter</text>
+<text x="24" y="103" font-size="8.5" fill="var(--fig-ink-soft)">[-122.4194001, 37.7749002] — 11 mm</text>
+<text x="24" y="113" font-size="8.5" fill="var(--fig-rose-edge)">sha256 → 41ba6d…</text>
+<rect x="14" y="122" width="228" height="42" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="24" y="138" font-size="9" font-weight="600" fill="var(--fig-ink)">MultiPolygon · CRS84 urn</text>
+<text x="24" y="151" font-size="8.5" fill="var(--fig-ink-soft)">one ring · keys in a different order</text>
+<text x="24" y="161" font-size="8.5" fill="var(--fig-rose-edge)">sha256 → c70e83…</text>
+<text x="128" y="182" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-rose-edge)">3 digests ⇒ 3 writes of one parcel</text>
+<line x1="246" y1="95" x2="290" y2="95" stroke="var(--fig-line)" stroke-width="1.4" marker-end="url(#in-a)"/>
+<rect x="294" y="40" width="238" height="110" rx="7" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<text x="413" y="60" text-anchor="middle" font-size="10" font-weight="600" fill="var(--fig-ink)">normaliser</text>
+<text x="306" y="78" font-size="8.5" fill="var(--fig-ink-soft)">1 · reproject → EPSG:4326</text>
+<text x="306" y="92" font-size="8.5" fill="var(--fig-ink-soft)">2 · round to documented precision</text>
+<text x="306" y="106" font-size="8.5" fill="var(--fig-ink-soft)">3 · single-ring MultiPolygon → Polygon</text>
+<text x="306" y="120" font-size="8.5" fill="var(--fig-ink-soft)">4 · make_valid · close + orient rings</text>
+<text x="306" y="134" font-size="8.5" fill="var(--fig-ink-soft)">5 · sort_keys, separators=(",", ":")</text>
+<text x="306" y="146" font-size="8.5" fill="var(--fig-mint-edge)">output is byte-identical for all three</text>
+<line x1="536" y1="95" x2="580" y2="95" stroke="var(--fig-line)" stroke-width="1.4" marker-end="url(#in-a)"/>
+<rect x="584" y="72" width="162" height="46" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<text x="665" y="91" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">one key: 9f2c1a…</text>
+<text x="665" y="106" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">2nd and 3rd hit SET NX ⇒ discarded</text>
+<rect x="14" y="192" width="732" height="34" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="26" y="208" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Rounding precision is a policy decision, not a detail — it sets the distance below which two readings are declared the same place.</text>
+<text x="26" y="221" font-size="9" fill="var(--fig-ink-soft)">At 6 d.p. anything within ~11 cm collapses; at 5 d.p. it is ~1.1 m. Too coarse and real movement vanishes; too fine and jitter defeats the gate.</text>
+</svg>
+<figcaption><b>Figure 1.</b> The hash is not the problem — the bytes are. Every step in the normaliser exists to remove one degree of freedom the sender had, so that logically identical payloads reduce to identical bytes before hashing.</figcaption>
+</figure>
 <p><strong>CRS and serialization variance.</strong> A municipal GIS system might send the same polygon with vertices reordered, or with a different Coordinate Reference System (CRS) tag — for instance <code>EPSG:4326</code> vs <code>urn:ogc:def:crs:OGC:1.3:CRS84</code> — while the footprint is topologically identical. JSON key ordering differences further break naive MD5 or SHA-256 hashing. The strategies for normalizing these CRS discrepancies at ingestion time are detailed in <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/">CRS Normalization Strategies</a>.</p>
 <p><strong>Topological equivalence without coordinate equality.</strong> Two geometries representing the same land parcel might be stored differently by separate upstream systems — one as a <code>Polygon</code>, another as a <code>MultiPolygon</code> with a single ring — yet they describe the same feature. No string comparison detects this.</p>
 <p>When webhooks retry and deduplication fails, systems typically exhibit one of three failure modes:</p>
@@ -333,7 +371,7 @@
   <!-- Caption -->
   <text x="360" y="494" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="currentColor" opacity="0.4">Figure 1 — Five-stage spatial idempotency pipeline. Stage 2 short-circuits duplicates before any PostGIS query runs.</text>
 </svg>
-<figcaption><b>Figure 1.</b> Spatial Idempotency Pipeline</figcaption>
+<figcaption><b>Figure 2.</b> Spatial Idempotency Pipeline</figcaption>
 </figure>
 <p>The labeled components map to four architectural layers: a normalization and fingerprinting step at ingestion, an atomic cache gate, a spatial database query for topology evaluation, and a conflict-aware persistence write. Each layer is independently testable and observable.</p>
 <hr>
@@ -690,6 +728,51 @@ app <span class="token operator">=</span> FastAPI<span class="token punctuation"
 <h2 id="production-hardening" tabindex="-1"><a class="heading-anchor" href="#production-hardening">Production Hardening</a></h2>
 <h3 id="failure-modes-and-mitigations" tabindex="-1"><a class="heading-anchor" href="#failure-modes-and-mitigations">Failure Modes and Mitigations</a></h3>
 <p><strong>Partial pipeline failure.</strong> If the PostGIS upsert succeeds but the Redis key is not transitioned from <code>processing</code> to <code>committed</code>, a subsequent retry will be rejected by the idempotency gate despite the fact that the event was never fully processed. Mitigate this by using a two-phase key state: write <code>processing</code> on admission, then overwrite with <code>committed</code> after the database commit confirms. On a rollback, explicitly delete the Redis key to allow the retry through.</p>
+<figure class="fig">
+<svg viewBox="0 0 760 262" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A single-state idempotency key stranding an event when the database rolls back, and the two-phase key state that avoids it">
+<title>Why the key needs two states, not one</title>
+<desc>An event is admitted, its idempotency key is claimed, and the PostGIS upsert then fails and rolls back. With a single-state key the claim is already written and looks identical to a completed one, so when the sender retries the gate rejects it as a duplicate: the event was never processed, yet it can never be processed again, and nothing in the system reports an error — the write is simply missing from the map. With a two-phase key the claim is written as processing with a short lease, and only the confirmed database commit overwrites it as committed with the full retention time-to-live. A rollback deletes the key outright so the retry is admitted, and if the worker dies before it can delete anything the short processing lease expires on its own and the retry is admitted then. The committed state is what makes a duplicate a duplicate; the processing state only prevents two workers running the same event concurrently.</desc>
+<rect x="0" y="0" width="760" height="262" fill="var(--fig-bg)"/>
+<defs><marker id="tp-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-rose-edge)">One state — the event is stranded</text>
+<rect x="14" y="30" width="118" height="38" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="73" y="53" text-anchor="middle" font-size="9" fill="var(--fig-ink)">SET NX key</text>
+<line x1="134" y1="49" x2="164" y2="49" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#tp-a)"/>
+<rect x="168" y="30" width="140" height="38" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="238" y="47" text-anchor="middle" font-size="9" fill="var(--fig-ink)">PostGIS upsert fails</text>
+<text x="238" y="60" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">transaction rolls back</text>
+<line x1="310" y1="49" x2="340" y2="49" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#tp-a)"/>
+<rect x="344" y="30" width="150" height="38" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="419" y="47" text-anchor="middle" font-size="9" fill="var(--fig-ink)">key survives the rollback</text>
+<text x="419" y="60" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">indistinguishable from success</text>
+<line x1="496" y1="49" x2="526" y2="49" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#tp-a)"/>
+<rect x="530" y="30" width="216" height="38" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="638" y="47" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">retry rejected as a duplicate</text>
+<text x="638" y="60" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">never processed, never processable, no error</text>
+<line x1="14" y1="88" x2="746" y2="88" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="110" font-size="10.5" font-weight="600" fill="var(--fig-mint-edge)">Two states — the retry gets through</text>
+<rect x="14" y="120" width="150" height="46" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="89" y="138" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">processing</text>
+<text x="89" y="152" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">short lease — 60 s</text>
+<text x="89" y="163" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">blocks concurrent workers only</text>
+<line x1="166" y1="143" x2="196" y2="143" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#tp-a)"/>
+<rect x="200" y="120" width="150" height="46" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="275" y="138" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">committed</text>
+<text x="275" y="152" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">written after commit confirms</text>
+<text x="275" y="163" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">full retention TTL — 24 h</text>
+<text x="360" y="136" font-size="9" fill="var(--fig-ink-soft)">only this state means</text>
+<text x="360" y="148" font-size="9" fill="var(--fig-ink-soft)">"already done"</text>
+<rect x="480" y="112" width="266" height="30" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="492" y="131" font-size="9" fill="var(--fig-ink)">rollback ⇒ DEL the key ⇒ retry admitted</text>
+<rect x="480" y="146" width="266" height="30" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="492" y="165" font-size="9" fill="var(--fig-ink)">worker dies ⇒ 60 s lease expires ⇒ admitted</text>
+<rect x="14" y="192" width="732" height="62" rx="6" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="26" y="210" font-size="10" font-weight="600" fill="var(--fig-ink)">Setting the processing lease</text>
+<text x="26" y="228" font-size="9" fill="var(--fig-ink-soft)">Longer than the worst-case processing time — a lease that expires mid-upsert lets a second worker start the same spatial write.</text>
+<text x="26" y="243" font-size="9" fill="var(--fig-ink-soft)">Short enough that a crashed worker does not strand the event for hours. Time the p99 of your heaviest geometry and give it headroom.</text>
+</svg>
+<figcaption><b>Figure 3.</b> A single-state key conflates "someone is working on this" with "this already succeeded". Only the second justifies rejecting a retry, and the failure when they are conflated is silent — the event is gone and no metric moves.</figcaption>
+</figure>
 <p><strong>Redis unavailability.</strong> If Redis is unreachable, the idempotency gate must fail open (admit the event) or fail closed (reject the event). The correct choice depends on your consistency requirements. Fail open is appropriate when duplicate writes are detectable and reconcilable downstream; fail closed is appropriate for billing or compliance events where a duplicate is more harmful than a dropped event.</p>
 <p><strong>Large geometry payloads.</strong> Multi-polygon features with tens of thousands of vertices can exceed the Redis string storage limit practically — more relevantly, storing a 2 MB WKT string in Redis wastes memory and bloats serialization time. Store large geometries in object storage (S3/MinIO/R2) and cache only the SHA-256 hash reference in Redis. The strategies for offloading heavy geometry processing without blocking the HTTP response are examined in <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/">Async Processing for Heavy Geometries</a>.</p>
 <p><strong>Timezone and temporal drift.</strong> Systems that track temporal validity (<code>valid_from</code>, <code>valid_to</code>) must normalize all timestamps to UTC before they enter the canonical representation. A timestamp stored as <code>2025-03-15T14:00:00+05:30</code> and the same instant stored as <code>2025-03-15T08:30:00Z</code> will produce different fingerprints.</p>

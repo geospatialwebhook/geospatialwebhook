@@ -97,9 +97,75 @@ Spatial pipelines fail along axes that generic dashboards cannot see:
 
 **The distribution matters more than the average.** A payload vertex-count histogram with a healthy median can hide a long tail of million-vertex multipolygons that each block an event loop for hundreds of milliseconds. An average latency number smears that tail into invisibility. Spatial workloads are defined by their outliers — the one enormous geometry, the one hot shard, the one CRS nobody expected — so percentiles and full distributions matter far more than means.
 
+<figure class="fig">
+<svg viewBox="0 0 760 254" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A vertex-count histogram whose healthy median conceals a long tail of enormous multipolygons">
+<title>The mean is healthy; the tail is what blocks the event loop</title>
+<desc>A vertex-count histogram over one hour of traffic. Ninety-four percent of payloads fall in the first two buckets at under one hundred vertices, costing about two milliseconds each, which pulls the median to twelve vertices and the mean to a reassuring four hundred and ten. The remaining six percent stretch across four more buckets, and the final bucket holds forty payloads above one hundred thousand vertices that each cost roughly nine hundred milliseconds of shapely work. Those forty events account for about thirty-six seconds of blocked event loop per hour — more than the other 39,960 events combined — yet they are entirely invisible in the mean, and an alert threshold set on mean latency will never fire. The metric that catches them is the p99 of the same histogram, or a counter on payloads above a vertex ceiling.</desc>
+<rect x="0" y="0" width="760" height="254" fill="var(--fig-bg)"/>
+<line x1="70" y1="34" x2="70" y2="170" stroke="var(--fig-line)" stroke-width="1.2"/>
+<line x1="70" y1="170" x2="600" y2="170" stroke="var(--fig-line)" stroke-width="1.2"/>
+<rect x="80" y="44" width="70" height="126" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<rect x="164" y="80" width="70" height="90" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<rect x="248" y="150" width="70" height="20" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<rect x="332" y="158" width="70" height="12" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<rect x="416" y="163" width="70" height="7" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<rect x="500" y="166" width="70" height="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="115" y="186" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">&lt;10</text>
+<text x="199" y="186" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">10–100</text>
+<text x="283" y="186" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">100–1k</text>
+<text x="367" y="186" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">1k–10k</text>
+<text x="451" y="186" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">10k–100k</text>
+<text x="535" y="186" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--fig-rose-edge)">&gt;100k</text>
+<text x="335" y="204" text-anchor="middle" font-size="9.5" fill="var(--fig-ink-soft)">vertices per payload — 40,000 events in one hour</text>
+<line x1="160" y1="34" x2="160" y2="170" stroke="var(--fig-mint-edge)" stroke-width="1.6" stroke-dasharray="5,3"/>
+<text x="166" y="44" font-size="9" font-weight="600" fill="var(--fig-mint-edge)">median 12</text>
+<line x1="252" y1="34" x2="252" y2="170" stroke="var(--fig-earth-edge)" stroke-width="1.6" stroke-dasharray="5,3"/>
+<text x="258" y="44" font-size="9" font-weight="600" fill="var(--fig-earth-edge)">mean 410 — the number on the dashboard</text>
+<line x1="535" y1="120" x2="535" y2="162" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<rect x="466" y="88" width="180" height="32" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="556" y="103" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">40 events · ~900 ms each</text>
+<text x="556" y="115" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">0.1% of traffic</text>
+<rect x="14" y="216" width="366" height="34" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="26" y="232" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Those 40 events block ~36 s of event loop per hour</text>
+<text x="26" y="245" font-size="9" fill="var(--fig-ink-soft)">More than the other 39,960 combined — and invisible in the mean.</text>
+<rect x="394" y="216" width="352" height="34" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="406" y="232" font-size="9.5" font-weight="600" fill="var(--fig-ink)">What to alert on instead</text>
+<text x="406" y="245" font-size="9" fill="var(--fig-ink-soft)">p99 of the same histogram, or a counter past a vertex ceiling.</text>
+</svg>
+<figcaption><b>Figure 1.</b> Export the histogram, not a gauge of the average. Spatial workloads are defined by their outliers, and an average is precisely the statistic that removes them.</figcaption>
+</figure>
+
 **Aggregate throughput hides geographic imbalance.** When you partition a stream by a spatial key — an H3 cell, a geohash prefix, a Quadkey — total throughput can look balanced while a single dense urban shard is drowning. This is [partition skew](https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/), and it is unique to spatially partitioned streams because population density, not a hash function, decides how events distribute. A round-robin partitioner produces even load by construction; a spatial partitioner produces load shaped like a population map.
 
 **Correctness is invisible without a dedicated signal.** Whether your idempotency layer is actually catching duplicates is not something you can infer from success rates. If [spatial deduplication](https://www.geospatialwebhook.com/idempotency-spatial-deduplication/) silently stops matching — because a producer changed coordinate precision, say — every duplicate now sails through and creates a phantom record, and the only symptom is a slow-rising storage bill. The dedup hit ratio has to be an explicit, watched metric or the regression is undetectable until it is a data-quality incident.
+
+<figure class="fig">
+<svg viewBox="0 0 760 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A silent deduplication regression visible only in the hit-ratio metric, not in error rates or latency">
+<title>The regression that no error rate can show you</title>
+<desc>At 09:40 an upstream producer changes coordinate precision from six decimal places to eight. The deduplication hit ratio drops from about seventy-two percent to near zero within a single scrape interval, because every redelivery now canonicalises differently and no longer matches its stored key. Every other signal stays flat: the HTTP success rate holds at 99.9 percent because each duplicate is processed successfully, p99 latency is unchanged because the work per event is the same, and the error rate stays at zero because nothing has failed. The only other symptom is row count, which begins climbing at roughly three times its previous rate and will not be noticed until it shows up as a storage bill or a spatial join returning triplicated features. If the hit ratio is not an explicitly watched metric with an alert on it, this regression is undetectable until it has become a data-quality incident.</desc>
+<rect x="0" y="0" width="760" height="240" fill="var(--fig-bg)"/>
+<line x1="360" y1="26" x2="360" y2="186" stroke="var(--fig-rose-edge)" stroke-width="1.6" stroke-dasharray="5,3"/>
+<text x="366" y="36" font-size="9" font-weight="600" fill="var(--fig-rose-edge)">09:40 — producer moves 6 d.p. → 8 d.p.</text>
+<text x="14" y="56" font-size="9.5" font-weight="600" fill="var(--fig-ink)">dedup hit ratio</text>
+<polyline points="110,54 200,52 290,55 360,53 380,88 470,90 560,89 650,90" fill="none" stroke="var(--fig-rose-edge)" stroke-width="2.4"/>
+<text x="656" y="94" font-size="8.5" fill="var(--fig-rose-edge)" font-weight="600">72% → 0%</text>
+<text x="14" y="116" font-size="9.5" font-weight="600" fill="var(--fig-ink)">HTTP success</text>
+<polyline points="110,112 200,113 290,112 360,112 450,113 540,112 650,112" fill="none" stroke="var(--fig-mint-edge)" stroke-width="2.2"/>
+<text x="656" y="116" font-size="8.5" fill="var(--fig-ink-soft)">99.9% — flat</text>
+<text x="14" y="144" font-size="9.5" font-weight="600" fill="var(--fig-ink)">p99 latency</text>
+<polyline points="110,140 200,141 290,139 360,140 450,141 540,140 650,140" fill="none" stroke="var(--fig-mint-edge)" stroke-width="2.2"/>
+<text x="656" y="144" font-size="8.5" fill="var(--fig-ink-soft)">unchanged</text>
+<text x="14" y="172" font-size="9.5" font-weight="600" fill="var(--fig-ink)">error rate</text>
+<polyline points="110,168 200,168 290,168 360,168 450,168 540,168 650,168" fill="none" stroke="var(--fig-mint-edge)" stroke-width="2.2"/>
+<text x="656" y="172" font-size="8.5" fill="var(--fig-ink-soft)">zero — nothing failed</text>
+<text x="14" y="200" font-size="9.5" font-weight="600" fill="var(--fig-ink)">row count</text>
+<polyline points="110,196 200,194 290,192 360,190 450,178 540,162 650,142" fill="none" stroke="var(--fig-gold-edge)" stroke-width="2.2" stroke-dasharray="4,3"/>
+<text x="416" y="172" font-size="8.5" font-weight="600" fill="var(--fig-gold-edge)">≈3× growth — the only other symptom</text>
+<rect x="14" y="210" width="732" height="26" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="227" font-size="9.5" fill="var(--fig-ink)">Every duplicate is processed successfully. Success is exactly what the failure looks like — so the hit ratio has to be watched directly.</text>
+</svg>
+<figcaption><b>Figure 2.</b> Deduplication has no natural error signal: when it stops working, everything succeeds. Alert on a hit ratio that falls outside its usual band, in both directions — a sudden rise means the producer started repeating itself.</figcaption>
+</figure>
 
 The remedy is to instrument the pipeline at the level of the data it carries. That means three coordinated planes: geo-aware metrics for aggregate health and alerting, structured logs that carry spatial context on every line, and distributed traces that follow one event across async boundaries. The rest of this guide covers how they fit together and how to build each in Python.
 
@@ -158,7 +224,7 @@ Metrics, logs, and traces answer different questions and you need all three. Met
   <rect x="30" y="280" width="675" height="26" rx="6" fill="none" stroke="currentColor" stroke-width="1" opacity="0.35" stroke-dasharray="4 3"/>
   <text x="367" y="297" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9" fill="currentColor" opacity="0.6">one OpenTelemetry trace spans all stages · context propagated as broker headers → OTel collector</text>
 </svg>
-<figcaption><b>Figure 1.</b> Three Observability Planes Around a Spatial Pipeline</figcaption>
+<figcaption><b>Figure 3.</b> Three Observability Planes Around a Spatial Pipeline</figcaption>
 </figure>
 
 A practical implication of this layering is that each plane has a different cost profile and therefore a different sampling strategy. Metrics are always-on and aggregate, so you keep them all. Logs are per-event and can be voluminous, so you emit them structured but may sample the successful path and always keep failures. Traces are the most expensive per event, so you sample them — but you bias sampling toward the interesting: always trace an event that failed validation or hit a hot shard, sample the boring successes at a low rate. Getting this right is what keeps observability affordable at spatial-webhook volumes.

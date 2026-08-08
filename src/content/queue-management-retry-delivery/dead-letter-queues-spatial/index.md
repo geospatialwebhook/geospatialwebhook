@@ -434,7 +434,8 @@ Because the idempotency key is assigned at ingestion and carried through unchang
 <text x="506" y="157" font-size="8.5" fill="var(--fig-ink-soft)">or after the payload is corrected by hand</text>
 <text x="506" y="169" font-size="8.5" fill="var(--fig-ink-soft)">holds the shapely error that names the vertex</text>
 <rect x="8" y="188" width="738" height="26" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
-<text x="20" y="205" font-size="9.5" fill="var(--fig-ink)">One shared queue forces a single policy on both: either it auto-replays poison forever, or it never auto-replays the outage that would have healed itself.</text>
+<text x="20" y="201" font-size="9.5" fill="var(--fig-ink)">One shared queue forces a single policy on both: either it auto-replays poison forever,</text>
+<text x="20" y="212" font-size="9.5" fill="var(--fig-ink)">or it never auto-replays the outage that would have healed itself.</text>
 </svg>
 <figcaption><b>Figure 2.</b> The split is by whether a retry could ever succeed, not by severity. That single question decides retention, alert threshold and whether automatic replay is safe — which is why the two classes cannot share a destination.</figcaption>
 </figure>

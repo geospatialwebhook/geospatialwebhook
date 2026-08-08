@@ -268,6 +268,46 @@
 </ul>
 <hr>
 <h2 id="choosing-a-broker" tabindex="-1"><a class="heading-anchor" href="#choosing-a-broker">Choosing a Broker</a></h2>
+<figure class="fig">
+<svg viewBox="0 0 760 246" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Kafka and Redis Streams compared on the four properties that decide a spatial webhook pipeline">
+<title>The four questions that actually pick the broker</title>
+<desc>Kafka and Redis Streams compared on the properties that matter to a spatially partitioned webhook stream. On retention Kafka keeps a durable log for days or weeks so a consumer can rewind and replay a region after a bad deploy, while Redis Streams retains only what memory allows and trims by length or age, so replay depth is a memory budget. On partition count Kafka fixes partitions at topic creation and increasing them re-hashes keys, which for a spatial key means re-shuffling which cells share a consumer, while Redis Streams uses consumer groups over one stream and scales by adding consumers rather than by re-keying. On ordering both guarantee order within a partition or stream, which is exactly the granularity a cell key needs. On operational cost Kafka needs a cluster, a schema story and rebalance tuning, while Redis Streams is usually already deployed for the idempotency cache. The honest summary is that Kafka is chosen for replay depth and Redis Streams for operational simplicity, and a pipeline that will never need to replay a week of a region rarely justifies the cluster.</desc>
+<rect x="0" y="0" width="760" height="246" fill="var(--fig-bg)"/>
+<text x="196" y="24" text-anchor="middle" font-size="10.5" font-weight="600" fill="var(--fig-ink)">Kafka</text>
+<text x="500" y="24" text-anchor="middle" font-size="10.5" font-weight="600" fill="var(--fig-ink)">Redis Streams</text>
+<text x="14" y="52" font-size="9.5" font-weight="600" fill="var(--fig-ink)">retention</text>
+<rect x="80" y="36" width="232" height="38" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="90" y="52" font-size="8.5" fill="var(--fig-ink)">durable log, days to weeks</text>
+<text x="90" y="66" font-size="8.5" fill="var(--fig-ink-soft)">rewind and replay a whole region</text>
+<rect x="384" y="36" width="232" height="38" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="394" y="52" font-size="8.5" fill="var(--fig-ink)">memory-bound, trimmed by len/age</text>
+<text x="394" y="66" font-size="8.5" fill="var(--fig-ink-soft)">replay depth is a RAM budget</text>
+<text x="14" y="98" font-size="9.5" font-weight="600" fill="var(--fig-ink)">scaling</text>
+<rect x="80" y="82" width="232" height="38" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="90" y="98" font-size="8.5" fill="var(--fig-ink)">partitions fixed at creation</text>
+<text x="90" y="112" font-size="8.5" fill="var(--fig-ink-soft)">adding them re-hashes every cell key</text>
+<rect x="384" y="82" width="232" height="38" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="394" y="98" font-size="8.5" fill="var(--fig-ink)">consumer groups over one stream</text>
+<text x="394" y="112" font-size="8.5" fill="var(--fig-ink-soft)">scale by adding consumers, no re-key</text>
+<text x="14" y="144" font-size="9.5" font-weight="600" fill="var(--fig-ink)">ordering</text>
+<rect x="80" y="128" width="232" height="38" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="90" y="144" font-size="8.5" fill="var(--fig-ink)">per partition</text>
+<text x="90" y="158" font-size="8.5" fill="var(--fig-ink-soft)">exactly the granularity a cell key needs</text>
+<rect x="384" y="128" width="232" height="38" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="394" y="144" font-size="8.5" fill="var(--fig-ink)">per stream</text>
+<text x="394" y="158" font-size="8.5" fill="var(--fig-ink-soft)">same guarantee, same granularity</text>
+<text x="14" y="190" font-size="9.5" font-weight="600" fill="var(--fig-ink)">to operate</text>
+<rect x="80" y="174" width="232" height="38" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="90" y="190" font-size="8.5" fill="var(--fig-ink)">a cluster, a schema story,</text>
+<text x="90" y="204" font-size="8.5" fill="var(--fig-ink-soft)">rebalance and ISR tuning</text>
+<rect x="384" y="174" width="232" height="38" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="394" y="190" font-size="8.5" fill="var(--fig-ink)">usually already deployed</text>
+<text x="394" y="204" font-size="8.5" fill="var(--fig-ink-soft)">for the idempotency cache</text>
+<rect x="14" y="220" width="732" height="22" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="26" y="235" font-size="9.5" fill="var(--fig-ink)">Kafka buys replay depth; Redis Streams buys operational simplicity. A pipeline that will never replay a week of one region rarely earns the cluster.</text>
+</svg>
+<figcaption><b>Figure 1.</b> Both give per-partition ordering, so that is not the deciding property. What separates them is how far back you can replay and what it costs to run — decide those two first.</figcaption>
+</figure>
 <p>There is no universally correct broker for spatial webhook streams; there is only the broker whose ordering guarantees, partitioning model, and operational cost match your event profile. The four brokers below cover the realistic option space for a Python-first geospatial pipeline.</p>
 <div style="overflow-x:auto;">
 <div class="table-wrap"><table>
@@ -368,7 +408,7 @@
   <line x1="370" y1="172" x2="498" y2="205" stroke="currentColor" stroke-width="1.3" marker-end="url(#bp-arr)" opacity="0.5"/>
   <line x1="370" y1="178" x2="498" y2="265" stroke="currentColor" stroke-width="1.3" marker-end="url(#bp-arr)" opacity="0.5"/>
 </svg>
-<figcaption><b>Figure 1.</b> Spatial events routed to partitions by H3 cell</figcaption>
+<figcaption><b>Figure 2.</b> Spatial events routed to partitions by H3 cell</figcaption>
 </figure>
 <p><strong>Layer breakdown:</strong></p>
 <ol>
@@ -377,6 +417,45 @@
 <li><strong>Keying and routing</strong> — the cell id becomes the partition key. The broker hashes it to a partition; the same cell always hashes to the same partition, so per-cell ordering is preserved. Hot cells are salted into <code>cell:bucket</code> keys that fan out across a bounded set of partitions.</li>
 <li><strong>Consumption</strong> — one consumer per partition (or per stream shard) processes events in arrival order, benefiting from cache locality because consecutive events describe nearby geography.</li>
 </ol>
+<figure class="fig">
+<svg viewBox="0 0 760 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Raw coordinates as a partition key producing near-unique values, versus quantisation to a shared cell id">
+<title>Quantisation is the step that makes a key shareable</title>
+<desc>Five deliveries from vehicles within one city block. Used raw, their coordinates differ in the sixth decimal place, so each hashes to a different partition: locality is destroyed, the spatial cache in each consumer never warms because consecutive events describe unrelated geography, and per-locality ordering is impossible because no two events ever share a key. Quantising the same five coordinates to an H3 resolution-8 cell maps all of them to the single cell id 8828308281fffff, which hashes to one partition, so they arrive in order at one consumer whose cache is already holding that neighbourhood. The step is small and it is the whole design: a partition key must have enough distinct values to spread load and few enough that nearby events collide, and a raw coordinate has effectively unbounded cardinality while a cell id has a tunable one.</desc>
+<rect x="0" y="0" width="760" height="236" fill="var(--fig-bg)"/>
+<defs><marker id="bq-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-rose-edge)">Raw coordinate as the key</text>
+<text x="20" y="40" font-size="8.5" font-family="monospace" fill="var(--fig-ink-soft)">13.404101, 52.520012</text>
+<text x="20" y="54" font-size="8.5" font-family="monospace" fill="var(--fig-ink-soft)">13.404118, 52.520044</text>
+<text x="20" y="68" font-size="8.5" font-family="monospace" fill="var(--fig-ink-soft)">13.404092, 52.519987</text>
+<text x="20" y="82" font-size="8.5" font-family="monospace" fill="var(--fig-ink-soft)">13.404135, 52.520061</text>
+<text x="20" y="96" font-size="8.5" font-family="monospace" fill="var(--fig-ink-soft)">13.404107, 52.520029</text>
+<line x1="172" y1="66" x2="206" y2="66" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#bq-a)"/>
+<text x="212" y="40" font-size="8.5" fill="var(--fig-rose-edge)">→ p3</text>
+<text x="212" y="54" font-size="8.5" fill="var(--fig-rose-edge)">→ p11</text>
+<text x="212" y="68" font-size="8.5" fill="var(--fig-rose-edge)">→ p0</text>
+<text x="212" y="82" font-size="8.5" fill="var(--fig-rose-edge)">→ p7</text>
+<text x="212" y="96" font-size="8.5" fill="var(--fig-rose-edge)">→ p5</text>
+<rect x="264" y="34" width="240" height="66" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="276" y="52" font-size="9" font-weight="600" fill="var(--fig-ink)">one city block, five partitions</text>
+<text x="276" y="68" font-size="8.5" fill="var(--fig-ink-soft)">no locality · cold cache on every event</text>
+<text x="276" y="82" font-size="8.5" fill="var(--fig-ink-soft)">no two events ever share a key, so</text>
+<text x="276" y="94" font-size="8.5" fill="var(--fig-ink-soft)">per-locality ordering cannot exist</text>
+<line x1="14" y1="118" x2="746" y2="118" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="138" font-size="10.5" font-weight="600" fill="var(--fig-mint-edge)">Quantised to an H3 r8 cell</text>
+<text x="20" y="158" font-size="8.5" font-family="monospace" fill="var(--fig-ink-soft)">the same five coordinates</text>
+<line x1="172" y1="170" x2="206" y2="170" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#bq-a)"/>
+<rect x="212" y="152" width="168" height="34" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="296" y="173" text-anchor="middle" font-size="8.5" font-family="monospace" fill="var(--fig-ink)">8828308281fffff</text>
+<line x1="382" y1="170" x2="416" y2="170" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#bq-a)"/>
+<rect x="420" y="152" width="326" height="34" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="432" y="167" font-size="8.5" fill="var(--fig-ink)">one partition · in order · consumer cache already warm</text>
+<text x="432" y="180" font-size="8.5" fill="var(--fig-ink-soft)">for this neighbourhood</text>
+<rect x="14" y="200" width="732" height="30" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="26" y="217" font-size="9.5" font-weight="600" fill="var(--fig-ink)">A partition key needs enough values to spread load and few enough that neighbours collide.</text>
+<text x="26" y="228" font-size="9" fill="var(--fig-ink-soft)">A raw coordinate has effectively unbounded cardinality; a cell id has a cardinality you choose with the resolution.</text>
+</svg>
+<figcaption><b>Figure 3.</b> The quantisation step is what turns a near-unique coordinate into a key several events can share — and sharing is the entire basis of both ordering and cache locality.</figcaption>
+</figure>
 <p>The full menu of quantisation schemes and their ordering-versus-balance tradeoffs is developed in <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a>; the index-by-index comparison of the cell systems themselves lives in <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/h3-vs-s2-vs-quadkey-for-spatial-partitioning/">H3 vs S2 vs Quadkey for Spatial Partitioning</a>.</p>
 <hr>
 <h2 id="partition-key-strategies" tabindex="-1"><a class="heading-anchor" href="#partition-key-strategies">Partition-Key Strategies</a></h2>

@@ -281,7 +281,72 @@ The first loop iteration seeds the `begin` offsets and reports zero skew (its wi
 
 1. **Transient versus structural skew.** A one-off spatial burst — a stadium emptying, a storm cell crossing a dense metro — spikes the coefficient for a few windows, then subsides. Structural skew persists because the underlying H3 cell distribution is permanently uneven. Only structural skew justifies re-sharding. Gate alerts on `k` consecutive windows above the threshold so a single burst never triggers action.
 
+<figure class="fig">
+<svg viewBox="0 0 760 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Skew coefficient over a day showing a transient burst and a structural shift, with a consecutive-window gate separating them">
+<title>Transient bursts and structural skew look identical for one window</title>
+<desc>The skew coefficient sampled every five minutes across a day against an alert threshold of 0.5. At 18:20 a stadium empties and the coefficient jumps to 0.94 for three windows before returning to its baseline near 0.22 — a real spatial burst, but one that re-sharding cannot help because the geography that caused it lasts twenty minutes. At 02:00 a new upstream city goes live and the coefficient steps to 0.78 and stays there for the rest of the day, because the underlying cell distribution has permanently changed. An alert firing on a single window above the threshold pages for both, and the on-call engineer who investigates the stadium finds nothing left to see. Gating on four consecutive windows lets the burst subside unremarked and fires twenty minutes into the structural change, which is the only one where re-sharding or salting is the right response.</desc>
+<rect x="0" y="0" width="760" height="240" fill="var(--fig-bg)"/>
+<line x1="70" y1="30" x2="70" y2="160" stroke="var(--fig-line)" stroke-width="1.2"/>
+<line x1="70" y1="160" x2="700" y2="160" stroke="var(--fig-line)" stroke-width="1.2"/>
+<line x1="70" y1="94" x2="700" y2="94" stroke="var(--fig-earth-edge)" stroke-width="1.3" stroke-dasharray="6,3"/>
+<text x="704" y="97" font-size="8.5" fill="var(--fig-earth-edge)">CV 0.5</text>
+<text x="64" y="163" text-anchor="end" font-size="8.5" fill="var(--fig-ink-soft)">0</text>
+<text x="64" y="97" text-anchor="end" font-size="8.5" fill="var(--fig-ink-soft)">0.5</text>
+<text x="64" y="34" text-anchor="end" font-size="8.5" fill="var(--fig-ink-soft)">1.0</text>
+<polyline points="80,132 130,134 180,130 230,133 280,131 330,45 360,48 390,44 420,130 470,132 520,131 560,58 610,56 660,59 700,57" fill="none" stroke="var(--fig-mint-edge)" stroke-width="2.2"/>
+<rect x="322" y="34" width="76" height="126" fill="var(--fig-gold)" opacity="0.4"/>
+<text x="360" y="28" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-gold-edge)">transient</text>
+<rect x="552" y="34" width="152" height="126" fill="var(--fig-rose)" opacity="0.35"/>
+<text x="628" y="28" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-rose-edge)">structural</text>
+<text x="80" y="178" font-size="8.5" fill="var(--fig-ink-soft)">12:00</text>
+<text x="330" y="178" font-size="8.5" fill="var(--fig-ink-soft)">18:20 — stadium empties</text>
+<text x="556" y="178" font-size="8.5" fill="var(--fig-ink-soft)">02:00 — a new city goes live</text>
+<rect x="14" y="192" width="366" height="42" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="209" font-size="9.5" font-weight="600" fill="var(--fig-ink)">3 windows at 0.94, then gone</text>
+<text x="26" y="226" font-size="9" fill="var(--fig-ink-soft)">Re-sharding cannot help — the geography lasted 20 minutes.</text>
+<rect x="394" y="192" width="352" height="42" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="406" y="209" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Steps to 0.78 and stays</text>
+<text x="406" y="226" font-size="9" fill="var(--fig-ink-soft)">The cell distribution changed. Salt or re-key — gate on k=4 windows.</text>
+</svg>
+<figcaption><b>Figure 2.</b> One window cannot distinguish them, so the gate is what makes the alert actionable: page only when the imbalance outlives the event that could have caused it.</figcaption>
+</figure>
+
 2. **Empty partitions must stay in the vector.** It is tempting to drop zero-count partitions before computing statistics, but an idle partition is precisely the imbalance you are hunting. Filtering zeros makes a badly skewed topic look balanced. Keep every partition; only special-case a total count of zero (an idle topic), where the mean is undefined and both coefficients return `0.0`.
+
+<figure class="fig">
+<svg viewBox="0 0 760 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The same partition vector scored with and without its empty partitions included">
+<title>Dropping the empty partitions hides the imbalance</title>
+<desc>Twelve partitions where five carry traffic and seven are idle. Computed over all twelve, the mean is four hundred and seventeen events per second, the standard deviation is six hundred and eighty-one, and the coefficient of variation is 1.63 — correctly reporting a badly imbalanced topic. Filtering the zeros first leaves only the five active partitions, raising the mean to a thousand, dropping the standard deviation to five hundred and twenty-two, and giving a coefficient of 0.52, which sits just above a 0.5 threshold and reads as mild imbalance. The filter has removed exactly the partitions that constitute the problem: an idle partition is not missing data, it is a consumer doing nothing while another is four times over its ceiling. The only case needing special handling is a genuinely idle topic where every partition is zero, since the mean is then undefined and the coefficient should be reported as zero rather than as a division error.</desc>
+<rect x="0" y="0" width="760" height="220" fill="var(--fig-bg)"/>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-ink)">12 partitions · 5 carrying traffic · 7 idle</text>
+<rect x="30" y="34" width="34" height="56" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.1"/>
+<rect x="70" y="52" width="34" height="38" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.1"/>
+<rect x="110" y="66" width="34" height="24" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.1"/>
+<rect x="150" y="72" width="34" height="18" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.1"/>
+<rect x="190" y="78" width="34" height="12" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.1"/>
+<rect x="230" y="88" width="34" height="2" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<rect x="270" y="88" width="34" height="2" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<rect x="310" y="88" width="34" height="2" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<rect x="350" y="88" width="34" height="2" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<rect x="390" y="88" width="34" height="2" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<rect x="430" y="88" width="34" height="2" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<rect x="470" y="88" width="34" height="2" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<line x1="20" y1="90" x2="510" y2="90" stroke="var(--fig-line)" stroke-width="1.1"/>
+<text x="127" y="104" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">carrying traffic</text>
+<text x="367" y="104" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">idle — 7 consumers doing nothing</text>
+<rect x="14" y="120" width="366" height="86" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="26" y="140" font-size="10" font-weight="600" fill="var(--fig-ink)">All 12 partitions — correct</text>
+<text x="26" y="160" font-size="9" font-family="monospace" fill="var(--fig-ink-soft)">mean 417 · stdev 681</text>
+<text x="26" y="180" font-size="11" font-weight="700" fill="var(--fig-mint-edge)">CV 1.63 — badly imbalanced</text>
+<text x="26" y="198" font-size="8.5" fill="var(--fig-ink-soft)">Reports what is actually happening to the cluster.</text>
+<rect x="394" y="120" width="352" height="86" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="406" y="140" font-size="10" font-weight="600" fill="var(--fig-ink)">Zeros filtered out — misleading</text>
+<text x="406" y="160" font-size="9" font-family="monospace" fill="var(--fig-ink-soft)">mean 1000 · stdev 522</text>
+<text x="406" y="180" font-size="11" font-weight="700" fill="var(--fig-rose-edge)">CV 0.52 — reads as mild</text>
+<text x="406" y="198" font-size="8.5" fill="var(--fig-ink-soft)">The filter removed precisely the partitions that are the problem.</text>
+</svg>
+<figcaption><b>Figure 3.</b> An idle partition is not absent data — it is half the imbalance. Special-case only the all-zero topic, where the mean is undefined and the coefficient should read 0.0 rather than raise.</figcaption>
+</figure>
 
 3. **Choosing the window is a latency trade-off.** Too short and normal per-key bursts read as skew, generating false pages; too long and a genuinely hot partition accumulates consumer lag before the metric moves. Five to fifteen minutes suits most webhook streams. If you also run a short lag alert, you can afford a longer skew window because lag catches the fast-moving failures.
 

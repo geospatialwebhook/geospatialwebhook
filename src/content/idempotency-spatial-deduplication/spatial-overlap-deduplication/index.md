@@ -109,6 +109,47 @@ Standard idempotency patterns rely on deterministic identifiers: request IDs, tr
 
 **Temporal overlap.** Mobile telemetry and IoT pings frequently report overlapping bounding boxes as devices move or sensors aggregate readings over sliding windows, producing streams of near-identical geometries that differ only in sub-metre vertex positions.
 
+<figure class="fig">
+<svg viewBox="0 0 760 262" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four pairs of geometries at different intersection-over-union ratios, showing where a suppression threshold falls">
+<title>What an overlap threshold actually decides</title>
+<desc>Four pairs of sensor coverage polygons at increasing degrees of separation, each scored by intersection over union. At 0.99 the second polygon is the same footprint with vertex jitter of a few centimetres, which is exactly what exact-hash deduplication misses and what the threshold exists to catch. At 0.82 a device has drifted a few metres between pings, still the same observation. At 0.41 the coverage has genuinely moved and the pair describes two different observations that happen to share ground. At 0.04 they are unrelated. A threshold set at 0.90 suppresses the first two cases and forwards the rest. Setting it too high lets jitter through as novel events and the deduplication does nothing; too low and genuine movement is suppressed, so the map silently stops updating for a device that is still moving — the more dangerous direction, because a suppressed event produces no error and no metric.</desc>
+<rect x="0" y="0" width="760" height="262" fill="var(--fig-bg)"/>
+<rect x="14" y="34" width="176" height="112" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="102" y="52" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">IoU 0.99</text>
+<rect x="52" y="66" width="86" height="58" fill="none" stroke="var(--fig-ink)" stroke-width="1.6"/>
+<rect x="55" y="68" width="86" height="58" fill="none" stroke="var(--fig-rose-edge)" stroke-width="1.6" stroke-dasharray="4,3"/>
+<text x="102" y="140" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">vertex jitter — cm</text>
+<rect x="200" y="34" width="176" height="112" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="288" y="52" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">IoU 0.82</text>
+<rect x="234" y="66" width="86" height="58" fill="none" stroke="var(--fig-ink)" stroke-width="1.6"/>
+<rect x="248" y="72" width="86" height="58" fill="none" stroke="var(--fig-rose-edge)" stroke-width="1.6" stroke-dasharray="4,3"/>
+<text x="288" y="140" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">drift between pings — m</text>
+<rect x="386" y="34" width="176" height="112" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="474" y="52" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">IoU 0.41</text>
+<rect x="412" y="66" width="86" height="58" fill="none" stroke="var(--fig-ink)" stroke-width="1.6"/>
+<rect x="456" y="76" width="86" height="58" fill="none" stroke="var(--fig-mint-edge)" stroke-width="1.6" stroke-dasharray="4,3"/>
+<text x="474" y="140" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">genuinely moved</text>
+<rect x="572" y="34" width="174" height="112" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="659" y="52" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">IoU 0.04</text>
+<rect x="586" y="66" width="70" height="46" fill="none" stroke="var(--fig-ink)" stroke-width="1.6"/>
+<rect x="648" y="88" width="70" height="46" fill="none" stroke="var(--fig-mint-edge)" stroke-width="1.6" stroke-dasharray="4,3"/>
+<text x="659" y="140" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">unrelated</text>
+<line x1="376" y1="30" x2="376" y2="152" stroke="var(--fig-gold-edge)" stroke-width="2" stroke-dasharray="6,3"/>
+<text x="376" y="168" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-gold-edge)">threshold 0.90 — suppress left, forward right</text>
+<rect x="14" y="182" width="366" height="70" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="200" font-size="10" font-weight="600" fill="var(--fig-ink)">Threshold too high — say 0.999</text>
+<text x="26" y="217" font-size="9" fill="var(--fig-ink-soft)">Jitter passes as novel. Deduplication does nothing and you pay for</text>
+<text x="26" y="230" font-size="9" fill="var(--fig-ink-soft)">the predicate evaluation anyway. Visible immediately in throughput.</text>
+<text x="26" y="245" font-size="9" fill="var(--fig-gold-edge)">Loud, and cheap to find.</text>
+<rect x="394" y="182" width="352" height="70" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="406" y="200" font-size="10" font-weight="600" fill="var(--fig-ink)">Threshold too low — say 0.40</text>
+<text x="406" y="217" font-size="9" fill="var(--fig-ink-soft)">Real movement is suppressed. The map stops updating for a device</text>
+<text x="406" y="230" font-size="9" fill="var(--fig-ink-soft)">that is still moving, and a suppressed event raises nothing.</text>
+<text x="406" y="245" font-size="9" fill="var(--fig-rose-edge)">Silent — which is why you alert on the suppression rate.</text>
+</svg>
+<figcaption><b>Figure 1.</b> The threshold is a statement about how far a thing must move before it counts as having moved. The two failure directions are not symmetric: too high wastes CPU visibly, too low drops real updates silently — so instrument the suppression rate, not just the hit rate.</figcaption>
+</figure>
+
 Hash-based filters either drop legitimate updates or let duplicates through. Spatial predicate evaluation is resilient to these variances because it asks whether two geometries occupy the same footprint, not whether their byte representations match.
 
 ---
@@ -174,7 +215,7 @@ The pipeline separates concerns across four layers to keep expensive spatial com
   <text x="372" y="268" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">MISS</text>
   <text x="582" y="268" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">below threshold</text>
 </svg>
-<figcaption><b>Figure 1.</b> Spatial Overlap Deduplication Pipeline</figcaption>
+<figcaption><b>Figure 2.</b> Spatial Overlap Deduplication Pipeline</figcaption>
 </figure>
 
 **Layer 1 — Webhook ingress:** FastAPI or aiohttp receives the raw POST and immediately validates the HTTP signature (see [Securing Webhook Endpoints with Spatial Token Validation](https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/securing-webhook-endpoints-with-spatial-token-validation/)). The raw body is enqueued for async processing without blocking the HTTP response.
@@ -335,7 +376,7 @@ The decision itself is a single ratio: project both shapes to an equal-area CRS,
   <rect x="240" y="232" width="16" height="10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="4,2"/>
   <text x="264" y="241" font-size="10" fill="currentColor" opacity="0.7">incoming geometry</text>
 </svg>
-<figcaption><b>Figure 2.</b> Overlap Ratio Decides Suppression</figcaption>
+<figcaption><b>Figure 3.</b> Overlap Ratio Decides Suppression</figcaption>
 </figure>
 
 ```python

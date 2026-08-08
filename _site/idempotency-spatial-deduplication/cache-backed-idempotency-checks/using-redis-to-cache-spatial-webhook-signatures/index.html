@@ -400,6 +400,37 @@ _TRANSIENT_KEYS <span class="token operator">=</span> <span class="token builtin
 </code></pre>
 </div>
 <h2 id="parameter-reference" tabindex="-1"><a class="heading-anchor" href="#parameter-reference">Parameter Reference</a></h2>
+<figure class="fig">
+<svg viewBox="0 0 760 226" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Signature TTL against provider retry schedule, showing the window in which a redelivery is recognised">
+<title>Sizing the signature TTL against the provider's retry ladder</title>
+<desc>A provider's retry schedule for one failed delivery runs at one minute, five minutes, thirty minutes, two hours and finally six hours. A signature time-to-live of one hour covers the first four attempts but expires before the six-hour attempt, so that last redelivery finds no key, is treated as novel, and the feature is written a second time — the one duplicate the cache existed to prevent, arriving at the moment everyone has stopped watching. A twenty-four hour time-to-live covers the whole ladder with headroom. The cost of the longer window is memory: at roughly one hundred bytes per key, one thousand events per second held for twenty-four hours is about 8.6 gigabytes, which is a real budget line and the reason the TTL is chosen rather than simply maximised. The rule is to set it past the provider's last scheduled retry, not past its first.</desc>
+<rect x="0" y="0" width="760" height="226" fill="var(--fig-bg)"/>
+<rect x="60" y="46" width="288" height="26" fill="var(--fig-gold)" opacity="0.6"/>
+<text x="204" y="40" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-gold-edge)">TTL 1 h — stops here</text>
+<rect x="60" y="80" width="620" height="26" fill="var(--fig-mint)" opacity="0.55"/>
+<text x="370" y="98" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-mint-edge)">TTL 24 h — covers the whole ladder</text>
+<line x1="60" y1="130" x2="700" y2="130" stroke="var(--fig-line)" stroke-width="1.3"/>
+<circle cx="80" cy="130" r="4" fill="var(--fig-mint-edge)"/>
+<circle cx="128" cy="130" r="4" fill="var(--fig-mint-edge)"/>
+<circle cx="204" cy="130" r="4" fill="var(--fig-mint-edge)"/>
+<circle cx="316" cy="130" r="4" fill="var(--fig-mint-edge)"/>
+<circle cx="560" cy="130" r="5.5" fill="var(--fig-rose-edge)"/>
+<text x="80" y="150" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">1 min</text>
+<text x="128" y="150" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">5 min</text>
+<text x="204" y="150" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">30 min</text>
+<text x="316" y="150" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">2 h</text>
+<text x="560" y="150" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--fig-rose-edge)">6 h</text>
+<text x="560" y="166" text-anchor="middle" font-size="8.5" fill="var(--fig-rose-edge)">key already expired ⇒ duplicate write</text>
+<text x="700" y="120" text-anchor="end" font-size="9" fill="var(--fig-ink-soft)">provider retry ladder</text>
+<rect x="14" y="182" width="366" height="40" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="26" y="199" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Too short: the duplicate arrives last, and unwatched</text>
+<text x="26" y="214" font-size="9" fill="var(--fig-ink-soft)">Exactly the redelivery the cache existed to absorb slips through.</text>
+<rect x="394" y="182" width="352" height="40" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="406" y="199" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Too long: memory, not correctness</text>
+<text x="406" y="214" font-size="9" fill="var(--fig-ink-soft)">~100 B/key × 1,000 ev/s × 24 h ≈ 8.6 GB. Budget it deliberately.</text>
+</svg>
+<figcaption><b>Figure 2.</b> Set the TTL past the provider's <em>last</em> scheduled retry, not its first. The failure mode of a short TTL is a duplicate that arrives hours later, long after anyone is looking at the deploy.</figcaption>
+</figure>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -462,6 +493,48 @@ _TRANSIENT_KEYS <span class="token operator">=</span> <span class="token builtin
 <li>
 <p><strong>Provider-added timestamp fields in the geometry.</strong> Some IoT and drone telemetry providers embed <code>&quot;timestamp&quot;</code> inside the <code>geometry</code> object (non-standard GeoJSON). Extend <code>_TRANSIENT_KEYS</code> or add a recursive filter to strip these before hashing, otherwise each delivery attempt gets a unique signature and the cache is useless.</p>
 </li>
+</ol>
+<figure class="fig">
+<svg viewBox="0 0 760 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Provider-added fields inside the geometry object defeating the signature cache until they are stripped">
+<title>One volatile field makes the whole cache useless</title>
+<desc>A drone telemetry provider embeds a timestamp inside the geometry object, which standard GeoJSON does not allow. Every redelivery of the same physical observation therefore carries a different timestamp, so the canonical string differs, the signature differs, and each of the five delivery attempts claims its own Redis key. The cache hit rate is zero, every attempt runs the full spatial pipeline, and the feature is written five times. Stripping the transient keys before canonicalisation — the delivery id, the received-at header, the request id and this non-standard nested timestamp — leaves an identical byte string across all five attempts, so one key is claimed and four attempts short-circuit. The general rule is that anything the provider regenerates per delivery has to be removed recursively, including inside the geometry object, because a single volatile field anywhere in the tree defeats the entire mechanism.</desc>
+<rect x="0" y="0" width="760" height="236" fill="var(--fig-bg)"/>
+<defs><marker id="rx-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-rose-edge)">Hashing the payload as received</text>
+<rect x="14" y="30" width="330" height="56" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="26" y="47" font-size="8.5" font-family="monospace" fill="var(--fig-ink)">"geometry": {"type": "Point",</text>
+<text x="26" y="60" font-size="8.5" font-family="monospace" fill="var(--fig-ink)">  "coordinates": [13.4, 52.52],</text>
+<text x="26" y="73" font-size="8.5" font-family="monospace" fill="var(--fig-rose-edge)">  "timestamp": "…T14:02:07.418Z"}</text>
+<text x="26" y="84" font-size="8" fill="var(--fig-ink-soft)">non-standard, and regenerated per delivery</text>
+<line x1="348" y1="58" x2="380" y2="58" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#rx-a)"/>
+<rect x="384" y="30" width="164" height="56" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="466" y="48" text-anchor="middle" font-size="9" fill="var(--fig-ink)">5 attempts → 5 signatures</text>
+<text x="466" y="63" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">9f2c · 41ba · c70e · 08d5 · b332</text>
+<text x="466" y="78" text-anchor="middle" font-size="8.5" fill="var(--fig-rose-edge)">hit rate 0%</text>
+<line x1="552" y1="58" x2="584" y2="58" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#rx-a)"/>
+<rect x="588" y="30" width="158" height="56" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="667" y="53" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">feature written 5×</text>
+<text x="667" y="69" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">full pipeline runs every time</text>
+<line x1="14" y1="104" x2="746" y2="104" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="126" font-size="10.5" font-weight="600" fill="var(--fig-mint-edge)">Stripping transient keys recursively, then hashing</text>
+<rect x="14" y="136" width="330" height="56" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="26" y="153" font-size="8.5" font-family="monospace" fill="var(--fig-ink)">"geometry": {"type": "Point",</text>
+<text x="26" y="166" font-size="8.5" font-family="monospace" fill="var(--fig-ink)">  "coordinates": [13.4, 52.52]}</text>
+<text x="26" y="182" font-size="8" fill="var(--fig-ink-soft)">delivery_id · received_at · request_id · nested timestamp — all gone</text>
+<line x1="348" y1="164" x2="380" y2="164" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#rx-a)"/>
+<rect x="384" y="136" width="164" height="56" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="466" y="158" text-anchor="middle" font-size="9" fill="var(--fig-ink)">5 attempts → 1 signature</text>
+<text x="466" y="176" text-anchor="middle" font-size="8.5" fill="var(--fig-mint-edge)">hit rate 80%</text>
+<line x1="552" y1="164" x2="584" y2="164" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#rx-a)"/>
+<rect x="588" y="136" width="158" height="56" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="667" y="159" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">feature written once</text>
+<text x="667" y="175" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">4 attempts short-circuit</text>
+<rect x="14" y="204" width="732" height="26" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="26" y="221" font-size="9.5" fill="var(--fig-ink)">The strip has to recurse: a volatile field anywhere in the tree, including inside geometry, defeats the whole mechanism.</text>
+</svg>
+<figcaption><b>Figure 3.</b> A zero hit rate looks like a Redis problem and is almost always a canonicalisation problem. Log a sample canonical string when the hit rate is unexpectedly low — the offending field is usually visible immediately.</figcaption>
+</figure>
+<ol start="5">
 <li>
 <p><strong>Redis Cluster hash slot boundary for key distribution.</strong> In Redis Cluster mode, all <code>swh:sig:*</code> keys hash to different slots based on the full key, distributing evenly. This is correct behaviour for signature caching. Do not add a hash tag (<code>{swh}</code>) unless you need multi-key transactions on the same slot — and there are none here.</p>
 </li>

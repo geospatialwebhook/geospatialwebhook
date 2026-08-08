@@ -275,6 +275,55 @@
 <li><strong>Skew computation</strong> — take the coefficient of variation (standard deviation ÷ mean) of the per-partition rate vector. A flat load profile yields a CV near zero; a few dominant cells push it above 0.5.</li>
 <li><strong>Attribution and alerting</strong> — map the hottest partitions back to their H3 cells so an on-call engineer sees “downtown Tokyo cell overloaded” instead of “partition 4 lagging,” then emit gauges and fire an alert when both lag and CV cross their thresholds.</li>
 </ol>
+<figure class="fig">
+<svg viewBox="0 0 760 258" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Per-partition throughput for a hash partitioner and a spatial partitioner, with the coefficient of variation for each">
+<title>Why total throughput hides the partition that is drowning</title>
+<desc>Twelve partitions carrying 12,000 events per second in total, shown twice. Under a hash partitioner every partition sits near a thousand events per second, the coefficient of variation is 0.04, and the aggregate number describes every partition accurately. Under an H3 partitioner the same total is shaped like a population map: two dense urban cells carry 3,900 and 2,700 events per second, four suburban cells carry between six hundred and nine hundred, and six rural cells carry under two hundred each. The coefficient of variation is 1.12. The mean is still exactly a thousand and the total is unchanged, so every aggregate dashboard looks identical between the two cases, while partition four is four times over a consumer's ceiling and permanently accumulating lag. Adding consumers cannot help, because a partition is claimed by exactly one consumer in a group: the thirteenth consumer sits idle while partition four keeps falling behind.</desc>
+<rect x="0" y="0" width="760" height="258" fill="var(--fig-bg)"/>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-mint-edge)">Hash partitioner — CV 0.04</text>
+<line x1="60" y1="86" x2="700" y2="86" stroke="var(--fig-line)" stroke-width="1.1"/>
+<rect x="66" y="56" width="38" height="30" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1"/>
+<rect x="118" y="54" width="38" height="32" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1"/>
+<rect x="170" y="57" width="38" height="29" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1"/>
+<rect x="222" y="55" width="38" height="31" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1"/>
+<rect x="274" y="56" width="38" height="30" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1"/>
+<rect x="326" y="57" width="38" height="29" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1"/>
+<rect x="378" y="55" width="38" height="31" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1"/>
+<rect x="430" y="56" width="38" height="30" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1"/>
+<rect x="482" y="57" width="38" height="29" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1"/>
+<rect x="534" y="55" width="38" height="31" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1"/>
+<rect x="586" y="56" width="38" height="30" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1"/>
+<rect x="638" y="57" width="38" height="29" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1"/>
+<text x="14" y="70" font-size="8.5" fill="var(--fig-ink-soft)">ev/s</text>
+<text x="14" y="102" font-size="9" fill="var(--fig-ink-soft)">every partition ≈ 1,000 ev/s — the aggregate describes each one accurately</text>
+<line x1="14" y1="116" x2="746" y2="116" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="136" font-size="10.5" font-weight="600" fill="var(--fig-rose-edge)">H3 partitioner — CV 1.12 · same 12,000 ev/s total, same mean</text>
+<line x1="60" y1="212" x2="700" y2="212" stroke="var(--fig-line)" stroke-width="1.1"/>
+<line x1="60" y1="182" x2="700" y2="182" stroke="var(--fig-earth-edge)" stroke-width="1.3" stroke-dasharray="5,3"/>
+<text x="704" y="185" font-size="8.5" fill="var(--fig-earth-edge)">ceiling</text>
+<rect x="66" y="146" width="38" height="66" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<rect x="118" y="166" width="38" height="46" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<rect x="170" y="197" width="38" height="15" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1"/>
+<rect x="222" y="198" width="38" height="14" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1"/>
+<rect x="274" y="200" width="38" height="12" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1"/>
+<rect x="326" y="201" width="38" height="11" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1"/>
+<rect x="378" y="207" width="38" height="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<rect x="430" y="208" width="38" height="4" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<rect x="482" y="208" width="38" height="4" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<rect x="534" y="209" width="38" height="3" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<rect x="586" y="209" width="38" height="3" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<rect x="638" y="210" width="38" height="2" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<text x="85" y="142" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--fig-rose-edge)">3,900</text>
+<text x="137" y="162" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--fig-rose-edge)">2,700</text>
+<text x="85" y="226" text-anchor="middle" font-size="8" fill="var(--fig-ink-soft)">downtown</text>
+<text x="137" y="226" text-anchor="middle" font-size="8" fill="var(--fig-ink-soft)">port</text>
+<text x="245" y="226" text-anchor="middle" font-size="8" fill="var(--fig-ink-soft)">suburban</text>
+<text x="530" y="226" text-anchor="middle" font-size="8" fill="var(--fig-ink-soft)">rural</text>
+<rect x="14" y="236" width="732" height="20" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="26" y="250" font-size="9.5" fill="var(--fig-ink)">Adding a 13th consumer changes nothing: a partition is claimed by exactly one consumer, so it idles while partition 1 keeps falling behind.</text>
+</svg>
+<figcaption><b>Figure 1.</b> Both rows have the same total and the same mean, so every aggregate dashboard reads identically. The coefficient of variation is the one number that separates them — which is why skew is measured over the per-partition rate vector, not over throughput.</figcaption>
+</figure>
 <p>The diagram below shows a typical per-partition load profile for a stream keyed by H3 cell. The bars are message rate; the dashed line is the skew alert threshold. Three urban partitions punch through it while five rural partitions sit near the floor.</p>
 <figure class="fig">
 <svg viewBox="41 0 707 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart of per-partition message rate for an H3-partitioned stream, with three urban partitions exceeding a dashed skew alert threshold and five rural partitions well below it">
@@ -327,7 +376,7 @@
   <rect x="380" y="312" width="14" height="10" fill="currentColor" opacity="0.25"/>
   <text x="400" y="321" font-size="9" font-family="system-ui,sans-serif" fill="currentColor" opacity="0.8">rural / idle</text>
 </svg>
-<figcaption><b>Figure 1.</b> Per-partition load profile with a skew threshold</figcaption>
+<figcaption><b>Figure 2.</b> Per-partition load profile with a skew threshold</figcaption>
 </figure>
 <p>The visual asymmetry is the whole point. A generic “total lag” chart would average P2, P4 and P6 against the idle partitions and report a comfortable number while three partitions silently accumulate an unbounded backlog. The reason this happens specifically to spatial streams — and how the H3, S2 and Quadkey indexing choices change the density gradient — is covered in <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/">Spatial Partitioning Strategies for Event Streams</a>.</p>
 <hr>
@@ -576,6 +625,58 @@ skew_gauge <span class="token operator">=</span> Gauge<span class="token punctua
 <p>Three error conditions matter in production. First, an offset reset from log retention makes a delta negative — clamp it, as above, rather than letting it poison the mean. Second, a partition missing from the committed-offset map is a real state (never-committed), not an error, and must count as full lag. Third, an invalid or all-zero rate vector on the first poll must short-circuit before <code>coefficient_of_variation</code>, which is why <code>is_meaningful</code> gates the computation. Validating H3 cells with <code>h3.is_valid_cell</code> during attribution (Step 4) closes the loop: a malformed key that slipped past the producer would otherwise be silently misattributed to partition zero.</p>
 <hr>
 <h2 id="remediation-rebalancing-the-hot-cells" tabindex="-1"><a class="heading-anchor" href="#remediation-rebalancing-the-hot-cells">Remediation: Rebalancing the Hot Cells</a></h2>
+<figure class="fig">
+<svg viewBox="0 0 760 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three responses to a hot spatial partition and what each one actually changes">
+<title>Three ways to unload a hot cell, and what each costs</title>
+<desc>Partition one is carrying 3,900 events per second against a consumer ceiling of one thousand. Adding consumers does nothing at all: a partition is claimed by exactly one consumer in a group, so extra consumers sit idle and the coefficient of variation is unchanged — this is the response people reach for first and the only one that cannot work. Salting the hot cell appends a bounded suffix so its traffic spreads across four partitions at about 975 events per second each, which brings the coefficient of variation down to about 0.31 and costs per-cell ordering for that cell alone. Re-keying at a finer resolution splits the dense cell into seven children, spreading load across many partitions and lowering the coefficient of variation to about 0.28, but it changes the key for every event in the topic and is therefore a dual-write migration rather than a configuration change. The first is free and useless, the second is cheap and targeted, the third is correct and expensive.</desc>
+<rect x="0" y="0" width="760" height="250" fill="var(--fig-bg)"/>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-ink)">Partition 1 at 3,900 ev/s · ceiling 1,000 · CV 1.12</text>
+<rect x="14" y="32" width="240" height="120" rx="7" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="134" y="52" text-anchor="middle" font-size="10" font-weight="600" fill="var(--fig-ink)">Add consumers</text>
+<rect x="30" y="62" width="60" height="26" rx="4" fill="var(--fig-bg)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="60" y="79" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">c1 · p1</text>
+<rect x="98" y="62" width="60" height="26" rx="4" fill="var(--fig-bg)" stroke="var(--fig-line-soft)" stroke-width="1.2" stroke-dasharray="3,2"/>
+<text x="128" y="79" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">c13 idle</text>
+<rect x="166" y="62" width="60" height="26" rx="4" fill="var(--fig-bg)" stroke="var(--fig-line-soft)" stroke-width="1.2" stroke-dasharray="3,2"/>
+<text x="196" y="79" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">c14 idle</text>
+<text x="30" y="108" font-size="9" font-weight="600" fill="var(--fig-rose-edge)">CV unchanged — 1.12</text>
+<text x="30" y="124" font-size="8.5" fill="var(--fig-ink-soft)">One partition, one consumer. Extra</text>
+<text x="30" y="136" font-size="8.5" fill="var(--fig-ink-soft)">consumers cannot claim it.</text>
+<text x="30" y="148" font-size="8.5" fill="var(--fig-rose-edge)">The instinctive fix, and the only useless one.</text>
+<rect x="262" y="32" width="240" height="120" rx="7" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<text x="382" y="52" text-anchor="middle" font-size="10" font-weight="600" fill="var(--fig-ink)">Salt the hot cell</text>
+<rect x="278" y="62" width="52" height="26" rx="4" fill="var(--fig-bg)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="304" y="79" text-anchor="middle" font-size="8" fill="var(--fig-ink)">#0 · 975</text>
+<rect x="336" y="62" width="52" height="26" rx="4" fill="var(--fig-bg)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="362" y="79" text-anchor="middle" font-size="8" fill="var(--fig-ink)">#1 · 975</text>
+<rect x="394" y="62" width="52" height="26" rx="4" fill="var(--fig-bg)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="420" y="79" text-anchor="middle" font-size="8" fill="var(--fig-ink)">#2 · 975</text>
+<rect x="452" y="62" width="38" height="26" rx="4" fill="var(--fig-bg)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="471" y="79" text-anchor="middle" font-size="8" fill="var(--fig-ink)">#3</text>
+<text x="278" y="108" font-size="9" font-weight="600" fill="var(--fig-mint-edge)">CV 1.12 → 0.31</text>
+<text x="278" y="124" font-size="8.5" fill="var(--fig-ink-soft)">A config change, applied per cell.</text>
+<text x="278" y="136" font-size="8.5" fill="var(--fig-ink-soft)">Costs per-cell ordering for this cell</text>
+<text x="278" y="148" font-size="8.5" fill="var(--fig-ink-soft)">only — every other cell untouched.</text>
+<rect x="510" y="32" width="236" height="120" rx="7" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.6"/>
+<text x="628" y="52" text-anchor="middle" font-size="10" font-weight="600" fill="var(--fig-ink)">Re-key at r8</text>
+<polygon points="560,62 574,70 574,86 560,94 546,86 546,70" fill="var(--fig-bg)" stroke="var(--fig-gold-edge)" stroke-width="1.1"/>
+<polygon points="588,62 602,70 602,86 588,94 574,86 574,70" fill="var(--fig-bg)" stroke="var(--fig-gold-edge)" stroke-width="1.1"/>
+<polygon points="616,62 630,70 630,86 616,94 602,86 602,70" fill="var(--fig-bg)" stroke="var(--fig-gold-edge)" stroke-width="1.1"/>
+<polygon points="644,62 658,70 658,86 644,94 630,86 630,70" fill="var(--fig-bg)" stroke="var(--fig-gold-edge)" stroke-width="1.1"/>
+<polygon points="672,62 686,70 686,86 672,94 658,86 658,70" fill="var(--fig-bg)" stroke="var(--fig-gold-edge)" stroke-width="1.1"/>
+<text x="526" y="108" font-size="9" font-weight="600" fill="var(--fig-gold-edge)">CV 1.12 → 0.28</text>
+<text x="526" y="124" font-size="8.5" fill="var(--fig-ink-soft)">Best load shape, but it re-keys</text>
+<text x="526" y="136" font-size="8.5" fill="var(--fig-ink-soft)">every event in the topic — a</text>
+<text x="526" y="148" font-size="8.5" fill="var(--fig-ink-soft)">dual-write migration, not a setting.</text>
+<rect x="14" y="166" width="732" height="76" rx="6" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="26" y="184" font-size="10" font-weight="600" fill="var(--fig-ink)">Reach for them in this order</text>
+<text x="26" y="202" font-size="9" fill="var(--fig-ink-soft)">Salting first: it is reversible, scoped to the cells that are actually hot, and the ordering it sacrifices is ordering within one dense cell —</text>
+<text x="26" y="215" font-size="9" fill="var(--fig-ink-soft)">usually a city centre where events are near-simultaneous anyway. Re-key only when several cells are hot at once, or when salting has</text>
+<text x="26" y="228" font-size="9" fill="var(--fig-ink-soft)">grown to a fan-out you can no longer reason about. Never respond to a skew alert by scaling the consumer group — that reads as action</text>
+<text x="26" y="238" font-size="9" fill="var(--fig-ink-soft)">while the lag keeps climbing.</text>
+</svg>
+<figcaption><b>Figure 3.</b> Skew is a key-space problem, so only a change to the key space fixes it. Scaling the consumer group is the reflex response and the one option that provably cannot help.</figcaption>
+</figure>
 <p>Once the monitor names the hot cells, three remedies apply in increasing order of disruption.</p>
 <p><strong>Salt the flagged cells.</strong> The surgical fix: spread a single dense cell across several partitions by appending a bucket suffix to its key, while leaving cold cells on a stable key to preserve their ordering.</p>
 <div class="code-block" data-lang="python">

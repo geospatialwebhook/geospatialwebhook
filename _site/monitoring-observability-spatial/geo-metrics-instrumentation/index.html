@@ -276,6 +276,39 @@
 <li><strong>Prometheus scrape</strong> — the Prometheus server pulls <code>/metrics</code> on its configured interval (commonly 15s), stores the samples, and makes them queryable in PromQL and Grafana.</li>
 </ol>
 <figure class="fig">
+<svg viewBox="0 0 760 244" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Choosing counter, gauge or histogram, and what each becomes wrong if mismatched">
+<title>Picking the instrument type, and what breaks if you do not</title>
+<desc>Three instrument types matched to the spatial metrics they fit. A counter only ever increases and is read through rate, so it suits geometry validation failures, deduplication hits and dead-letter writes; modelling one of those as a gauge means a scrape that lands between two increments reports an instantaneous value that averages meaninglessly across instances. A gauge moves in both directions and is read directly, so it suits dead-letter queue depth, consumer lag and the skew coefficient; modelling one of those as a counter makes rate report the speed at which the queue grew rather than how deep it is. A histogram accumulates into buckets and is read through a quantile function, so it suits payload vertex count and per-stage latency; modelling those as a gauge of the mean discards the distribution, and for spatial workloads the distribution is the entire signal because the outliers are what block the event loop.</desc>
+<rect x="0" y="0" width="760" height="244" fill="var(--fig-bg)"/>
+<rect x="14" y="26" width="240" height="128" rx="7" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="134" y="46" text-anchor="middle" font-size="10.5" font-weight="600" fill="var(--fig-ink)">Counter</text>
+<polyline points="34,124 64,116 94,116 124,104 154,96 184,80 214,68" fill="none" stroke="var(--fig-mint-edge)" stroke-width="2"/>
+<text x="30" y="140" font-size="8.5" fill="var(--fig-ink-soft)">monotonic · read with rate()</text>
+<text x="30" y="152" font-size="8.5" fill="var(--fig-ink-soft)">validation failures · dedup hits · DLQ writes</text>
+<rect x="262" y="26" width="240" height="128" rx="7" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.5"/>
+<text x="382" y="46" text-anchor="middle" font-size="10.5" font-weight="600" fill="var(--fig-ink)">Gauge</text>
+<polyline points="282,110 312,88 342,120 372,72 402,100 432,64 462,96" fill="none" stroke="var(--fig-gold-edge)" stroke-width="2"/>
+<text x="278" y="140" font-size="8.5" fill="var(--fig-ink-soft)">rises and falls · read directly</text>
+<text x="278" y="152" font-size="8.5" fill="var(--fig-ink-soft)">DLQ depth · consumer lag · skew CV</text>
+<rect x="510" y="26" width="236" height="128" rx="7" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.5"/>
+<text x="628" y="46" text-anchor="middle" font-size="10.5" font-weight="600" fill="var(--fig-ink)">Histogram</text>
+<rect x="530" y="62" width="26" height="62" fill="var(--fig-bg)" stroke="var(--fig-peach-edge)" stroke-width="1.2"/>
+<rect x="562" y="80" width="26" height="44" fill="var(--fig-bg)" stroke="var(--fig-peach-edge)" stroke-width="1.2"/>
+<rect x="594" y="98" width="26" height="26" fill="var(--fig-bg)" stroke="var(--fig-peach-edge)" stroke-width="1.2"/>
+<rect x="626" y="110" width="26" height="14" fill="var(--fig-bg)" stroke="var(--fig-peach-edge)" stroke-width="1.2"/>
+<rect x="658" y="116" width="26" height="8" fill="var(--fig-bg)" stroke="var(--fig-peach-edge)" stroke-width="1.2"/>
+<rect x="690" y="119" width="26" height="5" fill="var(--fig-bg)" stroke="var(--fig-peach-edge)" stroke-width="1.4"/>
+<text x="526" y="140" font-size="8.5" fill="var(--fig-ink-soft)">buckets · read with histogram_quantile()</text>
+<text x="526" y="152" font-size="8.5" fill="var(--fig-ink-soft)">vertex count · per-stage latency</text>
+<rect x="14" y="168" width="732" height="70" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="26" y="186" font-size="10" font-weight="600" fill="var(--fig-ink)">What a mismatch costs</text>
+<text x="26" y="204" font-size="9" fill="var(--fig-ink-soft)">Counter as gauge: a scrape between increments reports an instant value that averages meaninglessly across instances.</text>
+<text x="26" y="218" font-size="9" fill="var(--fig-ink-soft)">Gauge as counter: rate() reports how fast the queue grew, not how deep it is — so the alert fires during recovery, not during the backlog.</text>
+<text x="26" y="232" font-size="9" fill="var(--fig-ink-soft)">Histogram as a mean gauge: the distribution is discarded, and for spatial work the outliers were the entire signal.</text>
+</svg>
+<figcaption><b>Figure 1.</b> The instrument type decides which PromQL functions are meaningful over the series. Pick it from how the quantity behaves — monotonic, bidirectional, or distributed — not from what is convenient at the call site.</figcaption>
+</figure>
+<figure class="fig">
 <svg viewBox="0 62 760 113" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Instrumentation flow from FastAPI handler through the metric registry and /metrics endpoint to the Prometheus server">
   <title>Geo-metrics instrumentation flow</title>
   <desc>The FastAPI geometry handler mutates in-process metric objects; those objects live in the CollectorRegistry; the /metrics ASGI endpoint renders the registry as text; and the Prometheus server pulls that endpoint on its own scrape interval.</desc>
@@ -315,7 +348,7 @@
   <text x="459" y="86" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.5">③ EXPOSE</text>
   <text x="693" y="86" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.5">④ SCRAPE</text>
 </svg>
-<figcaption><b>Figure 1.</b> Geo-metrics instrumentation flow</figcaption>
+<figcaption><b>Figure 2.</b> Geo-metrics instrumentation flow</figcaption>
 </figure>
 <h3 id="the-core-geo-metric-set" tabindex="-1"><a class="heading-anchor" href="#the-core-geo-metric-set">The core geo metric set</a></h3>
 <p>Choosing the instrument type is the decision that makes or breaks the metric. A <strong>Counter</strong> only ever goes up and is read through <code>rate()</code>; use it for events you tally. A <strong>Gauge</strong> holds a single current value that can rise or fall; use it for levels you sample. A <strong>Histogram</strong> records a distribution into buckets plus a sum and count; use it for per-event measurements where percentiles matter. The following table fixes the choice for each spatial signal.</p>
@@ -532,6 +565,40 @@ app <span class="token operator">=</span> FastAPI<span class="token punctuation"
 <p>Call <code>refresh_dlq_depth</code> on a short interval from a background task. A steadily climbing <code>geo_dlq_depth</code> is the earliest sign that a downstream dependency is failing every retry — pair it with the consumer-side signals in <a href="https://www.geospatialwebhook.com/monitoring-observability-spatial/consumer-lag-partition-skew/">Consumer Lag &amp; Partition Skew Monitoring</a> to distinguish a stuck consumer from a genuine burst of poison messages.</p>
 <hr>
 <h2 id="label-cardinality-the-one-way-to-break-your-metrics" tabindex="-1"><a class="heading-anchor" href="#label-cardinality-the-one-way-to-break-your-metrics">Label cardinality: the one way to break your metrics</a></h2>
+<figure class="fig">
+<svg viewBox="0 0 760 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Time-series count produced by closed-enum labels versus a single unbounded label">
+<title>One unbounded label is the whole cardinality problem</title>
+<desc>A geometry validation counter with three closed-enum labels — geometry type at seven values, error class at six, and source system at four — produces one hundred and sixty-eight time series in total, a fixed ceiling that cannot grow no matter how much traffic arrives. Adding a single feature id label to the same counter multiplies that by the number of distinct features seen, so after one million features the counter holds one hundred and sixty-eight million series. At roughly three kilobytes of resident memory per series in Prometheus, that is about five hundred gigabytes, and the client library holds its own copy in the exporting process. The failure is not gradual: the series are created on first observation and never expire while the process lives, so an instrument that behaved perfectly in staging with a hundred features takes down both the exporter and the Prometheus server in production. The rule is that a label value must come from a closed set known at deploy time, and per-event identifiers belong in logs and traces, which are indexed for exactly that.</desc>
+<rect x="0" y="0" width="760" height="250" fill="var(--fig-bg)"/>
+<rect x="14" y="30" width="352" height="126" rx="7" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<text x="26" y="50" font-size="10" font-weight="600" fill="var(--fig-ink)">Closed enums — bounded by construction</text>
+<text x="26" y="70" font-size="9" font-family="monospace" fill="var(--fig-ink-soft)">geometry_type   7 values</text>
+<text x="26" y="86" font-size="9" font-family="monospace" fill="var(--fig-ink-soft)">error_class     6 values</text>
+<text x="26" y="102" font-size="9" font-family="monospace" fill="var(--fig-ink-soft)">source_system   4 values</text>
+<line x1="26" y1="112" x2="200" y2="112" stroke="var(--fig-mint-edge)" stroke-width="1"/>
+<text x="26" y="128" font-size="10" font-weight="600" fill="var(--fig-mint-edge)">168 series — a ceiling, not a rate</text>
+<text x="26" y="146" font-size="8.5" fill="var(--fig-ink-soft)">Unchanged whether you serve 10 events or 10 billion.</text>
+<rect x="386" y="30" width="360" height="126" rx="7" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="398" y="50" font-size="10" font-weight="600" fill="var(--fig-ink)">One id label added — unbounded</text>
+<text x="398" y="70" font-size="9" font-family="monospace" fill="var(--fig-ink-soft)">geometry_type   7 values</text>
+<text x="398" y="86" font-size="9" font-family="monospace" fill="var(--fig-ink-soft)">error_class     6 values</text>
+<text x="398" y="102" font-size="9" font-family="monospace" fill="var(--fig-rose-edge)">feature_id      1,000,000 and rising</text>
+<line x1="398" y1="112" x2="600" y2="112" stroke="var(--fig-rose-edge)" stroke-width="1"/>
+<text x="398" y="128" font-size="10" font-weight="600" fill="var(--fig-rose-edge)">168,000,000 series ≈ 500 GB resident</text>
+<text x="398" y="146" font-size="8.5" fill="var(--fig-ink-soft)">And the client library holds its own copy in-process.</text>
+<rect x="14" y="172" width="366" height="70" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="190" font-size="10" font-weight="600" fill="var(--fig-ink)">Why staging never catches it</text>
+<text x="26" y="207" font-size="9" fill="var(--fig-ink-soft)">A hundred test features means a hundred series. The instrument</text>
+<text x="26" y="220" font-size="9" fill="var(--fig-ink-soft)">looks correct, the dashboard renders, the alert fires properly.</text>
+<text x="26" y="235" font-size="9" fill="var(--fig-gold-edge)">Cardinality is a property of production data, not of the code.</text>
+<rect x="394" y="172" width="352" height="70" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="406" y="190" font-size="10" font-weight="600" fill="var(--fig-ink)">Where per-event detail belongs</text>
+<text x="406" y="207" font-size="9" fill="var(--fig-ink-soft)">Logs and traces — indexed for high-cardinality lookup and</text>
+<text x="406" y="220" font-size="9" fill="var(--fig-ink-soft)">retained for days rather than held resident forever.</text>
+<text x="406" y="235" font-size="9" fill="var(--fig-mint-edge)">Metrics answer "how many"; traces answer "which one".</text>
+</svg>
+<figcaption><b>Figure 3.</b> Series are created on first observation and live as long as the process, so cardinality is a ceiling you set at deploy time. A label whose values come from your data rather than from a fixed list has no ceiling at all.</figcaption>
+</figure>
 <p>Prometheus creates a distinct time series for every unique combination of label values. Bounded labels are free; unbounded labels are a production incident. The rule is absolute: <strong>only attach a label whose value set is small and stable.</strong></p>
 <div class="code-block" data-lang="python">
   <div class="code-block__header">

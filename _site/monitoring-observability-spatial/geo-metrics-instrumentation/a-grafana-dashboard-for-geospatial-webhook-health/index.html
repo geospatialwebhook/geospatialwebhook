@@ -569,9 +569,70 @@ STAGE_LATENCY <span class="token operator">=</span> Histogram<span class="token 
 <li>
 <p><strong>Never mix counters and gauges under the same function.</strong> <code>rate()</code> belongs on monotonic counters (<code>_total</code>); wrapping it around a gauge such as <code>kafka_consumergroup_lag</code> or <code>webhook_dlq_depth</code> yields negative garbage the moment the value falls. Conversely, graphing a raw counter without <code>rate()</code> shows an ever-climbing line that means nothing.</p>
 </li>
-<li>
-<p><strong>Alert flapping around the validation threshold.</strong> A ratio computed over near-zero traffic swings wildly — one failure against three validations is 33%. Gate the alert on a minimum request rate and add a <code>for: 10m</code> clause so the condition must hold before paging. This is the single biggest source of false alarms on spatial pipelines with bursty upstreams.</p>
-</li>
+</ol>
+<figure class="fig">
+<svg viewBox="0 0 760 214" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="rate applied to a gauge and a raw counter graphed without rate, showing what each panel actually displays">
+<title>Two panels that render fine and mean nothing</title>
+<desc>Two mismatches between instrument type and PromQL function. Applying rate to a gauge such as consumer group lag: while lag climbs from zero to forty thousand the panel shows a plausible positive line, but the moment the backlog starts draining the gauge falls, rate reads the decrease as a counter reset, and the panel returns to near zero — so the graph goes quiet exactly when recovery begins and looks worst while the queue is merely filling. Graphing a raw counter without rate: the dead-letter total climbs monotonically forever, so the panel is a rising line whose slope carries all the information and whose height carries none, and a threshold on it fires once and then stays fired for the life of the process. The fix in both directions is to match the function to the instrument — rate on counters, the raw series on gauges — which is why the instrument type has to be chosen before the panel is written.</desc>
+<rect x="0" y="0" width="760" height="214" fill="var(--fig-bg)"/>
+<rect x="14" y="26" width="352" height="132" rx="7" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="26" y="46" font-size="10" font-weight="600" fill="var(--fig-ink)">rate(consumergroup_lag[5m]) — a gauge</text>
+<polyline points="34,130 74,118 114,102 154,84 194,70 214,66 234,132 274,134 314,133 350,134" fill="none" stroke="var(--fig-rose-edge)" stroke-width="2"/>
+<line x1="214" y1="56" x2="214" y2="140" stroke="var(--fig-ink-soft)" stroke-width="1" stroke-dasharray="3,2"/>
+<text x="220" y="60" font-size="8" fill="var(--fig-ink-soft)">backlog starts draining</text>
+<text x="26" y="152" font-size="8.5" fill="var(--fig-rose-edge)">Goes quiet exactly when recovery begins.</text>
+<rect x="386" y="26" width="360" height="132" rx="7" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="398" y="46" font-size="10" font-weight="600" fill="var(--fig-ink)">webhook_dlq_total — a counter, ungraphed by rate</text>
+<polyline points="406,134 456,126 506,116 556,104 606,90 656,74 726,56" fill="none" stroke="var(--fig-rose-edge)" stroke-width="2"/>
+<line x1="398" y1="100" x2="738" y2="100" stroke="var(--fig-earth-edge)" stroke-width="1.2" stroke-dasharray="5,3"/>
+<text x="738" y="114" text-anchor="end" font-size="8" fill="var(--fig-earth-edge)">threshold — crossed once, fired forever</text>
+<text x="398" y="152" font-size="8.5" fill="var(--fig-rose-edge)">The slope carries the information; the height carries none.</text>
+<rect x="14" y="172" width="732" height="34" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="26" y="189" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Both panels render without error and both are wrong, which is why neither is caught by looking at the dashboard.</text>
+<text x="26" y="202" font-size="9" fill="var(--fig-ink-soft)">rate() belongs on _total counters; a gauge is graphed raw. Decide the instrument type first — the panel expression follows from it.</text>
+</svg>
+<figcaption><b>Figure 2.</b> Neither of these produces an error, a gap, or a suspicious shape — they produce a confident line that answers a different question. The mismatch is only visible if you know which instrument the metric is.</figcaption>
+</figure>
+<ol start="3">
+<li><strong>Alert flapping around the validation threshold.</strong> A ratio computed over near-zero traffic swings wildly — one failure against three validations is 33%. Gate the alert on a minimum request rate and add a <code>for: 10m</code> clause so the condition must hold before paging. This is the single biggest source of false alarms on spatial pipelines with bursty upstreams.</li>
+</ol>
+<figure class="fig">
+<svg viewBox="0 0 760 246" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A validation failure ratio computed over low traffic swinging wildly, and the same ratio gated by a minimum rate and a for clause">
+<title>A ratio over near-zero traffic is mostly noise</title>
+<desc>The validation failure ratio during an overnight lull when the pipeline is handling three to six events per minute. A single failure against three validations is thirty-three percent, against six is seventeen, and against none the expression returns no data — so the raw ratio swings between zero and fifty percent for hours and crosses a ten percent alert threshold eleven times overnight, none of which represent a real change in failure behaviour. Gating the same expression on a minimum request rate of one per second suppresses every one of those crossings, because the lull never reaches the floor. Adding a for clause of ten minutes then requires the condition to hold continuously before paging, so the alert survives a genuine incident at 07:40 when traffic returns and the ratio holds at twenty-two percent, and fires once, nine minutes in. The two gates address different failures: the rate floor removes statistical noise from small denominators, the for clause removes brief real spikes that resolve themselves.</desc>
+<rect x="0" y="0" width="760" height="246" fill="var(--fig-bg)"/>
+<line x1="70" y1="26" x2="70" y2="140" stroke="var(--fig-line)" stroke-width="1.2"/>
+<line x1="70" y1="140" x2="700" y2="140" stroke="var(--fig-line)" stroke-width="1.2"/>
+<line x1="70" y1="112" x2="700" y2="112" stroke="var(--fig-earth-edge)" stroke-width="1.3" stroke-dasharray="6,3"/>
+<text x="704" y="115" font-size="8.5" fill="var(--fig-earth-edge)">10%</text>
+<text x="64" y="143" text-anchor="end" font-size="8.5" fill="var(--fig-ink-soft)">0</text>
+<text x="64" y="115" text-anchor="end" font-size="8.5" fill="var(--fig-ink-soft)">10%</text>
+<text x="64" y="59" text-anchor="end" font-size="8.5" fill="var(--fig-ink-soft)">30%</text>
+<text x="64" y="31" text-anchor="end" font-size="8.5" fill="var(--fig-ink-soft)">50%</text>
+<rect x="70" y="26" width="380" height="114" fill="var(--fig-earth)" opacity="0.3"/>
+<text x="260" y="20" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink-soft)">overnight lull — 3 to 6 events/min</text>
+<polyline points="80,140 110,54 140,140 170,86 200,140 230,28 260,140 290,96 320,140 350,60 380,140 410,90 440,140 470,138 500,139 530,66 560,64 590,62 620,65 650,63 690,64" fill="none" stroke="var(--fig-rose-edge)" stroke-width="1.8"/>
+<text x="460" y="158" font-size="8.5" fill="var(--fig-ink-soft)">07:40 — traffic returns, ratio holds at 22%</text>
+<circle cx="530" cy="66" r="4" fill="var(--fig-mint-edge)"/>
+<rect x="14" y="172" width="238" height="66" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="26" y="190" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Raw ratio</text>
+<text x="26" y="207" font-size="9" fill="var(--fig-ink-soft)">1 failure of 3 = 33%. Of 0 = no data.</text>
+<text x="26" y="220" font-size="9" fill="var(--fig-rose-edge)">11 threshold crossings overnight,</text>
+<text x="26" y="232" font-size="9" fill="var(--fig-rose-edge)">none of them real.</text>
+<rect x="260" y="172" width="238" height="66" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.4"/>
+<text x="272" y="190" font-size="9.5" font-weight="600" fill="var(--fig-ink)">+ minimum rate ≥ 1/s</text>
+<text x="272" y="207" font-size="9" fill="var(--fig-ink-soft)">The lull never reaches the floor, so</text>
+<text x="272" y="220" font-size="9" fill="var(--fig-ink-soft)">every overnight crossing disappears.</text>
+<text x="272" y="232" font-size="9" fill="var(--fig-gold-edge)">Removes small-denominator noise.</text>
+<rect x="506" y="172" width="240" height="66" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="518" y="190" font-size="9.5" font-weight="600" fill="var(--fig-ink)">+ for: 10m</text>
+<text x="518" y="207" font-size="9" fill="var(--fig-ink-soft)">Condition must hold continuously.</text>
+<text x="518" y="220" font-size="9" fill="var(--fig-ink-soft)">Fires once, 9 min into the 07:40</text>
+<text x="518" y="232" font-size="9" fill="var(--fig-mint-edge)">incident. Removes brief real spikes.</text>
+</svg>
+<figcaption><b>Figure 3.</b> The two gates fix different problems and you need both: the rate floor discards ratios whose denominator is too small to mean anything, the <code>for</code> clause discards real but self-resolving spikes.</figcaption>
+</figure>
+<ol start="4">
 <li>
 <p><strong>Cardinality in dashboard variables and labels.</strong> A template variable populated from <code>label_values(h3_cell)</code> can enumerate thousands of H3 cells, and a <code>reason</code> or <code>source</code> label with unbounded values explodes series count and slows every query. Keep dashboard-facing labels to small, known sets; push high-cardinality geospatial identifiers into logs or traces, not metric labels.</p>
 </li>

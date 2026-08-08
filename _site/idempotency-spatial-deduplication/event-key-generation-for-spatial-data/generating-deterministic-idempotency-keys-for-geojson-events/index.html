@@ -511,9 +511,81 @@ key2 <span class="token operator">=</span> generate_geojson_idempotency_key<span
 <li>
 <p><strong>Coordinate ring orientation differences (Polygon winding order).</strong> RFC 7946 mandates counter-clockwise exterior rings, but not all producers comply. A clockwise and a counter-clockwise representation of the same polygon produce identical geometry but different coordinate arrays, yielding different digests. Either validate and normalize ring orientation before hashing, or document that your key covers the serialized form, not the geometric shape.</p>
 </li>
-<li>
-<p><strong><code>null</code> geometry must be preserved, not filtered.</strong> GeoJSON features can have <code>&quot;geometry&quot;: null</code> (RFC 7946 §3.2). The recursive normalizer preserves <code>None</code> → <code>null</code> correctly; do not replace it with an empty dict or the key will shift.</p>
-</li>
+</ol>
+<figure class="fig">
+<svg viewBox="0 0 760 224" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Choosing whether the key covers the serialized form or the geometric shape, and the consequence of each">
+<title>Does the key identify the bytes or the shape?</title>
+<desc>The same square is described two ways: vertices listed counter-clockwise starting at the south-west corner, and the identical square listed clockwise starting at the north-east. The two are geometrically equal and serialise differently, so the choice is which property the key is supposed to capture. A serialization key hashes the canonical string as-is: it is cheap, it is exactly reproducible, and it treats the two as different events, which is correct if the producer is a single system that never varies its winding. A geometry key normalises ring orientation and vertex start before hashing, so both forms collapse to one key; it costs an orientation pass and it is the right choice when several upstream systems describe the same feature. What must not happen is choosing implicitly. Whichever is picked belongs in the API contract, because a consumer that assumes the other one will either process duplicates or discard legitimate updates, and neither failure announces itself.</desc>
+<rect x="0" y="0" width="760" height="224" fill="var(--fig-bg)"/>
+<rect x="30" y="34" width="70" height="70" fill="none" stroke="var(--fig-mint-edge)" stroke-width="1.8"/>
+<circle cx="30" cy="104" r="3.5" fill="var(--fig-mint-edge)"/>
+<text x="65" y="122" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">CCW from SW</text>
+<rect x="140" y="34" width="70" height="70" fill="none" stroke="var(--fig-peach-edge)" stroke-width="1.8"/>
+<circle cx="210" cy="34" r="3.5" fill="var(--fig-peach-edge)"/>
+<text x="175" y="122" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">CW from NE</text>
+<text x="120" y="142" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">geometrically equal · different bytes</text>
+<rect x="256" y="30" width="238" height="112" rx="6" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.4"/>
+<text x="268" y="48" font-size="10" font-weight="600" fill="var(--fig-ink)">Serialization key</text>
+<text x="268" y="66" font-size="9" fill="var(--fig-ink-soft)">hash the canonical string as-is</text>
+<text x="268" y="82" font-size="9" fill="var(--fig-ink-soft)">→ two keys, two events</text>
+<text x="268" y="100" font-size="8.5" fill="var(--fig-ink-soft)">cheap · exactly reproducible</text>
+<text x="268" y="114" font-size="8.5" fill="var(--fig-ink-soft)">right when one producer owns the feed</text>
+<text x="268" y="132" font-size="8.5" fill="var(--fig-earth-edge)">wrong the moment a second system joins</text>
+<rect x="508" y="30" width="238" height="112" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="520" y="48" font-size="10" font-weight="600" fill="var(--fig-ink)">Geometry key</text>
+<text x="520" y="66" font-size="9" fill="var(--fig-ink-soft)">orient + normalise start, then hash</text>
+<text x="520" y="82" font-size="9" fill="var(--fig-ink-soft)">→ one key, one event</text>
+<text x="520" y="100" font-size="8.5" fill="var(--fig-ink-soft)">costs an orientation pass per payload</text>
+<text x="520" y="114" font-size="8.5" fill="var(--fig-ink-soft)">right when several systems describe</text>
+<text x="520" y="128" font-size="8.5" fill="var(--fig-ink-soft)">the same feature</text>
+<rect x="14" y="158" width="732" height="58" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="176" font-size="10" font-weight="600" fill="var(--fig-ink)">Either is defensible. Choosing by accident is not.</text>
+<text x="26" y="194" font-size="9" fill="var(--fig-ink-soft)">Put the choice in the API contract. A consumer expecting a geometry key while you ship a serialization key processes the same parcel twice;</text>
+<text x="26" y="208" font-size="9" fill="var(--fig-ink-soft)">one expecting the reverse discards a legitimate re-survey as a duplicate. Neither failure raises anything — both just change what is on the map.</text>
+</svg>
+<figcaption><b>Figure 2.</b> Winding order forces a decision about what the key is <em>for</em>. Document which one you shipped: the two behave identically until a second upstream system starts describing the same features.</figcaption>
+</figure>
+<ol start="4">
+<li><strong><code>null</code> geometry must be preserved, not filtered.</strong> GeoJSON features can have <code>&quot;geometry&quot;: null</code> (RFC 7946 §3.2). The recursive normalizer preserves <code>None</code> → <code>null</code> correctly; do not replace it with an empty dict or the key will shift.</li>
+</ol>
+<figure class="fig">
+<svg viewBox="0 0 760 216" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three ways a normaliser can mishandle a null geometry, each shifting the key">
+<title>null geometry is a value, not an absence</title>
+<desc>RFC 7946 permits a Feature to carry a geometry of null, which means the feature is known but unlocated — a parcel record entered before survey, or a sensor whose fix has been lost. Three plausible normaliser behaviours each change the canonical bytes and therefore the key. Replacing null with an empty object produces a different digest, so a redelivery of the same unlocated feature is treated as novel. Dropping the geometry member entirely produces a third digest and additionally makes the payload invalid GeoJSON. Coercing it to an empty Point invents a location at zero degrees north and zero degrees east, in the Gulf of Guinea, which is worse than losing the key because the feature now claims a position it never had and will match spatial queries over that area. Preserving null as null is the only behaviour that keeps the key stable across redeliveries and keeps the record honest about what is unknown.</desc>
+<rect x="0" y="0" width="760" height="216" fill="var(--fig-bg)"/>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-ink)">Input: {"type": "Feature", "geometry": null, "properties": {…}} — valid RFC 7946</text>
+<rect x="14" y="32" width="176" height="98" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="102" y="50" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">null → {}</text>
+<text x="24" y="70" font-size="8.5" font-family="monospace" fill="var(--fig-ink-soft)">"geometry": {}</text>
+<text x="24" y="88" font-size="8.5" fill="var(--fig-rose-edge)">key shifts — 41ba6d…</text>
+<text x="24" y="105" font-size="8.5" fill="var(--fig-ink-soft)">every redelivery of the</text>
+<text x="24" y="117" font-size="8.5" fill="var(--fig-ink-soft)">same feature looks novel</text>
+<rect x="200" y="32" width="176" height="98" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="288" y="50" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">member dropped</text>
+<text x="210" y="70" font-size="8.5" font-family="monospace" fill="var(--fig-ink-soft)">(no geometry key)</text>
+<text x="210" y="88" font-size="8.5" fill="var(--fig-rose-edge)">key shifts — c70e83…</text>
+<text x="210" y="105" font-size="8.5" fill="var(--fig-ink-soft)">and the payload is no</text>
+<text x="210" y="117" font-size="8.5" fill="var(--fig-ink-soft)">longer valid GeoJSON</text>
+<rect x="386" y="32" width="176" height="98" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="474" y="50" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">null → Point(0, 0)</text>
+<text x="396" y="70" font-size="8.5" font-family="monospace" fill="var(--fig-ink-soft)">[0.0, 0.0]</text>
+<text x="396" y="88" font-size="8.5" fill="var(--fig-rose-edge)">worse than a key shift</text>
+<text x="396" y="105" font-size="8.5" fill="var(--fig-ink-soft)">invents a location in the</text>
+<text x="396" y="117" font-size="8.5" fill="var(--fig-ink-soft)">Gulf of Guinea</text>
+<rect x="572" y="32" width="174" height="98" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<text x="659" y="50" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">null → null</text>
+<text x="582" y="70" font-size="8.5" font-family="monospace" fill="var(--fig-ink-soft)">"geometry": null</text>
+<text x="582" y="88" font-size="8.5" fill="var(--fig-mint-edge)">key stable — 9f2c1a…</text>
+<text x="582" y="105" font-size="8.5" fill="var(--fig-ink-soft)">the record stays honest</text>
+<text x="582" y="117" font-size="8.5" fill="var(--fig-ink-soft)">about what is unknown</text>
+<rect x="14" y="146" width="732" height="62" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="164" font-size="10" font-weight="600" fill="var(--fig-ink)">Why the Point(0, 0) coercion is the dangerous one</text>
+<text x="26" y="182" font-size="9" fill="var(--fig-ink-soft)">The other two lose deduplication and you notice: the same feature keeps arriving as new. This one succeeds quietly and gives the</text>
+<text x="26" y="196" font-size="9" fill="var(--fig-ink-soft)">feature a position it never had, so it enters spatial joins and bounding-box queries over the Gulf of Guinea as though it belonged there.</text>
+</svg>
+<figcaption><b>Figure 3.</b> "Unlocated" and "at the origin" are different facts, and only one of them is true. A recursive normaliser that treats <code>None</code> as missing rather than as a value converts the first into the second.</figcaption>
+</figure>
+<ol start="5">
 <li>
 <p><strong>Unicode in property strings.</strong> <code>ensure_ascii=False</code> lets property values like <code>&quot;name&quot;: &quot;São Paulo&quot;</code> or <code>&quot;区域&quot;: &quot;北京&quot;</code> serialize as UTF-8 rather than <code>\uXXXX</code> escape sequences. Mixing <code>ensure_ascii=True</code> and <code>ensure_ascii=False</code> across services produces different byte strings for the same semantic content — pick one and enforce it consistently.</p>
 </li>

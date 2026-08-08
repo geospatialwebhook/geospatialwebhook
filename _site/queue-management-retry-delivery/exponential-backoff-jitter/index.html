@@ -267,6 +267,53 @@
 </ul>
 <hr>
 <h2 id="why-constant-and-linear-retry-fail-at-scale" tabindex="-1"><a class="heading-anchor" href="#why-constant-and-linear-retry-fail-at-scale">Why Constant and Linear Retry Fail at Scale</a></h2>
+<figure class="fig">
+<svg viewBox="0 0 760 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Retry arrival times for constant, plain exponential and decorrelated-jitter schedules after a synchronised failure">
+<title>Retry arrivals after 8,000 events fail at the same instant</title>
+<desc>Eight thousand in-flight deliveries fail together when a receiver drops at time zero, and the chart shows when their retries arrive. Constant retry every five seconds recreates the full eight-thousand-event spike at five, ten and fifteen seconds — the receiver is hit with its entire failed load the moment it starts recovering, and knocked over again. Plain exponential backoff without jitter moves the spikes later, to one, two, four and eight seconds, but does not spread them: every client computed the same delay from the same failure instant, so the herd stays synchronised and merely arrives in a different place. Decorrelated jitter draws each delay from a range that widens with the previous value, so the same eight thousand retries spread across the whole window at a few hundred per second, and the receiver sees a load it can absorb while recovering. The lesson is that backoff alone does not desynchronise anything; the randomness is what does, and exponential growth only decides how wide the range it draws from becomes.</desc>
+<rect x="0" y="0" width="760" height="250" fill="var(--fig-bg)"/>
+<text x="14" y="18" font-size="9.5" font-weight="600" fill="var(--fig-rose-edge)">constant, every 5 s</text>
+<line x1="150" y1="46" x2="700" y2="46" stroke="var(--fig-line)" stroke-width="1"/>
+<rect x="196" y="22" width="8" height="24" fill="var(--fig-rose-edge)"/>
+<rect x="346" y="22" width="8" height="24" fill="var(--fig-rose-edge)"/>
+<rect x="496" y="22" width="8" height="24" fill="var(--fig-rose-edge)"/>
+<text x="14" y="34" font-size="8.5" fill="var(--fig-rose-edge)">8,000 at once, ×3</text>
+<text x="14" y="78" font-size="9.5" font-weight="600" fill="var(--fig-gold-edge)">exponential, no jitter</text>
+<line x1="150" y1="106" x2="700" y2="106" stroke="var(--fig-line)" stroke-width="1"/>
+<rect x="180" y="82" width="8" height="24" fill="var(--fig-gold-edge)"/>
+<rect x="210" y="82" width="8" height="24" fill="var(--fig-gold-edge)"/>
+<rect x="270" y="82" width="8" height="24" fill="var(--fig-gold-edge)"/>
+<rect x="390" y="82" width="8" height="24" fill="var(--fig-gold-edge)"/>
+<text x="14" y="94" font-size="8.5" fill="var(--fig-gold-edge)">later, still 8,000 at once</text>
+<text x="14" y="138" font-size="9.5" font-weight="600" fill="var(--fig-mint-edge)">decorrelated jitter</text>
+<line x1="150" y1="176" x2="700" y2="176" stroke="var(--fig-line)" stroke-width="1"/>
+<rect x="168" y="166" width="5" height="10" fill="var(--fig-mint-edge)"/>
+<rect x="188" y="162" width="5" height="14" fill="var(--fig-mint-edge)"/>
+<rect x="212" y="164" width="5" height="12" fill="var(--fig-mint-edge)"/>
+<rect x="238" y="160" width="5" height="16" fill="var(--fig-mint-edge)"/>
+<rect x="266" y="163" width="5" height="13" fill="var(--fig-mint-edge)"/>
+<rect x="296" y="161" width="5" height="15" fill="var(--fig-mint-edge)"/>
+<rect x="328" y="164" width="5" height="12" fill="var(--fig-mint-edge)"/>
+<rect x="360" y="162" width="5" height="14" fill="var(--fig-mint-edge)"/>
+<rect x="394" y="165" width="5" height="11" fill="var(--fig-mint-edge)"/>
+<rect x="428" y="163" width="5" height="13" fill="var(--fig-mint-edge)"/>
+<rect x="462" y="166" width="5" height="10" fill="var(--fig-mint-edge)"/>
+<rect x="496" y="164" width="5" height="12" fill="var(--fig-mint-edge)"/>
+<rect x="530" y="167" width="5" height="9" fill="var(--fig-mint-edge)"/>
+<rect x="564" y="165" width="5" height="11" fill="var(--fig-mint-edge)"/>
+<rect x="598" y="168" width="5" height="8" fill="var(--fig-mint-edge)"/>
+<rect x="632" y="167" width="5" height="9" fill="var(--fig-mint-edge)"/>
+<rect x="666" y="169" width="5" height="7" fill="var(--fig-mint-edge)"/>
+<text x="14" y="154" font-size="8.5" fill="var(--fig-mint-edge)">a few hundred per second</text>
+<text x="150" y="194" font-size="8.5" fill="var(--fig-ink-soft)">0 s</text>
+<text x="350" y="194" font-size="8.5" fill="var(--fig-ink-soft)">10 s</text>
+<text x="550" y="194" font-size="8.5" fill="var(--fig-ink-soft)">20 s</text>
+<text x="400" y="212" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">time since the receiver dropped 8,000 in-flight deliveries</text>
+<rect x="14" y="222" width="732" height="24" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="26" y="238" font-size="9.5" fill="var(--fig-ink)">Backoff alone desynchronises nothing — every client computes the same delay from the same instant. The randomness is what spreads the herd.</text>
+</svg>
+<figcaption><b>Figure 1.</b> The middle row is the common mistake: exponential backoff without jitter moves the thundering herd rather than dispersing it. Exponential growth only widens the range the delay is drawn <em>from</em>.</figcaption>
+</figure>
 <p>A single client retrying a single failed delivery at a fixed one-second interval is harmless. The danger is correlation. When a shared downstream — a tile server, a PostGIS writer, a routing engine — has a brief outage, every producer that was mid-delivery fails at nearly the same instant. If they all retry on the same fixed schedule, they retry <em>together</em>, in a synchronised wave. The receiver comes back up, is immediately hit by the entire backlog at once, tips over again, and the cycle repeats. This is the classic thundering-herd retry storm, and constant or linear backoff actively creates it because it preserves the alignment of the original failure.</p>
 <p>Spatial workloads make this worse in three specific ways. First, individual requests are expensive: a webhook carrying a <code>MultiPolygon</code> triggers geometry validation, a spatial join, and often a tile invalidation, so a retry storm consumes far more receiver CPU per request than a plain JSON ping. Second, payloads are large — a dense boundary geometry is orders of magnitude bigger than a status event — so synchronised retries saturate bandwidth as well as CPU. Third, spatial events are frequently bursty by nature: a fleet of sensors crossing a region boundary emits correlated events, so the population that fails together is already clustered.</p>
 <p>Exponential backoff breaks the synchronisation over <em>time</em> by making each successive delay grow multiplicatively (<code>base · 2^attempt</code>), which thins the retry rate as an outage lengthens. But pure exponential backoff alone does not break synchronisation <em>between clients</em>: a thousand producers that all failed at <code>t=0</code> and all use identical exponential delays still retry in lockstep, just at exponentially spaced instants. The fix is <strong>jitter</strong> — randomising each delay so the herd disperses across the interval instead of stacking on its edge.</p>
@@ -326,7 +373,7 @@
   <line x1="72" y1="40" x2="72" y2="118" stroke="currentColor" stroke-width="1.5" marker-end="url(#bo-arr)" opacity="0.5"/>
   <text x="360" y="32" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.6">retry attempt n+1</text>
 </svg>
-<figcaption><b>Figure 1.</b> Jittered retry state machine for spatial webhook delivery</figcaption>
+<figcaption><b>Figure 2.</b> Jittered retry state machine for spatial webhook delivery</figcaption>
 </figure>
 <p><strong>Layer breakdown:</strong></p>
 <ol>
@@ -480,7 +527,7 @@ RETRYABLE_STATUS <span class="token operator">=</span> <span class="token punctu
   <path d="M180,258 L300,250 L420,232 L540,196 L660,140" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55" stroke-dasharray="3,3"/>
   <text x="360" y="120" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7" font-weight="600">decorrelated band</text>
 </svg>
-<figcaption><b>Figure 2.</b> Retry-time spread of the three jitter variants</figcaption>
+<figcaption><b>Figure 3.</b> Retry-time spread of the three jitter variants</figcaption>
 </figure>
 <h3 id="step-3-an-async-retry-decorator-around-an-aiohttp-post" tabindex="-1"><a class="heading-anchor" href="#step-3-an-async-retry-decorator-around-an-aiohttp-post">Step 3 — An Async Retry Decorator Around an aiohttp POST</a></h3>
 <p>The decorator wraps any coroutine that performs one delivery attempt. It uses decorrelated jitter, classifies every outcome, respects a <code>Retry-After</code> header when present, and raises a dedicated exception when the ladder is exhausted so the caller can route to a dead-letter queue.</p>
