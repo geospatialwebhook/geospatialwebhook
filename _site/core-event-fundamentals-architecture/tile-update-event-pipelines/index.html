@@ -326,6 +326,42 @@
 <p><strong>Stage 1 — Ingestion &amp; Verification:</strong> The edge endpoint authenticates the request with HMAC-SHA256, applies TLS termination, and writes accepted payloads to a raw ingestion topic with a monotonic timestamp and an upstream-derived idempotency key. Rejected requests return <code>401 Unauthorized</code> immediately.</p>
 <p><strong>Stage 2 — Validation &amp; Spatial Enrichment:</strong> A consumer reads from the raw topic, parses the payload with Pydantic, and validates geometry topology with <code>shapely.is_valid</code>. Bounding boxes, tile matrix set identifiers, and version stamps are computed and attached. Invalid events are written to a dead-letter queue without blocking the main stream.</p>
 <p><strong>Stage 3 — Partition Router:</strong> Enriched events are keyed by a composite <code>zoom:quadkey</code> string and routed to the appropriate partition. This guarantees strict ordering per tile region while allowing full parallelism across disjoint regions. When your architecture also ingests sensor telemetry alongside feature edits, sharing consumer groups with <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/sensor-data-routing-patterns/">Sensor Data Routing Patterns</a> can co-locate spatial and temporal streams efficiently.</p>
+<figure class="fig">
+<svg viewBox="0 0 760 224" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Why the tile partition key combines zoom and quadkey rather than using either alone">
+<title>The partition key is zoom:quadkey, and both halves earn their place</title>
+<desc>Three candidate partition keys for a tile-regeneration stream. Keying on quadkey alone collapses every zoom level of the same ground area onto one partition, so a single edit that invalidates zoom 10 through 18 puts nine regeneration jobs of wildly different cost on one worker while its neighbours idle. Keying on zoom alone puts every tile at a given zoom on one partition, which for zoom 16 is millions of tiles funnelled through a single consumer — the worst possible skew. The composite zoom-colon-quadkey key distributes across both dimensions: the nine zoom levels of one edit spread across nine partitions and can regenerate in parallel, while tiles at the same zoom in different regions also separate. Ordering still holds where it is needed, because two edits to the same tile at the same zoom share a key and therefore a partition, which is the only ordering a tile worker actually requires.</desc>
+<rect x="0" y="0" width="760" height="224" fill="var(--fig-bg)"/>
+<rect x="14" y="30" width="238" height="118" rx="7" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="133" y="50" text-anchor="middle" font-size="10" font-weight="600" fill="var(--fig-ink)">key = quadkey</text>
+<rect x="34" y="62" width="30" height="60" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<rect x="70" y="112" width="30" height="10" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<rect x="106" y="112" width="30" height="10" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<rect x="142" y="112" width="30" height="10" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<rect x="178" y="112" width="30" height="10" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<text x="26" y="140" font-size="8.5" fill="var(--fig-rose-edge)">z10–z18 of one edit all on one partition</text>
+<rect x="262" y="30" width="238" height="118" rx="7" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="381" y="50" text-anchor="middle" font-size="10" font-weight="600" fill="var(--fig-ink)">key = zoom</text>
+<rect x="282" y="58" width="30" height="64" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<rect x="318" y="116" width="30" height="6" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<rect x="354" y="117" width="30" height="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<rect x="390" y="118" width="30" height="4" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<rect x="426" y="118" width="30" height="4" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<text x="274" y="140" font-size="8.5" fill="var(--fig-rose-edge)">every z16 tile on Earth — one consumer</text>
+<rect x="510" y="30" width="236" height="118" rx="7" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<text x="628" y="50" text-anchor="middle" font-size="10" font-weight="600" fill="var(--fig-ink)">key = zoom:quadkey</text>
+<rect x="530" y="82" width="30" height="40" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<rect x="566" y="86" width="30" height="36" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<rect x="602" y="80" width="30" height="42" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<rect x="638" y="88" width="30" height="34" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<rect x="674" y="84" width="30" height="38" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="522" y="140" font-size="8.5" fill="var(--fig-mint-edge)">spreads on both axes — 9 levels in parallel</text>
+<rect x="14" y="164" width="732" height="52" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="182" font-size="10" font-weight="600" fill="var(--fig-ink)">The ordering you need still holds</text>
+<text x="26" y="200" font-size="9" fill="var(--fig-ink-soft)">Two edits to the same tile at the same zoom share a key, so they share a partition and apply in order. That is the only ordering a tile worker requires —</text>
+<text x="26" y="212" font-size="9" fill="var(--fig-ink-soft)">regenerating z14 before z12 for the same area is harmless, because each output depends on the source data, not on the other tile.</text>
+</svg>
+<figcaption><b>Figure 2.</b> Each half of the composite key fixes the other's skew. It works because tile regeneration only needs ordering per tile per zoom, which is exactly what the composite preserves.</figcaption>
+</figure>
 <p><strong>Stage 4 — Tile Worker &amp; Broadcast:</strong> Workers pull from their assigned partition, run tile regeneration, write outputs to the tile store, and publish a lightweight <code>tile_updated</code> event containing <code>z</code>, <code>x</code>, <code>y</code>, and a content hash to a WebSocket or Server-Sent Events channel. Clients perform a targeted cache bust rather than a full map reload.</p>
 <h2 id="step-by-step-implementation" tabindex="-1"><a class="heading-anchor" href="#step-by-step-implementation">Step-by-Step Implementation</a></h2>
 <h3 id="step-1-define-the-canonical-event-model" tabindex="-1"><a class="heading-anchor" href="#step-1-define-the-canonical-event-model">Step 1 — Define the Canonical Event Model</a></h3>
@@ -452,7 +488,7 @@
     </marker>
   </defs>
 </svg>
-<figcaption><b>Figure 2.</b> Quadkey partition routing preserves per-region order and cross-region parallelism</figcaption>
+<figcaption><b>Figure 3.</b> Quadkey partition routing preserves per-region order and cross-region parallelism</figcaption>
 </figure>
 <div class="code-block" data-lang="python">
   <div class="code-block__header">
@@ -702,6 +738,14 @@
 </tbody>
 </table>
 </div><h2 id="faq" tabindex="-1"><a class="heading-anchor" href="#faq">FAQ</a></h2>
+<details class="faq">
+<summary><strong>How many zoom levels should one edit invalidate?</strong></summary>
+<p>Only the levels a client can actually request, and only where the edit is visible. A building-footprint change is meaningless below about zoom 14 — at zoom 10 the feature occupies a fraction of a pixel — so regenerating those tiles burns worker time producing bytes identical to what was already cached. Derive the range from the feature’s bounding-box area rather than fixing it globally: a parcel edit invalidates roughly z15–z19, an administrative boundary change reaches z8 and above. Widening the range is the most common cause of a regeneration backlog that looks like a throughput problem and is really a scoping one.</p>
+</details>
+<details class="faq">
+<summary><strong>Why publish a content hash in the `tile_updated` event?</strong></summary>
+<p>So clients can tell a genuine change from a rebuild. A tile regenerated from unchanged source data produces identical bytes, and without a hash every consumer treats the notification as a change and re-downloads it. With the hash in the event, a client compares against what it already holds and skips the fetch when they match — which matters most during a bulk reprocess, exactly when the notification volume is highest and the proportion of real changes is lowest. It also gives the tile store a cheap integrity check: a mismatch between the published hash and the stored object means a partial write, which is otherwise silent.</p>
+</details>
 <details class="faq">
 <summary><strong>Should I partition by H3 cell or by z/x/y quadkey?</strong></summary>
 <p>Use <code>z/x/y</code> quadkey when your downstream is an XYZ tile server — the partition key maps directly to the cache path, so routing and invalidation share the same identifier. H3 is better when you also run spatial analytics alongside tile rendering, because H3 cells support hierarchical aggregation at multiple resolutions without re-indexing.</p>

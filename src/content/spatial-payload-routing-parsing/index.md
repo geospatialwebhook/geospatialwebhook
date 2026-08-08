@@ -168,9 +168,95 @@ Content-based routing evaluates the internal structure of each payload rather th
 
 **Feature classification** dispatches `Point` payloads to real-time tracking services, while `Polygon` and `MultiPolygon` updates route to analytics engines or tiling queues. This one decision eliminates a class of head-of-line blocking where a large complex polygon occupies a worker that should be processing lightweight point telemetry.
 
+<figure class="fig">
+<svg viewBox="0 0 760 234" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Head-of-line blocking when point telemetry shares a queue with heavy polygons, and the same traffic split by feature type">
+<title>One queue, two workloads, and the blocking that follows</title>
+<desc>A shared queue carries vehicle position pings costing about two milliseconds each alongside occasional land-cover multipolygons costing about nine hundred milliseconds. When a polygon reaches the head of a worker's queue, the four hundred and fifty point pings that arrived behind it wait the full nine hundred milliseconds, so real-time tracking latency is decided entirely by how recently an analytics payload happened to arrive. Classifying by geometry type at the gateway and dispatching points to a tracking queue and polygons to a tiling queue removes the coupling: the point queue holds its two-millisecond service time regardless of polygon traffic, and the polygon queue is sized for throughput rather than latency because nothing time-sensitive is waiting behind it. The classification is a single field read on metadata the gateway already extracted, so it costs nothing and it is what lets the two workloads be scaled and tuned independently.</desc>
+<rect x="0" y="0" width="760" height="234" fill="var(--fig-bg)"/>
+<defs><marker id="hl-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-rose-edge)">One queue — points wait behind polygons</text>
+<rect x="14" y="30" width="120" height="34" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="74" y="44" text-anchor="middle" font-size="8.5" font-weight="600" fill="var(--fig-ink)">MultiPolygon</text>
+<text x="74" y="57" text-anchor="middle" font-size="8" fill="var(--fig-ink-soft)">900 ms</text>
+<rect x="138" y="30" width="36" height="34" rx="4" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<text x="156" y="51" text-anchor="middle" font-size="8" fill="var(--fig-ink-soft)">pt</text>
+<rect x="178" y="30" width="36" height="34" rx="4" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<text x="196" y="51" text-anchor="middle" font-size="8" fill="var(--fig-ink-soft)">pt</text>
+<rect x="218" y="30" width="36" height="34" rx="4" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1"/>
+<text x="236" y="51" text-anchor="middle" font-size="8" fill="var(--fig-ink-soft)">pt</text>
+<text x="262" y="51" font-size="9" fill="var(--fig-ink-soft)">… 450 more point pings, all waiting</text>
+<rect x="500" y="30" width="246" height="34" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="512" y="44" font-size="9" font-weight="600" fill="var(--fig-ink)">tracking latency: up to 900 ms</text>
+<text x="512" y="57" font-size="8" fill="var(--fig-ink-soft)">set by when an analytics payload last arrived</text>
+<line x1="14" y1="86" x2="746" y2="86" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="106" font-size="10.5" font-weight="600" fill="var(--fig-mint-edge)">Classified at the gateway on geometry type</text>
+<polygon points="90,124 150,148 90,172 30,148" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="90" y="145" text-anchor="middle" font-size="8.5" font-weight="600" fill="var(--fig-ink)">geometry</text>
+<text x="90" y="157" text-anchor="middle" font-size="8.5" font-weight="600" fill="var(--fig-ink)">type?</text>
+<line x1="152" y1="138" x2="186" y2="126" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#hl-a)"/>
+<line x1="152" y1="158" x2="186" y2="172" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#hl-a)"/>
+<rect x="190" y="110" width="300" height="34" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="202" y="124" font-size="8.5" font-weight="600" fill="var(--fig-ink)">Point → tracking queue</text>
+<text x="202" y="137" font-size="8" fill="var(--fig-ink-soft)">2 ms service time, unaffected by polygon traffic</text>
+<rect x="190" y="156" width="300" height="34" rx="5" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.4"/>
+<text x="202" y="170" font-size="8.5" font-weight="600" fill="var(--fig-ink)">Polygon / MultiPolygon → tiling queue</text>
+<text x="202" y="183" font-size="8" fill="var(--fig-ink-soft)">sized for throughput; nothing latency-bound waits behind it</text>
+<rect x="500" y="124" width="246" height="52" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="512" y="141" font-size="9" font-weight="600" fill="var(--fig-ink)">tracking latency: 2 ms, stable</text>
+<text x="512" y="157" font-size="8" fill="var(--fig-ink-soft)">and the two queues can now be scaled,</text>
+<text x="512" y="168" font-size="8" fill="var(--fig-ink-soft)">retried and alerted on independently</text>
+<rect x="14" y="198" width="732" height="34" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="26" y="213" font-size="9.5" fill="var(--fig-ink)">The classification is one field read on metadata the gateway already extracted — it costs nothing, and it</text>
+<text x="26" y="224" font-size="9.5" fill="var(--fig-ink)">decouples two workloads with incompatible latency requirements.</text>
+</svg>
+<figcaption><b>Figure 2.</b> Head-of-line blocking is not a throughput problem — total work is identical either way. It is a latency problem created by letting two workloads with different service times share one queue.</figcaption>
+</figure>
+
 **Schema detection** identifies whether the payload conforms to GeoJSON (RFC 7946), Esri JSON, WKT, or a proprietary binary format, then dispatches to the appropriate deserialiser. When payloads exceed typical JSON size limits or require strict bandwidth optimisation, teams migrate to compact binary formats — the trade-offs are explored in depth in [GeoJSON to Protobuf Mapping](https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/).
 
 **Metadata tagging** extracts timestamps, device IDs, and confidence scores to route high-fidelity sensor data to archival stores while sending low-confidence telemetry to filtering queues. Tags are extracted once at the gateway and propagated as message attributes — downstream workers never re-parse the raw payload to make routing decisions.
+
+<figure class="fig">
+<svg viewBox="0 0 760 222" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Routing metadata extracted once at the gateway and propagated as message attributes, versus each worker re-parsing the raw payload">
+<title>Extract routing metadata once, carry it as attributes</title>
+<desc>A payload passes through four routing decisions on its way to a consumer. If each stage re-parses the raw body to read the fields it routes on, a 3-megabyte multipolygon is deserialised four times at roughly 40 milliseconds each, so 160 milliseconds of the event's journey is spent re-reading bytes that never changed — and every stage acquires its own dependency on the payload schema, so a producer adding a field can break a router that does not otherwise care about geometry at all. Extracting the routing fields once at the gateway and attaching them as broker message attributes lets each stage read a few hundred bytes of header: the cost falls to about 0.2 milliseconds total, and the schema dependency exists in exactly one place. The rule follows from what routing actually needs, which is never the geometry itself but a handful of derived scalars — type, cell, tenant, priority, confidence.</desc>
+<rect x="0" y="0" width="760" height="222" fill="var(--fig-bg)"/>
+<defs><marker id="tg-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-rose-edge)">Each stage re-parses the raw body</text>
+<rect x="14" y="30" width="168" height="30" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="98" y="49" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">router · parse 3 MB · 40 ms</text>
+<line x1="184" y1="45" x2="204" y2="45" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#tg-a)"/>
+<rect x="208" y="30" width="168" height="30" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="292" y="49" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">classifier · parse again · 40 ms</text>
+<line x1="378" y1="45" x2="398" y2="45" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#tg-a)"/>
+<rect x="402" y="30" width="168" height="30" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="486" y="49" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">dedup · parse again · 40 ms</text>
+<line x1="572" y1="45" x2="592" y2="45" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#tg-a)"/>
+<rect x="596" y="30" width="150" height="30" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="671" y="49" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">partitioner · 40 ms</text>
+<text x="14" y="78" font-size="9" fill="var(--fig-rose-edge)" font-weight="600">160 ms re-reading bytes that never changed —</text>
+<text x="330" y="78" font-size="9" fill="var(--fig-ink-soft)">and four independent dependencies on the payload schema.</text>
+<line x1="14" y1="94" x2="746" y2="94" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="114" font-size="10.5" font-weight="600" fill="var(--fig-mint-edge)">Tagged once at the gateway</text>
+<rect x="14" y="124" width="196" height="42" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="26" y="140" font-size="8.5" font-weight="600" fill="var(--fig-ink)">gateway · parse once · 40 ms</text>
+<text x="26" y="153" font-size="8" fill="var(--fig-ink-soft)">emits: geom_type, h3_r6, tenant,</text>
+<text x="26" y="163" font-size="8" fill="var(--fig-ink-soft)">priority, confidence, idem_key</text>
+<line x1="212" y1="145" x2="232" y2="145" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#tg-a)"/>
+<rect x="236" y="124" width="120" height="42" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="296" y="149" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">router · 0.05 ms</text>
+<rect x="360" y="124" width="120" height="42" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="420" y="149" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">classifier · 0.05 ms</text>
+<rect x="484" y="124" width="120" height="42" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="544" y="149" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">dedup · 0.05 ms</text>
+<rect x="608" y="124" width="138" height="42" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="677" y="149" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">partitioner · 0.05 ms</text>
+<rect x="14" y="182" width="732" height="34" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="26" y="199" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Routing never needs the geometry — only scalars derived from it.</text>
+<text x="26" y="211" font-size="9" fill="var(--fig-ink-soft)">Type, cell, tenant, priority, confidence. Once those are attributes, the schema dependency lives in one place and the raw body is read exactly once.</text>
+</svg>
+<figcaption><b>Figure 3.</b> The saving is real but secondary. The structural gain is that only the gateway knows the payload schema, so a producer change breaks one component instead of four.</figcaption>
+</figure>
 
 ```python
 from enum import Enum
@@ -493,6 +579,8 @@ Use percentiles (p95, p99) rather than averages — spatial payloads exhibit hig
 ### Security and Compliance
 
 Geospatial payloads often contain sensitive location data. The ingestion gateway must validate TLS certificates, enforce IP allowlists, and strip unnecessary headers. Payload encryption at rest and in transit is mandatory for regulated industries. Coordinate masking or spatial generalisation — snapping coordinates to a coarser grid — can reduce precision for non-essential consumers while preserving analytical utility. The full security model, including HMAC validation and spatial token schemes, is covered in [Webhook Security Boundaries](https://www.geospatialwebhook.com/core-event-fundamentals-architecture/webhook-security-boundaries/).
+
+Generalisation deserves care, because it is the one control that changes the data rather than restricting access to it. Snapping to a coarse grid is irreversible by design, so a consumer given generalised coordinates can never recover the original precision — which is the point, but it also means the decision has to be made per consumer rather than per stream. Route the full-precision geometry to consumers with a demonstrated need and a generalised copy to everyone else, and record which variant each topic carries in the schema, so a later reader cannot mistake a snapped coordinate for a surveyed one.
 
 ---
 

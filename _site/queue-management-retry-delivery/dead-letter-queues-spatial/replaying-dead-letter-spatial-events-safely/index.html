@@ -550,12 +550,74 @@ MAX_REPLAYS <span class="token operator">=</span> <span class="token number">3</
 <hr>
 <h2 id="gotchas-and-spatial-edge-cases" tabindex="-1"><a class="heading-anchor" href="#gotchas-and-spatial-edge-cases">Gotchas and spatial edge cases</a></h2>
 <ol>
-<li>
-<p><strong>Replaying without the original key double-writes.</strong> This is the headline failure. If the replay path recomputes or invents a key, the deduplication gate treats a previously applied event as new and applies it again. Always carry the ingest-time key in the DLQ envelope and submit under it verbatim. See the reproducible key scheme in <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a>.</p>
-</li>
-<li>
-<p><strong>Replaying stale events over newer state.</strong> An event that dead-lettered an hour ago may describe an older observation than what your consumer has since written for the same feature. Sort the drained batch by <code>observed_at</code> so oldest-first, and pair it with a last-write-wins or version-guarded consumer. Without ordering, a replay can silently roll a feature backwards.</p>
-</li>
+<li><strong>Replaying without the original key double-writes.</strong> This is the headline failure. If the replay path recomputes or invents a key, the deduplication gate treats a previously applied event as new and applies it again. Always carry the ingest-time key in the DLQ envelope and submit under it verbatim. See the reproducible key scheme in <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/">Idempotency &amp; Spatial Deduplication</a>.</li>
+</ol>
+<figure class="fig">
+<svg viewBox="0 0 760 218" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Recomputing an idempotency key at replay time versus carrying the ingest-time key verbatim">
+<title>Recomputing the key at replay defeats the gate</title>
+<desc>An event was ingested at 09:14 under key 9f2c1a and applied successfully, then dead-lettered later in the pipeline. On replay, recomputing the key from the stored payload produces 41ba6d instead, because the dead-letter envelope holds the body as it was received rather than as it was canonicalised — the CRS has since been normalised, the coordinates rounded, and the keys reordered. The deduplication gate has never seen 41ba6d, so it admits the event and the geometry is written a second time; the gate did exactly what it was designed to do and was simply asked the wrong question. Carrying the ingest-time key in the envelope and submitting under it verbatim means the gate is asked about the same key it stored, recognises the event as already applied, and short-circuits. The key must therefore be treated as part of the event's identity, captured once at ingest and never re-derived anywhere downstream.</desc>
+<rect x="0" y="0" width="760" height="218" fill="var(--fig-bg)"/>
+<defs><marker id="rk-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<rect x="14" y="26" width="180" height="38" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="104" y="43" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">ingest 09:14</text>
+<text x="104" y="57" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">key 9f2c1a · applied ✓</text>
+<line x1="196" y1="45" x2="228" y2="45" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#rk-a)"/>
+<rect x="232" y="26" width="180" height="38" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="322" y="43" text-anchor="middle" font-size="9" fill="var(--fig-ink)">dead-lettered later</text>
+<text x="322" y="57" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">envelope holds the body as received</text>
+<text x="14" y="92" font-size="10.5" font-weight="600" fill="var(--fig-rose-edge)">Replay recomputes the key</text>
+<rect x="14" y="102" width="220" height="38" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="124" y="119" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">hash(raw body) → 41ba6d</text>
+<text x="124" y="133" text-anchor="middle" font-size="8" fill="var(--fig-ink-soft)">CRS not normalised, coords not rounded</text>
+<line x1="236" y1="121" x2="268" y2="121" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#rk-a)"/>
+<rect x="272" y="102" width="474" height="38" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="284" y="119" font-size="9" fill="var(--fig-ink)">the gate has never seen 41ba6d ⇒ admits it ⇒ geometry written twice</text>
+<text x="284" y="133" font-size="8.5" fill="var(--fig-ink-soft)">The gate worked perfectly. It was asked about a key that never existed.</text>
+<text x="14" y="164" font-size="10.5" font-weight="600" fill="var(--fig-mint-edge)">Replay carries the key verbatim</text>
+<rect x="14" y="174" width="220" height="34" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="124" y="195" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">envelope.idempotency_key = 9f2c1a</text>
+<line x1="236" y1="191" x2="268" y2="191" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#rk-a)"/>
+<rect x="272" y="174" width="474" height="34" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="284" y="195" font-size="9" fill="var(--fig-ink)">gate recognises it, short-circuits — replay is safe to run repeatedly</text>
+</svg>
+<figcaption><b>Figure 2.</b> The key is part of the event's identity, not a function of its bytes at any later moment. Capture it once at ingest and never re-derive it — a replay path that recomputes is indistinguishable from one with no gate at all.</figcaption>
+</figure>
+<ol start="2">
+<li><strong>Replaying stale events over newer state.</strong> An event that dead-lettered an hour ago may describe an older observation than what your consumer has since written for the same feature. Sort the drained batch by <code>observed_at</code> so oldest-first, and pair it with a last-write-wins or version-guarded consumer. Without ordering, a replay can silently roll a feature backwards.</li>
+</ol>
+<figure class="fig">
+<svg viewBox="0 0 760 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Draining a dead-letter batch in insertion order versus sorted by observation time, against state that has moved on">
+<title>A replay batch must be sorted by observation time, not by insertion</title>
+<desc>Three dead-lettered events for parcel 4471 are drained an hour after they failed, by which time a live event has already written the parcel at observation time 14:30. Drained in the order the rows happen to sit in the table — 13:10, 12:05, 13:55 — and applied with a plain last-write-wins consumer, the final state is whichever the batch ended on, so the parcel rolls back to a shape it held ninety minutes before the newest data the system already has. Sorting the batch by observed_at gives 12:05, 13:10, 13:55, and every one of them loses cleanly to the live 14:30 write under a version-guarded consumer, so the replay is a no-op against fresher state, which is the correct outcome. The two mechanisms are complementary: sorting makes the batch internally consistent, and the version guard protects state the batch does not know about.</desc>
+<rect x="0" y="0" width="760" height="236" fill="var(--fig-bg)"/>
+<rect x="540" y="26" width="206" height="40" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="643" y="44" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">live state: observed 14:30</text>
+<text x="643" y="58" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">written while the batch sat in the DLQ</text>
+<text x="14" y="90" font-size="10.5" font-weight="600" fill="var(--fig-rose-edge)">Drained in table order, plain last-write-wins</text>
+<rect x="14" y="100" width="116" height="30" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.1"/>
+<text x="72" y="119" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">13:10</text>
+<rect x="138" y="100" width="116" height="30" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.1"/>
+<text x="196" y="119" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">12:05</text>
+<rect x="262" y="100" width="116" height="30" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="320" y="119" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">13:55 — applied last</text>
+<rect x="394" y="100" width="352" height="30" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="406" y="119" font-size="9" fill="var(--fig-ink)">parcel rolls back 35 min behind the live 14:30 state</text>
+<line x1="14" y1="146" x2="746" y2="146" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="166" font-size="10.5" font-weight="600" fill="var(--fig-mint-edge)">Sorted by observed_at, version-guarded consumer</text>
+<rect x="14" y="176" width="116" height="30" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.1"/>
+<text x="72" y="195" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">12:05</text>
+<rect x="138" y="176" width="116" height="30" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.1"/>
+<text x="196" y="195" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">13:10</text>
+<rect x="262" y="176" width="116" height="30" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.1"/>
+<text x="320" y="195" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">13:55</text>
+<rect x="394" y="176" width="352" height="30" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="406" y="195" font-size="9" fill="var(--fig-ink)">all three lose to 14:30 — the replay is correctly a no-op</text>
+<rect x="14" y="214" width="732" height="18" rx="4" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.1"/>
+<text x="26" y="227" font-size="9" fill="var(--fig-ink)">Sorting makes the batch internally consistent; the version guard protects the state the batch does not know about. You need both.</text>
+</svg>
+<figcaption><b>Figure 3.</b> A dead-letter batch is by definition stale, so replaying it is a race against state that moved on while it sat there. Sorting alone does not save you — the guard is what stops the newest event in the batch beating a newer one outside it.</figcaption>
+</figure>
+<ol start="3">
 <li>
 <p><strong>Poison-pill loops.</strong> An event whose geometry cannot be repaired, or whose target feature no longer exists, will dead-letter again on every replay. Track <code>replay_count</code> in the envelope and stop after a bounded number of attempts, routing the event to a quarantine store for human triage instead of an infinite DLQ ↔ pipeline cycle.</p>
 </li>

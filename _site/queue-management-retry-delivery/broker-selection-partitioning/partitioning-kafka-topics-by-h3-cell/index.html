@@ -265,6 +265,42 @@
 <p>It is not the right tool when every event must be globally ordered (use a single partition and accept the throughput ceiling), or when your workload has no locality at all and you simply want even load — in that case a random or round-robin key spreads traffic more evenly than any spatial scheme.</p>
 <hr>
 <h2 id="why-the-partitioning-resolution-differs-from-the-analytics-resolution" tabindex="-1"><a class="heading-anchor" href="#why-the-partitioning-resolution-differs-from-the-analytics-resolution">Why the partitioning resolution differs from the analytics resolution</a></h2>
+<figure class="fig">
+<svg viewBox="0 0 760 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Partitioning resolution and analytics resolution serving different purposes on the same event stream">
+<title>Two resolutions, two jobs, on the same event</title>
+<desc>The partition key and the analytics key are derived from the same coordinate at different H3 resolutions because they answer different questions. Partitioning at resolution six gives cells of about thirty-six square kilometres, which is coarse enough that a city district's events share a key and land on one consumer with a warm cache and a usable ordering guarantee. Analytics at resolution ten gives cells of about fifteen thousand square metres, fine enough to render a heat map or attribute a reading to a street. Using the analytics resolution as the partition key would give almost every event its own key, destroying co-location; using the partition resolution for analytics would smear a whole district into one bucket. Both keys are computed once at ingest and carried in the envelope, so the consumer never re-derives either, and the partition resolution can be migrated without touching the analytics field.</desc>
+<rect x="0" y="0" width="760" height="236" fill="var(--fig-bg)"/>
+<defs><marker id="kr-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<rect x="14" y="80" width="140" height="44" rx="6" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="84" y="99" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">one coordinate</text>
+<text x="84" y="114" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">13.4041, 52.5200</text>
+<line x1="156" y1="94" x2="196" y2="66" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#kr-a)"/>
+<line x1="156" y1="110" x2="196" y2="146" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#kr-a)"/>
+<rect x="200" y="30" width="290" height="72" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="212" y="48" font-size="10" font-weight="600" fill="var(--fig-ink)">partition key — H3 r6 · ~36 km²</text>
+<text x="212" y="65" font-size="8.5" fill="var(--fig-ink-soft)">a city district shares one key ⇒ one consumer,</text>
+<text x="212" y="77" font-size="8.5" fill="var(--fig-ink-soft)">warm cache, usable ordering guarantee</text>
+<text x="212" y="94" font-size="8.5" fill="var(--fig-mint-edge)">answers: who processes this, and in what order?</text>
+<rect x="200" y="118" width="290" height="72" rx="6" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.5"/>
+<text x="212" y="136" font-size="10" font-weight="600" fill="var(--fig-ink)">analytics key — H3 r10 · ~15,000 m²</text>
+<text x="212" y="153" font-size="8.5" fill="var(--fig-ink-soft)">fine enough for a heat map or to attribute a</text>
+<text x="212" y="165" font-size="8.5" fill="var(--fig-ink-soft)">reading to a street</text>
+<text x="212" y="182" font-size="8.5" fill="var(--fig-peach-edge)">answers: where, precisely, did this happen?</text>
+<rect x="506" y="30" width="240" height="72" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="518" y="48" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Swap them and both break</text>
+<text x="518" y="65" font-size="8.5" fill="var(--fig-ink-soft)">r10 as the partition key: nearly every event</text>
+<text x="518" y="77" font-size="8.5" fill="var(--fig-ink-soft)">gets its own key, co-location gone</text>
+<text x="518" y="94" font-size="8.5" fill="var(--fig-ink-soft)">r6 for analytics: a district in one bucket</text>
+<rect x="506" y="118" width="240" height="72" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="518" y="136" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Carry both in the envelope</text>
+<text x="518" y="153" font-size="8.5" fill="var(--fig-ink-soft)">Computed once at ingest, so no consumer</text>
+<text x="518" y="165" font-size="8.5" fill="var(--fig-ink-soft)">re-derives either from geometry.</text>
+<text x="518" y="182" font-size="8.5" fill="var(--fig-ink-soft)">Migrating one leaves the other untouched.</text>
+<rect x="14" y="204" width="732" height="26" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="26" y="221" font-size="9.5" fill="var(--fig-ink)">The resolutions are independent because the questions are. Tuning the partition resolution for skew must never silently coarsen your analytics.</text>
+</svg>
+<figcaption><b>Figure 1.</b> One coordinate, two keys, two jobs. Keeping them separate is what lets you re-tune partitioning against measured skew without changing what any downstream query means.</figcaption>
+</figure>
 <p>Kafka guarantees ordering only <em>within a partition</em>, and it assigns a message to a partition by hashing the record key. So the key you choose is the unit of ordering and co-location. If you key on a fine-grained H3 cell (resolution 9, edge ~174 m), a single city block becomes its own key: a busy street splinters across dozens of partitions, adjacent events lose their shared order, and consumers can no longer keep regional state warm.</p>
 <p>The fix is to decouple the two roles H3 plays. Use a <strong>coarse resolution for the partition key</strong> so a whole neighbourhood or metro district collapses into one cell and one partition, and keep a <strong>fine resolution in the payload</strong> for downstream aggregation and heat-mapping. H3’s hierarchy makes this cheap: a fine cell is always fully contained by exactly one coarse parent, so <code>h3.cell_to_parent</code> recovers the routing cell from the analytics cell without touching the original coordinates. Choosing the index family itself — H3 versus alternatives — is covered in <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/h3-vs-s2-vs-quadkey-for-spatial-partitioning/">H3 vs S2 vs Quadkey for spatial partitioning</a>; this page assumes you have already settled on H3.</p>
 <figure class="fig">
@@ -309,7 +345,7 @@
   <line x1="488" y1="130" x2="598" y2="128" stroke="currentColor" stroke-opacity="0.55" stroke-width="1.5" marker-end="url(#arr)"/>
   <line x1="488" y1="140" x2="598" y2="192" stroke="currentColor" stroke-opacity="0.3" stroke-width="1.5" marker-end="url(#arr)"/>
 </svg>
-<figcaption><b>Figure 1.</b> H3-keyed Kafka partitioning data flow</figcaption>
+<figcaption><b>Figure 2.</b> H3-keyed Kafka partitioning data flow</figcaption>
 </figure>
 <hr>
 <h2 id="complete-runnable-implementation" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-implementation">Complete runnable implementation</a></h2>
@@ -464,6 +500,42 @@ BOOTSTRAP <span class="token operator">=</span> <span class="token string">"loca
 <li>
 <p><strong>Hot partitions over dense cities.</strong> A coarse cell over Manhattan or central Tokyo can out-produce every other partition combined. Salt the key for known-hot cells only: <code>f&quot;{cell}:{event_id % N}&quot;</code> fans one cell across <code>N</code> partitions. You trade per-cell ordering for per-sub-key ordering, so only do this where the consumer orders by device/feature id, not by whole region.</p>
 </li>
+</ol>
+<figure class="fig">
+<svg viewBox="0 0 760 222" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="What ordering guarantee survives when a hot cell key is salted by event id versus by device id">
+<title>Salt by the thing the consumer orders on</title>
+<desc>A hot cell is fanned across four partitions two different ways. Salting on the event id spreads load evenly, but consecutive readings from one vehicle land on different partitions, so a consumer that must apply a device's positions in order no longer can — the guarantee is gone for exactly the entity the consumer cares about. Salting on the device id modulo four spreads load almost as evenly while keeping every reading from one vehicle on the same partition, so per-device ordering survives and only per-region ordering is lost. The choice therefore follows from what the consumer orders on: salt on the field the consumer groups by, and the ordering you give up is ordering it never used. If the consumer genuinely needs whole-region ordering, no salt is safe and the cell must be split by resolution instead.</desc>
+<rect x="0" y="0" width="760" height="222" fill="var(--fig-bg)"/>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-rose-edge)">salt = event_id % 4 — even load, per-device ordering destroyed</text>
+<rect x="14" y="30" width="176" height="48" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="26" y="47" font-size="8.5" fill="var(--fig-ink)">vehicle 88 · t=1 → p4</text>
+<text x="26" y="60" font-size="8.5" fill="var(--fig-ink)">vehicle 88 · t=2 → p7</text>
+<text x="26" y="73" font-size="8.5" fill="var(--fig-ink)">vehicle 88 · t=3 → p5</text>
+<rect x="200" y="30" width="290" height="48" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="212" y="48" font-size="9" font-weight="600" fill="var(--fig-ink)">one vehicle's track is split across 3 partitions</text>
+<text x="212" y="64" font-size="8.5" fill="var(--fig-ink-soft)">t=3 can be applied before t=1 — the position goes backwards</text>
+<rect x="500" y="30" width="246" height="48" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="512" y="48" font-size="9" fill="var(--fig-ink)">load: even</text>
+<text x="512" y="64" font-size="8.5" fill="var(--fig-rose-edge)">ordering lost for exactly what the consumer groups by</text>
+<line x1="14" y1="94" x2="746" y2="94" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="114" font-size="10.5" font-weight="600" fill="var(--fig-mint-edge)">salt = device_id % 4 — even load, per-device ordering kept</text>
+<rect x="14" y="124" width="176" height="48" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="26" y="141" font-size="8.5" fill="var(--fig-ink)">vehicle 88 · t=1 → p4</text>
+<text x="26" y="154" font-size="8.5" fill="var(--fig-ink)">vehicle 88 · t=2 → p4</text>
+<text x="26" y="167" font-size="8.5" fill="var(--fig-ink)">vehicle 88 · t=3 → p4</text>
+<rect x="200" y="124" width="290" height="48" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="212" y="142" font-size="9" font-weight="600" fill="var(--fig-ink)">the whole track stays on one partition</text>
+<text x="212" y="158" font-size="8.5" fill="var(--fig-ink-soft)">and vehicles 89, 90, 91 land on p5, p6, p7 — load still spreads</text>
+<rect x="500" y="124" width="246" height="48" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="512" y="142" font-size="9" fill="var(--fig-ink)">load: even, within a few percent</text>
+<text x="512" y="158" font-size="8.5" fill="var(--fig-mint-edge)">only per-region ordering is given up</text>
+<rect x="14" y="186" width="732" height="30" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="26" y="203" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Salt on the field the consumer groups by, and the ordering you surrender is ordering it never used.</text>
+<text x="26" y="214" font-size="9" fill="var(--fig-ink-soft)">If the consumer genuinely needs whole-region ordering, no salt is safe — split the cell by resolution instead.</text>
+</svg>
+<figcaption><b>Figure 3.</b> Both salts spread load equally well, so load is not what distinguishes them. The salt field decides which ordering guarantee survives, and only one of these two keeps the one the consumer depends on.</figcaption>
+</figure>
+<ol start="3">
 <li>
 <p><strong>Boundary-straddling geometries jump cells.</strong> A line or polygon that crosses an H3 cell edge has a centroid that can fall on either side depending on tiny coordinate changes, so two near-identical geometries route to different partitions. If stable routing matters more than geometric accuracy, snap to a canonical anchor (e.g. the first vertex) instead of the centroid, and document the choice.</p>
 </li>

@@ -505,12 +505,78 @@ RETRYABLE_STATUS <span class="token operator">=</span> <span class="token builti
 <hr>
 <h2 id="gotchas-and-spatial-edge-cases" tabindex="-1"><a class="heading-anchor" href="#gotchas-and-spatial-edge-cases">Gotchas and spatial edge cases</a></h2>
 <ol>
-<li>
-<p><strong>Retrying without jitter causes storms.</strong> A deterministic 1-2-4-8s schedule makes every sender that failed together retry together. The band-based decorrelated formula above is the fix — never ship fixed-interval retries against a shared endpoint.</p>
-</li>
-<li>
-<p><strong>Retrying non-idempotent geometry writes double-applies them.</strong> If the receiver appends the feature or bumps a version on each POST, a retry after a <em>successful-but-timed-out</em> delivery writes the geometry twice. Always attach an idempotency key and let the consumer deduplicate; the required <code>idempotency_key</code> argument above is deliberate friction to force this.</p>
-</li>
+<li><strong>Retrying without jitter causes storms.</strong> A deterministic 1-2-4-8s schedule makes every sender that failed together retry together. The band-based decorrelated formula above is the fix — never ship fixed-interval retries against a shared endpoint.</li>
+</ol>
+<figure class="fig">
+<svg viewBox="0 0 760 244" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The delay range each jitter variant draws from at attempt four, and what each trades">
+<title>Where each jitter variant draws attempt four from</title>
+<desc>The sampling range for the fourth retry, with a base of one second and a cap of thirty. No jitter picks the single value eight seconds, so every client that failed together retries together. Full jitter draws uniformly between zero and eight, giving the widest spread and the lowest collision rate, but it can also return a delay close to zero and hammer a receiver that has not recovered. Equal jitter draws between four and eight, guaranteeing a minimum wait of half the nominal delay at the cost of a narrower spread and therefore more collisions. Decorrelated jitter draws between the base and three times the previous delay, so at attempt four the range runs from one to roughly twenty-one seconds — wider than the others and with a floor that rises as attempts accumulate. The variants differ only in the range they sample; all four grow that range with attempt number, so the choice is about whether you care more about a guaranteed minimum wait or a maximum spread.</desc>
+<rect x="0" y="0" width="760" height="244" fill="var(--fig-bg)"/>
+<line x1="150" y1="196" x2="700" y2="196" stroke="var(--fig-line)" stroke-width="1.2"/>
+<line x1="150" y1="190" x2="150" y2="202" stroke="var(--fig-line)" stroke-width="1"/>
+<line x1="288" y1="190" x2="288" y2="202" stroke="var(--fig-line)" stroke-width="1"/>
+<line x1="425" y1="190" x2="425" y2="202" stroke="var(--fig-line)" stroke-width="1"/>
+<line x1="563" y1="190" x2="563" y2="202" stroke="var(--fig-line)" stroke-width="1"/>
+<line x1="700" y1="190" x2="700" y2="202" stroke="var(--fig-line)" stroke-width="1"/>
+<text x="150" y="214" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">0 s</text>
+<text x="288" y="214" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">8 s</text>
+<text x="425" y="214" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">16 s</text>
+<text x="563" y="214" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">24 s</text>
+<text x="700" y="214" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">32 s</text>
+<text x="425" y="232" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">delay drawn for attempt 4 — base 1 s, cap 30 s</text>
+<text x="14" y="44" font-size="9.5" font-weight="600" fill="var(--fig-ink)">none</text>
+<rect x="285" y="32" width="6" height="20" fill="var(--fig-rose-edge)"/>
+<text x="300" y="46" font-size="8.5" fill="var(--fig-rose-edge)">exactly 8 s — every client together</text>
+<text x="14" y="84" font-size="9.5" font-weight="600" fill="var(--fig-ink)">full</text>
+<rect x="150" y="72" width="138" height="20" rx="3" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="300" y="86" font-size="8.5" fill="var(--fig-ink-soft)">U(0, 8) — widest spread, but can retry almost immediately</text>
+<text x="14" y="124" font-size="9.5" font-weight="600" fill="var(--fig-ink)">equal</text>
+<rect x="219" y="112" width="69" height="20" rx="3" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.2"/>
+<text x="300" y="126" font-size="8.5" fill="var(--fig-ink-soft)">U(4, 8) — guaranteed minimum wait, narrower spread</text>
+<text x="14" y="164" font-size="9.5" font-weight="600" fill="var(--fig-ink)">decorrelated</text>
+<rect x="167" y="152" width="345" height="20" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="524" y="166" font-size="8.5" fill="var(--fig-mint-edge)">U(1, 3×prev) — widest range, rising floor</text>
+</svg>
+<figcaption><b>Figure 2.</b> Every variant grows its range with the attempt number; they differ only in the range they sample. Decorrelated jitter is the usual default because it gets both a wide spread and a floor that rises as attempts accumulate.</figcaption>
+</figure>
+<ol start="2">
+<li><strong>Retrying non-idempotent geometry writes double-applies them.</strong> If the receiver appends the feature or bumps a version on each POST, a retry after a <em>successful-but-timed-out</em> delivery writes the geometry twice. Always attach an idempotency key and let the consumer deduplicate; the required <code>idempotency_key</code> argument above is deliberate friction to force this.</li>
+</ol>
+<figure class="fig">
+<svg viewBox="0 0 760 216" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A successful write whose acknowledgement is lost to a timeout, and why the retry needs an idempotency key rather than a smarter classifier">
+<title>The retry that cannot know whether it succeeded</title>
+<desc>A client POSTs a GeoJSON feature. The receiver validates the geometry, writes it to PostGIS and commits, then the acknowledgement is lost — the connection drops, or the client's read timeout expires a moment before the response arrives. From the client's side this is indistinguishable from a request that never reached the receiver: both look like a timeout with no response, and no amount of classification logic can separate them, because the information needed is on the other side of the broken connection. Retrying appends a second copy of the feature. Attaching an idempotency key derived once and reused for every attempt moves the decision to the side that actually knows: the receiver claims the key before doing any spatial work, so the retry finds the key already claimed and returns the original result without writing again. This is why the key is a required argument rather than an optional one — a retry loop without it is correct only when nothing ever times out.</desc>
+<rect x="0" y="0" width="760" height="216" fill="var(--fig-bg)"/>
+<defs><marker id="jt-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<rect x="14" y="34" width="110" height="34" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="69" y="55" text-anchor="middle" font-size="9" fill="var(--fig-ink)">POST feature</text>
+<line x1="126" y1="51" x2="158" y2="51" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#jt-a)"/>
+<rect x="162" y="34" width="150" height="34" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="237" y="49" text-anchor="middle" font-size="9" fill="var(--fig-ink)">validated + written</text>
+<text x="237" y="62" text-anchor="middle" font-size="8" fill="var(--fig-mint-edge)">committed to PostGIS</text>
+<line x1="314" y1="51" x2="346" y2="51" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#jt-a)"/>
+<rect x="350" y="34" width="150" height="34" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="425" y="49" text-anchor="middle" font-size="9" fill="var(--fig-ink)">ack lost</text>
+<text x="425" y="62" text-anchor="middle" font-size="8" fill="var(--fig-ink-soft)">timeout fires a moment early</text>
+<rect x="518" y="34" width="228" height="34" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="530" y="49" font-size="9" font-weight="600" fill="var(--fig-ink)">client sees: timeout, no response</text>
+<text x="530" y="62" font-size="8" fill="var(--fig-ink-soft)">identical to "never arrived"</text>
+<rect x="14" y="90" width="366" height="50" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="26" y="108" font-size="9.5" font-weight="600" fill="var(--fig-ink)">No classifier can separate these two cases</text>
+<text x="26" y="125" font-size="9" fill="var(--fig-ink-soft)">The information needed is on the far side of the broken</text>
+<text x="26" y="136" font-size="9" fill="var(--fig-ink-soft)">connection. Retrying appends the feature a second time.</text>
+<rect x="394" y="90" width="352" height="50" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="406" y="108" font-size="9.5" font-weight="600" fill="var(--fig-ink)">The key moves the decision to the side that knows</text>
+<text x="406" y="125" font-size="9" fill="var(--fig-ink-soft)">Derived once, reused for every attempt. The receiver claims</text>
+<text x="406" y="136" font-size="9" fill="var(--fig-ink-soft)">it before any spatial work, so the retry returns the original.</text>
+<rect x="14" y="156" width="732" height="46" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="174" font-size="10" font-weight="600" fill="var(--fig-ink)">A retry happens precisely when the client is least able to know what happened</text>
+<text x="26" y="189" font-size="9" fill="var(--fig-ink-soft)">Which is why the idempotency key is a required argument rather than an optional one: a retry loop without it is</text>
+<text x="26" y="199" font-size="9" fill="var(--fig-ink-soft)">correct only in a system where nothing ever times out.</text>
+</svg>
+<figcaption><b>Figure 3.</b> The ambiguity is structural, not a gap in the error handling — a timeout after a successful commit looks exactly like one before it. Only the receiver can resolve it, and only if you give it a key to resolve with.</figcaption>
+</figure>
+<ol start="3">
 <li>
 <p><strong>Ignoring <code>Retry-After</code> fights the server.</strong> A 429 or 503 often tells you exactly when to come back. Overriding that with a shorter jittered delay just earns another 429. Honour the header when present, and clamp it to a sane maximum so a hostile or buggy <code>Retry-After: 86400</code> can’t wedge your worker.</p>
 </li>

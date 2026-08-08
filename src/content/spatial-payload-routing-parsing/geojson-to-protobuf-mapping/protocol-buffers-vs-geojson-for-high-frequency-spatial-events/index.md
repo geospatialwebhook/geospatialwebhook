@@ -81,6 +81,41 @@ The choice is a throughput and trust decision, not a matter of taste:
 
 ## Why the wire format matters at scale
 
+<figure class="fig">
+<svg viewBox="0 0 760 222" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Where the per-event budget goes at 50,000 events per second under each wire format">
+<title>At high frequency, encode cost becomes the constraint</title>
+<desc>A budget of twenty microseconds per event, which is what fifty thousand events per second on one core allows. A small point-telemetry payload encodes as GeoJSON in about eleven microseconds and decodes in about nine, consuming the entire budget before any spatial work happens, so the pipeline is bounded by string formatting rather than by anything geographic. The same payload as Protobuf encodes in about 2.4 microseconds and decodes in about 1.8, leaving roughly sixteen microseconds — enough for the H3 cell derivation, the idempotency hash and the broker publish. This is the regime where the wire format decides throughput, and it is specifically about small high-frequency payloads: for the multi-megabyte polygons on the other end of the distribution, network transfer and geometry repair dominate so completely that the format barely registers. The two workloads pull in different directions, which is why a mixed stream is often best served by choosing per topic rather than per system.</desc>
+<rect x="0" y="0" width="760" height="222" fill="var(--fig-bg)"/>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-ink)">Budget: 20 µs/event — 50,000 ev/s on one core</text>
+<text x="14" y="46" font-size="9" font-weight="600" fill="var(--fig-ink)">GeoJSON</text>
+<rect x="110" y="32" width="308" height="22" rx="3" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="120" y="47" font-size="8.5" fill="var(--fig-ink)">encode 11 µs</text>
+<rect x="418" y="32" width="252" height="22" rx="3" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="428" y="47" font-size="8.5" fill="var(--fig-ink)">decode 9 µs</text>
+<text x="14" y="72" font-size="8.5" fill="var(--fig-rose-edge)">the full budget, before any spatial work — bounded by string formatting</text>
+<text x="14" y="102" font-size="9" font-weight="600" fill="var(--fig-ink)">Protobuf</text>
+<rect x="110" y="88" width="67" height="22" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="120" y="103" font-size="8" fill="var(--fig-ink)">2.4 µs</text>
+<rect x="177" y="88" width="50" height="22" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="185" y="103" font-size="8" fill="var(--fig-ink)">1.8</text>
+<rect x="227" y="88" width="443" height="22" rx="3" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="237" y="103" font-size="8.5" fill="var(--fig-ink)">~16 µs left — H3 cell, idempotency hash, broker publish</text>
+<line x1="670" y1="26" x2="670" y2="116" stroke="var(--fig-earth-edge)" stroke-width="1.3" stroke-dasharray="4,3"/>
+<text x="676" y="70" font-size="8" fill="var(--fig-earth-edge)">20 µs</text>
+<rect x="14" y="132" width="366" height="82" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="26" y="150" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Small, high-frequency payloads</text>
+<text x="26" y="168" font-size="9" fill="var(--fig-ink-soft)">Point telemetry at tens of thousands per second.</text>
+<text x="26" y="182" font-size="9" fill="var(--fig-ink-soft)">Serialisation is the whole cost, so the format sets throughput.</text>
+<text x="26" y="202" font-size="9" font-weight="600" fill="var(--fig-mint-edge)">Protobuf earns its complexity here.</text>
+<rect x="394" y="132" width="352" height="82" rx="6" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.4"/>
+<text x="406" y="150" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Large, infrequent payloads</text>
+<text x="406" y="168" font-size="9" fill="var(--fig-ink-soft)">Multi-megabyte polygons a few times a minute.</text>
+<text x="406" y="182" font-size="8.8" fill="var(--fig-ink-soft)">Transfer and geometry repair dominate; the format barely registers.</text>
+<text x="406" y="202" font-size="9" font-weight="600" fill="var(--fig-earth-edge)">Readability is worth more than the microseconds.</text>
+</svg>
+<figcaption><b>Figure 1.</b> The two ends of a spatial workload want opposite things, so the format is usually best chosen per topic rather than per system — small telemetry in Protobuf, heavy geometry in whatever stays readable.</figcaption>
+</figure>
+
 GeoJSON is text. Every coordinate is written as ASCII digits, wrapped in a `"coordinates"` key, and surrounded by quotes, brackets, and whitespace. A single `[-73.985428, 40.748817]` position costs over twenty bytes and forces the receiver to run a JSON tokenizer and parse each number from a string. Protocol Buffers encodes the same position as two 8-byte IEEE 754 doubles in a packed field with a one-byte tag: no key names, no quotes, no decimal-to-ASCII expansion, and no tokenizer. At 10,000 events per second that structural difference compounds into megabytes per second of network and a measurable share of a CPU core.
 
 The diagram shows the split most production systems converge on: a binary format on the hot path, GeoJSON everywhere a human or a generic tool touches the data, and a single canonical decode step that unifies them.
@@ -116,7 +151,7 @@ The diagram shows the split most production systems converge on: a binary format
   <rect x="562" y="200" width="190" height="46" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
   <text x="657" y="227" text-anchor="middle" font-size="11" fill="currentColor" font-family="system-ui,sans-serif">Storage / PostGIS</text>
 </svg>
-<figcaption><b>Figure 1.</b> Dual-format spatial event pipeline</figcaption>
+<figcaption><b>Figure 2.</b> Dual-format spatial event pipeline</figcaption>
 </figure>
 
 ### Head-to-head comparison
@@ -265,6 +300,39 @@ The settings below change correctness or the size/CPU trade-off, not just style.
 4. **Schema migration.** Never renumber or reuse a field tag once a message is in production; readers key on the number, not the name. Add new fields with fresh numbers and mark retired ones `reserved` so an old consumer skips unknown fields instead of misreading them.
 5. **Mixing formats breaks idempotency hashing.** If you hash raw wire bytes, the same event arriving once as GeoJSON and once as Protobuf yields two different keys and slips past deduplication. Hash a canonical decoded representation instead, per [GeoJSON to Protobuf Mapping](https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geojson-to-protobuf-mapping/), so the key is format-independent.
 6. **Elevation and the optional third ordinate.** RFC 7946 allows a `[lon, lat, elevation]` position. A rigid two-field packed schema silently drops the elevation. Model the optional third ordinate explicitly if any producer emits 3D positions.
+
+<figure class="fig">
+<svg viewBox="0 0 760 214" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Positional error introduced by storing coordinates as 32-bit float instead of 64-bit double, by latitude">
+<title>What a 32-bit float costs a coordinate</title>
+<desc>A 32-bit float holds about seven significant decimal digits. For a longitude near 13.404954 that leaves roughly the sixth decimal place as the last reliable digit, so the representable spacing is about 1.2 metres at the equator and grows with the value's magnitude — near longitude 120 it is around 9.5 metres, and a point can land on the wrong side of a parcel boundary, a geofence edge, or a road centreline. A 64-bit double holds about fifteen significant digits, giving sub-millimetre spacing everywhere in the coordinate range. The saving is four bytes per ordinate: on a 41,000-vertex polygon that is 328 kilobytes against 656, which matters only if the payload was going to be near a size limit anyway, and gzip recovers much of it. Use double for any coordinate that will be stored, compared, hashed or used in a spatial predicate, and reserve float for disposable low-accuracy telemetry where a few metres genuinely does not matter.</desc>
+<rect x="0" y="0" width="760" height="214" fill="var(--fig-bg)"/>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-ink)">Representable spacing of a 32-bit float, by coordinate magnitude</text>
+<line x1="70" y1="96" x2="640" y2="96" stroke="var(--fig-line)" stroke-width="1.2"/>
+<rect x="70" y="80" width="80" height="16" rx="2" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.1"/>
+<rect x="230" y="76" width="80" height="20" rx="2" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.1"/>
+<rect x="390" y="70" width="80" height="26" rx="2" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<rect x="550" y="62" width="80" height="34" rx="2" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="110" y="74" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">~1.2 m</text>
+<text x="270" y="70" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">~2.4 m</text>
+<text x="430" y="64" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">~4.8 m</text>
+<text x="590" y="56" text-anchor="middle" font-size="8.5" font-weight="600" fill="var(--fig-rose-edge)">~9.5 m</text>
+<text x="110" y="112" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">lon ≈ 15</text>
+<text x="270" y="112" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">lon ≈ 30</text>
+<text x="430" y="112" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">lon ≈ 60</text>
+<text x="590" y="112" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">lon ≈ 120</text>
+<line x1="70" y1="128" x2="640" y2="128" stroke="var(--fig-mint-edge)" stroke-width="2.4"/>
+<text x="746" y="132" text-anchor="end" font-size="8.5" font-weight="600" fill="var(--fig-mint-edge)">double: sub-mm everywhere</text>
+<rect x="14" y="148" width="366" height="58" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.4"/>
+<text x="26" y="166" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Metres of drift decide boundary questions</text>
+<text x="26" y="183" font-size="9" fill="var(--fig-ink-soft)">A point can land on the wrong side of a parcel edge, a geofence,</text>
+<text x="26" y="195" font-size="9" fill="var(--fig-ink-soft)">or a road centreline — and the predicate answers confidently.</text>
+<rect x="394" y="148" width="352" height="58" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="406" y="166" font-size="9.5" font-weight="600" fill="var(--fig-ink)">What float actually saves</text>
+<text x="406" y="183" font-size="9" fill="var(--fig-ink-soft)">4 bytes per ordinate — 328 KB vs 656 KB on a 41k-vertex polygon,</text>
+<text x="406" y="195" font-size="9" fill="var(--fig-ink-soft)">and gzip recovers much of that. Rarely worth metres of error.</text>
+</svg>
+<figcaption><b>Figure 3.</b> Float error scales with the coordinate's magnitude, so a schema that tests fine near Greenwich degrades toward the date line. Use <code>double</code> for anything stored, compared or hashed.</figcaption>
+</figure>
 
 ## Verification
 

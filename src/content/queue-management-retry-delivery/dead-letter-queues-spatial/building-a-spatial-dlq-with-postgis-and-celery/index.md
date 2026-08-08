@@ -320,7 +320,75 @@ Because `geom` is nullable, `count(geom)` counts only rows that reached a real g
 
 1. **Storing giant geometries inline bloats the table.** A single high-vertex MultiPolygon can be megabytes. Persisting many of them inline in `geom` and `raw_payload` inflates row size, forces PostgreSQL into TOAST storage, and slows sequential triage scans. For oversized payloads, store the raw body in object storage (S3/GCS) and keep only a reference plus a simplified `ST_Simplify` geometry in the DLQ row.
 
+<figure class="fig">
+<svg viewBox="-1 30 762 199" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Triage scan cost for a dead-letter table holding geometries inline versus simplified geometry plus an object-storage reference">
+<title>What inline geometry does to a triage query</title>
+<desc>A dead-letter table holding one day of failures — about 12,000 rows. With the raw payload and full geometry stored inline, average row size is about 1.4 megabytes, PostgreSQL pushes the wide columns into TOAST storage, and the table plus its TOAST relation is roughly 17 gigabytes; the ordinary triage query asking which failures happened near a bounding box in the last hour has to walk that heap and takes about 40 seconds, which is long enough that nobody runs it during an incident. Storing the raw body in object storage and keeping only a reference plus an ST_Simplify geometry brings the average row to about 2 kilobytes and the table to roughly 24 megabytes, so the same query runs in about 60 milliseconds and can back a dashboard that refreshes. The simplified geometry is deliberately lossy — it exists to answer where, not to be replayed — and the full-fidelity payload is fetched from the reference only when an operator actually re-injects that record.</desc>
+<rect x="-1" y="30" width="762" height="199" fill="var(--fig-bg)"/>
+<rect x="14" y="30" width="352" height="118" rx="7" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="26" y="50" font-size="10" font-weight="600" fill="var(--fig-ink)">raw_payload + full geom, inline</text>
+<text x="26" y="70" font-size="9" fill="var(--fig-ink-soft)">avg row ≈ 1.4 MB · 12,000 rows/day</text>
+<text x="26" y="88" font-size="9" fill="var(--fig-ink-soft)">wide columns pushed into TOAST</text>
+<text x="26" y="108" font-size="11" font-weight="700" fill="var(--fig-rose-edge)">table + TOAST ≈ 17 GB</text>
+<text x="26" y="128" font-size="9" fill="var(--fig-ink-soft)">"what failed near this bbox in the last hour?"</text>
+<text x="26" y="141" font-size="9" font-weight="600" fill="var(--fig-rose-edge)">≈ 40 s — nobody runs it mid-incident</text>
+<rect x="386" y="30" width="360" height="118" rx="7" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<text x="398" y="50" font-size="10" font-weight="600" fill="var(--fig-ink)">reference + ST_Simplify geom</text>
+<text x="398" y="70" font-size="9" fill="var(--fig-ink-soft)">avg row ≈ 2 KB · same 12,000 rows</text>
+<text x="398" y="88" font-size="9" fill="var(--fig-ink-soft)">everything stays in the main heap</text>
+<text x="398" y="108" font-size="11" font-weight="700" fill="var(--fig-mint-edge)">table ≈ 24 MB</text>
+<text x="398" y="128" font-size="9" fill="var(--fig-ink-soft)">the same query, same index</text>
+<text x="398" y="141" font-size="9" font-weight="600" fill="var(--fig-mint-edge)">≈ 60 ms — can back a live dashboard</text>
+<rect x="14" y="164" width="732" height="54" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="182" font-size="10" font-weight="600" fill="var(--fig-ink)">The simplified geometry is deliberately lossy</text>
+<text x="26" y="200" font-size="9" fill="var(--fig-ink-soft)">It exists to answer "where did this fail?", not to be replayed. Re-injection reads the full-fidelity body from the reference, so precision is</text>
+<text x="26" y="212" font-size="9" fill="var(--fig-ink-soft)">never lost — only the copy kept for scanning is coarse. Never replay from the simplified column.</text>
+</svg>
+<figcaption><b>Figure 2.</b> A dead-letter table is read by scans across many rows and written one row at a time, so its schema should be optimised for the scan. Keeping full geometry inline optimises for the operation that never happens in bulk.</figcaption>
+</figure>
+
 2. **`NULL` geometry when parsing failed before a geometry existed.** This is the whole reason `geom` is nullable. A malformed GeoJSON string, an unknown CRS, or a `KeyError` on `geometry` all fail *before* Shapely produces anything. The `on_failure` path must insert `NULL` for `geom` in those cases rather than raising a second exception — validate the WKT extraction returns `None` gracefully, as `_extract_wkt` does above.
+
+<figure class="fig">
+<svg viewBox="0 32 760 194" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Failures that occur before a geometry exists, and why the dead-letter geometry column must be nullable">
+<title>Half the failures happen before there is a geometry to store</title>
+<desc>The processing stages a spatial event passes through, marked by whether a geometry object exists yet when each one fails. A malformed JSON body fails at parse, before any geometry exists. A missing or unknown CRS fails at the projection step, still before Shapely has produced anything. A KeyError on the geometry member fails at extraction, likewise. Only from topology validation onward does a geometry object exist to persist. That means a non-nullable geometry column in the dead-letter table raises a second exception while handling the first, and the original failure is lost along with the payload that caused it — the worst possible outcome for the one table whose whole job is to not lose things. Making the column nullable and having the WKT extraction return None gracefully lets the record be written with everything that is known: the raw body, the stage, the error, and no geometry, which is itself the diagnostic.</desc>
+<rect x="0" y="32" width="760" height="194" fill="var(--fig-bg)"/>
+<defs><marker id="dn-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<rect x="14" y="46" width="150" height="40" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="89" y="63" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">parse JSON</text>
+<text x="89" y="77" text-anchor="middle" font-size="8" fill="var(--fig-ink-soft)">malformed body</text>
+<line x1="166" y1="66" x2="192" y2="66" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#dn-a)"/>
+<rect x="196" y="46" width="150" height="40" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="271" y="63" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">extract geometry</text>
+<text x="271" y="77" text-anchor="middle" font-size="8" fill="var(--fig-ink-soft)">KeyError on the member</text>
+<line x1="348" y1="66" x2="374" y2="66" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#dn-a)"/>
+<rect x="378" y="46" width="150" height="40" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="453" y="63" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">resolve CRS</text>
+<text x="453" y="77" text-anchor="middle" font-size="8" fill="var(--fig-ink-soft)">missing or unknown EPSG</text>
+<line x1="530" y1="66" x2="556" y2="66" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#dn-a)"/>
+<rect x="560" y="46" width="186" height="40" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="653" y="63" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">validate topology → …</text>
+<text x="653" y="77" text-anchor="middle" font-size="8" fill="var(--fig-ink-soft)">a geometry finally exists</text>
+<rect x="14" y="96" width="514" height="22" rx="4" fill="var(--fig-rose)" opacity="0.55"/>
+<text x="271" y="111" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-rose-edge)">geom IS NULL — nothing has been constructed yet</text>
+<rect x="560" y="96" width="186" height="22" rx="4" fill="var(--fig-mint)" opacity="0.55"/>
+<text x="653" y="111" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-mint-edge)">geom is storable</text>
+<rect x="14" y="134" width="366" height="80" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="26" y="152" font-size="10" font-weight="600" fill="var(--fig-ink)">geom NOT NULL</text>
+<text x="26" y="170" font-size="9" fill="var(--fig-ink-soft)">The insert raises while handling the original exception,</text>
+<text x="26" y="183" font-size="9" fill="var(--fig-ink-soft)">so the dead-letter write fails and the payload is lost.</text>
+<text x="26" y="202" font-size="9" fill="var(--fig-rose-edge)">The one table whose job is to lose nothing, losing things —</text>
+<text x="26" y="211" font-size="9" fill="var(--fig-rose-edge)">and only for the failures that arrive first.</text>
+<rect x="394" y="134" width="352" height="80" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="406" y="152" font-size="10" font-weight="600" fill="var(--fig-ink)">geom NULL-able · _extract_wkt returns None</text>
+<text x="406" y="170" font-size="9" fill="var(--fig-ink-soft)">The record is written with everything that is known:</text>
+<text x="406" y="183" font-size="9" fill="var(--fig-ink-soft)">raw body, failed stage, exact error, CRS if any.</text>
+<text x="406" y="202" font-size="9" fill="var(--fig-mint-edge)">A null geometry is not missing data — it is the</text>
+<text x="406" y="211" font-size="9" fill="var(--fig-mint-edge)">diagnostic: the failure preceded construction.</text>
+</svg>
+<figcaption><b>Figure 3.</b> The nullable column is not laxity — it is a statement that three of the four failure stages occur before a geometry exists. A NOT NULL constraint there converts those into lost payloads.</figcaption>
+</figure>
 
 3. **EPSG assumptions silently corrupt spatial queries.** `_extract_wkt` assumes the payload is already EPSG:4326 (WGS84). If a source sends EPSG:3857 (Web Mercator) coordinates and you insert them as SRID 4326, every bounding-box query and GiST lookup is wrong without erroring. Reproject to EPSG:4326 before storing, or record the source CRS in `raw_payload` and reproject at read time. The [Geometry Validation Pipelines](https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/) covers CRS-aware validation you can run *before* the DLQ write.
 

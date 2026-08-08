@@ -42,6 +42,64 @@ eleventyExcludeFromCollections: true
 </svg>
 <figcaption><b>Figure 1.</b> Service worker cache pipeline</figcaption>
 </figure>
+      <h2>What is cached, and what is not</h2>
+      <p>The service worker caches the shell and the pages you have already opened. Anything it has never seen — a guide you have not visited, the sitemap, a freshly deployed asset — is only reachable once the network returns.</p>
+<figure class="fig">
+<svg viewBox="0 0 760 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Which requests the service worker can answer offline and which require the network">
+<title>What the cache can answer while you are offline</title>
+<desc>Requests split by whether the service worker can serve them without a network. The app shell — stylesheet, script, icons and fonts — is precached at install, so it always resolves. Pages you have already visited were stored as you read them and resolve from the cache. A page you have never opened has no cached entry and cannot be served, so this offline fallback is shown instead. Requests that must always be fresh, such as the sitemap, bypass the cache deliberately. The distinction is not page importance but whether the response was ever stored: the service worker can only replay what it has already seen.</desc>
+<rect x="0" y="0" width="760" height="210" fill="var(--fig-bg)"/>
+<rect x="14" y="30" width="352" height="72" rx="7" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="26" y="50" font-size="10" font-weight="600" fill="var(--fig-ink)">Served from the cache</text>
+<text x="26" y="70" font-size="9" fill="var(--fig-ink-soft)">app shell — stylesheet, script, icons, fonts</text>
+<text x="26" y="84" font-size="9" fill="var(--fig-ink-soft)">precached at install, so always available</text>
+<text x="26" y="97" font-size="9" fill="var(--fig-mint-edge)">pages you have already opened</text>
+<rect x="386" y="30" width="360" height="72" rx="7" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="398" y="50" font-size="10" font-weight="600" fill="var(--fig-ink)">Needs the network</text>
+<text x="398" y="70" font-size="9" fill="var(--fig-ink-soft)">a page you have never visited — nothing was stored</text>
+<text x="398" y="84" font-size="9" fill="var(--fig-ink-soft)">so this fallback is shown in its place</text>
+<text x="398" y="97" font-size="9" fill="var(--fig-rose-edge)">sitemap and anything that must be fresh</text>
+<rect x="14" y="118" width="732" height="34" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="136" font-size="9.5" font-weight="600" fill="var(--fig-ink)">The split is not by importance — it is by whether the response was ever stored.</text>
+<text x="26" y="148" font-size="9" fill="var(--fig-ink-soft)">A service worker can only replay what it has already seen, which is why reading a page once makes it available later.</text>
+<rect x="14" y="164" width="732" height="34" rx="6" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="26" y="182" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Nothing you were reading is lost.</text>
+<text x="26" y="194" font-size="9" fill="var(--fig-ink-soft)">The cache is additive: reconnecting fetches the newest version and leaves what you already have in place until it does.</text>
+</svg>
+<figcaption><b>Figure 2.</b> The service worker can only replay responses it has already stored, so a page becomes available offline by being read once.</figcaption>
+</figure>
+      <h2>What happens when you reconnect</h2>
+      <p>Nothing needs to be re-requested by hand. The next navigation goes to the network first and falls back to the cache only if it fails, so you see the newest version as soon as one is reachable.</p>
+<figure class="fig">
+<svg viewBox="0 0 760 176" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The network-first request path used once connectivity returns">
+<title>How a request resolves once you are back online</title>
+<desc>A navigation is attempted network-first. If the network responds, that response is used and simultaneously written back to the cache, so the stored copy is refreshed as a side effect of ordinary reading. If the network fails, the cache is consulted; a hit serves the page you previously read, and a miss shows this offline fallback. The ordering is what makes staleness self-correcting — the cache is only consulted after the network has had its chance, so a reconnected browser never keeps showing an old page.</desc>
+<rect x="0" y="0" width="760" height="176" fill="var(--fig-bg)"/>
+<defs><marker id="on-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<rect x="14" y="60" width="120" height="40" rx="6" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="74" y="85" text-anchor="middle" font-size="9.5" fill="var(--fig-ink)">navigation</text>
+<line x1="136" y1="80" x2="168" y2="80" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#on-a)"/>
+<polygon points="248,52 316,80 248,108 180,80" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="248" y="78" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">network</text>
+<text x="248" y="91" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">first</text>
+<line x1="318" y1="70" x2="358" y2="46" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#on-a)"/>
+<text x="322" y="40" font-size="8" fill="var(--fig-mint-edge)">ok</text>
+<rect x="362" y="26" width="240" height="40" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="482" y="43" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">serve it, and refresh the cache</text>
+<text x="482" y="57" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">the stored copy updates as a side effect of reading</text>
+<line x1="318" y1="92" x2="358" y2="116" stroke="var(--fig-line)" stroke-width="1.3" stroke-dasharray="4,3" marker-end="url(#on-a)"/>
+<text x="322" y="128" font-size="8" fill="var(--fig-rose-edge)">fails</text>
+<rect x="362" y="98" width="150" height="40" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="437" y="123" text-anchor="middle" font-size="9.5" fill="var(--fig-ink)">try the cache</text>
+<line x1="514" y1="118" x2="546" y2="118" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#on-a)"/>
+<rect x="550" y="98" width="196" height="40" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="648" y="115" text-anchor="middle" font-size="9" fill="var(--fig-ink)">hit → the page you read before</text>
+<text x="648" y="129" text-anchor="middle" font-size="9" fill="var(--fig-ink-soft)">miss → this fallback</text>
+<rect x="14" y="150" width="732" height="20" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="26" y="164" font-size="9" fill="var(--fig-ink)">Network-first is what makes staleness self-correcting: the cache is consulted only after the network has had its chance.</text>
+</svg>
+<figcaption><b>Figure 3.</b> Requests go to the network first and fall back to the cache, so a reconnected browser never keeps serving an old page.</figcaption>
+</figure>
       <p><a href="/">Return to the home page</a></p>
     </div>
   </div>

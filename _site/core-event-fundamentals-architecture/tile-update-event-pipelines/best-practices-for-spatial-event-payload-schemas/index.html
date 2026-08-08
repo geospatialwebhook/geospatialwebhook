@@ -339,6 +339,31 @@
 <li>
 <p><strong>Bounding box (<code>bbox</code>).</strong> Require a fixed 4-element array <code>[min_lon, min_lat, max_lon, max_lat]</code>. Consumers use this for rapid spatial indexing, tile routing, and bounding-box intersection tests without deserializing full coordinate arrays — essential for the sub-millisecond routing decisions described in <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/tile-update-event-pipelines/">Tile Update Event Pipelines</a>.</p>
 </li>
+</ol>
+<figure class="fig">
+<svg viewBox="0 0 760 218" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Routing on a precomputed bbox versus deserialising the coordinate array to compute one">
+<title>The bbox exists so routers never touch the coordinates</title>
+<desc>A router deciding which tile regions a 41,000-vertex polygon affects. Without a bbox in the envelope it must deserialise the entire coordinate array and compute the extent itself, costing about 38 milliseconds per event and forcing every routing hop to depend on the geometry schema. With a fixed four-element bbox carried alongside the geometry, the same decision is four float comparisons at about 0.004 milliseconds, and the router never parses the geometry at all. The requirement that makes this safe is that the bbox must be computed by the producer and validated to actually contain the geometry, because a bbox is an assertion the router trusts absolutely — a stale one from a cached feature whose geometry was later edited routes the event to the wrong tiles, and no downstream stage will notice, since every stage after the router has already accepted the routing decision as correct.</desc>
+<rect x="0" y="0" width="760" height="218" fill="var(--fig-bg)"/>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-rose-edge)">No bbox — the router parses the geometry</text>
+<rect x="150" y="30" width="470" height="24" rx="3" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="160" y="46" font-size="8.5" fill="var(--fig-ink)">deserialise 41,000 vertices, compute extent — 38 ms</text>
+<text x="628" y="46" font-size="8.5" fill="var(--fig-rose-edge)">per routing hop</text>
+<text x="14" y="72" font-size="9" fill="var(--fig-ink-soft)">And every routing stage now depends on the geometry schema, so a producer change breaks components that do not care about geometry.</text>
+<line x1="14" y1="88" x2="746" y2="88" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="108" font-size="10.5" font-weight="600" fill="var(--fig-mint-edge)">bbox in the envelope</text>
+<rect x="150" y="118" width="6" height="24" rx="2" fill="var(--fig-mint-edge)"/>
+<text x="164" y="134" font-size="8.5" fill="var(--fig-ink)">4 float comparisons — 0.004 ms</text>
+<rect x="380" y="118" width="240" height="24" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="500" y="134" text-anchor="middle" font-size="8.5" font-weight="600" fill="var(--fig-ink)">~9,500× cheaper, geometry untouched</text>
+<rect x="14" y="156" width="732" height="56" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="174" font-size="10" font-weight="600" fill="var(--fig-ink)">A bbox is an assertion the router trusts absolutely — so validate it, do not just accept it</text>
+<text x="26" y="192" font-size="9" fill="var(--fig-ink-soft)">A stale bbox from a cached feature whose geometry was later edited routes the event to the wrong tiles. Nothing downstream notices, because every stage</text>
+<text x="26" y="205" font-size="9" fill="var(--fig-ink-soft)">after the router has already taken the routing decision as correct. Assert containment at ingest: min(lons) ≥ bbox[0] and max(lons) ≤ bbox[2].</text>
+</svg>
+<figcaption><b>Figure 2.</b> The bbox is what lets the whole routing layer stay ignorant of geometry. That only holds if it is verified at ingest — a supplied bbox is a claim, and the router has no way to check it later.</figcaption>
+</figure>
+<ol start="3">
 <li>
 <p><strong>Temporal and versioning.</strong> Include <code>event_time</code> (ISO 8601 UTC), <code>schema_version</code>, and <code>update_operation</code> (<code>insert</code>, <code>update</code>, <code>delete</code>). This enables idempotent replay, out-of-order event handling, and schema drift detection. Pair these fields with a deterministic idempotency key as described in <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a>.</p>
 </li>
@@ -349,6 +374,32 @@
 <p><strong>Precision control.</strong> Cap coordinate precision at 6–8 decimal places (~1–10 cm accuracy on WGS84). Excess precision inflates JSON payloads, increases network latency, and triggers unnecessary tile cache invalidations when floating-point noise shifts coordinates by sub-millimeter margins.</p>
 </li>
 </ol>
+<figure class="fig">
+<svg viewBox="0 0 760 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="How uncapped coordinate precision inflates payload size and triggers spurious tile invalidations">
+<title>Excess precision costs bytes and, worse, cache invalidations</title>
+<desc>The same 41,000-vertex polygon at three precisions. At 15 significant digits, which is what a default float serialiser emits, each coordinate pair is about 36 bytes and the payload is roughly 2.9 megabytes. At 7 decimal places — about 1.1 centimetres on the ground, finer than any survey-grade GPS — the pair is about 20 bytes and the payload is 1.6 megabytes. At 6 decimal places, roughly 11 centimetres, it is about 18 bytes and 1.4 megabytes. The size saving is worth having, but the real cost of uncapped precision is elsewhere: floating-point representation drift between serialiser versions can shift a coordinate by a fraction of a micrometre, which changes the content hash, which invalidates and regenerates tiles for a geometry that did not move. Rounding before serialisation makes the hash stable, so a tile is rebuilt when the shape changes rather than when the encoder does.</desc>
+<rect x="0" y="0" width="760" height="220" fill="var(--fig-bg)"/>
+<text x="14" y="42" font-size="9" font-weight="600" fill="var(--fig-ink)">15 sig. digits</text>
+<rect x="130" y="28" width="520" height="22" rx="3" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="140" y="43" font-size="8.5" fill="var(--fig-ink)">13.404954123456789, 52.520008987654321 — 36 B/pair</text>
+<text x="658" y="43" font-size="8.5" fill="var(--fig-ink-soft)">2.9 MB</text>
+<text x="14" y="74" font-size="9" font-weight="600" fill="var(--fig-ink)">7 d.p. · 1.1 cm</text>
+<rect x="130" y="60" width="289" height="22" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="140" y="75" font-size="8.5" fill="var(--fig-ink)">13.4049541, 52.5200090 — 20 B/pair</text>
+<text x="427" y="75" font-size="8.5" fill="var(--fig-ink-soft)">1.6 MB</text>
+<text x="14" y="106" font-size="9" font-weight="600" fill="var(--fig-ink)">6 d.p. · 11 cm</text>
+<rect x="130" y="92" width="260" height="22" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="140" y="107" font-size="8.5" fill="var(--fig-ink)">13.404954, 52.520009 — 18 B/pair</text>
+<text x="398" y="107" font-size="8.5" fill="var(--fig-ink-soft)">1.4 MB</text>
+<rect x="14" y="130" width="732" height="82" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="148" font-size="10" font-weight="600" fill="var(--fig-ink)">The bytes are the smaller half of the problem</text>
+<text x="26" y="166" font-size="9" fill="var(--fig-ink-soft)">IEEE-754 drift between serialiser versions can move a coordinate by ~1e-15 degrees — a fraction of a micrometre, and far below any sensor's accuracy.</text>
+<text x="26" y="179" font-size="9" fill="var(--fig-ink-soft)">That is enough to change the content hash, which invalidates the tile, which regenerates it, for a geometry that did not move.</text>
+<text x="26" y="199" font-size="9" fill="var(--fig-mint-edge)">Round before serialising and the hash becomes a function of the shape rather than of the encoder — so a tile rebuilds when the world changes,</text>
+<text x="26" y="209" font-size="9" fill="var(--fig-mint-edge)">not when you upgrade a library.</text>
+</svg>
+<figcaption><b>Figure 3.</b> Cap precision at the sensor's real accuracy. The payload saving is incidental — the point is that a hash computed over unrounded floats makes tile invalidation depend on your serialiser version.</figcaption>
+</figure>
 <h2 id="complete-runnable-implementation" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-implementation">Complete runnable implementation</a></h2>
 <p>The Pydantic v2 model below enforces strict GeoJSON validation, auto-computes fallback bounding boxes from any geometry type, and serializes to a CloudEvents v1.0 envelope. It rejects invalid payloads at the class boundary rather than letting errors propagate into consumer workers.</p>
 <div class="code-block" data-lang="python">

@@ -186,6 +186,65 @@ The pipeline has four numbered stages:
 3. **Topology and repair** — run `is_valid`, attempt `make_valid()`, and branch failures to repair or the dead-letter queue.
 4. **CRS alignment** — normalize to a canonical projection (EPSG:4326) and apply precision rounding before publishing.
 
+<figure class="fig">
+<svg viewBox="0 0 760 234" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="What make_valid returns for three invalid inputs, and why the result type must be checked before publishing">
+<title>make_valid always returns something — not always what you expect</title>
+<desc>Three invalid geometries put through make_valid. A bow-tie polygon whose ring self-intersects becomes a MultiPolygon of two parts: the repair succeeded, but the type changed, so a consumer that pattern-matches on Polygon now silently skips it. A polygon with a zero-width sliver becomes a GeometryCollection containing a polygon and a dangling linestring, because the degenerate part cannot be represented as an area — publishing that to a topic typed as polygons breaks the schema contract. A polygon whose ring collapses entirely returns an empty geometry, which is valid, has no coordinates, and will silently produce a null bounding box and a null partition key downstream. In all three cases make_valid did its job and returned a topologically valid result; what it did not do is preserve the type or guarantee non-emptiness, so the pipeline must assert both before publishing rather than treating a successful repair as a successful validation.</desc>
+<rect x="0" y="0" width="760" height="234" fill="var(--fig-bg)"/>
+<defs><marker id="vr-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<rect x="14" y="30" width="240" height="122" rx="7" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.4"/>
+<text x="134" y="48" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">bow-tie</text>
+<path d="M44 62 L134 104 L44 104 L134 62 Z" fill="none" stroke="var(--fig-gold-edge)" stroke-width="1.5"/>
+<line x1="150" y1="83" x2="176" y2="83" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#vr-a)"/>
+<text x="182" y="80" font-size="8.5" font-weight="600" fill="var(--fig-ink)">MultiPolygon</text>
+<text x="182" y="92" font-size="8" fill="var(--fig-ink-soft)">2 parts</text>
+<text x="26" y="126" font-size="8.5" fill="var(--fig-ink-soft)">repair worked — the type changed.</text>
+<text x="26" y="140" font-size="8.5" fill="var(--fig-gold-edge)">A Polygon-only consumer skips it silently.</text>
+<rect x="262" y="30" width="240" height="122" rx="7" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.4"/>
+<text x="382" y="48" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">zero-width sliver</text>
+<path d="M292 62 L372 62 L372 104 L292 104 Z M372 83 L426 83" fill="none" stroke="var(--fig-gold-edge)" stroke-width="1.5"/>
+<line x1="432" y1="83" x2="446" y2="83" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#vr-a)"/>
+<text x="274" y="126" font-size="8.5" fill="var(--fig-ink-soft)">→ GeometryCollection: polygon + linestring</text>
+<text x="274" y="140" font-size="8.5" fill="var(--fig-gold-edge)">The dangling part breaks a polygon-typed topic.</text>
+<rect x="510" y="30" width="236" height="122" rx="7" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="628" y="48" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fig-ink)">collapsed ring</text>
+<circle cx="628" cy="83" r="20" fill="none" stroke="var(--fig-rose-edge)" stroke-width="1.4" stroke-dasharray="4,3"/>
+<text x="522" y="126" font-size="8.5" fill="var(--fig-ink-soft)">→ empty geometry — valid, no coordinates</text>
+<text x="522" y="140" font-size="8.5" fill="var(--fig-rose-edge)">null bbox, null partition key, no error raised</text>
+<rect x="14" y="170" width="732" height="56" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="26" y="188" font-size="10" font-weight="600" fill="var(--fig-ink)">A successful repair is not a successful validation</text>
+<text x="26" y="206" font-size="9" fill="var(--fig-ink-soft)">make_valid guarantees topological validity and nothing else — not the geometry type, and not that anything is left.</text>
+<text x="26" y="220" font-size="9" fill="var(--fig-ink-soft)">Assert both after the call: check geom_type against what the topic expects, and check is_empty, before anything is published.</text>
+</svg>
+<figcaption><b>Figure 2.</b> Each of these repairs is correct — GEOS returned a valid geometry every time. The pipeline still has to check what it got back, because "valid" and "what the downstream contract expects" are different assertions.</figcaption>
+</figure>
+
+<figure class="fig">
+<svg viewBox="0 0 760 226" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Validation stages ordered by cost, showing what each rejects and why GEOS work runs last">
+<title>Validation stages, ordered so the cheap checks protect the expensive one</title>
+<desc>Four validation stages applied to ten thousand payloads. Pydantic schema and type checking costs about 60 microseconds and rejects 400 payloads with missing fields or unknown geometry types. Coordinate bounds checking costs about 30 microseconds and rejects 250 more carrying NaN, infinity, out-of-range values or rings too short to close. Only then does GEOS work begin: is_valid plus make_valid costs about 2.4 milliseconds and handles 180 topology failures. CRS alignment and precision rounding costs about 400 microseconds on what survives. The ordering matters because the two cheap stages remove 650 payloads that would otherwise reach GEOS, and a NaN coordinate reaching shapely does not raise a clean error — it produces a geometry whose predicates return unpredictably, so the bounds check is not merely an optimisation but the thing that keeps GEOS's failures diagnosable.</desc>
+<rect x="0" y="0" width="760" height="226" fill="var(--fig-bg)"/>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-ink)">10,000 payloads · width is remaining traffic</text>
+<rect x="14" y="30" width="700" height="30" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="26" y="49" font-size="9.5" fill="var(--fig-ink)">1 · Pydantic schema + geometry type — 60 µs</text>
+<text x="536" y="49" font-size="9" fill="var(--fig-ink-soft)">−400 malformed</text>
+<rect x="14" y="66" width="672" height="30" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="26" y="85" font-size="9.5" fill="var(--fig-ink)">2 · coordinate bounds · NaN · ring length — 30 µs</text>
+<text x="512" y="85" font-size="9" fill="var(--fig-ink-soft)">−250 out of range</text>
+<rect x="14" y="102" width="655" height="30" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="26" y="121" font-size="9.5" font-weight="600" fill="var(--fig-ink)">3 · GEOS: is_valid + make_valid — 2.4 ms</text>
+<text x="486" y="121" font-size="9" fill="var(--fig-ink-soft)">180 repaired or dead-lettered</text>
+<rect x="14" y="138" width="650" height="30" rx="4" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.3"/>
+<text x="26" y="157" font-size="9.5" fill="var(--fig-ink)">4 · CRS alignment + precision rounding — 400 µs</text>
+<text x="486" y="157" font-size="9" fill="var(--fig-ink-soft)">9,170 published</text>
+<rect x="14" y="180" width="732" height="50" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="198" font-size="10" font-weight="600" fill="var(--fig-ink)">Stage 2 is not an optimisation — it keeps stage 3's failures diagnosable</text>
+<text x="26" y="212" font-size="9" fill="var(--fig-ink-soft)">A NaN coordinate reaching shapely does not raise a clean error. It builds a geometry whose predicates answer unpredictably,</text>
+<text x="26" y="223" font-size="9" fill="var(--fig-ink-soft)">so the bug surfaces later as a wrong spatial join rather than here as a rejection.</text>
+</svg>
+<figcaption><b>Figure 3.</b> The cheap stages exist to keep the expensive one honest as much as to keep it fast: GEOS accepts values that make its own results meaningless, so the bounds check has to run before it.</figcaption>
+</figure>
+
 ---
 
 ## Step-by-Step Implementation

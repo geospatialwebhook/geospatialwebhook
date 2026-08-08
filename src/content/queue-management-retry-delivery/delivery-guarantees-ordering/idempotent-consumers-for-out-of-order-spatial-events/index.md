@@ -291,7 +291,63 @@ The entire ordering decision lives in one line of SQL — `WHERE features.observ
 
 1. **Wall-clock arrival time is not observation time.** Never order by `received_at` or `now()`. A stale event delayed by a retry arrives *later* but describes an *earlier* state; comparing arrival times would let it win. Compare only the source-stamped `observed_at` (or a source `version`), which travels with the payload and reflects when the feature actually held that shape.
 
+<figure class="fig">
+<svg viewBox="0 0 760 234" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ordering spatial events by arrival time versus by source-stamped observation time">
+<title>Arrival time is a property of the network, not of the world</title>
+<desc>Two position reports for vehicle 88. The report observed at 14:02 hits a transient failure and is retried, arriving at 14:09. The report observed at 14:05 goes through first time and arrives at 14:06. Ordering by arrival makes the 14:02 report the winner because it arrived last, so the vehicle's stored position jumps backwards to where it was three minutes earlier and stays there — a track that appears to reverse. Ordering by the source-stamped observation time carried in the payload makes the 14:05 report the winner regardless of when either arrived, and the late 14:02 report is discarded as stale. The general rule is that arrival time measures the network and the retry schedule, while observation time measures the world; only the second is a property of the event, and only the second is stable across a redelivery.</desc>
+<rect x="0" y="0" width="760" height="234" fill="var(--fig-bg)"/>
+<defs><marker id="oc-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-ink)">Two reports for vehicle 88</text>
+<line x1="120" y1="60" x2="700" y2="60" stroke="var(--fig-line)" stroke-width="1.2"/>
+<circle cx="180" cy="60" r="4.5" fill="var(--fig-peach-edge)"/>
+<text x="180" y="50" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">observed 14:02</text>
+<circle cx="320" cy="60" r="4.5" fill="var(--fig-mint-edge)"/>
+<text x="320" y="50" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">observed 14:05</text>
+<circle cx="380" cy="60" r="4.5" fill="var(--fig-mint-edge)" stroke="var(--fig-bg)" stroke-width="1.4"/>
+<text x="380" y="80" text-anchor="middle" font-size="8.5" fill="var(--fig-mint-edge)">arrives 14:06</text>
+<circle cx="560" cy="60" r="4.5" fill="var(--fig-peach-edge)" stroke="var(--fig-bg)" stroke-width="1.4"/>
+<text x="560" y="80" text-anchor="middle" font-size="8.5" fill="var(--fig-peach-edge)">arrives 14:09 — after a retry</text>
+<path d="M180 66 q 190 40 376 -2" fill="none" stroke="var(--fig-peach-edge)" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#oc-a)"/>
+<rect x="14" y="112" width="366" height="52" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="26" y="130" font-size="10" font-weight="600" fill="var(--fig-ink)">ORDER BY received_at</text>
+<text x="26" y="147" font-size="9" fill="var(--fig-ink-soft)">14:02 arrived last, so 14:02 wins.</text>
+<text x="26" y="159" font-size="9" fill="var(--fig-rose-edge)">The vehicle's stored position jumps backwards 3 minutes and stays there.</text>
+<rect x="394" y="112" width="352" height="52" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="406" y="130" font-size="10" font-weight="600" fill="var(--fig-ink)">ORDER BY observed_at</text>
+<text x="406" y="147" font-size="9" fill="var(--fig-ink-soft)">14:05 wins whenever either arrived.</text>
+<text x="406" y="159" font-size="9" fill="var(--fig-mint-edge)">The late report is discarded as stale — correctly.</text>
+<rect x="14" y="180" width="732" height="46" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="198" font-size="10" font-weight="600" fill="var(--fig-ink)">Arrival time measures your network and your retry schedule. Observation time measures the world.</text>
+<text x="26" y="216" font-size="9" fill="var(--fig-ink-soft)">Only the second is a property of the event, and only the second survives a redelivery unchanged — which is exactly what makes it safe to compare.</text>
+</svg>
+<figcaption><b>Figure 2.</b> Retries guarantee that arrival order will eventually disagree with observation order — that is what a retry <em>is</em>. Comparing <code>received_at</code> makes the retry schedule an input to your map's contents.</figcaption>
+</figure>
+
 2. **Ties are silently dropped by `<`.** With a strict less-than guard, two events sharing an identical `observed_at` never overwrite each other — first write wins, stably. That is usually correct. If you must break ties deterministically (e.g. two producers stamping the same second), compare a composite `(observed_at, sequence)` and guard on `features.observed_at < EXCLUDED.observed_at OR (equal AND features.seq < EXCLUDED.seq)`.
+
+<figure class="fig">
+<svg viewBox="0 0 760 222" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="How a strict less-than guard resolves two events sharing an observation timestamp, and the composite guard that breaks the tie deterministically">
+<title>What a strict guard does with a tie</title>
+<desc>Two producers stamp readings for the same feature at exactly 14:05:00, then both events arrive. Under a strict less-than guard the first to land is written and the second finds the stored observation time not less than its own, so it is discarded: first-write-wins, stably and without error. That is usually the right behaviour, because two readings for the same instant are genuinely ambiguous and picking either is defensible. It becomes wrong when the tie is an artefact of coarse timestamps rather than real simultaneity — two producers stamping to the second while emitting several times per second — because then arrival order silently decides, and replaying the same two events in a different order produces a different final state. Adding a sequence number to the comparison makes the outcome deterministic: the guard accepts when the observation time is greater, or when it is equal and the sequence is greater, so the same pair always resolves the same way regardless of arrival order or how many times it is replayed.</desc>
+<rect x="0" y="0" width="760" height="222" fill="var(--fig-bg)"/>
+<rect x="14" y="30" width="352" height="82" rx="7" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="26" y="50" font-size="10" font-weight="600" fill="var(--fig-ink)">observed_at &lt; EXCLUDED.observed_at</text>
+<text x="26" y="70" font-size="9" fill="var(--fig-ink-soft)">A at 14:05:00 lands first — written.</text>
+<text x="26" y="84" font-size="9" fill="var(--fig-ink-soft)">B at 14:05:00 finds 14:05:00, not less — discarded.</text>
+<text x="26" y="103" font-size="9" font-weight="600" fill="var(--fig-mint-edge)">First-write-wins, stably, with no error.</text>
+<rect x="386" y="30" width="360" height="82" rx="7" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.5"/>
+<text x="398" y="50" font-size="10" font-weight="600" fill="var(--fig-ink)">When that is the wrong answer</text>
+<text x="398" y="70" font-size="9" fill="var(--fig-ink-soft)">If the tie is an artefact of second-resolution stamps on a</text>
+<text x="398" y="84" font-size="9" fill="var(--fig-ink-soft)">producer emitting 10× per second, it is not simultaneity.</text>
+<text x="398" y="103" font-size="9" font-weight="600" fill="var(--fig-gold-edge)">Arrival order decides — so a replay can differ.</text>
+<rect x="14" y="128" width="732" height="86" rx="7" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.4"/>
+<text x="26" y="148" font-size="10" font-weight="600" fill="var(--fig-ink)">Break the tie on a composite key</text>
+<text x="26" y="168" font-size="9" font-family="monospace" fill="var(--fig-ink-soft)">WHERE features.observed_at &lt; EXCLUDED.observed_at</text>
+<text x="26" y="183" font-size="9" font-family="monospace" fill="var(--fig-ink-soft)">   OR (features.observed_at = EXCLUDED.observed_at AND features.seq &lt; EXCLUDED.seq)</text>
+<text x="26" y="205" font-size="9" fill="var(--fig-ink-soft)">The same pair now resolves the same way whatever the arrival order, and however many times the batch is replayed — which is what makes a replay verifiable.</text>
+</svg>
+<figcaption><b>Figure 3.</b> The strict guard is right when a tie means genuine simultaneity and wrong when it means a coarse clock. Decide which your producers are before choosing, because the difference only shows up as a replay that does not reproduce.</figcaption>
+</figure>
 
 3. **A missing version field defeats the whole scheme.** If some producers omit `observed_at`, you cannot order their events. Reject such events to a dead-letter queue rather than defaulting to `now()` — defaulting silently reintroduces arrival-order semantics and the stale-overwrite bug you are trying to kill.
 

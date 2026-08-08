@@ -82,6 +82,41 @@ If your consumers stay in one language and need full topology on every message, 
 ## Conversion data flow
 
 <figure class="fig">
+<svg viewBox="0 0 760 208" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cost of parsing WKT text at each routing hop versus parsing once into a binary message">
+<title>WKT is a text format, and every hop pays to read it</title>
+<desc>A 41,000-vertex polygon expressed as WKT is a single string in which every coordinate is decimal text. Reading it means scanning the string and converting each number, costing about 46 milliseconds, and a routing graph with four hops that each need the geometry pays that four times, for roughly 184 milliseconds of pure parsing. Converting once at ingest into a Protobuf message with packed doubles costs the same 46-millisecond parse plus about 2 milliseconds to encode, after which each hop decodes in about 1.9 milliseconds because the coordinates are already binary and are read by memory copy rather than by numeric conversion. Total parsing across the graph falls to about 54 milliseconds. WKT remains the right format at the boundary, because it is what spatial databases emit and what a human can read in a log — the point is that it should be crossed once, at the edge, rather than carried through the routing layer as the transport format.</desc>
+<rect x="0" y="0" width="760" height="208" fill="var(--fig-bg)"/>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-rose-edge)">WKT carried through the routing graph</text>
+<rect x="150" y="30" width="140" height="22" rx="3" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="220" y="45" text-anchor="middle" font-size="8" fill="var(--fig-ink)">parse 46 ms</text>
+<rect x="294" y="30" width="140" height="22" rx="3" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="364" y="45" text-anchor="middle" font-size="8" fill="var(--fig-ink)">parse 46 ms</text>
+<rect x="438" y="30" width="140" height="22" rx="3" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="508" y="45" text-anchor="middle" font-size="8" fill="var(--fig-ink)">parse 46 ms</text>
+<rect x="582" y="30" width="140" height="22" rx="3" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="652" y="45" text-anchor="middle" font-size="8" fill="var(--fig-ink)">parse 46 ms</text>
+<text x="14" y="45" font-size="8.5" fill="var(--fig-ink-soft)">4 hops</text>
+<text x="14" y="70" font-size="9" font-weight="600" fill="var(--fig-rose-edge)">184 ms of the event's journey spent converting decimal text back into numbers</text>
+<line x1="14" y1="84" x2="746" y2="84" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="104" font-size="10.5" font-weight="600" fill="var(--fig-mint-edge)">Converted once at the boundary</text>
+<rect x="150" y="114" width="140" height="22" rx="3" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="220" y="129" text-anchor="middle" font-size="8" fill="var(--fig-ink)">parse 46 + encode 2 ms</text>
+<rect x="294" y="114" width="30" height="22" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="309" y="129" text-anchor="middle" font-size="7.5" fill="var(--fig-ink)">1.9</text>
+<rect x="328" y="114" width="30" height="22" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="343" y="129" text-anchor="middle" font-size="7.5" fill="var(--fig-ink)">1.9</text>
+<rect x="362" y="114" width="30" height="22" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="377" y="129" text-anchor="middle" font-size="7.5" fill="var(--fig-ink)">1.9</text>
+<text x="404" y="129" font-size="8.5" fill="var(--fig-mint-edge)" font-weight="600">54 ms total — packed doubles are read by memory copy, not numeric conversion</text>
+<rect x="14" y="156" width="732" height="44" rx="6" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="26" y="174" font-size="10" font-weight="600" fill="var(--fig-ink)">WKT is still the right format at the boundary</text>
+<text x="26" y="188" font-size="9" fill="var(--fig-ink-soft)">It is what spatial databases emit and what a human can read in a log. The point is to cross it once, at the edge —</text>
+<text x="26" y="198" font-size="9" fill="var(--fig-ink-soft)">not to carry it as the transport format through a routing layer that reads it repeatedly.</text>
+</svg>
+<figcaption><b>Figure 1.</b> The conversion is not free, which is exactly why it should happen once. Text formats charge every reader; binary ones charge the writer.</figcaption>
+</figure>
+
+<figure class="fig">
 <svg viewBox="0 15 632 225" role="img" aria-label="Data flow converting a WKT string through shapely validation and coordinate flattening into a Protobuf binary payload published to the routing broker" xmlns="http://www.w3.org/2000/svg">
   <title>WKT to Protobuf conversion pipeline</title>
   <desc>A WKT string is parsed and validated by shapely, flattened into a single coordinate array, serialized into a flat proto3 SpatialRoute message, and published to the routing broker where a bounding-box fast path filters most messages before full reconstruction.</desc>
@@ -129,7 +164,7 @@ If your consumers stay in one language and need full topology on every message, 
     <text x="494" y="56" font-size="10">~4 KB / 500 verts</text>
   </g>
 </svg>
-<figcaption><b>Figure 1.</b> WKT to Protobuf conversion pipeline</figcaption>
+<figcaption><b>Figure 2.</b> WKT to Protobuf conversion pipeline</figcaption>
 </figure>
 
 ## Complete runnable conversion
@@ -259,6 +294,46 @@ Most incoming geometries are rejected by this math before any expensive `interse
 4. **Validity after `make_valid`.** `make_valid` can change the geometry type (a self-intersecting `Polygon` may become a `MultiPolygon` or `GeometryCollection`). Always re-read `geom.geom_type` after repair — that is why the example sets `geometry_type` from the repaired object, not the input string.
 5. **Mixed dimensionality.** WKT with Z/M ordinates (`POINT Z (...)`) breaks an even-pair assumption if you forget the `[:2]` slice. Decide explicitly whether the fast path is 2D or 3D and keep the slice consistent on both ends.
 6. **Field-number stability.** Protobuf backward compatibility relies on stable field numbers. Use `reserved` for deprecated tags and never reuse a number — a renumbered `srid` silently mis-decodes every in-flight message.
+
+<figure class="fig">
+<svg viewBox="0 0 760 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Quantisation error compounding when each routing hop rounds an already-rounded coordinate">
+<title>Re-rounding compounds; rounding once does not</title>
+<desc>A coordinate of 13.4049547 passes through four routing hops. If each hop quantises to six decimal places, the first rounds to 13.404955, which is fine, but a hop that rounds a value already sitting on a boundary can push it a further half-unit each time, so after four hops the accumulated displacement reaches roughly 40 centimetres and the direction of drift depends on which hops happened to see the value — meaning the same feature routed by two different paths ends up at two different positions. Quantising exactly once, at ingest, and treating the value as already canonical downstream keeps the error at the single 5-centimetre half-step the rounding was chosen to accept. The practical rule is that quantisation is a normalisation step, not a compression step: it belongs with the other ingest-time normalisations that happen once, and every downstream hop should be able to assume it has already run.</desc>
+<rect x="0" y="0" width="760" height="220" fill="var(--fig-bg)"/>
+<defs><marker id="wq-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-rose-edge)">Every hop quantises</text>
+<rect x="14" y="30" width="128" height="30" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="78" y="49" text-anchor="middle" font-size="8.5" font-family="monospace" fill="var(--fig-ink)">13.4049547</text>
+<line x1="144" y1="45" x2="164" y2="45" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#wq-a)"/>
+<rect x="168" y="30" width="128" height="30" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="232" y="49" text-anchor="middle" font-size="8.5" font-family="monospace" fill="var(--fig-ink)">13.404955</text>
+<line x1="298" y1="45" x2="318" y2="45" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#wq-a)"/>
+<rect x="322" y="30" width="128" height="30" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="386" y="49" text-anchor="middle" font-size="8.5" font-family="monospace" fill="var(--fig-ink)">13.404956</text>
+<line x1="452" y1="45" x2="472" y2="45" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#wq-a)"/>
+<rect x="476" y="30" width="128" height="30" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="540" y="49" text-anchor="middle" font-size="8.5" font-family="monospace" fill="var(--fig-ink)">13.404958</text>
+<line x1="606" y1="45" x2="626" y2="45" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#wq-a)"/>
+<rect x="630" y="30" width="116" height="30" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="688" y="49" text-anchor="middle" font-size="8.5" font-weight="600" fill="var(--fig-ink)">≈ 40 cm off</text>
+<text x="14" y="78" font-size="9" fill="var(--fig-rose-edge)">And the drift direction depends on which hops saw the value — so two routing paths place the same feature differently.</text>
+<line x1="14" y1="94" x2="746" y2="94" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="114" font-size="10.5" font-weight="600" fill="var(--fig-mint-edge)">Quantise once at ingest, then treat as canonical</text>
+<rect x="14" y="124" width="128" height="30" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="78" y="143" text-anchor="middle" font-size="8.5" font-family="monospace" fill="var(--fig-ink)">13.4049547</text>
+<line x1="144" y1="139" x2="164" y2="139" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#wq-a)"/>
+<rect x="168" y="124" width="128" height="30" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="232" y="143" text-anchor="middle" font-size="8.5" font-family="monospace" fill="var(--fig-ink)">13.404955</text>
+<rect x="322" y="124" width="282" height="30" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="463" y="143" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">hops 2–4 pass it through unchanged</text>
+<rect x="630" y="124" width="116" height="30" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="688" y="143" text-anchor="middle" font-size="8.5" font-weight="600" fill="var(--fig-ink)">≈ 5 cm, once</text>
+<rect x="14" y="170" width="732" height="42" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="188" font-size="10" font-weight="600" fill="var(--fig-ink)">Quantisation is a normalisation step, not a compression step</text>
+<text x="26" y="205" font-size="9" fill="var(--fig-ink-soft)">It belongs with the other ingest-time normalisations that run exactly once, and every downstream hop should be free to assume it already has.</text>
+</svg>
+<figcaption><b>Figure 3.</b> The half-step you accept when choosing a precision is a one-time cost only if the rounding happens once. Re-rounding turns a bounded error into one that grows with the length of the routing path.</figcaption>
+</figure>
 
 ## Minimal verification
 

@@ -165,9 +165,74 @@ The pipeline separates concerns into four layers. The webhook endpoint only perf
 
 **Layer 1 — Ingestion:** The FastAPI endpoint receives raw bytes, validates the HMAC signature and `Content-Length`, publishes the payload to the queue, and responds `202 Accepted` in under 100 ms.
 
+<figure class="fig">
+<svg viewBox="0 0 760 228" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="What a 202 Accepted response promises and what it does not, with the completion path that closes the gap">
+<title>202 Accepted moves the promise, it does not remove it</title>
+<desc>Returning 202 in under a hundred milliseconds tells the sender the payload is durably queued and will not be lost, which is what stops its retry timer and prevents a retry storm. It does not tell the sender that the geometry was valid, that it was written, or that any tile was rebuilt — all of which happen later and can still fail. Three things close that gap. The signature and content-length must be verified before the 202, because rejecting a forged or oversized payload afterwards is impossible once you have promised to process it. The queue write must be durable before the 202, or the promise is a lie the moment a worker restarts. And a completion path — a status callback, a completion event, or a queryable job id returned in the response — has to exist, because otherwise a payload that fails validation in the worker disappears with the sender still believing it succeeded.</desc>
+<rect x="0" y="0" width="760" height="228" fill="var(--fig-bg)"/>
+<rect x="14" y="30" width="352" height="86" rx="7" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="26" y="50" font-size="10" font-weight="600" fill="var(--fig-ink)">What the 202 does promise</text>
+<text x="26" y="70" font-size="9" fill="var(--fig-ink-soft)">the payload is durably queued and will not be lost</text>
+<text x="26" y="86" font-size="9" fill="var(--fig-mint-edge)">which is what stops the sender's retry timer</text>
+<text x="26" y="106" font-size="8.5" fill="var(--fig-ink-soft)">and therefore what prevents a retry storm at the ingress</text>
+<rect x="386" y="30" width="360" height="86" rx="7" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="398" y="50" font-size="10" font-weight="600" fill="var(--fig-ink)">What it does not promise</text>
+<text x="398" y="70" font-size="9" fill="var(--fig-ink-soft)">that the geometry is valid · that it was written</text>
+<text x="398" y="86" font-size="9" fill="var(--fig-ink-soft)">that any tile was rebuilt</text>
+<text x="398" y="106" font-size="8.5" fill="var(--fig-rose-edge)">all of which happen later and can still fail</text>
+<rect x="14" y="130" width="238" height="42" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="147" font-size="9" font-weight="600" fill="var(--fig-ink)">verify before the 202</text>
+<text x="26" y="163" font-size="8.5" fill="var(--fig-ink-soft)">signature and Content-Length — you cannot</text>
+<text x="26" y="172" font-size="8.5" fill="var(--fig-ink-soft)">reject after promising to process</text>
+<rect x="260" y="130" width="238" height="42" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="272" y="147" font-size="9" font-weight="600" fill="var(--fig-ink)">durable before the 202</text>
+<text x="272" y="163" font-size="8.5" fill="var(--fig-ink-soft)">an in-memory queue makes the promise</text>
+<text x="272" y="172" font-size="8.5" fill="var(--fig-ink-soft)">a lie the moment a worker restarts</text>
+<rect x="506" y="130" width="240" height="42" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="518" y="147" font-size="9" font-weight="600" fill="var(--fig-ink)">a completion path</text>
+<text x="518" y="163" font-size="8.5" fill="var(--fig-ink-soft)">callback, completion event, or a job id</text>
+<text x="518" y="172" font-size="8.5" fill="var(--fig-ink-soft)">the sender can query</text>
+<rect x="14" y="186" width="732" height="34" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="26" y="203" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Without the third, a payload that fails validation in the worker disappears while the sender believes it succeeded.</text>
+<text x="26" y="215" font-size="9" fill="var(--fig-ink-soft)">That is the trade 202 makes: you buy ingress latency by taking on the obligation to report the outcome some other way.</text>
+</svg>
+<figcaption><b>Figure 2.</b> Async acceptance converts a synchronous failure the sender would have seen into one only you can see. The completion path is not optional polish — it is the other half of what <code>202</code> commits you to.</figcaption>
+</figure>
+
 **Layer 2 — Queue:** An async consumer reads from Redis Streams or RabbitMQ. This buffer absorbs traffic spikes and decouples ingestion throughput from worker capacity. Tasks that exceed the retry ceiling move to a dead-letter queue for inspection.
 
 **Layer 3 — Worker Pool:** A `ProcessPoolExecutor` runs topology repair (`make_valid`), CRS normalization to EPSG:4326 (WGS 84), Pydantic schema validation, and coordinate transformation in separate OS processes, bypassing the GIL entirely.
+
+<figure class="fig">
+<svg viewBox="0 0 760 234" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A CPU-bound geometry repair blocking the event loop, compared with the same work in a process pool">
+<title>Why a thread pool does not help here and a process pool does</title>
+<desc>A 900-millisecond make_valid call arriving alongside ordinary point traffic. Run directly in the coroutine it holds the event loop for the full 900 milliseconds, so every other request — including health checks — waits. Moved to a thread pool it still holds the GIL, because shapely's repair is CPU-bound Python and C that does not release it for the whole call, so the event loop is starved almost as badly and the only thing gained is a more confusing stack trace. Moved to a ProcessPoolExecutor the work runs in a separate interpreter with its own GIL, the event loop stays responsive throughout, and acceptance latency is unaffected. The cost is that arguments and results cross a process boundary by pickling, which is why the worker is given raw bytes and returns a compact summary rather than being handed a live shapely object.</desc>
+<rect x="0" y="0" width="760" height="234" fill="var(--fig-bg)"/>
+<text x="14" y="20" font-size="9.5" font-weight="600" fill="var(--fig-rose-edge)">in the coroutine</text>
+<rect x="150" y="28" width="470" height="22" rx="3" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="160" y="43" font-size="8.5" fill="var(--fig-ink)">make_valid — 900 ms, event loop held</text>
+<text x="628" y="43" font-size="8.5" fill="var(--fig-rose-edge)">everything waits</text>
+<text x="14" y="72" font-size="9.5" font-weight="600" fill="var(--fig-gold-edge)">thread pool</text>
+<rect x="150" y="80" width="450" height="22" rx="3" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="160" y="95" font-size="8.5" fill="var(--fig-ink)">make_valid — still holds the GIL for the whole call</text>
+<text x="608" y="95" font-size="8.5" fill="var(--fig-gold-edge)">loop still starved</text>
+<text x="14" y="124" font-size="9.5" font-weight="600" fill="var(--fig-mint-edge)">process pool</text>
+<rect x="150" y="132" width="24" height="22" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="182" y="147" font-size="8.5" fill="var(--fig-ink-soft)">pickle in</text>
+<rect x="240" y="132" width="24" height="22" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="272" y="147" font-size="8.5" fill="var(--fig-ink-soft)">pickle out</text>
+<rect x="150" y="160" width="470" height="18" rx="3" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.1"/>
+<text x="160" y="173" font-size="8" fill="var(--fig-ink-soft)">make_valid runs in a separate interpreter, with its own GIL</text>
+<text x="628" y="147" font-size="8.5" fill="var(--fig-mint-edge)">loop stays responsive</text>
+<rect x="14" y="192" width="366" height="38" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="26" y="209" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Threads help I/O, not this</text>
+<text x="26" y="224" font-size="9" fill="var(--fig-ink-soft)">GEOS repair is CPU-bound and holds the GIL throughout.</text>
+<rect x="394" y="192" width="352" height="38" rx="6" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="406" y="209" font-size="9.5" font-weight="600" fill="var(--fig-ink)">What the process boundary costs</text>
+<text x="406" y="224" font-size="9" fill="var(--fig-ink-soft)">Pass raw bytes and return a summary — never a live shapely object.</text>
+</svg>
+<figcaption><b>Figure 3.</b> The distinction that matters is whether the work releases the GIL. Geometry repair does not, so a thread pool moves the blocking without removing it — the process boundary is what actually buys responsiveness.</figcaption>
+</figure>
 
 **Layer 4 — Persistence:** Validated geometries are written to a spatially indexed store. A completion event notifies downstream consumers and can trigger a status callback to the originating client.
 

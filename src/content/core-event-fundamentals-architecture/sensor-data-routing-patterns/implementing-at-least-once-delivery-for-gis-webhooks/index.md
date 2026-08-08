@@ -130,6 +130,45 @@ This page is part of [Sensor Data Routing Patterns](https://www.geospatialwebhoo
 
 ## When to use this pattern
 
+<figure class="fig">
+<svg viewBox="0 0 760 224" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Acknowledging before processing versus after, and which failure each ordering produces">
+<title>Acknowledge after the write, never before</title>
+<desc>A consumer takes an event from the broker and must choose when to acknowledge. Acknowledging first and then processing gives at-most-once delivery: if the worker crashes between the acknowledgement and the PostGIS commit, the broker considers the event delivered and never redelivers it, so a sensor reading is silently lost with nothing to indicate it existed. Acknowledging after the commit gives at-least-once: a crash before the acknowledgement means the broker redelivers, so the event is processed a second time — visible, bounded, and made harmless by the idempotency key, which recognises the redelivery and short-circuits. The two orderings are not equally recoverable. A duplicate can be absorbed by a key you already have; a loss cannot be detected at all, because nothing in the system retains a record that the event was ever received.</desc>
+<rect x="0" y="0" width="760" height="224" fill="var(--fig-bg)"/>
+<defs><marker id="ao-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-rose-edge)">ack → process = at-most-once</text>
+<rect x="14" y="30" width="130" height="30" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="79" y="49" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">receive</text>
+<line x1="146" y1="45" x2="170" y2="45" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#ao-a)"/>
+<rect x="174" y="30" width="130" height="30" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="239" y="49" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">ACK</text>
+<line x1="306" y1="45" x2="330" y2="45" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#ao-a)"/>
+<rect x="334" y="30" width="130" height="30" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5" stroke-dasharray="4,3"/>
+<text x="399" y="49" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">crash before commit</text>
+<line x1="466" y1="45" x2="490" y2="45" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#ao-a)"/>
+<rect x="494" y="30" width="252" height="30" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="506" y="49" font-size="8.5" font-weight="600" fill="var(--fig-ink)">reading lost — never redelivered, never logged</text>
+<line x1="14" y1="78" x2="746" y2="78" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="98" font-size="10.5" font-weight="600" fill="var(--fig-mint-edge)">process → ack = at-least-once</text>
+<rect x="14" y="108" width="130" height="30" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="79" y="127" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">receive</text>
+<line x1="146" y1="123" x2="170" y2="123" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#ao-a)"/>
+<rect x="174" y="108" width="130" height="30" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="239" y="127" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">claim key + commit</text>
+<line x1="306" y1="123" x2="330" y2="123" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#ao-a)"/>
+<rect x="334" y="108" width="130" height="30" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.4" stroke-dasharray="4,3"/>
+<text x="399" y="127" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">crash before ACK</text>
+<line x1="466" y1="123" x2="490" y2="123" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#ao-a)"/>
+<rect x="494" y="108" width="252" height="30" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="506" y="127" font-size="8.5" font-weight="600" fill="var(--fig-ink)">redelivered — key already claimed, no-op</text>
+<rect x="14" y="158" width="732" height="56" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="176" font-size="10" font-weight="600" fill="var(--fig-ink)">The two failure modes are not equally recoverable</text>
+<text x="26" y="194" font-size="9" fill="var(--fig-ink-soft)">A duplicate is visible, bounded, and absorbed by a key you already maintain. A loss leaves nothing behind — no row, no offset, no log line —</text>
+<text x="26" y="207" font-size="9" fill="var(--fig-ink-soft)">so it cannot be detected, let alone repaired. That asymmetry is the whole argument for at-least-once plus idempotency.</text>
+</svg>
+<figcaption><b>Figure 2.</b> Both orderings lose something on a crash; only one loses something you can find afterwards. Acknowledgement order is where a pipeline actually chooses its delivery guarantee.</figcaption>
+</figure>
+
 At-least-once delivery with explicit idempotency enforcement is the right choice when:
 
 - **Your upstream cannot guarantee deduplication.** Third-party GIS platforms (ArcGIS Online, Mapbox, Felt) resend events on connection timeout without a built-in deduplication protocol, so your receiver owns the duplicate-suppression contract.
@@ -373,6 +412,41 @@ async def receive_gis_webhook(
 1. **Coordinate precision drift causes missed duplicates.** Two payloads representing the same sensor ping may serialize `longitude` as `13.404954` and `13.4049540000001` depending on the sender's JSON library. Without `_round_coordinates()`, the SHA-256 hash differs and both events are processed, producing a duplicate PostGIS row. Always normalize to 6 decimal places before hashing.
 
 2. **CRS ambiguity poisons the idempotency key.** If one delivery of an event declares `"crs": {"init": "epsg:4326"}` and a retry omits the CRS field entirely (a common GeoJSON spec violation), the hash will differ and the duplicate will slip through. Normalize the CRS field to a canonical EPSG:4326 declaration — or strip it, since GeoJSON RFC 7946 mandates WGS 84 — before hashing.
+
+<figure class="fig">
+<svg viewBox="0 0 760 224" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The same sensor ping delivered twice with differing CRS declarations, producing two idempotency keys until the field is normalised">
+<title>An optional field that changes between deliveries breaks the key</title>
+<desc>A sensor ping is delivered, times out, and is retried. The first delivery carries a legacy crs member with an init dictionary; the retry omits the crs member entirely, which is what RFC 7946 actually requires since GeoJSON is defined to be WGS 84. Both describe exactly the same point in exactly the same coordinate system, but the canonical strings differ, so the hashes differ and the idempotency gate admits the retry as a new event, writing a duplicate PostGIS row. The fix is to make the field's presence irrelevant before hashing: either strip the crs member entirely, which RFC 7946 permits because the projection is fixed by the spec, or normalise every variant to one canonical declaration. Stripping is preferable because it removes a degree of freedom rather than agreeing on one, and any field a sender may or may not include has to be treated this way, not just this one.</desc>
+<rect x="0" y="0" width="760" height="224" fill="var(--fig-bg)"/>
+<defs><marker id="ak-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<rect x="14" y="30" width="300" height="46" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="26" y="48" font-size="8.5" font-weight="600" fill="var(--fig-ink)">delivery 1</text>
+<text x="26" y="63" font-size="8.5" font-family="monospace" fill="var(--fig-ink-soft)">"crs": {"init": "epsg:4326"}, "coordinates": […]</text>
+<rect x="14" y="84" width="300" height="46" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="26" y="102" font-size="8.5" font-weight="600" fill="var(--fig-ink)">delivery 2 — the retry</text>
+<text x="26" y="117" font-size="8.5" font-family="monospace" fill="var(--fig-ink-soft)">"coordinates": […]   ← no crs member at all</text>
+<line x1="318" y1="80" x2="350" y2="80" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#ak-a)"/>
+<rect x="354" y="52" width="180" height="56" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="444" y="72" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">two hashes</text>
+<text x="444" y="88" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">9f2c1a… and 41ba6d…</text>
+<text x="444" y="101" text-anchor="middle" font-size="8.5" fill="var(--fig-rose-edge)">gate admits both</text>
+<line x1="538" y1="80" x2="570" y2="80" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#ak-a)"/>
+<rect x="574" y="52" width="172" height="56" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="660" y="78" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">duplicate row</text>
+<text x="660" y="94" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">same ping, written twice</text>
+<text x="26" y="148" font-size="9" fill="var(--fig-ink-soft)">Both payloads describe the same point in the same coordinate system. Only the optional declaration differs —</text>
+<text x="26" y="158" font-size="9" fill="var(--fig-ink-soft)">and RFC 7946 says the second form is the correct one.</text>
+<rect x="14" y="164" width="366" height="52" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="26" y="182" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Strip it — preferred</text>
+<text x="26" y="198" font-size="9" fill="var(--fig-ink-soft)">RFC 7946 fixes the projection, so the field carries no</text>
+<text x="26" y="210" font-size="9" fill="var(--fig-ink-soft)">information. Removing it removes a degree of freedom.</text>
+<rect x="394" y="164" width="352" height="52" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.4"/>
+<text x="406" y="182" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Normalise it — acceptable</text>
+<text x="406" y="198" font-size="9" fill="var(--fig-ink-soft)">Every variant maps to one canonical declaration. Works,</text>
+<text x="406" y="210" font-size="9" fill="var(--fig-ink-soft)">but you must enumerate the variants you have seen.</text>
+</svg>
+<figcaption><b>Figure 3.</b> Any field a sender <em>may</em> include is a field that will differ between a delivery and its retry. The rule generalises past <code>crs</code>: canonicalisation has to remove optionality, not just formatting.</figcaption>
+</figure>
 
 3. **Ring orientation flips on re-serialization.** Some spatial libraries (Turf.js, GDAL) may flip polygon exterior ring winding order between the original event and a retry. `_round_coordinates()` does not protect against this because the coordinate values are identical; the list order differs. Normalize ring orientation (right-hand rule per RFC 7946) with `shapely.geometry.mapping(orient(shape(geometry), sign=1.0))` before computing the hash, and apply this using [geometry validation pipelines](https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/).
 

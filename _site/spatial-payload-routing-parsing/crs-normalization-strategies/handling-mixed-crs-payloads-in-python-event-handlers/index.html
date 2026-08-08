@@ -204,6 +204,46 @@
 </ul>
 <p>If every source already agrees on <code>EPSG:4326</code>, skip this and validate topology only, as covered in the <a href="https://www.geospatialwebhook.com/spatial-payload-routing-parsing/geometry-validation-pipelines/">Geometry Validation Pipelines</a>.</p>
 <h2 id="how-normalization-flows-through-the-handler" tabindex="-1"><a class="heading-anchor" href="#how-normalization-flows-through-the-handler">How normalization flows through the handler</a></h2>
+<figure class="fig">
+<svg viewBox="0 0 760 214" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Where normalisation sits relative to validation, indexing and routing in a mixed-CRS handler">
+<title>Normalise before anything reads the coordinates</title>
+<desc>The handler's stage order, with the point of no return marked. Signature verification and schema parsing run first and do not look at coordinate values. CRS detection and reprojection come next, and everything after that point — topology validation, precision rounding, spatial index key derivation, routing rule evaluation and the store write — reads coordinates and is therefore only correct if the projection is already canonical. Placing normalisation later means each of those stages either has to know the source CRS itself, multiplying the places that can get it wrong, or silently assumes EPSG:4326 and produces a confidently wrong answer. Two consequences follow from the ordering: precision rounding must come after reprojection because a decimal place means different distances in different systems, and the quarantine branch must sit at the normalisation step, since it is the last moment at which an unresolvable CRS can be rejected before something downstream has already trusted it.</desc>
+<rect x="0" y="0" width="760" height="214" fill="var(--fig-bg)"/>
+<defs><marker id="mq-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<rect x="14" y="46" width="104" height="40" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="66" y="64" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">verify sig</text>
+<text x="66" y="77" text-anchor="middle" font-size="7.5" fill="var(--fig-ink-soft)">no coords read</text>
+<line x1="120" y1="66" x2="140" y2="66" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#mq-a)"/>
+<rect x="144" y="46" width="104" height="40" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="196" y="64" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">parse schema</text>
+<text x="196" y="77" text-anchor="middle" font-size="7.5" fill="var(--fig-ink-soft)">no coords read</text>
+<line x1="250" y1="66" x2="270" y2="66" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#mq-a)"/>
+<rect x="274" y="40" width="126" height="52" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.8"/>
+<text x="337" y="58" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">detect CRS</text>
+<text x="337" y="72" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">+ reproject</text>
+<text x="337" y="85" text-anchor="middle" font-size="7.5" fill="var(--fig-mint-edge)">the point of no return</text>
+<line x1="337" y1="94" x2="337" y2="116" stroke="var(--fig-rose-edge)" stroke-width="1.2" stroke-dasharray="3,2" marker-end="url(#mq-a)"/>
+<rect x="266" y="118" width="142" height="26" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="337" y="135" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">quarantine — unresolved</text>
+<line x1="402" y1="66" x2="422" y2="66" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#mq-a)"/>
+<rect x="426" y="46" width="80" height="40" rx="5" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.2"/>
+<text x="466" y="70" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">validate</text>
+<rect x="510" y="46" width="72" height="40" rx="5" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.2"/>
+<text x="546" y="64" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">round</text>
+<text x="546" y="77" text-anchor="middle" font-size="7.5" fill="var(--fig-ink-soft)">after, not before</text>
+<rect x="586" y="46" width="72" height="40" rx="5" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.2"/>
+<text x="622" y="70" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">index key</text>
+<rect x="662" y="46" width="84" height="40" rx="5" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.2"/>
+<text x="704" y="70" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">route + store</text>
+<rect x="422" y="96" width="324" height="20" rx="4" fill="var(--fig-peach)" opacity="0.5"/>
+<text x="584" y="110" text-anchor="middle" font-size="8.5" font-weight="600" fill="var(--fig-peach-edge)">every stage here reads coordinates</text>
+<rect x="14" y="156" width="732" height="52" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="174" font-size="10" font-weight="600" fill="var(--fig-ink)">Two things follow from putting normalisation here</text>
+<text x="26" y="191" font-size="9" fill="var(--fig-ink-soft)">Precision rounding must come after it, because a decimal place is 11 cm in degrees and a micrometre in Web Mercator metres.</text>
+<text x="26" y="203" font-size="9" fill="var(--fig-ink-soft)">And quarantine must branch from it — it is the last moment an unresolvable CRS can be rejected before something downstream has trusted it.</text>
+</svg>
+<figcaption><b>Figure 1.</b> Everything downstream of reprojection is written assuming one canonical CRS. Move normalisation later and each of those stages has to re-learn the source projection — or quietly assume it.</figcaption>
+</figure>
 <p>The handler runs as a deterministic pipeline: resolve the source CRS, build (or reuse) a transformer keyed by the source/target EPSG pair, transform the geometry, re-validate topology after the transform, then route the clean payload onward or quarantine the failure.</p>
 <figure class="fig">
 <svg viewBox="0 26 720 254" role="img" aria-label="Mixed-CRS normalization flow: resolve the source CRS, look up a cached transformer, transform to EPSG:4326, re-validate topology, then route the clean payload or quarantine unresolvable input" xmlns="http://www.w3.org/2000/svg">
@@ -263,7 +303,7 @@
   <text x="89" y="156" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.55">payload in (mixed CRS)</text>
   <line x1="89" y1="128" x2="89" y2="146" stroke="currentColor" stroke-width="1" opacity="0.35" stroke-dasharray="3,2"/>
 </svg>
-<figcaption><b>Figure 1.</b> Mixed-CRS normalization flow</figcaption>
+<figcaption><b>Figure 2.</b> Mixed-CRS normalization flow</figcaption>
 </figure>
 <h2 id="complete-runnable-handler" tabindex="-1"><a class="heading-anchor" href="#complete-runnable-handler">Complete runnable handler</a></h2>
 <p>The example below is self-contained: a <code>FastAPI</code> endpoint with <code>Pydantic</code> validation, CRS resolution with magnitude-based inference, a cached <code>pyproj.Transformer</code>, post-transform re-validation, and explicit quarantine routing. It targets <code>EPSG:4326</code> because RFC 7946 mandates WGS84 for GeoJSON output, so a canonical <code>EPSG:4326</code> payload interoperates with every standards-compliant consumer.</p>
@@ -438,6 +478,34 @@ TARGET_CRS <span class="token operator">=</span> <span class="token string">"EPS
 <li><strong>Ring orientation is not enforced by transformation.</strong> <code>pyproj</code> moves coordinates but does not rewind polygon rings. RFC 7946 wants exterior rings counter-clockwise; if a downstream consumer is orientation-sensitive, run <code>shapely.geometry.polygon.orient</code> after normalizing. This matters when you later derive an idempotency key, as covered in <a href="https://www.geospatialwebhook.com/idempotency-spatial-deduplication/event-key-generation-for-spatial-data/">Event Key Generation for Spatial Data</a> — orientation changes the hash.</li>
 <li><strong>CRS mismatch on merge.</strong> When combining features from multiple sources into one collection, normalize each to <code>EPSG:4326</code> <em>before</em> the union. Merging raw geometries from different CRSes produces topologically meaningless results that no validation step can recover.</li>
 </ol>
+<figure class="fig">
+<svg viewBox="0 0 760 226" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The same coordinate pair interpreted under both EPSG:4326 axis conventions, landing on different continents">
+<title>always_xy=True, or your points move to another hemisphere</title>
+<desc>The pair 13.4049, 52.5200 describes Berlin when read as longitude then latitude, which is what GeoJSON and most application code mean. PROJ 6 and later honour each authority's declared axis order, and EPSG:4326 declares latitude first, so without always_xy the same pair is read as 13.4 degrees north, 52.5 degrees east — a point in the Arabian Sea, roughly 5,700 kilometres away. Nothing raises: both interpretations are valid coordinates, both pass bounds checks because each value is inside its own legal range, and the geometry is well-formed either way. The failure only becomes visible when someone looks at a map. Because it is silent, the defence has to be structural: pass always_xy=True at every Transformer construction, and assert that a known reference point round-trips to itself in your test suite, since a version bump in PROJ can change the default behaviour under you.</desc>
+<rect x="0" y="0" width="760" height="226" fill="var(--fig-bg)"/>
+<rect x="14" y="30" width="352" height="96" rx="7" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<text x="26" y="50" font-size="10" font-weight="600" fill="var(--fig-ink)">always_xy=True — (lon, lat)</text>
+<text x="26" y="70" font-size="9" font-family="monospace" fill="var(--fig-ink-soft)">(13.4049, 52.5200)</text>
+<text x="26" y="90" font-size="9" fill="var(--fig-ink)">→ 52.52° N, 13.40° E</text>
+<text x="26" y="110" font-size="10" font-weight="600" fill="var(--fig-mint-edge)">Berlin — what the payload meant</text>
+<rect x="386" y="30" width="360" height="96" rx="7" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="398" y="50" font-size="10" font-weight="600" fill="var(--fig-ink)">omitted — PROJ uses the authority order</text>
+<text x="398" y="70" font-size="9" font-family="monospace" fill="var(--fig-ink-soft)">(13.4049, 52.5200)  read as (lat, lon)</text>
+<text x="398" y="90" font-size="9" fill="var(--fig-ink)">→ 13.40° N, 52.52° E</text>
+<text x="398" y="110" font-size="10" font-weight="600" fill="var(--fig-rose-edge)">the Arabian Sea — 5,700 km away</text>
+<rect x="14" y="140" width="366" height="46" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="158" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Nothing raises, and no bounds check helps</text>
+<text x="26" y="174" font-size="9" fill="var(--fig-ink-soft)">13.4 is a legal latitude and 52.5 a legal longitude, so both</text>
+<text x="26" y="183" font-size="9" fill="var(--fig-ink-soft)">readings pass every range test you could write.</text>
+<rect x="394" y="140" width="352" height="46" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="406" y="158" font-size="9.5" font-weight="600" fill="var(--fig-ink)">So make the defence structural</text>
+<text x="406" y="174" font-size="9" fill="var(--fig-ink-soft)">Pass always_xy=True at every construction, and assert a known</text>
+<text x="406" y="183" font-size="9" fill="var(--fig-ink-soft)">reference point round-trips — a PROJ upgrade can change the default.</text>
+<rect x="14" y="196" width="732" height="22" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="26" y="211" font-size="9.5" fill="var(--fig-ink)">The swap is only visible on a map, which is why it typically reaches production and is found by a user rather than by a test.</text>
+</svg>
+<figcaption><b>Figure 3.</b> Both readings are legal coordinates, so no validator can separate them — the correct one is decided entirely by the <code>always_xy</code> flag. That makes a round-trip assertion the only real guard.</figcaption>
+</figure>
 <h2 id="minimal-verification-snippet" tabindex="-1"><a class="heading-anchor" href="#minimal-verification-snippet">Minimal verification snippet</a></h2>
 <p>Run this with <code>pytest</code> to confirm a web-mercator point lands at the correct WGS84 longitude/latitude and that an unlabelled projected coordinate is rejected rather than mangled.</p>
 <div class="code-block" data-lang="python">

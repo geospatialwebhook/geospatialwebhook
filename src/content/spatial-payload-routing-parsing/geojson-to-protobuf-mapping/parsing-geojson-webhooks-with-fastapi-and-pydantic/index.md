@@ -83,6 +83,41 @@ If you are only logging payloads or your producer is fully trusted and inside yo
 
 ## Validation flow
 
+<figure class="fig">
+<svg viewBox="0 0 760 216" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Reading the raw body once for signature verification before letting Pydantic parse it">
+<title>The order that lets one request be both verified and parsed</title>
+<desc>A FastAPI handler needs the exact request bytes to verify the HMAC and a parsed model to work with, and an ASGI request body can only be consumed once. Declaring a Pydantic model as the handler parameter lets the framework consume the stream first, so by the time the handler runs the raw bytes are gone and the signature cannot be checked against what was actually sent — only against a re-serialisation, which will not match. Reading the body with await request.body first, verifying the signature against those exact bytes, and then validating the same bytes with model_validate_json gives both: the signature is checked against the wire form, and the parse happens afterwards on bytes already proven authentic. The ordering also decides how much work an attacker can make you do — parsing before verifying means an unauthenticated caller can spend your CPU on a multi-megabyte geometry that will be rejected anyway.</desc>
+<rect x="0" y="0" width="760" height="216" fill="var(--fig-bg)"/>
+<defs><marker id="pr-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-rose-edge)">Model as a handler parameter — the framework consumes the stream first</text>
+<rect x="14" y="30" width="180" height="34" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="104" y="51" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">FastAPI parses into the model</text>
+<line x1="196" y1="47" x2="222" y2="47" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#pr-a)"/>
+<rect x="226" y="30" width="180" height="34" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="316" y="51" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">raw bytes are gone</text>
+<line x1="408" y1="47" x2="434" y2="47" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#pr-a)"/>
+<rect x="438" y="30" width="308" height="34" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="450" y="46" font-size="8.5" font-weight="600" fill="var(--fig-ink)">the signature can only be checked against a re-serialisation</text>
+<text x="450" y="58" font-size="8" fill="var(--fig-ink-soft)">which will not match — key order, floats, whitespace all changed</text>
+<line x1="14" y1="80" x2="746" y2="80" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="100" font-size="10.5" font-weight="600" fill="var(--fig-mint-edge)">Read the body yourself, verify, then validate the same bytes</text>
+<rect x="14" y="110" width="180" height="34" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="104" y="131" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">raw = await request.body()</text>
+<line x1="196" y1="127" x2="222" y2="127" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#pr-a)"/>
+<rect x="226" y="110" width="180" height="34" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="316" y="131" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">HMAC over raw — reject early</text>
+<line x1="408" y1="127" x2="434" y2="127" stroke="var(--fig-line)" stroke-width="1.2" marker-end="url(#pr-a)"/>
+<rect x="438" y="110" width="308" height="34" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="450" y="126" font-size="8.5" font-weight="600" fill="var(--fig-ink)">Model.model_validate_json(raw)</text>
+<text x="450" y="138" font-size="8" fill="var(--fig-ink-soft)">parses bytes already proven authentic</text>
+<rect x="14" y="158" width="732" height="50" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="176" font-size="10" font-weight="600" fill="var(--fig-ink)">The ordering is also a denial-of-service control</text>
+<text x="26" y="194" font-size="9" fill="var(--fig-ink-soft)">Parsing before verifying lets an unauthenticated caller spend your CPU on a multi-megabyte geometry that was always going to be rejected.</text>
+<text x="26" y="204" font-size="9" fill="var(--fig-ink-soft)">Check Content-Length and the signature first; both are constant-time compared to a parse.</text>
+</svg>
+<figcaption><b>Figure 1.</b> An ASGI body can be read once, so whoever reads it first decides what can be verified. Taking the bytes yourself is what lets the signature cover the wire form rather than a reconstruction of it.</figcaption>
+</figure>
+
 The diagram below shows the fail-fast order. Cheap checks run first (signature over raw bytes, then structural parse); the spatial bound and ring checks run inside the model only once the JSON is well-formed. Any failure short-circuits to a typed HTTP error before the payload reaches your processor.
 
 <figure class="fig">
@@ -137,7 +172,7 @@ The diagram below shows the fail-fast order. Cheap checks run first (signature o
   <line x1="450" y1="200" x2="450" y2="225" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#gj-arr-dash)" opacity="0.7"/>
   <text x="569" y="150" font-size="9" fill="currentColor" font-family="sans-serif" opacity="0.8">out of bounds</text>
 </svg>
-<figcaption><b>Figure 1.</b> GeoJSON webhook validation flow</figcaption>
+<figcaption><b>Figure 2.</b> GeoJSON webhook validation flow</figcaption>
 </figure>
 
 ## Complete runnable code block
@@ -274,6 +309,38 @@ The settings below are the ones that change correctness, not just style. Spatial
 4. **`extra="ignore"` hides typos.** Without `extra="forbid"`, a payload sending `geometery` (misspelled) parses with `geometry=None` and no error. Forbidding extras turns that into a loud `422`.
 5. **Unbounded coordinate arrays are a denial-of-service surface.** A single `Polygon` with millions of vertices will exhaust memory during parse. Cap request body size at the gateway and consider a vertex-count guard before handing the geometry to [Async Processing for Heavy Geometries](https://www.geospatialwebhook.com/spatial-payload-routing-parsing/async-processing-for-heavy-geometries/).
 6. **CRS assumptions on merge.** This handler assumes EPSG:4326. If any producer emits EPSG:3857 or a local grid, the bound checks will reject legitimate data or — worse — pass garbage. Normalize upstream per [CRS Normalization Strategies](https://www.geospatialwebhook.com/spatial-payload-routing-parsing/crs-normalization-strategies/) before this endpoint, or carry an explicit CRS field and transform inside the validator.
+
+<figure class="fig">
+<svg viewBox="0 0 760 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Which longitude and latitude swaps a bounds check catches and which it cannot">
+<title>A bounds check catches the obvious swaps and misses the dangerous ones</title>
+<desc>Three swapped coordinate pairs tested against the RFC 7946 ranges. New York at 40.7 north, 74.0 west becomes 40.7, minus 74.0 when swapped, and the latitude minus 74 is legal, so the bounds check passes and the point lands off the coast of Argentina — caught only if someone looks at a map. Oslo at 59.9 north, 10.7 east swaps to 10.7, 59.9, where both values are legal in both roles, so the point moves to Somalia with nothing to flag it: this is the case a bounds check can never catch, because every mid-latitude, mid-longitude pair is ambiguous. Only an egregious swap, where the latitude exceeds 90, is caught by ranges alone. The reliable defence is a plausibility check against an expected region: assert incoming geometry intersects the bounding box your system is supposed to serve, and alert rather than reject, so a genuine expansion into a new region surfaces as a decision instead of a silent drop.</desc>
+<rect x="0" y="0" width="760" height="220" fill="var(--fig-bg)"/>
+<rect x="14" y="30" width="240" height="100" rx="7" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.4"/>
+<text x="26" y="48" font-size="9.5" font-weight="600" fill="var(--fig-ink)">New York — [40.7, -74.0]</text>
+<text x="26" y="66" font-size="8.5" fill="var(--fig-ink-soft)">lat 40.7 legal · lon -74.0 legal</text>
+<text x="26" y="82" font-size="8.5" fill="var(--fig-ink)">lands: off the coast of Argentina</text>
+<text x="26" y="102" font-size="8.5" font-weight="600" fill="var(--fig-gold-edge)">bounds check: passes</text>
+<text x="26" y="118" font-size="8.5" fill="var(--fig-ink-soft)">caught only by looking at a map</text>
+<rect x="262" y="30" width="240" height="100" rx="7" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="274" y="48" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Oslo — [59.9, 10.7]</text>
+<text x="274" y="66" font-size="8.5" fill="var(--fig-ink-soft)">both values legal in both roles</text>
+<text x="274" y="82" font-size="8.5" fill="var(--fig-ink)">lands: Somalia</text>
+<text x="274" y="102" font-size="8.5" font-weight="600" fill="var(--fig-rose-edge)">bounds check: cannot ever catch this</text>
+<text x="274" y="118" font-size="8.5" fill="var(--fig-ink-soft)">every mid-lat, mid-lon pair is ambiguous</text>
+<rect x="510" y="30" width="236" height="100" rx="7" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="522" y="48" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Anywhere past ±90 lat</text>
+<text x="522" y="66" font-size="8.5" fill="var(--fig-ink-soft)">e.g. [120.5, 31.2] swapped</text>
+<text x="522" y="82" font-size="8.5" fill="var(--fig-ink)">lat 120.5 is out of range</text>
+<text x="522" y="102" font-size="8.5" font-weight="600" fill="var(--fig-mint-edge)">bounds check: rejects</text>
+<text x="522" y="118" font-size="8.5" fill="var(--fig-ink-soft)">the only swap ranges alone can find</text>
+<rect x="14" y="150" width="732" height="62" rx="6" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="26" y="168" font-size="10" font-weight="600" fill="var(--fig-ink)">The defence that works is a plausibility check, not a range check</text>
+<text x="26" y="186" font-size="9" fill="var(--fig-ink-soft)">Assert that incoming geometry intersects the bounding box your system is supposed to serve. A swapped Oslo lands in Somalia and fails that test</text>
+<text x="26" y="198" font-size="9" fill="var(--fig-ink-soft)">immediately, even though both numbers are legal.</text>
+<text x="26" y="208" font-size="9" fill="var(--fig-mint-edge)">Alert rather than reject — a genuine expansion into a new region should surface as a decision, not a silent drop.</text>
+</svg>
+<figcaption><b>Figure 3.</b> Range validation only catches swaps where one value is impossible as a latitude. For anything between ±90 in both roles it is structurally blind, so the check has to be against where your data is meant to be.</figcaption>
+</figure>
 
 ## Minimal verification snippet
 

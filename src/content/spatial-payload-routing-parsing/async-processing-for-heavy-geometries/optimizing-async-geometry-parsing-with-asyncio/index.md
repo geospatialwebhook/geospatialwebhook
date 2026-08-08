@@ -79,6 +79,42 @@ If the heavy step is instead a remote call — fetching a WFS tile or an elevati
 
 ## How the Loop Stays Free
 
+<figure class="fig">
+<svg viewBox="0 0 760 226" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Event loop occupancy while a geometry worker runs, showing what the loop is free to do">
+<title>What the loop does while the geometry is being repaired</title>
+<desc>One second of event-loop time while a 900-millisecond geometry repair is in flight in a worker process. The loop itself is busy for only about 6 milliseconds of that second: roughly 0.4 milliseconds to pickle the payload out, the same to unpickle the result back, and the remainder spread across accepting new connections, reading request bodies, answering health checks and awaiting broker publishes. For the other 994 milliseconds it is idle and available, which is why acceptance latency stays flat while a heavy payload is processing and why the same process can hold hundreds of concurrent requests. The number that matters is not how long the repair takes but how much of it the loop is obliged to witness — and with a process pool that is only the two serialisation hops at either end.</desc>
+<rect x="0" y="0" width="760" height="226" fill="var(--fig-bg)"/>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-ink)">One second of event-loop occupancy, with a 900 ms repair in flight</text>
+<line x1="60" y1="76" x2="720" y2="76" stroke="var(--fig-line)" stroke-width="1.2"/>
+<rect x="60" y="56" width="6" height="20" fill="var(--fig-peach-edge)"/>
+<rect x="196" y="60" width="4" height="16" fill="var(--fig-mint-edge)"/>
+<rect x="268" y="60" width="4" height="16" fill="var(--fig-mint-edge)"/>
+<rect x="352" y="60" width="4" height="16" fill="var(--fig-mint-edge)"/>
+<rect x="424" y="60" width="4" height="16" fill="var(--fig-mint-edge)"/>
+<rect x="510" y="60" width="4" height="16" fill="var(--fig-mint-edge)"/>
+<rect x="588" y="60" width="4" height="16" fill="var(--fig-mint-edge)"/>
+<rect x="654" y="56" width="6" height="20" fill="var(--fig-peach-edge)"/>
+<text x="60" y="50" font-size="8" fill="var(--fig-peach-edge)">pickle out</text>
+<text x="654" y="50" font-size="8" fill="var(--fig-peach-edge)">unpickle in</text>
+<text x="196" y="94" font-size="8" fill="var(--fig-ink-soft)">other requests, health checks, broker awaits</text>
+<rect x="60" y="106" width="660" height="20" rx="3" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="390" y="120" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">worker process: make_valid + reproject — 900 ms, on another core</text>
+<text x="14" y="120" font-size="8.5" fill="var(--fig-ink-soft)">worker</text>
+<text x="14" y="66" font-size="8.5" fill="var(--fig-ink-soft)">loop</text>
+<rect x="14" y="146" width="366" height="66" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="26" y="164" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Loop busy: ~6 ms of the second</text>
+<text x="26" y="182" font-size="9" fill="var(--fig-ink-soft)">0.4 ms pickling out · 0.4 ms unpickling back ·</text>
+<text x="26" y="194" font-size="9" fill="var(--fig-ink-soft)">the rest is ordinary I/O it would have done anyway</text>
+<text x="26" y="207" font-size="9" font-weight="600" fill="var(--fig-mint-edge)">994 ms idle and available</text>
+<rect x="394" y="146" width="352" height="66" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.4"/>
+<text x="406" y="164" font-size="9.5" font-weight="600" fill="var(--fig-ink)">The number that matters</text>
+<text x="406" y="182" font-size="9" fill="var(--fig-ink-soft)">Not how long the repair takes, but how much of it the loop is</text>
+<text x="406" y="194" font-size="9" fill="var(--fig-ink-soft)">obliged to witness — here, only the two serialisation hops.</text>
+<text x="406" y="207" font-size="9" fill="var(--fig-ink-soft)">Which is why one process holds hundreds of live requests.</text>
+</svg>
+<figcaption><b>Figure 1.</b> Offloading does not make the work cheaper; it makes the loop's share of it constant. The pickle hops at each end are the only part that scales with payload size, which is why the worker should return a summary.</figcaption>
+</figure>
+
 The event loop never executes geometry code. It submits the work to a pool of worker processes and immediately returns to servicing sockets; only the originating coroutine suspends on the returned future.
 
 <figure class="fig">
@@ -127,7 +163,7 @@ The event loop never executes geometry code. It submits the work to a pool of wo
   <!-- arrow back (result) -->
   <line x1="398" y1="152" x2="221" y2="184" stroke="currentColor" stroke-width="1.4" marker-end="url(#ag-arrow)" opacity="0.4" stroke-dasharray="4 4"/>
 </svg>
-<figcaption><b>Figure 1.</b> Offloading geometry parsing off the event loop</figcaption>
+<figcaption><b>Figure 2.</b> Offloading geometry parsing off the event loop</figcaption>
 </figure>
 
 ## Complete Runnable Example
@@ -275,6 +311,39 @@ if __name__ == "__main__":
 5. **Precision loss after transformation.** Reprojection introduces floating-point drift, so a transformed ring's first and last vertex may no longer be bit-identical. Re-close the ring (or re-run `make_valid`) after transforming to avoid spurious "unclosed ring" errors in PostGIS.
 6. **Timeout does not kill the process.** `asyncio.wait_for` cancels the *await*, but the worker process keeps grinding on the pathological geometry and holds a pool slot. For a hard kill, give each task its own short-lived pool or use `pebble.ProcessPool`, which cancels the underlying process.
 7. **Pool created at import time under spawn.** On macOS and Windows (spawn start method) a module-level `ProcessPoolExecutor()` re-imports the module in each child and can fork-bomb. Create the pool inside `if __name__ == "__main__":` or your app's startup hook, never at module top level.
+
+<figure class="fig">
+<svg viewBox="0 0 760 216" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="What crosses a process-pool boundary cleanly and what does not">
+<title>Everything crossing the pool boundary must survive pickling</title>
+<desc>A ProcessPoolExecutor moves arguments and results between interpreters with pickle, so the boundary imposes a contract the type system does not express. Raw bytes and plain dicts cross cleanly and cheaply. A Shapely geometry does pickle, but it carries the whole coordinate array, so returning one from a worker copies megabytes back across the boundary for a result the caller usually only needs a summary of — call mapping on it, or better, return just the derived facts. A database connection or session cannot be pickled at all and raises immediately, which is at least a loud failure. A closure or lambda also fails to pickle, and a module-level function must be used instead. The pattern that avoids all of this is to send the worker raw bytes and a small config, and have it return a compact result: validity flag, vertex count, bounding box, H3 cell and the normalised geometry as a dict — everything the caller needs and nothing it does not.</desc>
+<rect x="0" y="0" width="760" height="216" fill="var(--fig-bg)"/>
+<line x1="380" y1="26" x2="380" y2="140" stroke="var(--fig-line)" stroke-width="1.6" stroke-dasharray="6,4"/>
+<text x="380" y="20" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink-soft)">process boundary — everything here is pickled</text>
+<rect x="14" y="30" width="340" height="26" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="26" y="47" font-size="8.5" fill="var(--fig-ink)">bytes, plain dicts — cross cleanly and cheaply</text>
+<rect x="14" y="60" width="340" height="30" rx="4" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="76" font-size="8.5" fill="var(--fig-ink)">a Shapely geometry — pickles, but copies the whole array</text>
+<text x="26" y="87" font-size="8" fill="var(--fig-ink-soft)">megabytes back for a result you wanted a summary of</text>
+<rect x="14" y="94" width="340" height="26" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="26" y="111" font-size="8.5" fill="var(--fig-ink)">a DB connection or session — raises immediately, loudly</text>
+<rect x="14" y="124" width="340" height="26" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="26" y="141" font-size="8.5" fill="var(--fig-ink)">a closure or lambda — use a module-level function</text>
+<rect x="406" y="30" width="340" height="52" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="418" y="48" font-size="9.5" font-weight="600" fill="var(--fig-ink)">send: raw bytes + a small config</text>
+<text x="418" y="65" font-size="8.5" fill="var(--fig-ink-soft)">the worker parses inside its own interpreter, so nothing</text>
+<text x="418" y="76" font-size="8.5" fill="var(--fig-ink-soft)">large or stateful has to travel</text>
+<rect x="406" y="90" width="340" height="60" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="418" y="108" font-size="9.5" font-weight="600" fill="var(--fig-ink)">return: a compact result</text>
+<text x="418" y="125" font-size="8.5" font-family="monospace" fill="var(--fig-ink-soft)">{valid, vertex_count, bbox, h3_r7,</text>
+<text x="418" y="137" font-size="8.5" font-family="monospace" fill="var(--fig-ink-soft)"> geometry: mapping(geom)}</text>
+<text x="418" y="147" font-size="8" fill="var(--fig-mint-edge)">everything the caller needs, nothing it does not</text>
+<rect x="14" y="164" width="732" height="44" rx="6" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="26" y="182" font-size="10" font-weight="600" fill="var(--fig-ink)">The boundary imposes a contract the type system does not express</text>
+<text x="26" y="196" font-size="9" fill="var(--fig-ink-soft)">A signature that type-checks can still fail at runtime, or succeed while copying far more than intended.</text>
+<text x="26" y="206" font-size="9" fill="var(--fig-ink-soft)">Design the worker's inputs and outputs deliberately rather than letting them follow from whatever code was extracted.</text>
+</svg>
+<figcaption><b>Figure 3.</b> Two different failures hide here: the loud one (an unpicklable connection) and the quiet one (a Shapely object that pickles fine and copies megabytes). Design the worker's signature around what must cross, not around what is convenient to pass.</figcaption>
+</figure>
 
 ## Verify It Works
 

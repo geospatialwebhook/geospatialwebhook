@@ -319,6 +319,42 @@
 </div></div>
 <hr>
 <h2 id="why-the-spatial-workload-changes-the-calculus" tabindex="-1"><a class="heading-anchor" href="#why-the-spatial-workload-changes-the-calculus">Why the spatial workload changes the calculus</a></h2>
+<figure class="fig">
+<svg viewBox="0 0 760 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="How spatial payload characteristics shift the Kafka versus Redis Streams decision away from the generic answer">
+<title>What the spatial workload changes about the usual answer</title>
+<desc>Three properties of spatial webhook traffic move the broker decision away from the generic messaging answer. Payload size is highly variable — a point ping is a few hundred bytes and a land-cover multipolygon is several megabytes — which matters far more for an in-memory stream than for a disk-backed log, and pushes Redis Streams toward the claim-check pattern rather than away from Redis. Partition count is effectively fixed by the spatial key: the number of distinct cells at your chosen resolution sets how much parallelism is available, so Kafka's create-time partition count must be chosen against that number rather than against consumer capacity. And replay is regional rather than global — recovering from a bad deploy usually means re-processing one city, not the whole stream — which is exactly what a partitioned durable log makes cheap and what an in-memory stream trimmed by length cannot offer at all. The generic advice to pick the simpler broker holds right up until you need to replay a region.</desc>
+<rect x="0" y="0" width="760" height="232" fill="var(--fig-bg)"/>
+<rect x="14" y="26" width="240" height="132" rx="7" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.5"/>
+<text x="134" y="46" text-anchor="middle" font-size="10" font-weight="600" fill="var(--fig-ink)">payload size varies 1000×</text>
+<text x="26" y="66" font-size="8.5" fill="var(--fig-ink-soft)">point ping ~400 B</text>
+<text x="26" y="80" font-size="8.5" fill="var(--fig-ink-soft)">land-cover polygon ~4 MB</text>
+<text x="26" y="100" font-size="8.5" fill="var(--fig-ink)">Matters far more for an in-memory</text>
+<text x="26" y="112" font-size="8.5" fill="var(--fig-ink)">stream than a disk-backed log.</text>
+<text x="26" y="132" font-size="8.5" fill="var(--fig-peach-edge)">Pushes Redis toward claim-check,</text>
+<text x="26" y="144" font-size="8.5" fill="var(--fig-peach-edge)">not away from Redis.</text>
+<rect x="262" y="26" width="240" height="132" rx="7" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.5"/>
+<text x="382" y="46" text-anchor="middle" font-size="10" font-weight="600" fill="var(--fig-ink)">the key fixes the parallelism</text>
+<text x="274" y="66" font-size="8.5" fill="var(--fig-ink-soft)">distinct cells at your resolution</text>
+<text x="274" y="80" font-size="8.5" fill="var(--fig-ink-soft)">= the ceiling on useful partitions</text>
+<text x="274" y="100" font-size="8.5" fill="var(--fig-ink)">Kafka fixes partitions at creation, so</text>
+<text x="274" y="112" font-size="8.5" fill="var(--fig-ink)">that count must be set against the</text>
+<text x="274" y="124" font-size="8.5" fill="var(--fig-ink)">cell count, not consumer capacity.</text>
+<text x="274" y="144" font-size="8.5" fill="var(--fig-gold-edge)">Over-provision it — widening later re-keys.</text>
+<rect x="510" y="26" width="236" height="132" rx="7" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="628" y="46" text-anchor="middle" font-size="10" font-weight="600" fill="var(--fig-ink)">replay is regional</text>
+<text x="522" y="66" font-size="8.5" fill="var(--fig-ink-soft)">"re-process Berlin since Tuesday"</text>
+<text x="522" y="80" font-size="8.5" fill="var(--fig-ink-soft)">not "re-process everything"</text>
+<text x="522" y="100" font-size="8.5" fill="var(--fig-ink)">A partitioned durable log makes this</text>
+<text x="522" y="112" font-size="8.5" fill="var(--fig-ink)">cheap: seek the offsets for those</text>
+<text x="522" y="124" font-size="8.5" fill="var(--fig-ink)">partitions and replay.</text>
+<text x="522" y="144" font-size="8.5" fill="var(--fig-mint-edge)">A trimmed in-memory stream cannot.</text>
+<rect x="14" y="176" width="732" height="46" rx="6" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="26" y="194" font-size="10" font-weight="600" fill="var(--fig-ink)">The generic answer — pick the simpler broker — holds right up until you need to replay a region</text>
+<text x="26" y="209" font-size="9" fill="var(--fig-ink-soft)">Ask how you will recover from a bad deploy that corrupted one city's tiles. If the answer requires reading last Tuesday,</text>
+<text x="26" y="219" font-size="9" fill="var(--fig-ink-soft)">Redis Streams was never in the running, whatever its operational appeal.</text>
+</svg>
+<figcaption><b>Figure 1.</b> None of these three is a generic messaging concern, and together they usually decide the choice before throughput does. The replay question is the one worth answering first.</figcaption>
+</figure>
 <p>A generic “Redis vs Kafka” comparison ignores what makes geospatial traffic distinctive: payloads carry geometry, and geometry is both large and order-sensitive. A stream of vehicle GPS pings is tiny and tolerant of reordering; a stream of edited parcel polygons or re-tiled raster footprints is neither. The broker that wins depends on which of those you are moving.</p>
 <p>The second spatial twist is <strong>locality</strong>. You usually want all events touching the same region to land on the same consumer, so per-region state (a running geofence count, a tile version) stays coherent and ordered. Kafka gives you this directly: hash the message key to a partition, key on an H3 cell, and every event for that cell is ordered on one partition. Redis Streams has no key-to-consumer affinity — a consumer group is a work-stealing pool — so you recreate locality by sharding into multiple streams. The diagram below contrasts the two models.</p>
 <figure class="fig">
@@ -368,7 +404,7 @@
   <text x="497" y="253" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif">consumer 1</text>
   <text x="642" y="225" text-anchor="middle" font-size="10" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">cell A may split</text>
 </svg>
-<figcaption><b>Figure 1.</b> Spatial partitioning: Kafka partition-by-key vs Redis Streams consumer group</figcaption>
+<figcaption><b>Figure 2.</b> Spatial partitioning: Kafka partition-by-key vs Redis Streams consumer group</figcaption>
 </figure>
 <p>If per-region ordering matters, this is the crux: Kafka enforces it through the partition, whereas Redis Streams needs you to shard streams by cell to approximate it. The tradeoffs of choosing the cell system itself — resolution, cell shape, neighbour behaviour — are covered in <a href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/spatial-partitioning-strategies/h3-vs-s2-vs-quadkey-for-spatial-partitioning/">H3 vs S2 vs Quadkey for spatial partitioning</a>.</p>
 <hr>
@@ -565,9 +601,41 @@ GROUP <span class="token operator">=</span> <span class="token string">"tile-wor
 <hr>
 <h2 id="gotchas-and-spatial-edge-cases" tabindex="-1"><a class="heading-anchor" href="#gotchas-and-spatial-edge-cases">Gotchas and spatial edge cases</a></h2>
 <ol>
-<li>
-<p><strong>Redis Streams memory pressure with large geometries.</strong> Every entry lives in RAM until trimmed. A stream of multi-megabyte polygons at high rate can push Redis into eviction or an out-of-memory kill. Always set a <code>MAXLEN</code>/<code>MINID</code> cap sized from your real entry size, and for heavy geometries store the blob in object storage and stream only a reference (the claim-check pattern).</p>
-</li>
+<li><strong>Redis Streams memory pressure with large geometries.</strong> Every entry lives in RAM until trimmed. A stream of multi-megabyte polygons at high rate can push Redis into eviction or an out-of-memory kill. Always set a <code>MAXLEN</code>/<code>MINID</code> cap sized from your real entry size, and for heavy geometries store the blob in object storage and stream only a reference (the claim-check pattern).</li>
+</ol>
+<figure class="fig">
+<svg viewBox="0 0 760 226" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Multi-megabyte geometries held inline in a Redis stream versus the claim-check pattern">
+<title>Redis holds the stream in RAM, so the geometry must not live there</title>
+<desc>A stream of land-cover polygons averaging 3 megabytes at 200 events per second. Held inline, one hour of retention is about 2.1 terabytes of resident memory, which no instance has, so Redis either evicts under its maxmemory policy — silently discarding events the pipeline believes are durable — or is killed by the out-of-memory killer, losing the entire stream including entries that were never processed. Under the claim-check pattern the polygon is written to object storage keyed by its content hash and the stream carries only a reference of about 300 bytes, so the same hour costs roughly 216 megabytes and retention becomes a decision rather than a constraint. The consumer dereferences the pointer only for entries it actually processes, and because the key is a content hash the upload is idempotent, so a redelivery does not duplicate the blob.</desc>
+<rect x="0" y="0" width="760" height="226" fill="var(--fig-bg)"/>
+<defs><marker id="cc-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<rect x="14" y="30" width="352" height="106" rx="7" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="26" y="50" font-size="10" font-weight="600" fill="var(--fig-ink)">Geometry inline in the stream</text>
+<text x="26" y="70" font-size="9" fill="var(--fig-ink-soft)">3 MB avg × 200 ev/s × 1 h retention</text>
+<text x="26" y="90" font-size="11" font-weight="700" fill="var(--fig-rose-edge)">≈ 2.1 TB resident</text>
+<text x="26" y="110" font-size="8.5" fill="var(--fig-ink-soft)">maxmemory eviction silently drops events the</text>
+<text x="26" y="122" font-size="8.5" fill="var(--fig-ink-soft)">pipeline believes are durable — or the OOM killer takes the lot</text>
+<rect x="386" y="30" width="360" height="106" rx="7" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<text x="398" y="50" font-size="10" font-weight="600" fill="var(--fig-ink)">Claim check — reference in the stream</text>
+<text x="398" y="70" font-size="9" fill="var(--fig-ink-soft)">300 B × 200 ev/s × 1 h retention</text>
+<text x="398" y="90" font-size="11" font-weight="700" fill="var(--fig-mint-edge)">≈ 216 MB resident</text>
+<text x="398" y="110" font-size="8.5" fill="var(--fig-ink-soft)">retention becomes a decision, not a constraint;</text>
+<text x="398" y="122" font-size="8.5" fill="var(--fig-ink-soft)">the consumer fetches the blob only for what it processes</text>
+<rect x="14" y="150" width="196" height="30" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="112" y="169" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">PUT s3://geom/&lt;sha256&gt;</text>
+<line x1="212" y1="165" x2="246" y2="165" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#cc-a)"/>
+<rect x="250" y="150" width="240" height="30" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="370" y="169" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">XADD stream · {ref, bbox, h3, epsg, sha256}</text>
+<line x1="492" y1="165" x2="526" y2="165" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#cc-a)"/>
+<rect x="530" y="150" width="216" height="30" rx="5" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.2"/>
+<text x="638" y="169" text-anchor="middle" font-size="8.5" fill="var(--fig-ink)">consumer GETs only what it needs</text>
+<rect x="14" y="192" width="732" height="28" rx="5" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.2"/>
+<text x="26" y="203" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Key the blob by content hash, and set MAXLEN or MINID from your measured entry size.</text>
+<text x="26" y="215" font-size="9" fill="var(--fig-ink-soft)">The hash makes the upload idempotent, so a redelivery costs nothing; an uncapped stream is a memory leak with a retention policy attached.</text>
+</svg>
+<figcaption><b>Figure 3.</b> Kafka's log lives on disk, Redis's lives in RAM — so the claim-check pattern is optional on one and structural on the other. Eviction is the dangerous outcome: it discards events the pipeline still considers durable.</figcaption>
+</figure>
+<ol start="2">
 <li>
 <p><strong>Kafka partition count versus skew.</strong> Keying by H3 cell only balances load if traffic is spread across cells. A single dense metro region can make one cell — and therefore one partition — a hotspot while others idle. Provision enough partitions for peak concurrent hot cells, and consider a higher H3 resolution or a composite key to spread a hot region. You cannot decrease partition count later without a topic migration.</p>
 </li>

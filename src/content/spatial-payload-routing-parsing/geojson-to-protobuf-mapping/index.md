@@ -137,7 +137,76 @@ The mapping pipeline sits between your webhook receiver and your message broker.
 
 **Layer 3 — Serializer:** maps the validated, normalized geometry onto the generated protobuf message and produces a compact binary blob. This stage is CPU-bound and is kept off the event loop's I/O path.
 
+<figure class="fig">
+<svg viewBox="0 0 760 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Wire size and encode cost of GeoJSON, GeoJSON gzipped, and Protobuf for the same feature">
+<title>What Protobuf buys, and what it costs</title>
+<desc>The same 4,100-vertex polygon encoded three ways. Raw GeoJSON is about 186 kilobytes and takes roughly 3 milliseconds to serialise, because every coordinate is written as a decimal string with punctuation around it. Gzipped GeoJSON falls to about 41 kilobytes at roughly 9 milliseconds, since coordinate text compresses well, and it stays readable to anything that can decompress. Protobuf with packed doubles is about 66 kilobytes at roughly 0.9 milliseconds, and gzipped Protobuf reaches about 38 kilobytes. The honest reading is that compressed GeoJSON is already within about eight percent of compressed Protobuf on size, so bandwidth alone rarely justifies the migration; what Protobuf actually buys is a three-fold cheaper encode, a schema the broker can enforce, and no parsing ambiguity. What it costs is that the payload is no longer readable in a log, every consumer needs the generated stubs, and a field added to the schema must be rolled out to readers before writers.</desc>
+<rect x="0" y="0" width="760" height="230" fill="var(--fig-bg)"/>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-ink)">One 4,100-vertex polygon · bar length is wire size</text>
+<text x="14" y="44" font-size="9" font-weight="600" fill="var(--fig-ink)">GeoJSON</text>
+<rect x="120" y="32" width="560" height="20" rx="3" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.2"/>
+<text x="688" y="46" font-size="8.5" fill="var(--fig-ink-soft)">186 KB</text>
+<text x="130" y="46" font-size="8.5" fill="var(--fig-ink)">encode 3.0 ms</text>
+<text x="14" y="74" font-size="9" font-weight="600" fill="var(--fig-ink)">Protobuf</text>
+<rect x="120" y="62" width="199" height="20" rx="3" fill="var(--fig-peach)" stroke="var(--fig-peach-edge)" stroke-width="1.2"/>
+<text x="327" y="76" font-size="8.5" fill="var(--fig-ink-soft)">66 KB</text>
+<text x="130" y="76" font-size="8.5" fill="var(--fig-ink)">encode 0.9 ms</text>
+<text x="14" y="104" font-size="9" font-weight="600" fill="var(--fig-ink)">GeoJSON + gzip</text>
+<rect x="120" y="92" width="124" height="20" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.2"/>
+<text x="252" y="106" font-size="8.5" fill="var(--fig-ink-soft)">41 KB · encode 9.0 ms</text>
+<text x="14" y="134" font-size="9" font-weight="600" fill="var(--fig-ink)">Protobuf + gzip</text>
+<rect x="120" y="122" width="115" height="20" rx="3" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.4"/>
+<text x="243" y="136" font-size="8.5" fill="var(--fig-ink-soft)">38 KB · encode 3.6 ms</text>
+<line x1="235" y1="88" x2="235" y2="146" stroke="var(--fig-earth-edge)" stroke-width="1.2" stroke-dasharray="4,3"/>
+<text x="264" y="160" font-size="8.5" font-weight="600" fill="var(--fig-earth-edge)">compressed, the two are within ~8% — bandwidth alone rarely justifies the migration</text>
+<rect x="14" y="172" width="366" height="52" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="26" y="190" font-size="9.5" font-weight="600" fill="var(--fig-ink)">What Protobuf actually buys</text>
+<text x="26" y="206" font-size="9" fill="var(--fig-ink-soft)">3× cheaper encode on the hot path · a schema the broker</text>
+<text x="26" y="218" font-size="9" fill="var(--fig-ink-soft)">enforces · no parsing ambiguity about types or precision</text>
+<rect x="394" y="172" width="352" height="52" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="406" y="190" font-size="9.5" font-weight="600" fill="var(--fig-ink)">What it costs</text>
+<text x="406" y="206" font-size="9" fill="var(--fig-ink-soft)">Unreadable in a log · every consumer needs the stubs ·</text>
+<text x="406" y="218" font-size="9" fill="var(--fig-ink-soft)">a new field must reach readers before writers</text>
+</svg>
+<figcaption><b>Figure 2.</b> Compare compressed against compressed. Once you do, the case for Protobuf is encode cost and schema enforcement rather than bytes on the wire — which changes which pipelines it is worth doing for.</figcaption>
+</figure>
+
 **Layer 4 — Broker:** publishes the binary payload to a dedicated topic using exponential backoff with jitter, partitions by geographic key, and routes fatal data errors to a dead-letter queue.
+
+<figure class="fig">
+<svg viewBox="0 0 760 226" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Rollout order for adding a Protobuf field, and what happens if writers ship before readers">
+<title>Readers before writers, every time</title>
+<desc>A new optional field, confidence, is added to the spatial event message. If writers are deployed first, producers immediately emit the field while old consumers still hold the previous generated stubs; those consumers do not fail — Protobuf preserves unknown fields — but they cannot read the value, so any routing or filtering that depends on confidence silently treats every event as though it were absent, and the bug is a behaviour change with no error attached. Deploying readers first means consumers understand the field before any producer emits it, so the moment writers roll out the value is available everywhere. The same ordering applies in reverse when removing a field: writers stop emitting first, readers drop it afterwards. The general rule is that whichever side would encounter data it does not understand must be updated first, and for Protobuf's forward-compatible wire format that side is always the reader.</desc>
+<rect x="0" y="0" width="760" height="226" fill="var(--fig-bg)"/>
+<defs><marker id="ps-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-rose-edge)">Writers first — a silent behaviour change</text>
+<rect x="14" y="30" width="200" height="34" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="114" y="51" text-anchor="middle" font-size="9" fill="var(--fig-ink)">producers emit confidence</text>
+<line x1="216" y1="47" x2="248" y2="47" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#ps-a)"/>
+<rect x="252" y="30" width="220" height="34" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="362" y="51" text-anchor="middle" font-size="9" fill="var(--fig-ink)">consumers hold the old stubs</text>
+<line x1="474" y1="47" x2="506" y2="47" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#ps-a)"/>
+<rect x="510" y="30" width="236" height="34" rx="5" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
+<text x="628" y="46" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">no error — the field is simply unread</text>
+<text x="628" y="58" text-anchor="middle" font-size="8" fill="var(--fig-ink-soft)">unknown fields are preserved, not surfaced</text>
+<text x="14" y="84" font-size="9" fill="var(--fig-rose-edge)">Confidence-based routing treats every event as though the field were absent. Nothing fails; the behaviour is just wrong.</text>
+<line x1="14" y1="100" x2="746" y2="100" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="120" font-size="10.5" font-weight="600" fill="var(--fig-mint-edge)">Readers first — the value is usable the moment it exists</text>
+<rect x="14" y="130" width="200" height="34" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="114" y="151" text-anchor="middle" font-size="9" fill="var(--fig-ink)">consumers get new stubs</text>
+<line x1="216" y1="147" x2="248" y2="147" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#ps-a)"/>
+<rect x="252" y="130" width="220" height="34" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="362" y="151" text-anchor="middle" font-size="9" fill="var(--fig-ink)">then producers emit confidence</text>
+<line x1="474" y1="147" x2="506" y2="147" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#ps-a)"/>
+<rect x="510" y="130" width="236" height="34" rx="5" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="628" y="151" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">available everywhere immediately</text>
+<rect x="14" y="180" width="732" height="48" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="198" font-size="10" font-weight="600" fill="var(--fig-ink)">Removing a field reverses the order: writers stop emitting first, readers drop it after.</text>
+<text x="26" y="211" font-size="9" fill="var(--fig-ink-soft)">The rule is the same either way — whichever side would meet data it does not understand goes first.</text>
+<text x="26" y="222" font-size="9" fill="var(--fig-ink-soft)">Protobuf's wire format is forward-compatible, so that side is always the reader.</text>
+</svg>
+<figcaption><b>Figure 3.</b> Protobuf's tolerance of unknown fields is what makes rollout safe and also what makes a wrong rollout order invisible: nothing throws, the field is simply never seen.</figcaption>
+</figure>
 
 ---
 

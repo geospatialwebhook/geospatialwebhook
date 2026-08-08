@@ -156,7 +156,81 @@ Normalization sits between raw ingestion and any spatially aware consumer. It ru
 
 **Layer 1 — Detect CRS:** Resolve the source projection from explicit GeoJSON `crs`/`srid` metadata, then a vendor header, then a coordinate-bounds heuristic. Payloads that resolve to nothing branch to quarantine instead of defaulting silently.
 
+<figure class="fig">
+<svg viewBox="0 0 760 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The three-step CRS detection ladder and the quarantine branch that replaces a silent default">
+<title>Detecting the source CRS, and what happens when you cannot</title>
+<desc>Three sources of truth are tried in order of reliability. An explicit crs or srid member in the payload is authoritative and resolves immediately. Failing that, a vendor header such as X-Source-EPSG is trusted next, because it is set by the sending system rather than inferred. Failing both, a coordinate-bounds heuristic can distinguish degrees from projected metres by magnitude, but it can only ever rule things out — a Web Mercator point near the origin is numerically indistinguishable from a valid degree pair, so the heuristic returns a candidate rather than an answer. When nothing resolves, the branch that matters is quarantine rather than a default. Assuming EPSG:4326 for an unlabelled payload is the failure this ladder exists to prevent: the geometry is accepted, indexed and served, and the error surfaces weeks later as features sitting hundreds of kilometres from where they belong, with nothing in any log to explain it.</desc>
+<rect x="0" y="0" width="760" height="240" fill="var(--fig-bg)"/>
+<defs><marker id="cd-a" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--fig-line)"/></marker></defs>
+<rect x="14" y="30" width="230" height="52" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="26" y="48" font-size="9.5" font-weight="600" fill="var(--fig-ink)">1 · payload crs / srid member</text>
+<text x="26" y="64" font-size="8.5" fill="var(--fig-ink-soft)">authoritative — the producer declared it</text>
+<text x="26" y="76" font-size="8.5" fill="var(--fig-mint-edge)">resolve and stop</text>
+<line x1="126" y1="84" x2="126" y2="102" stroke="var(--fig-line)" stroke-width="1.2" stroke-dasharray="3,2" marker-end="url(#cd-a)"/>
+<text x="134" y="97" font-size="8" fill="var(--fig-ink-soft)">absent</text>
+<rect x="14" y="106" width="230" height="52" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="26" y="124" font-size="9.5" font-weight="600" fill="var(--fig-ink)">2 · vendor header</text>
+<text x="26" y="140" font-size="8.5" fill="var(--fig-ink-soft)">X-Source-EPSG — set, not inferred</text>
+<text x="26" y="152" font-size="8.5" fill="var(--fig-mint-edge)">resolve and stop</text>
+<line x1="126" y1="160" x2="126" y2="178" stroke="var(--fig-line)" stroke-width="1.2" stroke-dasharray="3,2" marker-end="url(#cd-a)"/>
+<text x="134" y="173" font-size="8" fill="var(--fig-ink-soft)">absent</text>
+<rect x="14" y="182" width="230" height="52" rx="6" fill="var(--fig-gold)" stroke="var(--fig-gold-edge)" stroke-width="1.3"/>
+<text x="26" y="200" font-size="9.5" font-weight="600" fill="var(--fig-ink)">3 · coordinate-bounds heuristic</text>
+<text x="26" y="216" font-size="8.5" fill="var(--fig-ink-soft)">magnitude separates degrees from metres</text>
+<text x="26" y="228" font-size="8.5" fill="var(--fig-gold-edge)">a candidate, never an answer</text>
+<line x1="248" y1="208" x2="286" y2="208" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#cd-a)"/>
+<rect x="290" y="182" width="220" height="52" rx="6" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="302" y="200" font-size="9" fill="var(--fig-ink)">near the origin the two ranges</text>
+<text x="302" y="214" font-size="9" fill="var(--fig-ink)">overlap — (120, 95) is both</text>
+<text x="302" y="228" font-size="8.5" fill="var(--fig-ink-soft)">a valid degree pair and a real 3857 point</text>
+<line x1="514" y1="208" x2="552" y2="208" stroke="var(--fig-line)" stroke-width="1.3" marker-end="url(#cd-a)"/>
+<rect x="556" y="176" width="190" height="58" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.6"/>
+<text x="568" y="194" font-size="9.5" font-weight="600" fill="var(--fig-ink)">quarantine</text>
+<text x="568" y="210" font-size="8.5" fill="var(--fig-ink-soft)">unresolved ⇒ hold, alert, ask</text>
+<text x="568" y="224" font-size="8.5" fill="var(--fig-ink-soft)">the producer. Never guess.</text>
+<rect x="290" y="30" width="456" height="128" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="302" y="50" font-size="10" font-weight="600" fill="var(--fig-ink)">The branch this ladder exists to prevent: defaulting to EPSG:4326</text>
+<text x="302" y="70" font-size="9" fill="var(--fig-ink-soft)">An unlabelled EPSG:27700 payload assumed to be degrees is accepted, indexed,</text>
+<text x="302" y="83" font-size="9" fill="var(--fig-ink-soft)">and served. No validator objects — the numbers are well-formed.</text>
+<text x="302" y="103" font-size="9" fill="var(--fig-rose-edge)">The failure appears weeks later as features hundreds of kilometres from where</text>
+<text x="302" y="116" font-size="9" fill="var(--fig-rose-edge)">they belong, with nothing in any log to explain how they got there.</text>
+<text x="302" y="136" font-size="9" fill="var(--fig-ink-soft)">A quarantine queue that nobody drains is still better: the data is recoverable,</text>
+<text x="302" y="149" font-size="9" fill="var(--fig-ink-soft)">and it has not silently entered the store as truth.</text>
+</svg>
+<figcaption><b>Figure 2.</b> The ladder runs most-authoritative first and stops at the first real answer. Its most important property is the branch at the bottom: a silent default converts a detectable ingestion error into a permanent, untraceable data-quality problem.</figcaption>
+</figure>
+
 **Layer 2 — Reproject:** A cached `pyproj.Transformer` keyed by the source→target CRS pair reprojects the whole geometry with `shapely.ops.transform`, walking every coordinate ring. Precision reduction happens only after the transform.
+
+<figure class="fig">
+<svg viewBox="0 0 760 216" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cost of constructing a pyproj Transformer per payload versus caching by CRS pair">
+<title>Transformer construction dominates until you cache it</title>
+<desc>Reprojecting a 40-vertex polygon from EPSG:27700 to EPSG:4326. Constructing a pyproj Transformer costs about 12 milliseconds, because it resolves the CRS definitions and builds a coordinate operation pipeline, while applying it to those 40 vertices costs about 0.05 milliseconds — so a transformer built per payload spends 99.6 percent of its time on setup, and the pipeline's throughput is bounded by an operation whose result is identical every time. Caching by the source-to-target pair reduces the amortised cost to roughly 0.05 milliseconds, a 240-fold improvement, and a real workload has only a handful of distinct pairs because producers do not invent new coordinate systems. Two properties make the cache safe: pyproj Transformers are immutable and thread-safe once built, so a single instance can be shared across workers, and the pair is a natural cache key because a transformer means nothing outside it.</desc>
+<rect x="0" y="0" width="760" height="216" fill="var(--fig-bg)"/>
+<text x="14" y="20" font-size="10.5" font-weight="600" fill="var(--fig-rose-edge)">Transformer.from_crs() per payload</text>
+<rect x="150" y="30" width="470" height="26" rx="4" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.3"/>
+<text x="160" y="47" font-size="9" fill="var(--fig-ink)">build transformer — 12 ms</text>
+<rect x="620" y="30" width="4" height="26" rx="1" fill="var(--fig-mint-edge)"/>
+<text x="632" y="43" font-size="9" fill="var(--fig-ink-soft)">transform 40</text>
+<text x="632" y="54" font-size="9" fill="var(--fig-ink-soft)">vertices — 0.05 ms</text>
+<text x="14" y="76" font-size="9" fill="var(--fig-rose-edge)" font-weight="600">99.6% of the time is spent rebuilding something identical</text>
+<line x1="14" y1="92" x2="746" y2="92" stroke="var(--fig-line-soft)" stroke-width="1"/>
+<text x="14" y="112" font-size="10.5" font-weight="600" fill="var(--fig-mint-edge)">Cached by (source, target) pair</text>
+<rect x="150" y="122" width="4" height="26" rx="1" fill="var(--fig-mint-edge)"/>
+<text x="162" y="139" font-size="9" fill="var(--fig-ink-soft)">cache hit + transform — 0.05 ms amortised</text>
+<rect x="470" y="122" width="150" height="26" rx="4" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="545" y="139" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">240× faster</text>
+<rect x="14" y="164" width="366" height="46" rx="6" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.3"/>
+<text x="26" y="182" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Why the cache stays small</text>
+<text x="26" y="199" font-size="9" fill="var(--fig-ink-soft)">Producers do not invent coordinate systems — a real stream has</text>
+<text x="26" y="208" font-size="9" fill="var(--fig-ink-soft)">a handful of distinct pairs, so the cache is bounded in practice.</text>
+<rect x="394" y="164" width="352" height="46" rx="6" fill="var(--fig-earth)" stroke="var(--fig-earth-edge)" stroke-width="1.3"/>
+<text x="406" y="182" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Why it is safe to share</text>
+<text x="406" y="199" font-size="9" fill="var(--fig-ink-soft)">A built Transformer is immutable and thread-safe, so one instance</text>
+<text x="406" y="208" font-size="9" fill="var(--fig-ink-soft)">serves every worker without locking.</text>
+</svg>
+<figcaption><b>Figure 3.</b> The expensive part is resolving the CRS definitions and building the operation pipeline, not moving coordinates — so the cost is per distinct CRS pair, not per payload, and only a cache makes the code reflect that.</figcaption>
+</figure>
 
 **Layer 3 — Emit:** The geometry is serialized as canonical `EPSG:4326` GeoJSON (or a binary equivalent) and handed to the spatial index and routing rules with a single, predictable projection.
 
