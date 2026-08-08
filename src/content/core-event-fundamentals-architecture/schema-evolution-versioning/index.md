@@ -47,22 +47,22 @@ dateModified: "2026-08-08"
         {
           "@type": "Question",
           "name": "Do I need a schema version field if I use Protobuf or Avro?",
-          "acceptedAnswer": {"@type": "Answer", "text": "Yes, for a different reason than you need it in JSON. Protobuf and Avro handle structural compatibility for you — an unknown field is preserved, a missing optional field gets its default — but they cannot express semantic changes, which is where spatial schemas actually break. Changing the canonical CRS from EPSG:4326 to EPSG:3857, or changing coordinate rounding from six decimal places to seven, leaves the wire format identical and changes what the numbers mean. An explicit schema version is the only thing that lets a consumer detect that."
+          "acceptedAnswer": {"@type": "Answer", "text": "Yes, for a different reason than you need it in JSON. Protobuf and Avro handle structural compatibility for you — an unknown field is preserved, a missing optional field gets its default — but they cannot express semantic changes, which is where spatial schemas actually break. Changing the canonical CRS from EPSG:4326 to EPSG:3857, or changing coordinate rounding from six decimal places to seven, leaves the wire format identical and changes what the numbers mean. An explicit schema version is the only thing that lets a consumer detect that."}
         },
         {
           "@type": "Question",
           "name": "Is adding an optional field always a safe change?",
-          "acceptedAnswer": {"@type": "Answer", "text": "Structurally yes, operationally no. Old consumers ignore the field and keep working, so nothing breaks. But if any consumer derives an idempotency key or a content hash from the whole payload, the added field changes that hash, so the same logical event now produces a different key and deduplication stops matching across the rollout boundary. Hash over an explicit field list rather than the whole payload, and adding a field becomes genuinely safe."
+          "acceptedAnswer": {"@type": "Answer", "text": "Structurally yes, operationally no. Old consumers ignore the field and keep working, so nothing breaks. But if any consumer derives an idempotency key or a content hash from the whole payload, the added field changes that hash, so the same logical event now produces a different key and deduplication stops matching across the rollout boundary. Hash over an explicit field list rather than the whole payload, and adding a field becomes genuinely safe."}
         },
         {
           "@type": "Question",
           "name": "How long should I support an old schema version?",
-          "acceptedAnswer": {"@type": "Answer", "text": "At least as long as your longest replay path, which is normally dead-letter retention. A dead-lettered event replayed a week later arrives carrying the schema version it was produced under, so a consumer that dropped support for it will fail on exactly the events that already failed once. Tie the support window to dead-letter retention rather than picking a duration, and instrument a counter per version so you can see when the old one genuinely stops arriving."
+          "acceptedAnswer": {"@type": "Answer", "text": "At least as long as your longest replay path, which is normally dead-letter retention. A dead-lettered event replayed a week later arrives carrying the schema version it was produced under, so a consumer that dropped support for it will fail on exactly the events that already failed once. Tie the support window to dead-letter retention rather than picking a duration, and instrument a counter per version so you can see when the old one genuinely stops arriving."}
         },
         {
           "@type": "Question",
           "name": "Can I change the coordinate precision policy without a version bump?",
-          "acceptedAnswer": {"@type": "Answer", "text": "No — this is the classic silently breaking change. Rounding coordinates to a different number of decimal places produces a valid payload that passes every schema check while changing every derived key: the idempotency hash, the deduplication key, and any content hash used for tile invalidation. Consumers see a stream in which nothing matches anything from before the change, and the symptom is duplicate writes rather than an error. Treat precision as part of the schema and bump the version with it."
+          "acceptedAnswer": {"@type": "Answer", "text": "No — this is the classic silently breaking change. Rounding coordinates to a different number of decimal places produces a valid payload that passes every schema check while changing every derived key: the idempotency hash, the deduplication key, and any content hash used for tile invalidation. Consumers see a stream in which nothing matches anything from before the change, and the symptom is duplicate writes rather than an error. Treat precision as part of the schema and bump the version with it."}
         }
       ]
     }

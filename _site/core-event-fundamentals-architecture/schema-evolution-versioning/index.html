@@ -230,22 +230,22 @@
         {
           "@type": "Question",
           "name": "Do I need a schema version field if I use Protobuf or Avro?",
-          "acceptedAnswer": {"@type": "Answer", "text": "Yes, for a different reason than you need it in JSON. Protobuf and Avro handle structural compatibility for you — an unknown field is preserved, a missing optional field gets its default — but they cannot express semantic changes, which is where spatial schemas actually break. Changing the canonical CRS from EPSG:4326 to EPSG:3857, or changing coordinate rounding from six decimal places to seven, leaves the wire format identical and changes what the numbers mean. An explicit schema version is the only thing that lets a consumer detect that."
+          "acceptedAnswer": {"@type": "Answer", "text": "Yes, for a different reason than you need it in JSON. Protobuf and Avro handle structural compatibility for you — an unknown field is preserved, a missing optional field gets its default — but they cannot express semantic changes, which is where spatial schemas actually break. Changing the canonical CRS from EPSG:4326 to EPSG:3857, or changing coordinate rounding from six decimal places to seven, leaves the wire format identical and changes what the numbers mean. An explicit schema version is the only thing that lets a consumer detect that."}
         },
         {
           "@type": "Question",
           "name": "Is adding an optional field always a safe change?",
-          "acceptedAnswer": {"@type": "Answer", "text": "Structurally yes, operationally no. Old consumers ignore the field and keep working, so nothing breaks. But if any consumer derives an idempotency key or a content hash from the whole payload, the added field changes that hash, so the same logical event now produces a different key and deduplication stops matching across the rollout boundary. Hash over an explicit field list rather than the whole payload, and adding a field becomes genuinely safe."
+          "acceptedAnswer": {"@type": "Answer", "text": "Structurally yes, operationally no. Old consumers ignore the field and keep working, so nothing breaks. But if any consumer derives an idempotency key or a content hash from the whole payload, the added field changes that hash, so the same logical event now produces a different key and deduplication stops matching across the rollout boundary. Hash over an explicit field list rather than the whole payload, and adding a field becomes genuinely safe."}
         },
         {
           "@type": "Question",
           "name": "How long should I support an old schema version?",
-          "acceptedAnswer": {"@type": "Answer", "text": "At least as long as your longest replay path, which is normally dead-letter retention. A dead-lettered event replayed a week later arrives carrying the schema version it was produced under, so a consumer that dropped support for it will fail on exactly the events that already failed once. Tie the support window to dead-letter retention rather than picking a duration, and instrument a counter per version so you can see when the old one genuinely stops arriving."
+          "acceptedAnswer": {"@type": "Answer", "text": "At least as long as your longest replay path, which is normally dead-letter retention. A dead-lettered event replayed a week later arrives carrying the schema version it was produced under, so a consumer that dropped support for it will fail on exactly the events that already failed once. Tie the support window to dead-letter retention rather than picking a duration, and instrument a counter per version so you can see when the old one genuinely stops arriving."}
         },
         {
           "@type": "Question",
           "name": "Can I change the coordinate precision policy without a version bump?",
-          "acceptedAnswer": {"@type": "Answer", "text": "No — this is the classic silently breaking change. Rounding coordinates to a different number of decimal places produces a valid payload that passes every schema check while changing every derived key: the idempotency hash, the deduplication key, and any content hash used for tile invalidation. Consumers see a stream in which nothing matches anything from before the change, and the symptom is duplicate writes rather than an error. Treat precision as part of the schema and bump the version with it."
+          "acceptedAnswer": {"@type": "Answer", "text": "No — this is the classic silently breaking change. Rounding coordinates to a different number of decimal places produces a valid payload that passes every schema check while changing every derived key: the idempotency hash, the deduplication key, and any content hash used for tile invalidation. Consumers see a stream in which nothing matches anything from before the change, and the symptom is duplicate writes rather than an error. Treat precision as part of the schema and bump the version with it."}
         }
       ]
     }
@@ -692,6 +692,14 @@ CORPUS <span class="token operator">=</span> pathlib<span class="token punctuati
 <li><a href="https://www.geospatialwebhook.com/queue-management-retry-delivery/dead-letter-queues-spatial/">Dead-Letter Queues for Spatial Payloads</a> — where an unknown version goes, and why it is replayable</li>
 </ul>
 
+        <h2 id="explore-this-section">Explore this section</h2>
+        <div class="children-grid">
+          <a class="card " href="https://www.geospatialwebhook.com/core-event-fundamentals-architecture/schema-evolution-versioning/adding-a-field-to-a-live-spatial-event-schema/">
+            <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19c0-8 6-14 14-14 0 8-6 14-14 14z"/><path d="M5 19l6-6"/></svg></span>
+            <h3 class="card__title">Adding a Field to a Live Spatial Event Schema</h3>
+            <span class="card__more">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+          </a>
+        </div>
       </div>
 
       <aside class="page-aside" aria-label="Related content">

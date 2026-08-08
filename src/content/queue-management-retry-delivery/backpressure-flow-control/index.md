@@ -47,22 +47,22 @@ dateModified: "2026-08-08"
         {
           "@type": "Question",
           "name": "Why is a message-count prefetch wrong for spatial payloads?",
-          "acceptedAnswer": {"@type": "Answer", "text": "Because message count says nothing about work. A prefetch of 100 might be 100 point pings costing 200 milliseconds in total, or 100 land-cover multipolygons costing 90 seconds. The same setting is simultaneously far too small for one and catastrophically too large for the other, and which one you get is decided by geography rather than by anything you control. Size the window in estimated work — vertex count is a good proxy and is available from the envelope without deserialising the geometry."
+          "acceptedAnswer": {"@type": "Answer", "text": "Because message count says nothing about work. A prefetch of 100 might be 100 point pings costing 200 milliseconds in total, or 100 land-cover multipolygons costing 90 seconds. The same setting is simultaneously far too small for one and catastrophically too large for the other, and which one you get is decided by geography rather than by anything you control. Size the window in estimated work — vertex count is a good proxy and is available from the envelope without deserialising the geometry."}
         },
         {
           "@type": "Question",
           "name": "Should I pause the partition or just process more slowly?",
-          "acceptedAnswer": {"@type": "Answer", "text": "Pause it. Processing slowly while continuing to fetch means the broker keeps handing you messages you have not started, which grows unbounded memory and, worse, does not stop the broker's session timer. Kafka expects a poll within max.poll.interval.ms; a consumer that is busy rather than polling gets evicted from the group and its partitions rebalanced, which produces duplicate delivery on top of the backlog you already had. Pausing keeps you polling — returning no records — so the session stays alive."
+          "acceptedAnswer": {"@type": "Answer", "text": "Pause it. Processing slowly while continuing to fetch means the broker keeps handing you messages you have not started, which grows unbounded memory and, worse, does not stop the broker's session timer. Kafka expects a poll within max.poll.interval.ms; a consumer that is busy rather than polling gets evicted from the group and its partitions rebalanced, which produces duplicate delivery on top of the backlog you already had. Pausing keeps you polling — returning no records — so the session stays alive."}
         },
         {
           "@type": "Question",
           "name": "Is load shedding ever acceptable for spatial events?",
-          "acceptedAnswer": {"@type": "Answer", "text": "It is acceptable when the alternative is losing everything, and only for streams where a later event supersedes an earlier one. Shedding a vehicle position ping is defensible because another arrives in seconds and the newer one is strictly more useful. Shedding a cadastral boundary edit is data loss, because nothing will resend it. Split those streams by topic so the shedding policy can differ, and never shed a stream whose events are not self-superseding."
+          "acceptedAnswer": {"@type": "Answer", "text": "It is acceptable when the alternative is losing everything, and only for streams where a later event supersedes an earlier one. Shedding a vehicle position ping is defensible because another arrives in seconds and the newer one is strictly more useful. Shedding a cadastral boundary edit is data loss, because nothing will resend it. Split those streams by topic so the shedding policy can differ, and never shed a stream whose events are not self-superseding."}
         },
         {
           "@type": "Question",
           "name": "How does backpressure interact with the retry budget?",
-          "acceptedAnswer": {"@type": "Answer", "text": "They control opposite ends of the same pipe and can fight each other. Backpressure slows intake when the consumer is saturated; a retry ladder increases intake when deliveries fail. A saturated consumer that starts timing out generates retries, which arrive as additional load on the consumer that was already saturated. Gate retries on the same saturation signal that drives backpressure, so a consumer under pressure sheds retries first and fresh events last."
+          "acceptedAnswer": {"@type": "Answer", "text": "They control opposite ends of the same pipe and can fight each other. Backpressure slows intake when the consumer is saturated; a retry ladder increases intake when deliveries fail. A saturated consumer that starts timing out generates retries, which arrive as additional load on the consumer that was already saturated. Gate retries on the same saturation signal that drives backpressure, so a consumer under pressure sheds retries first and fresh events last."}
         }
       ]
     }
@@ -149,7 +149,7 @@ The fix is to keep the broker's own window small and enforce a second, work-awar
 <text x="463" y="153" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">keep calling poll — it returns</text>
 <text x="463" y="165" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">nothing, so the session survives</text>
 <line x1="550" y1="147" x2="582" y2="177" stroke="var(--fig-line)" stroke-width="1.2" stroke-dasharray="3,2" marker-end="url(#bp-a)"/>
-<text x="556" y="196" font-size="8" fill="var(--fig-rose-edge)">still full after N s</text>
+<text x="562" y="142" font-size="8" fill="var(--fig-rose-edge)">still full after N s</text>
 <rect x="586" y="164" width="160" height="58" rx="6" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.5"/>
 <text x="666" y="184" text-anchor="middle" font-size="9" font-weight="600" fill="var(--fig-ink)">shed by priority</text>
 <text x="666" y="199" text-anchor="middle" font-size="8.5" fill="var(--fig-ink-soft)">self-superseding topics only</text>
@@ -293,6 +293,27 @@ async def should_shed(msg, pause_seconds: float) -> bool:
 **A missing vertex count must default high, not low.** If an envelope arrives without the field — an old schema version, a producer that has not been updated — defaulting to a small cost lets an unbounded payload through the one control designed to stop it. Default to the budget's clamp value so an unmeasured payload is treated as expensive until proven otherwise.
 
 **Shedding must never apply to a stream with ordering guarantees.** Dropping one event from a version-guarded stream is survivable, because a later version supersedes it. Dropping one from a stream whose consumer applies deltas is corruption, because the state never converges. Enumerate sheddable topics explicitly, as above, rather than deriving the decision from a priority field alone.
+
+<figure class="fig">
+<svg viewBox="0 0 760 218" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Which spatial streams may be shed under saturation and which may never be, by whether a later event supersedes an earlier one">
+<title>Only self-superseding streams may be shed</title>
+<desc>Streams sorted by whether dropping one event is recoverable. Vehicle position pings and sensor telemetry are self-superseding: another arrives within seconds carrying strictly newer information, so a dropped one leaves a momentary gap rather than a permanent hole, and shedding them under saturation is a degradation the system recovers from on its own. Cadastral boundary edits, tile invalidations and dead-letter replays are not: nothing will resend them, so a drop is silent permanent data loss, and a map that is wrong stays wrong. Delta-encoded streams are the worst case, because dropping one event does not merely lose it — every subsequent event is applied to a state that never existed, so the error compounds rather than healing. The policy therefore has to be enumerated per topic rather than derived from a priority field, since priority describes how much an event matters and this question is about whether losing it is reversible.</desc>
+<rect x="0" y="0" width="760" height="218" fill="var(--fig-bg)"/>
+<rect x="14" y="30" width="732" height="52" rx="7" fill="var(--fig-mint)" stroke="var(--fig-mint-edge)" stroke-width="1.5"/>
+<text x="26" y="49" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Sheddable — a later event supersedes this one</text>
+<text x="26" y="66" font-size="9" fill="var(--fig-ink-soft)">vehicle positions · sensor telemetry · presence pings</text>
+<text x="26" y="78" font-size="9" fill="var(--fig-mint-edge)">a drop leaves a momentary gap the next event closes by itself</text>
+<rect x="14" y="90" width="732" height="52" rx="7" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.6"/>
+<text x="26" y="109" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Never shed — nothing will resend it</text>
+<text x="26" y="126" font-size="9" fill="var(--fig-ink-soft)">cadastral boundary edits · tile invalidations · dead-letter replays</text>
+<text x="26" y="138" font-size="9" fill="var(--fig-rose-edge)">a drop is permanent, silent data loss — the map stays wrong</text>
+<rect x="14" y="150" width="732" height="56" rx="7" fill="var(--fig-rose)" stroke="var(--fig-rose-edge)" stroke-width="1.8"/>
+<text x="26" y="169" font-size="9.5" font-weight="600" fill="var(--fig-ink)">Worst case — delta-encoded streams</text>
+<text x="26" y="186" font-size="9" fill="var(--fig-ink-soft)">every later event is applied to a state that never existed, so the error compounds instead of healing</text>
+<text x="26" y="199" font-size="9" fill="var(--fig-rose-edge)">enumerate the policy per topic — priority says how much an event matters, not whether losing it is reversible</text>
+</svg>
+<figcaption><b>Figure 3.</b> The test is not importance but recoverability. A high-priority position ping is safer to shed than a low-priority boundary edit, because only one of them will be sent again.</figcaption>
+</figure>
 
 ---
 
